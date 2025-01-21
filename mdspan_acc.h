@@ -2831,13 +2831,13 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplic
 
                 switch (algorithm.algorithm_version)
                 {
-                case Naive:
+                case Matrix_Multiplication_Algorithm::Naive:
                     matrix_multiply_dot(R,RT,S,gpu_multiplication);
                     break;
-                case Strassen:
+                case Matrix_Multiplication_Algorithm::Strassen:
                     strassen_multiply(R,RT,S,algorithm,gpu_multiplication);
                     break;
-                case WinogradVariant:
+                case Matrix_Multiplication_Algorithm::WinogradVariant:
                     winograd_multiply(R,RT,S,algorithm,gpu_multiplication);
                 }
 
@@ -2977,13 +2977,13 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
                 mdspan<T, CA> S(sdata,RU.pdatastruct.prowmajor, u,u);
                 switch (algorithm.algorithm_version)
                 {
-                case Naive:
+                case Matrix_Multiplication_Algorithm::Naive:
                     matrix_multiply_dot(RL,RU,S,gpu_multoffload);
                     break;
-                case Strassen:
+                case Matrix_Multiplication_Algorithm::Strassen:
                     strassen_multiply(RL,RU,S,algorithm,gpu_multoffload);
                     break;
-                case WinogradVariant:
+                case Matrix_Multiplication_Algorithm::WinogradVariant:
                     winograd_multiply(RL,RU,S,algorithm,gpu_multoffload);
                 }
 
@@ -3147,13 +3147,13 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
                 auto BQT=BQ.transpose();
                 switch (algorithm.algorithm_version)
                 {
-                case Naive:
+                case Matrix_Multiplication_Algorithm::Naive:
                     matrix_multiply_dot(BQT,BM,C,gpu_multoffload);
                     break;
-                case Strassen:
+                case Matrix_Multiplication_Algorithm::Strassen:
                     strassen_multiply(BQT,BM,C,algorithm,gpu_multoffload);
                     break;
-                case WinogradVariant:
+                case Matrix_Multiplication_Algorithm::WinogradVariant:
                     winograd_multiply(BQT,BM,C,algorithm,gpu_multoffload);
                 }
 
@@ -3163,13 +3163,13 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
 
                 switch (algorithm.algorithm_version)
                 {
-                case Naive:
+                case Matrix_Multiplication_Algorithm::Naive:
                     matrix_multiply_dot(BQ,C,S,gpu_multoffload);
                     break;
-                case Strassen:
+                case Matrix_Multiplication_Algorithm::Strassen:
                     strassen_multiply(BQ,C,S,algorithm,gpu_multoffload);
                     break;
-                case WinogradVariant:
+                case Matrix_Multiplication_Algorithm::WinogradVariant:
                     winograd_multiply(BQ,C,S,algorithm,gpu_multoffload);
                 }
 
@@ -3222,13 +3222,13 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
         auto QT=Q.transpose();
         switch (algorithm.algorithm_version)
         {
-        case Naive:
+        case Matrix_Multiplication_Algorithm::Naive:
             matrix_multiply_dot(QT,A,R,gpu_multoffload);
             break;
-        case Strassen:
+        case Matrix_Multiplication_Algorithm::Strassen:
             strassen_multiply(QT,A,R,algorithm,gpu_multoffload);
             break;
-        case WinogradVariant:
+        case Matrix_Multiplication_Algorithm::WinogradVariant:
             winograd_multiply(QT,A,R,algorithm,gpu_multoffload);
         }
 
