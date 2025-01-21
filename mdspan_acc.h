@@ -27,7 +27,7 @@
 #include <numbers>
 
 #include <omp.h>
-//#include <openacc.h>
+#include <openacc.h>
 
 enum Matrix_Multiplication_Algorithm
 {
@@ -52,7 +52,7 @@ template <typename T>struct datastruct
     size_t* pstrides = nullptr;
     size_t pdatalength = 0;
     size_t prank = 0;
-    int prowmayor=1;
+    bool prowmajor=true;
     datastruct(
         T* data,
         size_t pdatalength,
@@ -249,7 +249,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t*newexte
     newstrides[0]=pstrides[1];
     newstrides[1]=pstrides[0];
 
-    return datastruct(pdata,pdatalength,prowmayor,prank,newextents,newstrides,false,false);
+    return datastruct(pdata,pdatalength,prowmajor,prank,newextents,newstrides,false,false);
 
 }
 
@@ -294,7 +294,7 @@ template<typename T> datastruct<T>::datastruct(
     pstrides(strides),
     pdatalength(pdatalength),
     prank(rank),
-    prowmayor((int)rowm)
+    prowmajor(rowm)
 
 {
     if(compute_strides_from_extents==true && pextents!=nullptr && pstrides!=nullptr && rank !=0)
@@ -325,7 +325,7 @@ template<typename T> datastruct<T>::datastruct(
     pstrides(strides),
     pdatalength(datalength),
     prank(2),
-    prowmayor((int) rowm)
+    prowmajor(rowm)
 {
     if(extents!=nullptr)
     {
@@ -361,7 +361,7 @@ template<typename T> datastruct<T>::datastruct(
     pstrides(strides),
     pdatalength(datalength),
     prank(1),
-    prowmayor((int)true)
+    prowmajor(true)
 {
     if(extents!=nullptr)
     {
@@ -403,7 +403,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(size_t *poffsets, siz
             offset_index += poffsets[i] * pstrides[i];
             size*=psub_extents[i];
         }
-        return datastruct(pdata + offset_index,0,this->prowmayor, r,this->prowmayor, psub_extents,pstrides, true,false );
+        return datastruct(pdata + offset_index,0,this->prowmajor, r,this->prowmajor, psub_extents,pstrides, true,false );
     }
     else
     {
@@ -432,8 +432,8 @@ template<typename T>datastruct<T> datastruct<T>::substruct(size_t *poffsets, siz
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset(global_indices, pstrides, prowmayor);
-            size_t buffer_index = compute_offset(indices,psub_strides, prowmayor);
+            size_t original_index = compute_offset(global_indices, pstrides, prowmajor);
+            size_t buffer_index = compute_offset(indices,psub_strides, prowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
             sub_data[buffer_index] = pdata[original_index];
@@ -461,7 +461,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(size_t *poffsets, siz
         }
 
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        datastruct pd(sub_data,0,prowmayor,psub_extents, psub_strides,true,true);
+        datastruct pd(sub_data,0,prowmajor,psub_extents, psub_strides,true,true);
         if(omp_is_initial_device()!=true)
         {
             omp_free(global_indices,omp_default_mem_alloc);
@@ -485,11 +485,11 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
 {
     if(sub_data==nullptr)
     {
-        return datastruct(pdata +row * pstrides[0]+col * pstrides[1],0,prowmayor,tile_rows,tile_cols,sub_extents,pstrides,true,false);
+        return datastruct(pdata +row * pstrides[0]+col * pstrides[1],0,prowmajor,tile_rows,tile_cols,sub_extents,pstrides,true,false);
     }
     else
     {
-        if (prowmayor)
+        if (prowmajor)
         {
             // Row-major layout: fill row by row
 #pragma acc loop auto collapse (2)
@@ -518,7 +518,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             }
         }
 
-        return datastruct(sub_data,0,prowmayor,tile_rows, tile_cols,sub_extents,sub_strides,true,true);
+        return datastruct(sub_data,0,prowmajor,tile_rows, tile_cols,sub_extents,sub_strides,true,true);
     }
 }
 
@@ -1124,7 +1124,7 @@ template <typename T, typename Container>
 mdspan<T, Container>::mdspan(datastruct<T> &pd):
     pis_associated(false),
     pdatastruct(data,
-                pd.pdatalength,pd.rowmayor,nullptr,nullptr,false,false)
+                pd.pdatalength,pd.rowmajor,nullptr,nullptr,false,false)
 {
     if constexpr (StaticContainer<Container>)
     {
@@ -1182,14 +1182,14 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
         }
 
         // Create a new mdspan_dynamic with the updated pointer, extents, and the same strides
-        return mdspan(pdatastruct.pdata + offset_index,pdatastruct.prowmayor, sub_extents, pstrides);
+        return mdspan(pdatastruct.pdata + offset_index,pdatastruct.prowmajor, sub_extents, pstrides);
 
     }
     else
     {
         // Compute the new strides for the subspan
         Container sub_strides;
-        compute_strides(sub_extents, sub_strides, pdatastruct.prowmayor);
+        compute_strides(sub_extents, sub_strides, pdatastruct.prowmajor);
         vector<size_t> indices(r,0);
         vector<size_t> global_indices(r,0);
         while (true)
@@ -1202,8 +1202,8 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset(global_indices.data(), pdatastruct.pstrides,global_indices.size(), pdatastruct.prowmayor);
-            size_t buffer_index = compute_offset(indices.data(),sub_strides.data(),indices.size(), pdatastruct.prowmayor);
+            size_t original_index = compute_offset(global_indices.data(), pdatastruct.pstrides,global_indices.size(), pdatastruct.prowmajor);
+            size_t buffer_index = compute_offset(indices.data(),sub_strides.data(),indices.size(), pdatastruct.prowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
             sub_data[buffer_index] = pdatastruct.pdata[original_index];
@@ -1232,7 +1232,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
             size*=sub_extents[i];
         }
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        return mdspan(sub_data, pdatastruct.prowmayor, sub_extents, sub_strides );
+        return mdspan(sub_data, pdatastruct.prowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1245,11 +1245,11 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
 
         size_t offset=row * pdatastruct.pstrides[0]+col * pdatastruct.pstrides[1];
         const Container ext= {tile_rows,tile_cols};
-        return mdspan(pdatastruct.pdata +offset,pdatastruct.prowmayor,ext,pstrides);
+        return mdspan(pdatastruct.pdata +offset,pdatastruct.prowmajor,ext,pstrides);
     }
     else
     {
-        if (pdatastruct.prowmayor)
+        if (pdatastruct.prowmajor)
         {
             // Row-major layout: fill row by row
             #pragma omp parallel for collapse (2)
@@ -1280,10 +1280,10 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
         // Create and return a new mdspan with the updated pointer and extents
         Container sub_extents = {tile_rows, tile_cols};
 
-        Container sub_strides = (pdatastruct.prowmayor==true)? Container{tile_cols, 1} :
+        Container sub_strides = (pdatastruct.prowmajor==true)? Container{tile_cols, 1} :
                                 Container{1,tile_rows}; // Contiguous row-major layout
 
-        return mdspan(sub_data,pdatastruct.prowmayor, sub_extents, sub_strides );
+        return mdspan(sub_data,pdatastruct.prowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1308,14 +1308,14 @@ mdspan<T, Container> mdspan<T, Container>::subspan( Container&offsets,  Containe
         }
 
         // Create a new mdspan_dynamic with the updated pointer, extents, and the same strides
-        return mdspan(pdatastruct.pdata + offset_index,pdatastruct.prowmayor, sub_extents, pstrides);
+        return mdspan(pdatastruct.pdata + offset_index,pdatastruct.prowmajor, sub_extents, pstrides);
 
     }
     else
     {
         // Compute the new strides for the subspan
         Container sub_strides;
-        compute_strides(sub_extents, sub_strides, pdatastruct.prowmayor);
+        compute_strides(sub_extents, sub_strides, pdatastruct.prowmajor);
         vector<size_t> indices(r,0);
         vector<size_t> global_indices(r,0);
         while (true)
@@ -1328,8 +1328,8 @@ mdspan<T, Container> mdspan<T, Container>::subspan( Container&offsets,  Containe
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset(global_indices.data(), pdatastruct.pstrides,global_indices.size(), pdatastruct.prowmayor);
-            size_t buffer_index = compute_offset(indices.data(),sub_strides.data(),indices.size(), pdatastruct.prowmayor);
+            size_t original_index = compute_offset(global_indices.data(), pdatastruct.pstrides,global_indices.size(), pdatastruct.prowmajor);
+            size_t buffer_index = compute_offset(indices.data(),sub_strides.data(),indices.size(), pdatastruct.prowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
             sub_data[buffer_index] = pdatastruct.pdata[original_index];
@@ -1358,7 +1358,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan( Container&offsets,  Containe
             size*=sub_extents[i];
         }
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        return mdspan(sub_data, pdatastruct.prowmayor, sub_extents, sub_strides );
+        return mdspan(sub_data, pdatastruct.prowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1371,11 +1371,11 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
 
         size_t offset=row * pdatastruct.pstrides[0]+col * pdatastruct.pstrides[1];
         const Container ext= {tile_rows,tile_cols};
-        return mdspan(pdatastruct.pdata +offset,pdatastruct.prowmayor,ext,pstrides);
+        return mdspan(pdatastruct.pdata +offset,pdatastruct.prowmajor,ext,pstrides);
     }
     else
     {
-        if (pdatastruct.prowmayor)
+        if (pdatastruct.prowmajor)
         {
             // Row-major layout: fill row by row
             #pragma omp parallel for collapse (2)
@@ -1406,10 +1406,10 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
         // Create and return a new mdspan with the updated pointer and extents
         Container sub_extents = {tile_rows, tile_cols};
 
-        Container sub_strides = (pdatastruct.prowmayor==true)? Container{tile_cols, 1} :
+        Container sub_strides = (pdatastruct.prowmajor==true)? Container{tile_cols, 1} :
                                 Container{1,tile_rows}; // Contiguous row-major layout
 
-        return mdspan(sub_data,pdatastruct.prowmayor, sub_extents, sub_strides );
+        return mdspan(sub_data,pdatastruct.prowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1466,7 +1466,7 @@ mdspan<T, Container> mdspan<T, Container>::column(const size_t col_index)
 
     return mdspan<T, Container>(
                pdatastruct.pdata + col_index * pdatastruct.pstrides[1], // Offset to the column
-               pdatastruct.prowmayor,                                  // Column-major layout
+               pdatastruct.prowmajor,                                  // Column-major layout
                column_extents,                                         // Updated extents
                column_strides                                          // Updated strides
            );
@@ -1484,7 +1484,7 @@ mdspan<T, Container> mdspan<T, Container>::row(const size_t row_index)
 
     return mdspan<T, Container>(
                pdatastruct.pdata + row_index * pdatastruct.pstrides[0], // Offset to the row
-               pdatastruct.prowmayor,                                  // Row-major layout
+               pdatastruct.prowmajor,                                  // Row-major layout
                row_extents,                                            // Updated extents
                row_strides                                             // Updated strides
            );
@@ -1548,7 +1548,7 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
     Container transposed_strides = {pdatastruct.pstrides[1], pdatastruct.pstrides[0]};
 
     // Create a new mdspan with swapped extents and strides
-    return mdspan(pdatastruct.pdata,pdatastruct.pdatalength, pdatastruct.prowmayor,  transposed_extents,   transposed_strides);
+    return mdspan(pdatastruct.pdata,pdatastruct.pdatalength, pdatastruct.prowmajor,  transposed_extents,   transposed_strides);
 }
 
 #pragma acc routine worker
@@ -1657,7 +1657,7 @@ inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*bu
         L.pdata[i]=0;
     }
 
-    datastruct<T> tempA(adata, 0,A.prowmayor,n, n,pext3, pstrides3,true,true);
+    datastruct<T> tempA(adata, 0,A.prowmajor,n, n,pext3, pstrides3,true,true);
 #pragma acc loop seq
     for (size_t c = 0; c < n; ++c)
     {
@@ -1673,7 +1673,7 @@ inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*bu
 
             datastruct<T> R = L.subspanmatrix(c, z, u, v,pext,nullptr);
             datastruct<T> RT=R.transpose(rtext,rtstrides);
-            datastruct<T> S(sdata, 0, A.prowmayor,u, u, pext2, pstrides2,true,true);
+            datastruct<T> S(sdata, 0, A.prowmajor,u, u, pext2, pstrides2,true,true);
 
             gpu_matrix_multiply_dot_w(R,RT,S);
 
@@ -1764,7 +1764,7 @@ inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastru
         dL.pdata[i]=0;
         dU.pdata[i]=0;
     }
-    datastruct<T> tempA(adata,  0, dA.prowmayor,n, n,pext3, pstrides3,true,true);
+    datastruct<T> tempA(adata,  0, dA.prowmajor,n, n,pext3, pstrides3,true,true);
 #pragma acc loop seq
     for (size_t c = 0; c < n; ++c)
     {
@@ -1779,7 +1779,7 @@ inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastru
             datastruct<T> RL = dL.subspanmatrix(c, z, u, v,pext5);
             datastruct<T> RU = dU.subspanmatrix(z, c, v, u,pext6);
 
-            datastruct<T> S(sdata,  0, dA.prowmayor,u, u,pext2, pstrides2,true,true);
+            datastruct<T> S(sdata,  0, dA.prowmajor,u, u,pext2, pstrides2,true,true);
             gpu_matrix_multiply_dot_w(RL,RU,S);
 
 
@@ -1885,7 +1885,7 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
     }
 
 
-    datastruct<T> M(tempM,A.pdatalength,A.prowmayor,A.prank,mext,mstrides,false,false); //Copy of A
+    datastruct<T> M(tempM,A.pdatalength,A.prowmajor,A.prank,mext,mstrides,false,false); //Copy of A
     size_t z = 0;
 
 #pragma acc loop seq
@@ -1910,13 +1910,13 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
             datastruct<T> BM = M.subspanmatrix(0, c, n, mc,extbm);
 
             // Compute C = BQ^T * BM
-            datastruct<T> C(tempC,0, BM.prowmayor,cz, mc,extc,strc,true,true);
+            datastruct<T> C(tempC,0, BM.prowmajor,cz, mc,extc,strc,true,true);
             datastruct<T> BQT=BQ.transpose(extbqt,strbqt);
 
             gpu_matrix_multiply_dot_w(BQT,BM,C);
 
             // Compute S = BQ * C
-            datastruct<T>S(tempS, 0,BQ.prowmayor,n, mc,exts,strs,true,true);
+            datastruct<T>S(tempS, 0,BQ.prowmajor,n, mc,exts,strs,true,true);
 
             gpu_matrix_multiply_dot_w(BQ,C,S);
 
@@ -2813,7 +2813,7 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplic
         }
 
 
-        mdspan<T, CA> tempA(adata,A.pdatastruct.prowmayor, n,n);
+        mdspan<T, CA> tempA(adata,A.pdatastruct.prowmajor, n,n);
 
         size_t z=0;
         for (size_t c = 0; c < n; ++c)   // Iterate over columns
@@ -2826,7 +2826,7 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplic
                 auto R = L.subspanmatrix(c, z,u, c - z);
 
                 // Compute S = RR^T using a fast matrix multiplication algorithm
-                mdspan<T, CA> S(sdata,R.pdatastruct.prowmayor, u,u);
+                mdspan<T, CA> S(sdata,R.pdatastruct.prowmajor, u,u);
                 mdspan<T,CA> RT=R.transpose();
 
                 switch (algorithm.algorithm_version)
@@ -2902,6 +2902,8 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 
     if (gpu_upload==true)
     {
+
+
         datastruct<T>dA=A.pdatastruct, dL=L.pdatastruct, dU=U.pdatastruct;
 
 #pragma acc enter data copyin(dA)
@@ -2961,7 +2963,7 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
             L.pdatastruct.pdata[i]=0;
             U.pdatastruct.pdata[i]=0;
         }
-        mdspan<T, CA> tempA(adata,nn,A.pdatastruct.prowmayor, {A.pdatastruct.pextents[0],A.pdatastruct.pextents[1]}, {A.pdatastruct.pstrides[0], A.pdatastruct.pstrides[1]});
+        mdspan<T, CA> tempA(adata,nn,A.pdatastruct.prowmajor, {A.pdatastruct.pextents[0],A.pdatastruct.pextents[1]}, {A.pdatastruct.pstrides[0], A.pdatastruct.pstrides[1]});
 
         size_t z=0;
         for (size_t c = 0; c < n; ++c)
@@ -2972,7 +2974,7 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
                 size_t v=c-z;
                 auto RL = L.subspanmatrix(c, z, u,v);
                 auto RU = U.subspanmatrix(z, c, v, u);
-                mdspan<T, CA> S(sdata,RU.pdatastruct.prowmayor, u,u);
+                mdspan<T, CA> S(sdata,RU.pdatastruct.prowmajor, u,u);
                 switch (algorithm.algorithm_version)
                 {
                 case Naive:
@@ -3002,7 +3004,6 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
             for (size_t i = c; i < n; ++i)
             {
                 T temp=tempA(c,i);
-                U(c,i)=temp;
                 #pragma omp parallel for simd reduction(-:temp)
                 for (size_t k = z; k < c; ++k)
                 {
@@ -3015,7 +3016,6 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
             for (size_t i = c; i < n; ++i)
             {
                 T temp = tempA(i,c);
-                L(i,c)=temp;
                 #pragma omp parallel for simd reduction(-:temp)
                 for (size_t k = z; k < c; ++k)
                 {
@@ -3126,7 +3126,7 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
         {
             R.pdatastruct.pdata[i]=0;
         }
-        mdspan<T, CA> M(tempM,A.pdatastruct.pdatalength,A.pdatastruct.prowmayor, {A.pdatastruct.pextents[0],A.pdatastruct.pextents[1]}, {A.pdatastruct.pstrides[0],A.pdatastruct.pstrides[1]}); // Copy of A
+        mdspan<T, CA> M(tempM,A.pdatastruct.pdatalength,A.pdatastruct.prowmajor, {A.pdatastruct.pextents[0],A.pdatastruct.pextents[1]}, {A.pdatastruct.pstrides[0],A.pdatastruct.pstrides[1]}); // Copy of A
 
         size_t z = 0;
 
@@ -3142,7 +3142,7 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
                 auto BM = M.subspanmatrix(0, c, n,mc);
 
                 // Compute C = BQ^T * BM
-                auto C = mdspan<T, CA>(tempC, BM.pdatastruct.prowmayor,cz, mc);
+                auto C = mdspan<T, CA>(tempC, BM.pdatastruct.prowmajor,cz, mc);
 
                 auto BQT=BQ.transpose();
                 switch (algorithm.algorithm_version)
@@ -3159,7 +3159,7 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
 
 
                 // Compute S = BQ * C
-                auto S = mdspan<T, CA>(tempS, BQ.pdatastruct.prowmayor, n, mc);
+                auto S = mdspan<T, CA>(tempS, BQ.pdatastruct.prowmajor, n, mc);
 
                 switch (algorithm.algorithm_version)
                 {
