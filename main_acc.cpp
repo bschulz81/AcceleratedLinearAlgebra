@@ -85,7 +85,7 @@ cholesky_decomposition(A2,L2,par2,0,true,true);
 
 printmatrix(L2);
 
-cout<< "Now we do the same with the lu decomposition"<<std::endl;
+cout<< "Now we do the same with the lu decomposition, entirely on gpu"<<std::endl;
 vector<double>A3_data={1,-2,-2,-3,3,-9,0,-9,-1,2,4,7,-3,-6,26,2};
 vector<double>L3_data(16,0);
 vector<double>U3_data(16,0);
@@ -94,7 +94,7 @@ mdspan<double, std::vector<size_t>> A3(A3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> L3(L3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> U3(U3_data.data(), true, {rows3, cols3});
 matrix_multiplication_parameters par3;
-
+printmatrix(A3);
 cout<<"Entirely on gpu"<<std::endl;
 lu_decomposition(A3,L3,U3,par3,0,true,true);
 printmatrix(L3);
@@ -148,4 +148,3 @@ printmatrix(C4);
 
 
 }
-
