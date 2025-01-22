@@ -11,7 +11,7 @@ The Cholesky, LU and QR decomposition can be set such that they work with multip
 
 It is planned to include support for the message passing interface in the future.
 
-A cmakelists.txt file is supplied. Currently, the library is known to compile with Nvidia's nvc++ compiler, as well as with the Clang compiler, which produces many warnings, since its openacc support is at the beginning of the implementation. Compilation with Gcc currently produces an internal compiler error. 
+A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with Nvidia's nvc++ compiler, as well as with the Clang compiler, which produces many warnings, since its openacc support is at the beginning of the implementation. Compilation with Gcc 14.2.1, 15.0 currently produces an internal compiler error: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 . For Windows support, one would have to add Windows specific support for memory mapped files. 
 
 The cmakelists.txt creates a project for a simple test application that demonstrates some of the usage of the library with a bit documentation.
 
