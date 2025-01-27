@@ -9,7 +9,7 @@ In order to prevent openmp to possibly overfill the gpu memory by uploading larg
 the user can now change whether openmp should be used in the steps where the winograd or strassen matrix multiplications start sub-processes for the multiplication. That way,
 
 One may, for example, configure the message passing interface such that there is exactly one node per host with a gpu. then if openmp, and gpu offload is used in strassen's algorithm, (and if the untested mpi support works as designed),
-strassen's algorithm will, work parallel with several cpu's for the additions, and it will do the remaining multiplications in parallel if if the Open_MPI computers have all been send a sub matrix, or if a certain size has been reached where openmp should be used. If the matrices are small enogh, they can also be uploaded to the gpu for naive computation, and when that is finished, they are send back from the gpu to the smaller ranks to be combined.
+strassen's algorithm will, work parallel with several cpu's for the additions, and it will do the remaining multiplications in parallel if the Open_MPI computers have all been send a sub matrix, or if a certain size has been reached where openmp should be used. If the matrices are small enogh, they can also be uploaded to the gpu for naive computation, and when that is finished, they are send back from the gpu to the smaller ranks to be combined.
 
 Some identified Issues:
 1) The initial support for the message passing interface was not tested yet in any way.
