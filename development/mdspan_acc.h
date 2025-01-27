@@ -2574,72 +2574,6 @@ bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<
     MPI_Comm_size(algorithm.comm, &commsize);
         if (childdest+7<commsize)
         {
-            if(algorithm.omp)
-            {
-            #pragma omp parallel shared (A11,A22,A21,A12,B12,B21,B11,B22,M1,M2,M3,M4,M5,M6,M7,\
-            A_result1,A_result2,A_result3,A_result4,A_result5,B_result1,B_result2,B_result3,B_result4,B_result5)
-            {
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+1, 0, algorithm.comm);
-                    MPI_send_mdspan(A_result1,childdest+1,1,algorithm.comm);
-                    MPI_send_mdspan(B_result1,childdest+1,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M1,childdest+1,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+2, 0, algorithm.comm);
-                    MPI_send_mdspan(A_result2,childdest+2,1,algorithm.comm);
-                    MPI_send_mdspan(B11,childdest+2,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M2,childdest+2,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+3, 0, algorithm.comm);
-                    MPI_send_mdspan(A11,childdest+3,1,algorithm.comm);
-                    MPI_send_mdspan(B_result2,childdest+3,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M3,childdest+3,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+4, 0, algorithm.comm);
-                    MPI_send_mdspan(A22,childdest+4,1,algorithm.comm);
-                    MPI_send_mdspan(B_result3,childdest+4,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M4,childdest+4,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+5, 0, algorithm.comm);
-                    MPI_send_mdspan(A_result3,childdest+5,1,algorithm.comm);
-                    MPI_send_mdspan(B22,childdest+5,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M5,childdest+5,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+6, 0, algorithm.comm);
-                    MPI_send_mdspan(A_result4,childdest+6,1,algorithm.comm);
-                    MPI_send_mdspan(B_result4,childdest+6,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M6,childdest+6,3,algorithm.comm);
-                }
-
-                #pragma omp single
-                {
-                    int m=COMMAND_STRASSEN;
-                    MPI_Send(&m, 1, MPI_INT, childdest+7, 0, algorithm.comm);
-                    MPI_send_mdspan(A_result5,childdest+7,1,algorithm.comm);
-                    MPI_send_mdspan(B_result5,childdest+7,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M7,childdest+7,3,algorithm.comm);
-                }
-            }
-            }
-            else
-                {
 
                     MPI_Send(&m, 1, MPI_INT, childdest+1, 0, algorithm.comm);
                     MPI_send_mdspan(A_result1,childdest+1,1,algorithm.comm);
@@ -2676,7 +2610,6 @@ bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<
                     MPI_recv_mdspan_pdata(M5,childdest+5,3,algorithm.comm);
                     MPI_recv_mdspan_pdata(M6,childdest+6,3,algorithm.comm);
                     MPI_recv_mdspan_pdata(M7,childdest+7,3,algorithm.comm);
-            }
         }
         else
         {
@@ -2949,72 +2882,7 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
 
         if (childdest+7<commsize )
         {
-            if(algorithm.omp)
-            {
 
-            #pragma omp parallel shared (A11,A22,A21,A12,B12,B21,B11,B22,M1,M2,M3,M4,M5,M6,M7,\
-            S1,S2,S3,S4,S5,S6,S7,S8,S1_result_storage,S2_result_storage,S3_result_storage,S4_result_storage,\
-            S5_result_storage,S6_result_storage,S7_result_storage,S8_result_storage)
-            {
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+1, 0, algorithm.comm);
-                    MPI_send_mdspan(S2,childdest+1,1,algorithm.comm);
-                    MPI_send_mdspan(S6,childdest+1,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M1,childdest+1,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+2, 0, algorithm.comm);
-                    MPI_send_mdspan(A11,childdest+2,1,algorithm.comm);
-                    MPI_send_mdspan(B11,childdest+2,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M2,childdest+2,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+3, 0, algorithm.comm);
-                    MPI_send_mdspan(A12,childdest+3,1,algorithm.comm);
-                    MPI_send_mdspan(B21,childdest+3,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M3,childdest+3,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+4, 0, algorithm.comm);
-                    MPI_send_mdspan(S3,childdest+4,1,algorithm.comm);
-                    MPI_send_mdspan(S7,childdest+4,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M4,childdest+4,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+5, 0, algorithm.comm);
-                    MPI_send_mdspan(S1,childdest+5,1,algorithm.comm);
-                    MPI_send_mdspan(S5,childdest+5,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M5,childdest+5,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+6, 0, algorithm.comm);
-                    MPI_send_mdspan(S4,childdest+6,1,algorithm.comm);
-                    MPI_send_mdspan(B22,childdest+6,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M6,childdest+6,3,algorithm.comm);
-                }
-                #pragma omp single
-                {
-                    int m=COMMAND_WINOGRAD;
-                    MPI_Send(&m, 1, MPI_INT, childdest+7, 0, algorithm.comm);
-                    MPI_send_mdspan(A22,childdest+7,1,algorithm.comm);
-                    MPI_send_mdspan(S8,childdest+7,2,algorithm.comm);
-                    MPI_recv_mdspan_pdata(M7,childdest+7,3,algorithm.comm);
-                }
-            }
-            }
-            else{
 
                     int m=COMMAND_WINOGRAD;
                     MPI_Send(&m, 1, MPI_INT, childdest+1, 0, algorithm.comm);
@@ -3055,7 +2923,7 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
                     MPI_recv_mdspan_pdata(M7,childdest+7,3,algorithm.comm);
 
 
-            }
+
         }
         else
         {
