@@ -1717,6 +1717,10 @@ template <typename T>
 inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
 {
 
+    if(acc_on_device(acc_device_nvidia)==true)
+        printf("this runs on a device");
+    else
+        printf("this runs on host");
 
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
