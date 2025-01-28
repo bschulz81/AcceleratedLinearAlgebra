@@ -792,6 +792,7 @@ private:
 void initialize_extents_and_strides(const Container&extents,const Container & strides);
 void initialize_extents(const Container&extents);
 void allocate_data(bool memmap, size_t datalength);
+
     // Private member variables
     Container pextents;  // Use the ExtentContainer type
     Container pstrides;  // Use the StrideContainer type
@@ -1028,23 +1029,13 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
 
 
 
-template <typename T, typename Container>
-void mdspan<T, Container>::allocate_data(bool memmap, size_t datalength) {
-    pownsdata = true;
-    if (memmap) {
-        pdatastruct.pdata = (T*)create_temp_mmap(sizeof(T) * datalength);
-        pwith_memmap = true;
-    } else {
-        pdatastruct.pdata = new T[datalength];
-        pwith_memmap = false;
-    }
-}
+
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(  size_t datalength,  bool rowm,bool memmap, const Container& extents, const Container& strides)
     :pdatastruct(nullptr,
                  datalength,rowm,extents.size(),nullptr,nullptr,false,false),
-     pis_associated(false),
+     pis_associated(false)
 {
    initialize_extents_and_strides(extents,strides,rowm);
     allocate_data(memmap,pdatastruct.pdatalength);
@@ -1125,22 +1116,34 @@ mdspan<T, Container>::~mdspan()
     }
 }
 
+template <typename T, typename Container>
+void mdspan<T, Container>::allocate_data(bool memmap, size_t datalength) {
+    pownsdata = true;
+    if (memmap) {
+        const size_t s=sizeof(T) * datalength;
+        pdatastruct.pdata = create_temp_mmap<T>(s);
+        pwith_memmap = true;
+    } else {
+        pdatastruct.pdata = new T[datalength];
+        pwith_memmap = false;
+    }
+}
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(mdspan<T,Container>&& other) noexcept
-    : strides(std::move(other.strides)),
-      extents(std::move(other.extents)),
-      pdatastruct(other.pdata,other.pdatastruct.pdatalength,other.pdatastruct.rowmajor,nullptr,nullptr,false,false)
+    : pstrides(std::move(other.pstrides)),
+      pextents(std::move(other.pextents)),
+      pdatastruct(other.pdatastruct.pdata,other.pdatastruct.pdatalength,other.pdatastruct.rowmajor,nullptr,nullptr,false,false)
 {
     pownsdata=other.pownsdata;
     pwith_memmap=other.pwith_memmap;
     pis_associated=other.pis_associated;
     // Update pointers in datastruct to the new strides and extents
-    pdatastruct.pstrides = strides.data();
-    pdatastruct.pextents = extents.data();
+    pdatastruct.pstrides = pstrides.data();
+    pdatastruct.pextents = pextents.data();
 
     // Null out the other's pointers to avoid double delete
-    other.pdata = nullptr;
+    other.pdatastruct.pdata = nullptr;
     other.pdatastruct.pstrides = nullptr;
     other.pdatastruct.pextents = nullptr;
     other.pdatastruct.pdata = nullptr;
@@ -1158,7 +1161,7 @@ mdspan<T, Container> &  mdspan<T, Container>::operator=(mdspan<T, Container> && 
         // Free existing resources
         if(pownsdata==true)
         {
-            if (with_memmap==true)
+            if (pwith_memmap==true)
                 delete_temp_mmap(pdatastruct.pdata,sizeof(T)*pdatastruct.pdatalength);
             else
                 delete[] pdatastruct.pdata;
@@ -1168,20 +1171,20 @@ mdspan<T, Container> &  mdspan<T, Container>::operator=(mdspan<T, Container> && 
         pis_associated=other.pis_associated;
         // Move data members
 
-        datastruct.pdata = other.datastruct.pdata;
-        datastruct.pdatalength=other.pdatastruct.pdatalength;
-        datastruct.prank=other.pdatastruct.prank;
-        datastruct.prowmajor=other.pdatastruct.prowmajor;
-        strides = std::move(other.strides);
-        extents = std::move(other.extents);
+        pdatastruct.pdata = other.pdatastruct.pdata;
+        pdatastruct.pdatalength=other.pdatastruct.pdatalength;
+        pdatastruct.prank=other.pdatastruct.prank;
+        pdatastruct.prowmajor=other.pdatastruct.prowmajor;
+        pstrides = std::move(other.pstrides);
+        pextents = std::move(other.pextents);
         // Update pointers in datastruct to the new strides and extents
-        datastruct.pstrides = strides.data();
-        datastruct.pextents = extents.data();
+        pdatastruct.pstrides = pstrides.data();
+        pdatastruct.pextents = pextents.data();
         // Null out the other's pointers to avoid double delete
-        other.pdata = nullptr;
-        other.datastruct.pstrides = nullptr;
-        other.datastruct.pextents = nullptr;
-        other.datastruct.pdata = nullptr;
+        other.pdatastruct.pdata = nullptr;
+        other.pdatastruct.pstrides = nullptr;
+        other.pdatastruct.pextents = nullptr;
+        other.pdatastruct.pdata = nullptr;
     }
     return *this;
 }
@@ -1412,24 +1415,23 @@ mdspan<T,vector<size_t>> & MPI_recv_mdspan(bool memmap, int source, int tag, MPI
 template <typename T>
 mdspan<T,vector<size_t>> & MPI_Irecv_mdspan(bool memmap, int source, int tag, MPI_Comm pcomm)
 {
-    MPI_Status status;
+    MPI_Request request;
     // Receive metadata
     size_t pdatalength, prank;
     bool prowmajor;
-    MPI_Irecv(&pdatalength, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
-    MPI_Irecv(&prank, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
-    MPI_Irecv(&prowmajor, 1, MPI_C_BOOL, source, tag, pcomm, &status);
+    MPI_Irecv(&pdatalength, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
+    MPI_Irecv(&prank, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
+    MPI_Irecv(&prowmajor, 1, MPI_C_BOOL, source, tag, pcomm, &request);
 
     vector<size_t> extents(prank,0);
     vector<size_t> strides(prank,0);
     // Allocate memory for extents and strides
-
-    MPI_Irecv(extents.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
-    MPI_Irecv(strides.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    MPI_Irecv(extents.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
+    MPI_Irecv(strides.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
 
     mdspan<T,vector<size_t>> md(pdatalength,prowmajor,memmap,extents,strides);
 
-    MPI_Irecv(md.pdatastruct.pdata,sizeof(T)* md.pdatastruct.pdata, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Irecv(md.pdatastruct.pdata,sizeof(T)* md.pdatastruct.pdata, MPI_BYTE, source, tag, pcomm, &request);
 
     return md;
 }
@@ -1532,11 +1534,10 @@ void MPI_listener(MPI_Comm pcomm)
         {
         case COMMAND_STRASSEN:
         {
-            std::cout << "[Rank " << rank << "] Received Strassen command.\n";
 
-            datastruct<<T,vector<size_t> A=MPI_recv_mdspan(true,status.MPI_SOURCE, 1, pcomm);
+            mdspan<T,vector<size_t>> A=MPI_recv_mdspan<T>(true,status.MPI_SOURCE, 1, pcomm);
 
-            datastruct<<T,vector<size_t> B=MPI_recv_mdspan(true,status.MPI_SOURCE, 2, pcomm);
+            mdspan<T,vector<size_t>> B=MPI_recv_mdspan<T>(true,status.MPI_SOURCE, 2, pcomm);
 
             size_t rowsC=A.pdatastruct.pextents0,
                    colsC=B.pdatastruct.pextents1;
@@ -1548,42 +1549,37 @@ void MPI_listener(MPI_Comm pcomm)
             algorithm.mpi=true;
             algorithm.memmapped_files=true;
             algorithm.gpu_offload=true;
-            algorithm.MPI_COMM=comm;
-            agorithm.MPI_Status=status;
+            algorithm.comm=pcomm;
+            algorithm.status=status;
             strassen_multiply(A,B,C,algorithm,true);
             MPI_send_mdspan_pdata(C,status.MPI_SOURCE,3,pcomm);
             break;
         }
         case COMMAND_WINOGRAD:
         {
-            std::cout << "[Rank " << rank << "] Received Strassen command.\n";
 
-            datastruct<<T,vector<size_t> A=MPI_recv_mdspan(true,status.MPI_SOURCE, 1, pcomm);
-            datastruct<<T,vector<size_t> B=MPI_recv_mdspan(true,status.MPI_SOURCE, 2, pcomm);
+            mdspan<T,vector<size_t>> A=MPI_recv_mdspan<T>(true,status.MPI_SOURCE, 1, pcomm);
+            mdspan<T,vector<size_t>> B=MPI_recv_mdspan<T>(true,status.MPI_SOURCE, 2, pcomm);
             size_t rowsC=A.pdatastruct.pextents0,colsC=B.pdatastruct.pextents1;
             mdspan<T,std::vector<size_t>> C(A.prowmajor,true, {rowsC, colsC});
             matrix_multiplication_parameters algorithm;
             algorithm.mpi=true;
             algorithm.memmapped_files=true;
             algorithm.gpu_offload=true;
-            algorithm.MPI_COMM=comm;
-            agorithm.MPI_Status=status;
+            algorithm.comm=pcomm;
+            algorithm.status=status;
             winograd_multiply(A,B,C,algorithm,true);
             MPI_send_mdspan_pdata(C,status.MPI_SOURCE,3,pcomm);
             break;
         }
         case COMMAND_SENDMATRIX:
         {
-            datastruct<<T,vector<size_t> A=MPI_recv_mdspan(true,status.MPI_SOURCE, 1, pcomm);
+            mdspan<T,vector<size_t>> A=MPI_recv_mdspan<T>(true,status.MPI_SOURCE, 1, pcomm);
             if(A.pdatastruct.prank==2)
                 printmatrix(A);
             break;
         }
 
-
-
-        default:
-            std::cerr << "[Rank " << rank << "] Unknown message type!\n";
         }
     }
 }
@@ -1688,7 +1684,7 @@ void gpu_matrix_multiply_dot_v( datastruct<T>& A,  datastruct<T>& B, datastruct<
 }
 
 
-#pragma acc routine seq
+#pragma acc routine worker
 template <typename T>
 void gpu_matrix_multiply_dot_s( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C)
 {
@@ -1712,40 +1708,43 @@ void gpu_matrix_multiply_dot_s( datastruct<T>& A,  datastruct<T>& B, datastruct<
 
 #pragma acc routine worker
 template <typename T>
-inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*buffer1=nullptr, T*buffer2=nullptr,size_t step_size=0)
+inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
 {
+
+    if(acc_on_device(acc_device_nvidia)==true)
+        printf("this runs on a device");
+    else
+        printf("this runs on host");
 
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
 
-    const size_t tempsize = (n - step_size) * (n - step_size);
+
 
     if(step_size==0)
         step_size=(size_t)pow(n,0.8385);
+
+    const size_t tempsize = (n - step_size) * (n - step_size);
 
     size_t pext3[2];
     size_t pstrides3[2];
 
     const size_t nn=n*n;
-
     // Allocate memory for S on the device
     T* sdata;
     T* adata;
-    sdata=new T[tempsize];
-    adata=new T[nn];
 
-    if (buffer1==(T*) nullptr)
+    if (buffer==(T*) nullptr)
        // sdata=(T*) acc_malloc(sizeof(T)*tempsize);
+       {
         sdata=new T[tempsize];
+        adata=new T[nn];
+       }
     else
-        sdata=buffer1;
-
-    if (buffer2==(T*) nullptr)
-       // adata=(T*) acc_malloc(sizeof(T)*nn);
-       adata=new T[nn];
-    else
-        adata=buffer2;
-
+    {
+        sdata=buffer;
+        adata=buffer+tempsize;
+    }
 
 #pragma acc loop vector
     for (size_t i=0; i<nn; i++)
@@ -1755,6 +1754,7 @@ inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*bu
     }
 
     datastruct<T> tempA(adata, 0,A.prowmajor,n, n,pext3, pstrides3,true,true);
+
 #pragma acc loop seq
     for (size_t c = 0; c < n; ++c)
     {
@@ -1814,29 +1814,29 @@ inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*bu
     }
 
     // Deallocate memory for S on the device
-    if(buffer1==nullptr)
+    if(buffer==nullptr)
+    {
        // acc_free(sdata);
         delete[] sdata;
-    if(buffer2==nullptr)
-     //   acc_free(adata);
         delete[] adata;
+    }
+
 
 }
 
 #pragma acc routine worker
 template <typename T>
-inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* buffer1=nullptr, T*buffer2=nullptr, size_t step_size=0)
+inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* buffer=nullptr, size_t step_size=0)
 {
 
     const size_t n = dA.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
 
 
-    const size_t tempsize = (n - step_size) * (n - step_size);
-
     if(step_size==0)
         step_size=(size_t)pow(n,0.8385);
 
+    const size_t tempsize = (n - step_size) * (n - step_size);
     size_t pext3[2];
     size_t pstrides3[2];
     const size_t nn=n*n;
@@ -1845,18 +1845,16 @@ inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastru
     T* sdata;
     T* adata;
 
-    if (buffer1==nullptr)
-     //   sdata=(T*) acc_malloc(sizeof(T)*tempsize);
+    if (buffer==nullptr)
+     {
      sdata=new T[tempsize];
+     adata=new T[nn];
+     }
     else
-        sdata=buffer1;
-
-    if (buffer2==nullptr)
-       // adata=(T*)acc_malloc(sizeof(T)*nn);
-       adata=new T[nn];
-    else
-        adata=buffer2;
-
+    {
+        sdata=buffer;
+        adata=buffer+tempsize;
+    }
 
 #pragma acc loop vector
     for (size_t i=0; i<nn; i++)
@@ -1921,18 +1919,19 @@ inline void gpu_lu_decomposition( datastruct<T>& dA, datastruct<T>& dL, datastru
         }
     }
 
-    if(buffer1==nullptr)
-      //  acc_free(sdata);
-      delete[] sdata;
-    if(buffer2==nullptr)
-       // acc_free(adata);
+    if(buffer==nullptr)
+    {
+        delete[] sdata;
         delete[] adata;
+    }
+
+
 
 }
 
 #pragma acc routine worker
 template <typename T >
-void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* buffer1=nullptr, T*buffer2=nullptr,T*buffer3=nullptr, size_t step_size=0)
+void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* buffer=nullptr, size_t step_size=0)
 {
     const size_t n = A.pextents[0]; // Number of rows (assuming 2D matrix)
     const size_t m = A.pextents[1]; // Number of columns
@@ -1940,30 +1939,23 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
     if(step_size==0)
         step_size=(size_t)pow(A.pextents[0],0.8385);
 
-
-
     const size_t nm=n*m;
     T* tempC;
     T* tempS;
     T* tempM;
 
-    if(buffer1==nullptr)
-      //  tempC=(T*) acc_malloc(sizeof(T)*m*m);
+    if(buffer==nullptr)
+      {
       tempC=new T[m*m];
+      tempS=new T[nm];
+      tempM=new T[nm];
+      }
     else
-        tempC=buffer1;
-
-    if(buffer2==nullptr)
-       // tempS=(T*) acc_malloc(sizeof(T)*nm);
-        tempS=new T[nm];
-    else
-        tempS=buffer2;
-
-    if(buffer3==nullptr)
-       // tempM=(T*) acc_malloc(sizeof(T)*nm);
-        tempM=new T[nm];
-    else
-        tempM=buffer3;
+    {
+        tempC=buffer;
+        tempS=buffer+m*m;
+        tempM=tempS+nm;
+    }
 
     size_t mext[2];
     mext[0]= A.pextents[1];
@@ -2082,15 +2074,14 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
 
     datastruct<T> QT=Q.transpose(qtext,qtstrides);
     gpu_matrix_multiply_dot_w(QT,A,R);
-    if(buffer1==nullptr)
+    if(buffer==nullptr)
       //  acc_free(tempC);
+      {
     delete[] tempC;
-    if(buffer2==nullptr)
-      //  acc_free(tempS);
-        delete[] tempS;
-    if(buffer3==nullptr)
-        //acc_free(tempM);
-        delete[] tempM;
+    delete[] tempS;
+    delete[] tempM;
+      }
+
 
 }
 
@@ -2883,7 +2874,6 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
         if (childdest+7<commsize )
         {
 
-
                     int m=COMMAND_WINOGRAD;
                     MPI_Send(&m, 1, MPI_INT, childdest+1, 0, algorithm.comm);
                     MPI_send_mdspan(S2,childdest+1,1,algorithm.comm);
@@ -2921,8 +2911,6 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
                     MPI_recv_mdspan_pdata(M5,childdest+5,3,algorithm.comm);
                     MPI_recv_mdspan_pdata(M6,childdest+6,3,algorithm.comm);
                     MPI_recv_mdspan_pdata(M7,childdest+7,3,algorithm.comm);
-
-
 
         }
         else
@@ -3067,7 +3055,9 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
 
     if (gpu_offload==true)
     {
+
         datastruct<T> dA=A.pdatastruct,dL=L.pdatastruct;
+        T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
 #pragma acc enter data copyin(dA)
 #pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
 #pragma acc enter data copyin(dA.pextents[0:dA.prank])
@@ -3079,12 +3069,10 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
 
 #pragma acc enter data copyin(step_size)
 
-#pragma acc kernels present(dA,dL,step_size)
-        do
-        {
-            gpu_cholesky_decomposition(dA,dL,(T*)nullptr,(T*)nullptr,step_size);
-        }
-        while(false);
+#pragma acc parallel present(dA,dL, step_size) deviceptr(buffer)
+{
+     gpu_cholesky_decomposition(dA,dL,(T*) buffer,step_size);
+}
 #pragma acc update self(dL.pdata[0:dL.pdatalength])
 
 #pragma acc exit data delete(dA.pdata[0:dA.pdatalength])
@@ -3096,6 +3084,9 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
 #pragma acc exit data delete(dL.pstrides[0:dL.prank])
 #pragma acc exit data delete(dL)
 #pragma acc exit data delete(step_size)
+
+acc_free(buffer);
+
     }
     else
     {
@@ -3216,8 +3207,9 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
     if (gpu_offload==true)
     {
 
-
         datastruct<T>dA=A.pdatastruct, dL=L.pdatastruct, dU=U.pdatastruct;
+        T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+
 #pragma acc enter data copyin(dA)
 #pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
 #pragma acc enter data copyin(dA.pextents[0:dA.prank])
@@ -3234,12 +3226,10 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 
 #pragma acc enter data copyin (step_size)
 
-#pragma acc kernels present(dA,dL,dU,step_size)
-        do
-        {
-            gpu_lu_decomposition( dA,  dL, dU, (T*) nullptr,(T*) nullptr,step_size);
-        }
-        while(false);
+#pragma acc parallel present(dA,dL,dU,step_size)deviceptr(buffer)
+{
+        gpu_lu_decomposition( dA,  dL, dU, buffer,step_size);
+}
 #pragma acc update self(dL.pdata[0:dL.pdatalength])
 #pragma acc update self(dU.pdata[0:dU.pdatalength])
 
@@ -3256,6 +3246,8 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 #pragma acc exit data delete(dU.pstrides[0:dU.prank])
 #pragma acc exit data delete(dU)
 #pragma acc exit data delete(step_size)
+
+acc_free(buffer);
 
     }
     else
@@ -3369,17 +3361,16 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
         datastruct<T> dA= A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        size_t la=dA.pdatalength, ra=dA.prank;
+        T* buffer=(T*) acc_malloc(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]);
+
 #pragma acc enter data copyin(dA)
 #pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
 #pragma acc enter data copyin(dA.pextents[0:dA.prank])
 #pragma acc enter data copyin(dA.pstrides[0:dA.prank])
-        size_t lq=dQ.pdatalength, rq=dQ.prank;
 #pragma acc enter data copyin(dQ)
 #pragma acc enter data create(dQ.pdata[0:dQ.pdatalength])
 #pragma acc enter data copyin(dQ.pextents[0:dQ.prank])
 #pragma acc enter data copyin(dQ.pstrides[0:dQ.prank])
-        size_t lr=dR.pdatalength, rr=dR.prank;
 #pragma acc enter data copyin(dR)
 #pragma acc enter data create(dR.pdata[0:dR.pdatalength])
 #pragma acc enter data copyin(dR.pextents[0:dR.prank])
@@ -3387,12 +3378,10 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
 
 #pragma acc enter data copyin(step_size)
 
-#pragma acc kernels present(dA,dQ,dR, step_size)
-        do
-        {
-            gpu_qr_decomposition(dA,dQ,dR,(T*)nullptr,(T*)nullptr,(T*)nullptr,step_size);
-        }
-        while(false);
+#pragma acc parallel present(dA,dQ,dR, step_size) deviceptr(buffer)
+{
+    gpu_qr_decomposition(dA,dQ,dR,buffer,step_size);
+}
 #pragma acc update self(dQ.pdata[0:dQ.pdatalength])
 #pragma acc update self(dR.pdata[0:dR.pdatalength])
 
@@ -3409,7 +3398,7 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
 #pragma acc exit data delete(dR.pstrides[0:dR.prank])
 #pragma acc exit data delete(dR)
 #pragma acc exit data delete   (step_size)
-
+acc_free(buffer);
     }
     else
     {
