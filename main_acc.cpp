@@ -69,19 +69,30 @@ cout<<"A Cholesky decomposition with the multiplication on gpu"<<std::endl;
 //the cholesky decomposition involves a matrix multiplication.
 //the parameter par can select a multiplication algorithm. by default it is the naive one.
 // but one can also set the strassen or the winograd variand of strassen's algorithm,
-//and advise it to use temporary files for intermediate results. Also, one can set the size for when orfinary multiplication should be used.
-// the last boolean flag indicates that the multiplication should be done on gpu.
-//if strassen's or Winograd's variant was selected, then, if the matrix sizes are small enough, the ordinary multiplication will also be done on gpu.
+//and advise it to use temporary files for intermediate results.
+//One can also define if the multiplication should use the message passing interface.
+//When using Strassen's algorithm one can set the size for when ordinary multiplication should be used, and whether this should be on gpu.
+//For Strassen's and Winograd's algorithm one can alse select whether it should use openmp.  If one uses gpu offload and a single computer,
+// one may set openmp to false, since this might fill the gpu simultaneously. One can also set the message passing interface such that it has one computer
+//per node and then use openmp and gpu on this device.
+
 // the step size (here set to 0, is a parameter from https://arxiv.org/abs/1812.02056. if it is zero, an optimal value for strassen's algorithm will be chosen)
 printmatrix(A2);
 matrix_multiplication_parameters par2;
-cholesky_decomposition(A2,L2,par2,0,false,true);
+
+par2.gpu_offload=true;
+
+cholesky_decomposition(A2,L2,par2,0);
+
 
 printmatrix(L2);
 
 //the first boolean flag implies that the entire cholesky decomposition (not just the multiplication) is now done on gpu
 cout<<"Now the cholesky decomposition is entirely done on gpu"<<std::endl;
-cholesky_decomposition(A2,L2,par2,0,true,true);
+//set the results to zero again.
+std::fill(L2_data.begin(),L2_data.end(),0);
+
+cholesky_decomposition(A2,L2,par2,0,true);
 
 printmatrix(L2);
 
@@ -94,14 +105,17 @@ mdspan<double, std::vector<size_t>> A3(A3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> L3(L3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> U3(U3_data.data(), true, {rows3, cols3});
 matrix_multiplication_parameters par3;
+par3.gpu_offload=true;
 printmatrix(A3);
-cout<<"Entirely on gpu"<<std::endl;
-lu_decomposition(A3,L3,U3,par3,0,true,true);
+cout<<"Just the multiplication on gpu"<<std::endl;
+lu_decomposition(A3,L3,U3,par3,0,false);
 printmatrix(L3);
 printmatrix(U3);
 
-cout<<"Just the multiplication on gpu"<<std::endl;
-lu_decomposition(A3,L3,U3,par3,0,false,true);
+cout<<"Entirely on gpu"<<std::endl;
+std::fill(L3_data.begin(),L3_data.end(),0);
+std::fill(U3_data.begin(),U3_data.end(),0);
+lu_decomposition(A3,L3,U3,par3,0,true);
 printmatrix(L3);
 printmatrix(U3);
 
@@ -120,31 +134,39 @@ matrix_multiplication_parameters par4;
 printmatrix(A4);
 
 cout<<"Just the multiplication on gpu"<<std::endl;
-
-qr_decomposition(A4,Q4,R4,par4,0,false,true);
+par4.gpu_offload=true;
+qr_decomposition(A4,Q4,R4,par4,0,false);
 printmatrix(Q4);
 printmatrix(R4);
+
+
+std::fill(Q4_data.begin(),Q4_data.end(),0);
+std::fill(R4_data.begin(),R4_data.end(),0);
 
 cout<<"Entirely on gpu"<<std::endl;
-qr_decomposition(A4,Q4,R4,par4,0,true,false);
+qr_decomposition(A4,Q4,R4,par4,0,true);
 printmatrix(Q4);
 printmatrix(R4);
 
 
-cout<<"In order to test the qr decomposition, we can use Strassen's algorith"<<endl;
+cout<<"In order to test the qr decomposition, we can use Strassen's algorithm"<<endl;
 
 vector<double>C4_data(9,0);
 mdspan<double, std::vector<size_t>> C4(C4_data.data(), true, {rows4, cols4});
 
-strassen_multiply(Q4, R4, C4,par4, true);
+strassen_multiply(Q4, R4, C4,par4);
 
 
 
 printmatrix(C4);
 cout<<"or its Winograd variant, with the smaller matrices computed on gpu"<<endl;
-winograd_multiply(Q4, R4, C4,par4, true);
+
+std::fill(C4_data.begin(),C4_data.end(),0);
+
+winograd_multiply(Q4, R4, C4,par4);
 
 printmatrix(C4);
 
 
 }
+
