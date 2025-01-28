@@ -16,7 +16,13 @@ If the matrices are small enogh, they can also be uploaded to the gpu for naive 
 Some identified Issues:
 1) The initial support for the message passing interface was not tested yet in any way.
 
-2) Unfortunately, if compiled, it appears that the cholesky decomposition fails if it should work entirely on gpu and one compiles with -O2 or -O3 and nvc++
-  
-3) the new/delete[] calls in gpu_lu_decomposition, gpu_cholesky_decomposition, gpu_qr_decomposition should be replaced by acc_alloc/acc_free. Unfortunately, 
-  on my system, nvc++ does not link to the library where these files are, despite I am able to use other acc functions.
+2) with -O3, -O2 the qr decomposition fails on gpu with nvc++. 
+
+3) the qr decomposition is designated as a worker function on device. it this should be able to call vector functions when outside of a loop. however, when replacing   
+T norm = sqrt(gpu_dot_product_s(v,v));
+on line 2083 with the vector function
+T norm = sqrt(gpu_dot_product_v(v,v));
+one gets a sigsev even without -O2 or -O3.
+
+4) On clang, the functions that offload to gpu fail to get called there and can not access the uploaded variables.
+
