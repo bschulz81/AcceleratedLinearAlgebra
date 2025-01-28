@@ -104,15 +104,17 @@ template <typename T>struct datastruct
         bool compute_datalength=true,
         bool compute_strides_from_extents=true
     );
+
     ~datastruct();
     T&operator()(const size_t* indices);
+    T operator()(const size_t* indices)const;
     T&operator()(const size_t row, const size_t col);
     T operator()(const size_t row, const size_t col)const;
     T&operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1);
     T operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)const;
     T&operator()(const size_t row);
-    T operator()(const size_t* indices)const;
     T operator()(const size_t row)const;
+
 
     datastruct<T> substruct(size_t *poffsets, size_t *psub_extents, size_t*psub_strides=nullptr, T* sub_data=nullptr) ;
     datastruct<T> subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,
@@ -195,7 +197,7 @@ size_t inline compute_offset(const size_t *indices, const size_t* strides,const 
 
 
 #pragma acc routine seq
-size_t compute_data_length(const size_t* extents, const size_t* strides,const size_t rank)
+inline size_t compute_data_length(const size_t* extents, const size_t* strides,const size_t rank)
 {
     size_t offset=0;
 //#pragma acc loop vector reduction(+:offset)
@@ -214,16 +216,25 @@ template<typename T>inline T& datastruct<T>::operator()(const size_t row)
 }
 
 #pragma acc routine seq
+template<typename T>inline T datastruct<T>::operator()(const size_t row)const
+{
+
+    return pdata[row * pstrides[0]];
+}
+
+
+#pragma acc routine seq
 template<typename T>inline T& datastruct<T>::operator()(const size_t row, const size_t col)
 {
     return pdata[row * pstrides[0] + col * pstrides[1]];
 }
 
 #pragma acc routine seq
-template<typename T>inline T& datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)
+template<typename T>inline T datastruct<T>::operator()(const size_t row, const size_t col)const
 {
-    return pdata[row * strides0 + col * strides1];
+    return pdata[row * pstrides[0] + col * pstrides[1]];
 }
+
 
 #pragma acc routine seq
 template<typename T>inline T& datastruct<T>::operator()(const size_t* indices)
@@ -232,16 +243,9 @@ template<typename T>inline T& datastruct<T>::operator()(const size_t* indices)
 }
 
 #pragma acc routine seq
-template<typename T>inline T datastruct<T>::operator()(const size_t row)const
+template<typename T>inline T datastruct<T>::operator()(const size_t* indices)const
 {
-
-    return pdata[row * pstrides[0]];
-}
-
-#pragma acc routine seq
-template<typename T>inline T datastruct<T>::operator()(const size_t row, const size_t col)const
-{
-    return pdata[row * pstrides[0] + col * pstrides[1]];
+    return pdata[compute_offset(indices, this->pstrides, this->prank)];
 }
 
 #pragma acc routine seq
@@ -251,10 +255,11 @@ template<typename T>inline T datastruct<T>::operator()(const size_t row, const s
 }
 
 #pragma acc routine seq
-template<typename T>inline T datastruct<T>::operator()(const size_t* indices)const
+template<typename T>inline T& datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)
 {
-    return pdata[compute_offset(indices, this->pstrides, this->prank)];
+    return pdata[row * strides0 + col * strides1];
 }
+
 
 
 #pragma acc routine seq
@@ -272,7 +277,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t*newexte
 
 
 #pragma acc routine seq
-void fill_strides(const size_t* extents,size_t* strides, const size_t rank, const bool rowmajor)
+inline void fill_strides(const size_t* extents,size_t* strides, const size_t rank, const bool rowmajor)
 {
     if (rowmajor)
     {
@@ -507,29 +512,31 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
     {
         if (prowmajor)
         {
+            const size_t s0=pstrides[0];
+            const size_t s1=pstrides[1];
+            const T* pd=this->pdata;
             // Row-major layout: fill row by row
 //#pragma acc loop auto collapse (2)
             for (size_t i = 0; i < tile_rows; ++i)
             {
                 for (size_t j = 0; j < tile_cols; ++j)
                 {
-                    sub_data[i * tile_cols + j] = pdata[
-                                                      compute_offset(row + i, col + j, pstrides[0], pstrides[1])
-                                                  ];
+                    sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
         else
         {
+            const size_t s0=pstrides[0];
+            const size_t s1=pstrides[1];
+            const T* pd=this->pdata;
             // Column-major layout: fill column by column
 //#pragma acc loop auto collapse (2)
             for (size_t j = 0; j < tile_cols; ++j)
             {
                 for (size_t i = 0; i < tile_rows; ++i)
                 {
-                    sub_data[j * tile_rows + i] = pdata[
-                                                      compute_offset(row + i, col + j, pstrides[0], pstrides[1])
-                                                  ];
+                    sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
@@ -616,9 +623,29 @@ void printvector(datastruct<T>&span)
 
 }
 
+#define STRINGIFY(x) #x
 
+#define CREATE_IN_STRUCT(dA)                                           \
+  enter data copyin(dA)\
+  copyin(dA.pdata[0:dA.pdatalength])\
+  copyin(dA.pextents[0:dA.prank])\
+  copyin(dA.pstrides[0:dA.prank])
 
+#define CREATE_OUT_STRUCT(dL)\
+ enter data copyin(dL)\
+ create(dL.pdata[0:dL.pdatalength])\
+ copyin(dL.pextents[0:dL.prank])\
+ copyin(dL.pstrides[0:dL.prank])
 
+#define EXIT_STRUCT(dL)\
+exit data delete(dL.pdata[0:dL.pdatalength])\
+ delete(dL.pextents[0:dL.prank])\
+ delete(dL.pstrides[0:dL.prank])\
+ delete(dL)
+
+#define UPDATE_HOST(dL) update self(dL.pdata[0:dL.pdatalength])
+
+#define UPDATE_DEVICE(dA) update device(dL.pdata[0:dL.pdatalength])
 
 
 template<typename T>
@@ -1646,6 +1673,7 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
 template <typename T>
 inline void gpu_matrix_multiply_dot_w( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C)
 {
+
     const size_t rows=A.pextents[0];
      const size_t cols=B.pextents[1];
      const size_t inner_dim=A.pextents[1];
@@ -1972,6 +2000,7 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
     {
         tempM[i]=A.pdata[i];
     }
+
 #pragma acc loop vector
     for (size_t i=0; i<Q.pdatalength; i++)
     {
@@ -2077,7 +2106,6 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
     datastruct<T> QT=Q.transpose(qtext,qtstrides);
     gpu_matrix_multiply_dot_w(QT,A,R);
     if(buffer==nullptr)
-      //  acc_free(tempC);
       {
     delete[] tempC;
     delete[] tempS;
@@ -2089,7 +2117,7 @@ void gpu_qr_decomposition(datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T*
 
 #pragma acc routine worker
 template <typename T>
-inline bool gpu_matrix_add_w( datastruct<T>& A, datastruct<T>& B, datastruct<T>& C)
+inline bool gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2109,7 +2137,7 @@ inline bool gpu_matrix_add_w( datastruct<T>& A, datastruct<T>& B, datastruct<T>&
 
 #pragma acc routine worker
 template <typename T>
-inline bool gpu_matrix_subtract_w( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C)
+inline bool gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2126,7 +2154,7 @@ inline bool gpu_matrix_subtract_w( datastruct<T>& A,  datastruct<T>& B, datastru
 
 #pragma acc routine worker
 template <typename T>
-inline bool gpu_matrix_multiply_vector_w(  datastruct<T>&M,  datastruct<T> V, datastruct<T> C)
+inline bool gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2145,7 +2173,7 @@ inline bool gpu_matrix_multiply_vector_w(  datastruct<T>&M,  datastruct<T> V, da
 
 #pragma acc routine worker
 template <typename T>
-inline bool gpu_matrix_multiply_vector_w( datastruct<T>M,  T*V, datastruct<T> & C)
+inline bool gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2167,7 +2195,7 @@ inline bool gpu_matrix_multiply_vector_w( datastruct<T>M,  T*V, datastruct<T> & 
 
 #pragma acc routine worker
 template <typename T>
-inline bool gpu_matrix_multiply_scalar_w(  datastruct<T>& M,  T& V, datastruct<T>& C)
+inline bool gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T& V, datastruct<T>& C)
 {
     // Perform matrix multiplication: C = A * B
 
@@ -2187,23 +2215,10 @@ inline bool gpu_matrix_multiply_scalar_w(  datastruct<T>& M,  T& V, datastruct<T
     return true;
 }
 
-#pragma acc routine worker
-template <typename T>
-inline T gpu_dot_product_w(  datastruct<T> vec1,  datastruct<T> vec2)
-{
-    const size_t n=vec1.pextents[0];
-    T result=0;
-#pragma acc loop worker reduction(+:result)
-    for (size_t i = 0; i < n; ++i)
-    {
-        result += vec1(i) * vec2(i);
-    }
-    return result;
-}
 
 #pragma acc routine worker
 template <typename T>
-inline void gpu_vector_scalar_multiply_w( datastruct<T>& vec, T scalar,datastruct<T>& res)
+inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
     const size_t n=vec.pextents[0];
 #pragma acc loop worker
@@ -2215,7 +2230,7 @@ inline void gpu_vector_scalar_multiply_w( datastruct<T>& vec, T scalar,datastruc
 
 #pragma acc routine seq
 template <typename T>
-inline void gpu_cross_product( datastruct<T>& vec1,   datastruct<T>& vec2, datastruct<T>& res)
+inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& vec2, datastruct<T>& res)
 {
     res(0) = vec1(1) * vec2(2) - vec1(2) * vec2(1);
     res(1) = vec1(2) * vec2(0) - vec1(0) * vec2(2);
@@ -2225,7 +2240,7 @@ inline void gpu_cross_product( datastruct<T>& vec1,   datastruct<T>& vec2, datas
 
 #pragma acc routine worker
 template <typename T>
-inline void gpu_vector_add_w(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res)
+inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
 #pragma acc loop worker
@@ -2238,7 +2253,7 @@ inline void gpu_vector_add_w(  datastruct<T>& vec1,  datastruct<T>& vec2, datast
 
 #pragma acc routine worker
 template <typename T>
-inline void gpu_vector_subtract_w(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res)
+inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
 #pragma acc loop worker
@@ -2253,7 +2268,7 @@ inline void gpu_vector_subtract_w(  datastruct<T>& vec1,  datastruct<T>& vec2, d
 
 #pragma acc routine vector
 template <typename T>
-inline bool gpu_matrix_add_v( datastruct<T>& A, datastruct<T>& B, datastruct<T>& C)
+inline bool gpu_matrix_add_v( const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2273,7 +2288,7 @@ inline bool gpu_matrix_add_v( datastruct<T>& A, datastruct<T>& B, datastruct<T>&
 
 #pragma acc routine vector
 template <typename T>
-inline bool gpu_matrix_subtract_v( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C)
+inline bool gpu_matrix_subtract_v( const datastruct<T>& A, const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2290,7 +2305,7 @@ inline bool gpu_matrix_subtract_v( datastruct<T>& A,  datastruct<T>& B, datastru
 
 #pragma acc routine vector
 template <typename T>
-inline bool gpu_matrix_multiply_vector_v(  datastruct<T>&M,  datastruct<T> V, datastruct<T> C)
+inline bool gpu_matrix_multiply_vector_v( const datastruct<T>&M, const datastruct<T> V, datastruct<T> C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2309,7 +2324,7 @@ inline bool gpu_matrix_multiply_vector_v(  datastruct<T>&M,  datastruct<T> V, da
 
 #pragma acc routine vector
 template <typename T>
-inline bool gpu_matrix_multiply_vector_v( datastruct<T>M,  T*V, datastruct<T> & C)
+inline bool gpu_matrix_multiply_vector_v(const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2331,7 +2346,7 @@ inline bool gpu_matrix_multiply_vector_v( datastruct<T>M,  T*V, datastruct<T> & 
 
 #pragma acc routine vector
 template <typename T>
-inline bool gpu_matrix_multiply_scalar_v(  datastruct<T>& M,  T& V, datastruct<T>& C)
+inline bool gpu_matrix_multiply_scalar_v( const datastruct<T>& M,const  T& V, datastruct<T>& C)
 {
     // Perform matrix multiplication: C = A * B
 
@@ -2353,11 +2368,27 @@ inline bool gpu_matrix_multiply_scalar_v(  datastruct<T>& M,  T& V, datastruct<T
 
 #pragma acc routine vector
 template <typename T>
-inline T gpu_dot_product_v(  datastruct<T> vec1,  datastruct<T> vec2)
+inline T gpu_dot_product_v( const datastruct<T> vec1, const datastruct<T> vec2)
 {
     const size_t n=vec1.pextents[0];
     T result = 0;
-#pragma acc loop vector reduction(+:result)
+    const size_t v1s=vec1.pstrides[0];
+    const size_t v2s=vec2.pstrides[0];
+//#pragma acc loop vector reduction(+:result)
+    for (size_t i = 0; i < n; ++i)
+    {
+        result += vec1.pdata[i *v1s]  * vec2.pdata[i *v2s];
+    }
+    return result;
+}
+
+#pragma acc routine worker
+template <typename T>
+inline T gpu_dot_product_w(const  datastruct<T> vec1, const datastruct<T> vec2)
+{
+    const size_t n=vec1.pextents[0];
+    T result=0;
+#pragma acc loop worker reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i) * vec2(i);
@@ -2365,16 +2396,19 @@ inline T gpu_dot_product_v(  datastruct<T> vec1,  datastruct<T> vec2)
     return result;
 }
 
+
 #pragma acc routine seq
 template <typename T>
-inline T gpu_dot_product_s(  datastruct<T> vec1,  datastruct<T> vec2)
+inline T gpu_dot_product_s(  const datastruct<T> vec1,const  datastruct<T> vec2)
 {
     const size_t n=vec1.pextents[0];
     T result = 0;
+    const size_t v1s=vec1.pstrides[0];
+    const size_t v2s=vec2.pstrides[0];
 //#pragma acc loop  reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i) * vec2(i);
+        result += vec1.pdata[i *v1s]  * vec2.pdata[i *v2s];
     }
     return result;
 }
@@ -3057,34 +3091,23 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
 
     if (gpu_offload==true)
     {
-
         datastruct<T> dA=A.pdatastruct,dL=L.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
-#pragma acc enter data copyin(dA)
-#pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
-#pragma acc enter data copyin(dA.pextents[0:dA.prank])
-#pragma acc enter data copyin(dA.pstrides[0:dA.prank])
-#pragma acc enter data copyin(dL)
-#pragma acc enter data create(dL.pdata[0:dL.pdatalength])
-#pragma acc enter data copyin(dL.pextents[0:dL.prank])
-#pragma acc enter data copyin(dL.pstrides[0:dL.prank])
+        #pragma acc CREATE_IN_STRUCT(dA)
+        #pragma acc CREATE_OUT_STRUCT(dL)
 
 #pragma acc enter data copyin(step_size)
 
-#pragma acc parallel present(dA,dL, step_size) deviceptr(buffer)
+#pragma acc parallel present(dA,dL, step_size)deviceptr(buffer)
 {
-     gpu_cholesky_decomposition(dA,dL,(T*) buffer,step_size);
+     gpu_cholesky_decomposition(dA,dL,buffer,step_size);
 }
-#pragma acc update self(dL.pdata[0:dL.pdatalength])
 
-#pragma acc exit data delete(dA.pdata[0:dA.pdatalength])
-#pragma acc exit data delete(dA.pextents[0:dA.prank])
-#pragma acc exit data delete(dA.pstrides[0:dA.prank])
-#pragma acc exit data delete(dA)
-#pragma acc exit data delete(dL.pdata[0:dL.pdatalength])
-#pragma acc exit data delete(dL.pextents[0:dL.prank])
-#pragma acc exit data delete(dL.pstrides[0:dL.prank])
-#pragma acc exit data delete(dL)
+#pragma acc UPDATE_HOST(dL)
+
+#pragma acc EXIT_STRUCT(dA)
+#pragma acc EXIT_STRUCT(dL)
+
 #pragma acc exit data delete(step_size)
 
 acc_free(buffer);
@@ -3211,20 +3234,9 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 
         datastruct<T>dA=A.pdatastruct, dL=L.pdatastruct, dU=U.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
-
-#pragma acc enter data copyin(dA)
-#pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
-#pragma acc enter data copyin(dA.pextents[0:dA.prank])
-#pragma acc enter data copyin(dA.pstrides[0:dA.prank])
-#pragma acc enter data copyin(dL)
-#pragma acc enter data create(dL.pdata[0:dL.pdatalength])
-#pragma acc enter data copyin(dL.pextents[0:dL.prank])
-#pragma acc enter data copyin(dL.pstrides[0:dL.prank])
-
-#pragma acc enter data copyin(dU)
-#pragma acc enter data create(dU.pdata[0:dU.pdatalength])
-#pragma acc enter data copyin(dU.pextents[0:dU.prank])
-#pragma acc enter data copyin(dU.pstrides[0:dU.prank])
+        #pragma acc CREATE_IN_STRUCT(dA)
+        #pragma acc CREATE_OUT_STRUCT(dL)
+        #pragma acc CREATE_OUT_STRUCT(dU)
 
 #pragma acc enter data copyin (step_size)
 
@@ -3232,22 +3244,13 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 {
         gpu_lu_decomposition( dA,  dL, dU, buffer,step_size);
 }
-#pragma acc update self(dL.pdata[0:dL.pdatalength])
-#pragma acc update self(dU.pdata[0:dU.pdatalength])
 
-#pragma acc exit data delete(dA.pdata[0:dA.pdatalength])
-#pragma acc exit data delete(dA.pextents[0:dA.prank])
-#pragma acc exit data delete(dA.pstrides[0:dA.prank])
-#pragma acc exit data delete(dA)
-#pragma acc exit data delete(dL.pdata[0:dL.pdatalength])
-#pragma acc exit data delete(dL.pextents[0:dL.prank])
-#pragma acc exit data delete(dL.pstrides[0:dL.prank])
-#pragma acc exit data delete(dL)
-#pragma acc exit data delete(dU.pdata[0:dU.pdatalength])
-#pragma acc exit data delete(dU.pextents[0:dU.prank])
-#pragma acc exit data delete(dU.pstrides[0:dU.prank])
-#pragma acc exit data delete(dU)
-#pragma acc exit data delete(step_size)
+#pragma acc UPDATE_HOST(dL)
+#pragma acc UPDATE_HOST(dU)
+
+#pragma acc EXIT_STRUCT(dA)
+#pragma acc EXIT_STRUCT(dL)
+#pragma acc EXIT_STRUCT(dU)
 
 acc_free(buffer);
 
@@ -3365,18 +3368,9 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
         datastruct<T> dR=R.pdatastruct;
         T* buffer=(T*) acc_malloc(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]);
 
-#pragma acc enter data copyin(dA)
-#pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
-#pragma acc enter data copyin(dA.pextents[0:dA.prank])
-#pragma acc enter data copyin(dA.pstrides[0:dA.prank])
-#pragma acc enter data copyin(dQ)
-#pragma acc enter data create(dQ.pdata[0:dQ.pdatalength])
-#pragma acc enter data copyin(dQ.pextents[0:dQ.prank])
-#pragma acc enter data copyin(dQ.pstrides[0:dQ.prank])
-#pragma acc enter data copyin(dR)
-#pragma acc enter data create(dR.pdata[0:dR.pdatalength])
-#pragma acc enter data copyin(dR.pextents[0:dR.prank])
-#pragma acc enter data copyin(dR.pstrides[0:dR.prank])
+        #pragma acc CREATE_IN_STRUCT(dA)
+        #pragma acc CREATE_OUT_STRUCT(dQ)
+        #pragma acc CREATE_OUT_STRUCT(dR)
 
 #pragma acc enter data copyin(step_size)
 
@@ -3384,21 +3378,13 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
 {
     gpu_qr_decomposition(dA,dQ,dR,buffer,step_size);
 }
-#pragma acc update self(dQ.pdata[0:dQ.pdatalength])
-#pragma acc update self(dR.pdata[0:dR.pdatalength])
+#pragma acc UPDATE_HOST(dQ)
+#pragma acc UPDATE_HOST(dR)
 
-#pragma acc exit data delete  (dA.pdata[0:dA.pdatalength])
-#pragma acc exit data delete(dA.pextents[0:dA.prank])
-#pragma acc exit data delete(dA.pstrides[0:dA.prank])
-#pragma acc exit data delete(dA)
-#pragma acc exit data delete (dQ.pdata[0:dQ.pdatalength])
-#pragma acc exit data delete(dQ.pextents[0:dQ.prank])
-#pragma acc exit data delete(dQ.pstrides[0:dQ.prank])
-#pragma acc exit data delete(dQ)
-#pragma acc exit data delete   (dR.pdata[0:dR.pdatalength])
-#pragma acc exit data delete(dR.pextents[0:dR.prank])
-#pragma acc exit data delete(dR.pstrides[0:dR.prank])
-#pragma acc exit data delete(dR)
+#pragma acc EXIT_STRUCT(dA)
+#pragma acc EXIT_STRUCT(dQ)
+#pragma acc EXIT_STRUCT(dR)
+
 #pragma acc exit data delete   (step_size)
 acc_free(buffer);
     }
@@ -3584,21 +3570,9 @@ bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T
 
     if (gpu_upload)
     {
-        // Transfer dC to the GPU
-#pragma acc enter data copyin(dC) // Allocate memory for the struct
-#pragma acc enter data create(dC.pdata[0:dC.pdatalength]) // Allocate pdata on device
-#pragma acc enter data copyin(dC.pextents[0:dC.prank])    // Copy extents
-#pragma acc enter data copyin(dC.pstrides[0:dC.prank])    // Copy strides
-        // Transfer dB to the GPU
-#pragma acc enter data copyin(dB)
-#pragma acc enter data copyin(dB.pdata[0:dB.pdatalength])
-#pragma acc enter data copyin(dB.pextents[0:dB.prank])
-#pragma acc enter data copyin(dB.pstrides[0:dB.prank])
-        // Transfer dA to the GPU
-#pragma acc enter data copyin(dA)
-#pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
-#pragma acc enter data copyin(dA.pextents[0:dA.prank])
-#pragma acc enter data copyin(dA.pstrides[0:dA.prank])
+          #pragma acc CREATE_IN_STRUCT(dA)
+          #pragma acc CREATE_IN_STRUCT(dB)
+          #pragma acc CREATE_OUT_STRUCT(dC)
 
 #pragma acc enter data copyin(inner_dim, rows, cols)
         // Parallel computation
@@ -3616,19 +3590,12 @@ bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T
                 dC(i,j)=sum;
             }
         }
-#pragma acc update self(dC.pdata[0:dC.pdatalength])
-#pragma acc exit data delete(dC.pdata[0:dC.pdatalength])
-#pragma acc exit data delete(dC.pextents[0:dC.prank])
-#pragma acc exit data delete(dC.pstrides[0:dC.prank])
-#pragma acc exit data delete(dC)
-#pragma acc exit data delete(dB.pdata[0:dB.pdatalength])
-#pragma acc exit data delete(dB.pextents[0:dB.prank])
-#pragma acc exit data delete(dB.pstrides[0:dB.prank])
-#pragma acc exit data delete(dB)
-#pragma acc exit data delete(dA.pdata[0:dA.pdatalength])
-#pragma acc exit data delete(dA.pextents[0:dA.prank])
-#pragma acc exit data delete(dA.pstrides[0:dA.prank])
-#pragma acc exit data delete(dA)
+
+#pragma acc UPDATE_HOST(dC)
+#pragma acc EXIT_STRUCT(dA)
+#pragma acc EXIT_STRUCT(dB)
+#pragma acc EXIT_STRUCT(dC)
+
 #pragma acc exit data delete(inner_dim, rows, cols)
     }
     else
