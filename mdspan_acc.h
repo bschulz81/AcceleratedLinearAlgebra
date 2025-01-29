@@ -517,6 +517,8 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             const T* pd=this->pdata;
             // Row-major layout: fill row by row
 //#pragma acc loop auto collapse (2)
+
+       // #pragma acc loop independent collapse(2)
             for (size_t i = 0; i < tile_rows; ++i)
             {
                 for (size_t j = 0; j < tile_cols; ++j)
@@ -532,6 +534,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             const T* pd=this->pdata;
             // Column-major layout: fill column by column
 //#pragma acc loop auto collapse (2)
+//#pragma acc loop independent collapse(2)
             for (size_t j = 0; j < tile_cols; ++j)
             {
                 for (size_t i = 0; i < tile_rows; ++i)
@@ -623,29 +626,34 @@ void printvector(datastruct<T>&span)
 
 }
 
-#define STRINGIFY(x) #x
+inline void update_device(auto& dL) {
+    #pragma acc update device(dL.pdata[0:dL.pdatalength])
+}
 
-#define CREATE_IN_STRUCT(dA)                                           \
-  enter data copyin(dA)\
-  copyin(dA.pdata[0:dA.pdatalength])\
-  copyin(dA.pextents[0:dA.prank])\
-  copyin(dA.pstrides[0:dA.prank])
+inline void update_host(auto& dL) {
+    #pragma acc update self(dL.pdata[0:dL.pdatalength])
+}
 
-#define CREATE_OUT_STRUCT(dL)\
- enter data copyin(dL)\
- create(dL.pdata[0:dL.pdatalength])\
- copyin(dL.pextents[0:dL.prank])\
- copyin(dL.pstrides[0:dL.prank])
+inline void create_in_struct(auto& dA) {
+    #pragma acc enter data copyin(dA)
+    #pragma acc enter data copyin(dA.pdata[0:dA.pdatalength])
+    #pragma acc enter data copyin(dA.pextents[0:dA.prank])
+    #pragma acc enter data copyin(dA.pstrides[0:dA.prank])
+}
 
-#define EXIT_STRUCT(dL)\
-exit data delete(dL.pdata[0:dL.pdatalength])\
- delete(dL.pextents[0:dL.prank])\
- delete(dL.pstrides[0:dL.prank])\
- delete(dL)
+inline void create_out_struct(auto& dL) {
+    #pragma acc enter data copyin(dL)
+    #pragma acc enter data create(dL.pdata[0:dL.pdatalength])
+    #pragma acc enter data copyin(dL.pextents[0:dL.prank])
+    #pragma acc enter data copyin(dL.pstrides[0:dL.prank])
+}
 
-#define UPDATE_HOST(dL) update self(dL.pdata[0:dL.pdatalength])
-
-#define UPDATE_DEVICE(dA) update device(dL.pdata[0:dL.pdatalength])
+inline void exit_struct(auto& dL) {
+    #pragma acc exit data delete(dL.pdata[0:dL.pdatalength])
+    #pragma acc exit data delete(dL.pextents[0:dL.prank])
+    #pragma acc exit data delete(dL.pstrides[0:dL.prank])
+    #pragma acc exit data delete(dL)
+}
 
 
 template<typename T>
@@ -839,7 +847,7 @@ T& mdspan<T, Container>::operator()(const Container& indices)
 
 
     size_t offset = 0;
-    #pragma omp parallel for reduction( + : offset)
+    #pragma omp simd  reduction( + : offset)
     for (size_t i = 0; i < indices.size(); ++i)
     {
         offset += indices[i] * pdatastruct.pstrides[i];
@@ -870,7 +878,7 @@ T mdspan<T, Container>::operator()(const Container& indices)const
 {
 
     size_t offset = 0;
-    #pragma omp parallel for reduction( + : offset)
+    #pragma omp simd reduction( + : offset)
     for (size_t i = 0; i < indices.size(); ++i)
     {
         offset += indices[i] * pdatastruct.pstrides[i];
@@ -1227,7 +1235,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
         // Compute the offset to the starting point
         size_t offset_index = 0;
 
-        //  #pragma omp parallel for reduction( + : offset_index )
+          #pragma omp simd reduction( + : offset_index )
         for (size_t i = 0; i < r; ++i)
         {
             offset_index += offsets[i] * pdatastruct.pstrides[i];
@@ -1247,7 +1255,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
         while (true)
         {
             // Compute the current global indices
-            #pragma omp parallel for
+            #pragma omp simd
             for (size_t i = 0; i < r; ++i)
             {
                 global_indices[i] = offsets[i] + indices[i];
@@ -1277,12 +1285,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
                 break;
             }
         }
-        size_t size=1;
-        #pragma omp simd reduction(* : size)
-        for (size_t i = 0; i < r; ++i)
-        {
-            size*=sub_extents[i];
-        }
+
         // Create and return a new mdspan with the updated pointer, extents, and strides
         return mdspan(sub_data, pdatastruct.prowmajor, sub_extents, sub_strides );
     }
@@ -1348,24 +1351,21 @@ bool glue_matrices(TargetSpan target, const vector<SourceSpan>& spans,
 {
     // Ensure we have the same number of spans and offsets
 
-
-
-
-
     // Iterate over spans and their corresponding offsets
     #pragma omp parallel for
     for (size_t idx = 0; idx < spans.size(); ++idx)
     {
-        const auto& span = spans[idx];
-        size_t row_offset = offsets[idx].first;
-        size_t col_offset = offsets[idx].second;
-
+        const SourceSpan& span = spans[idx];
+        const size_t row_offset = offsets[idx].first;
+        const size_t col_offset = offsets[idx].second;
+        const size_t ext0=span.extent(0);
+        const size_t ext1=span.extent(1);
 
         // Copy the current span into the target at the given offset
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < span.extent(0); ++i)    // Rows of the span
+        for (size_t i = 0; i < ext0; ++i)    // Rows of the span
         {
-            for (size_t j = 0; j < span.extent(1); ++j)    // Columns of the span
+            for (size_t j = 0; j < ext1; ++j)    // Columns of the span
             {
                 target(row_offset + i, col_offset + j) = span(i, j);
             }
@@ -1747,8 +1747,6 @@ inline void gpu_cholesky_decomposition( datastruct<T>& A, datastruct<T>& L, T*bu
 
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
-
-
 
     if(step_size==0)
         step_size=(size_t)pow(n,0.8385);
@@ -3093,8 +3091,8 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
     {
         datastruct<T> dA=A.pdatastruct,dL=L.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
-        #pragma acc CREATE_IN_STRUCT(dA)
-        #pragma acc CREATE_OUT_STRUCT(dL)
+        create_in_struct(dA);
+        create_out_struct(dL);
 
 #pragma acc enter data copyin(step_size)
 
@@ -3103,10 +3101,10 @@ void cholesky_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L,matrix_multiplica
      gpu_cholesky_decomposition(dA,dL,buffer,step_size);
 }
 
-#pragma acc UPDATE_HOST(dL)
+update_host(dL);
 
-#pragma acc EXIT_STRUCT(dA)
-#pragma acc EXIT_STRUCT(dL)
+exit_struct(dA);
+exit_struct(dL);
 
 #pragma acc exit data delete(step_size)
 
@@ -3234,9 +3232,9 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
 
         datastruct<T>dA=A.pdatastruct, dL=L.pdatastruct, dU=U.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
-        #pragma acc CREATE_IN_STRUCT(dA)
-        #pragma acc CREATE_OUT_STRUCT(dL)
-        #pragma acc CREATE_OUT_STRUCT(dU)
+       create_in_struct(dA);
+       create_out_struct(dL);
+        create_out_struct(dU);
 
 #pragma acc enter data copyin (step_size)
 
@@ -3245,12 +3243,14 @@ inline void lu_decomposition( mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>&
         gpu_lu_decomposition( dA,  dL, dU, buffer,step_size);
 }
 
-#pragma acc UPDATE_HOST(dL)
-#pragma acc UPDATE_HOST(dU)
+update_host(dL);
+update_host(dU);
 
-#pragma acc EXIT_STRUCT(dA)
-#pragma acc EXIT_STRUCT(dL)
-#pragma acc EXIT_STRUCT(dU)
+exit_struct(dA);
+exit_struct(dL);
+exit_struct(dU);
+
+
 
 acc_free(buffer);
 
@@ -3368,22 +3368,21 @@ inline void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& 
         datastruct<T> dR=R.pdatastruct;
         T* buffer=(T*) acc_malloc(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]);
 
-        #pragma acc CREATE_IN_STRUCT(dA)
-        #pragma acc CREATE_OUT_STRUCT(dQ)
-        #pragma acc CREATE_OUT_STRUCT(dR)
-
+       create_in_struct(dA);
+       create_out_struct(dQ);
+        create_out_struct(dR);
 #pragma acc enter data copyin(step_size)
 
 #pragma acc parallel present(dA,dQ,dR, step_size) deviceptr(buffer)
 {
     gpu_qr_decomposition(dA,dQ,dR,buffer,step_size);
 }
-#pragma acc UPDATE_HOST(dQ)
-#pragma acc UPDATE_HOST(dR)
+update_host(dQ);
+update_host(dR);
 
-#pragma acc EXIT_STRUCT(dA)
-#pragma acc EXIT_STRUCT(dQ)
-#pragma acc EXIT_STRUCT(dR)
+exit_struct(dA);
+exit_struct(dQ);
+exit_struct(dR);
 
 #pragma acc exit data delete   (step_size)
 acc_free(buffer);
@@ -3570,9 +3569,9 @@ bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T
 
     if (gpu_upload)
     {
-          #pragma acc CREATE_IN_STRUCT(dA)
-          #pragma acc CREATE_IN_STRUCT(dB)
-          #pragma acc CREATE_OUT_STRUCT(dC)
+         create_in_struct(dA);
+       create_in_struct(dB);
+        create_out_struct(dC);
 
 #pragma acc enter data copyin(inner_dim, rows, cols)
         // Parallel computation
@@ -3591,10 +3590,11 @@ bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T
             }
         }
 
-#pragma acc UPDATE_HOST(dC)
-#pragma acc EXIT_STRUCT(dA)
-#pragma acc EXIT_STRUCT(dB)
-#pragma acc EXIT_STRUCT(dC)
+update_host(dC);
+
+exit_struct(dA);
+exit_struct(dB);
+exit_struct(dC);
 
 #pragma acc exit data delete(inner_dim, rows, cols)
     }
@@ -3823,4 +3823,3 @@ void printvector(const mdspan<T,Container>& span)
 
 
 #endif
-
