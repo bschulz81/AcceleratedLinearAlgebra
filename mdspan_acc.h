@@ -581,15 +581,17 @@ datastruct<T> datastruct<T>::column(const size_t col_index, size_t* extents,size
 
 #pragma acc routine seq
 template <typename T>
-void printmatrix(datastruct<T>&span)
+void printmatrix(const datastruct<T>&span)
 {
     const size_t rows= span.pextents[0];
     const size_t cols=span.pextents[1];
+    const size_t str0= span.pstrides[0];
+    const size_t str1= span.pstrides[1];
     for (size_t i = 0; i <rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            printf("%f ",span(i, j));
+            printf("%f ",span(i, j,str0,str1));
         }
         printf("%s \n","");
     }
@@ -597,13 +599,13 @@ void printmatrix(datastruct<T>&span)
 
 #pragma acc routine seq
 template <typename T>
-void printvector(datastruct<T>&span)
+void printvector(const datastruct<T>&span)
 {
     const size_t rows= span.pextents[0];
-
+    const size_t str0= span.pstrides[0];
     for (size_t i = 0; i <rows; ++i)
     {
-        printf("%f\n",span(i));
+        printf("%f\n",span(i,str0));
     }
 
 }
@@ -1603,7 +1605,6 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
 template <typename T>
 inline void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
 {
-
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
 
