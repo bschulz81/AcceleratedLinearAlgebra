@@ -20,5 +20,5 @@ Some identified Issues:
 2) The gpu functions are now declared as __forceinline, this removes the crashes at higher optimization levels. Hopefully, parallel execution is then also retained.
 
 
-4) On clang, the functions that offload to gpu fail to get called there and can not access the uploaded variables.
+4) On clang, the functions that offload to gpu fail, unfortunately.
 
