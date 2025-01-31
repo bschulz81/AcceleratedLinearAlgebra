@@ -16,7 +16,7 @@ set (LANGUAGES "C;CXX")
 find_package(OpenACC REQUIRED)
 set (CompilerPath "/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/compilers/bin")
 set (CMAKE_CXX_COMPILER "nvc++" CACHE STRING "C++ compiler" FORCE)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -O1 -acc=gpu -mp=multicore -Minfo=accel")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20   -acc=gpu -mp=multicore -Minfo=accel")
 
 project(arraytest VERSION 1.0)
 
@@ -48,3 +48,4 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(arraytest PRIVATE -fopenacc  -fopenmp   -fopenmp-targets=nvptx64-nvidia-cuda  -Wall )
     target_link_libraries(arraytest PRIVATE rt m c stdc++ gomp mpi)
 endif()
+
