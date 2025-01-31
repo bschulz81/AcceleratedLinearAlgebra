@@ -3843,9 +3843,9 @@ template <typename T, typename CA,typename CB,typename CC>
        create_in_struct(dB);
        create_out_struct(dC);
 
-#pragma acc enter data copyin(inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
+#pragma acc enter data copyin(inner_dim, rows, cols,strA0,strA1,strB0,strB1,strC0,strC1)
 
-#pragma acc parallel loop gang collapse(2) present(dA, dB, dC,inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
+#pragma acc parallel loop gang collapse(2) present(dA, dB, dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
@@ -3861,7 +3861,7 @@ template <typename T, typename CA,typename CB,typename CC>
         }
 
 update_host(dC);
-#pragma acc exit data delete(inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
+#pragma acc exit data delete(inner_dim, rows, cols,strA0,strA1,strB0,strB1,strC0,strC1)
 exit_struct(dA);
 exit_struct(dB);
 exit_struct(dC);
