@@ -618,14 +618,15 @@ inline void update_device(datastruct<T>& dL) {
 template<typename T>
 inline void update_host(datastruct<T>& dL) {
      acc_update_self((void*)dL.pdata,sizeof(T)*dL.pdatalength);
+
 }
 
 template<typename T>
-void inline create_in_struct(datastruct<T>& dA) {
+void inline create_in_struct(const datastruct<T>& dA) {
     acc_copyin((void*)dA.pdata, sizeof(T)*dA.pdatalength);
     acc_copyin((void*)dA.pextents,sizeof(size_t)*dA.prank);
     acc_copyin((void*) dA.pstrides,sizeof(size_t)*dA.prank);
-    acc_copyin(&dA, sizeof(dA));
+    acc_copyin((void*)&dA, sizeof(dA));
     acc_attach((void**)&dA.pdata);
     acc_attach((void**)&dA.pextents);
     acc_attach((void**)&dA.pstrides);
@@ -643,6 +644,18 @@ void inline create_out_struct(datastruct<T>& dA) {
 }
 template<typename T>
 inline void exit_struct(datastruct<T> &dA)
+ {
+    acc_detach((void**)&dA.pdata);
+    acc_detach((void**)&dA.pextents);
+    acc_detach((void**)&dA.pstrides);
+    acc_delete((void*)dA.pstrides,sizeof(size_t)*dA.prank);
+    acc_delete((void*)dA.pextents,sizeof(size_t)*dA.prank);
+    acc_delete((void*)dA.pdata,sizeof(T)*dA.pdatalength);
+    acc_delete((void*)&dA, sizeof(dA));
+}
+
+template<typename T>
+inline void exit_struct(const datastruct<T> &dA)
  {
     acc_detach((void**)&dA.pdata);
     acc_detach((void**)&dA.pextents);
@@ -2693,7 +2706,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_s(const  datastruct<T> v
 
 
 template <typename T, typename CA,typename CB,typename CC>
-bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C, const matrix_multiplication_parameters & algorithm)
+bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C, matrix_multiplication_parameters & algorithm)
 {
     // Dimensions of input matrices
     const  size_t n = A.extent(0); // Rows in A
@@ -3001,7 +3014,7 @@ bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<
 }
 
 template <typename T, typename CA,typename CB,typename CC>
-bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T, CC>& C,const matrix_multiplication_parameters& algorithm)
+bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T, CC>& C,matrix_multiplication_parameters& algorithm)
 {
     // Dimensions of input matrices
     size_t n = A.extent(0); // Rows in A
@@ -3316,11 +3329,12 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
 
 
 template <typename T, typename CA>
-void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L,const matrix_multiplication_parameters algorithm, size_t step_size=0, const bool gpu_offload=false)
+void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplication_parameters algorithm, size_t step_size=0,  bool gpu_offload=false)
 {
        if (gpu_offload==true)
     {
-        datastruct<T> dA=A.pdatastruct,dL=L.pdatastruct;
+       const datastruct<T> dA=A.pdatastruct;
+            datastruct<T> dL=L.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
         create_in_struct(dA);
         create_out_struct(dL);
@@ -3458,15 +3472,17 @@ acc_free(buffer);
 }
 
 template <typename T, typename CA>
- void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U,const  matrix_multiplication_parameters &algorithm,  size_t step_size=0,
-                             const  bool gpu_offload=false)
+ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matrix_multiplication_parameters &algorithm,  size_t step_size=0,
+                               bool gpu_offload=false)
 {
 
 
     if (gpu_offload==true)
     {
 
-        datastruct<T>dA=A.pdatastruct, dL=L.pdatastruct, dU=U.pdatastruct;
+        const datastruct<T>dA=A.pdatastruct;
+
+        datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
         T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
        create_in_struct(dA);
        create_out_struct(dL);
@@ -3600,8 +3616,8 @@ acc_free(buffer);
 }
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T, typename CA>
-void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,const   matrix_multiplication_parameters algorithm,  size_t step_size=0,
-                            const bool gpu_offload=false)
+void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   matrix_multiplication_parameters algorithm,  size_t step_size=0,
+                            bool gpu_offload=false)
 {
 
     if (gpu_offload==true)
@@ -3800,12 +3816,12 @@ acc_free(buffer);
 }
 
 template <typename T, typename CA,typename CB,typename CC>
- bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T,CC>& C,  bool gpu_upload=false)
+ void matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T,CC>& C, bool gpu_offload)
 {
 
 
-    datastruct<T> dA=A.pdatastruct;
-    datastruct<T> dB=B.pdatastruct;
+    const datastruct<T> dA=A.pdatastruct;
+    const datastruct<T> dB=B.pdatastruct;
     datastruct<T> dC=C.pdatastruct;
 
     const size_t rows = dA.pextents[0]; // Number of rows in A and C
@@ -3821,14 +3837,15 @@ template <typename T, typename CA,typename CB,typename CC>
     const size_t strC0=dC.pstrides[0];
     const size_t strC1=dC.pstrides[1];
 
-    if (gpu_upload)
+    if (gpu_offload==true)
     {
        create_in_struct(dA);
        create_in_struct(dB);
        create_out_struct(dC);
 
-#pragma acc enter data copyin(inner_dim, rows, cols)
-#pragma acc parallel loop gang collapse(2) present(dA, dB, dC,inner_dim,rows,cols)
+#pragma acc enter data copyin(inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
+
+#pragma acc parallel loop gang collapse(2) present(dA, dB, dC,inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
@@ -3844,7 +3861,7 @@ template <typename T, typename CA,typename CB,typename CC>
         }
 
 update_host(dC);
-#pragma acc exit data delete(inner_dim, rows, cols)
+#pragma acc exit data delete(inner_dim, rows, cols,strA0,strB0,strB1,strC0,strC1)
 exit_struct(dA);
 exit_struct(dB);
 exit_struct(dC);
@@ -3868,8 +3885,6 @@ exit_struct(dC);
             }
         }
     }
-
-    return true;
 
 
 }
