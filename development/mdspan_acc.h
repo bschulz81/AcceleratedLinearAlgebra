@@ -1984,7 +1984,7 @@ __attribute__((always_inline)) inline void gpu_qr_decomposition( const datastruc
 
 
     datastruct<T> QT=Q.transpose(qtext,qtstrides);
-    gpu_matrix_multiply_dot_s(QT,A,R);
+    gpu_matrix_multiply_dot_w(QT,A,R);
     if(buffer==nullptr)
       {
     delete[] tempC;
@@ -2065,7 +2065,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_dot_w( const data
     }
 }
 
-#pragma acc routine vector
+
 template <typename T>
 __attribute__((always_inline)) inline  void gpu_matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
 {
@@ -2394,7 +2394,8 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const 
 
 }
 
-#pragma acc routine vector
+
+
 template <typename T>
 __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
@@ -3822,12 +3823,11 @@ template <typename T, typename CA,typename CB,typename CC>
 
     if (gpu_upload)
     {
-         create_in_struct(dA);
+       create_in_struct(dA);
        create_in_struct(dB);
-        create_out_struct(dC);
+       create_out_struct(dC);
 
 #pragma acc enter data copyin(inner_dim, rows, cols)
-        // Parallel computation
 #pragma acc parallel loop gang collapse(2) present(dA, dB, dC,inner_dim,rows,cols)
         for (size_t i = 0; i < rows; ++i)
         {
@@ -3844,12 +3844,12 @@ template <typename T, typename CA,typename CB,typename CC>
         }
 
 update_host(dC);
-
+#pragma acc exit data delete(inner_dim, rows, cols)
 exit_struct(dA);
 exit_struct(dB);
 exit_struct(dC);
 
-#pragma acc exit data delete(inner_dim, rows, cols)
+
     }
     else
     {
