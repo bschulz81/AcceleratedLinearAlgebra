@@ -11,7 +11,7 @@ The Cholesky, LU and QR decomposition can be set such that they work with multip
 
 Initial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
 
-A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with Nvidia's nvc++ compiler.
+A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with Nvidia's nvc++ compiler from Nvidia's hpc sdk.
 
 Compilation with Gcc currently produces an internal compiler error: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 . For Windows support, one would have to add Windows specific support for memory mapped files. 
 
