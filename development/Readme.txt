@@ -17,7 +17,7 @@ Some identified Issues:
 1) The initial support for the message passing interface was not tested yet in any way.
 
 
-2) The gpu functions are now declared as __forceinline, this removes the crashes at higher optimization levels. Hopefully, parallel execution is then also retained.
+2) The gpu functions are now declared as __forceinline, this removes the crashes with nvc++ at higher optimization levels. Hopefully, parallel execution is then also retained.
 
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
