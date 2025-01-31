@@ -1601,9 +1601,8 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
 }
 
 
-#pragma acc routine worker
 template <typename T>
-inline void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
+__attribute__((always_inline)) inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
 {
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
@@ -1715,9 +1714,8 @@ inline void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L
 
 }
 
-#pragma acc routine worker
 template <typename T>
-inline void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* buffer=nullptr, size_t step_size=0)
+__attribute__((always_inline)) inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* buffer=nullptr, size_t step_size=0)
 {
 
     const size_t n = dA.pextents[0];
@@ -1830,9 +1828,8 @@ inline void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, da
 
 }
 
-#pragma acc routine worker
 template <typename T >
-void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* buffer=nullptr, size_t step_size=0)
+__attribute__((always_inline)) inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* buffer=nullptr, size_t step_size=0)
 {
     const size_t n = A.pextents[0]; // Number of rows (assuming 2D matrix)
     const size_t m = A.pextents[1]; // Number of columns
@@ -3318,7 +3315,7 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
 
 
 template <typename T, typename CA>
-__attribute__((always_inline)) inline void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L,const matrix_multiplication_parameters algorithm, size_t step_size=0, const bool gpu_offload=false)
+void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L,const matrix_multiplication_parameters algorithm, size_t step_size=0, const bool gpu_offload=false)
 {
        if (gpu_offload==true)
     {
@@ -3460,7 +3457,7 @@ acc_free(buffer);
 }
 
 template <typename T, typename CA>
-__attribute__((always_inline)) inline  void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U,const  matrix_multiplication_parameters &algorithm,  size_t step_size=0,
+ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U,const  matrix_multiplication_parameters &algorithm,  size_t step_size=0,
                              const  bool gpu_offload=false)
 {
 
@@ -3495,7 +3492,8 @@ acc_free(buffer);
     }
     else
     {
-        if(step_size==0) step_size=(size_t)pow(A.extent(0),0.8385);
+        if(step_size==0)
+            step_size=(size_t)pow(A.extent(0),0.8385);
         size_t n = A.extent(0);
         size_t tempsize=(n-step_size)*(n-step_size);
         size_t nn=n*n;
@@ -3601,7 +3599,7 @@ acc_free(buffer);
 }
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T, typename CA>
-__attribute__((always_inline)) inline  void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,const   matrix_multiplication_parameters algorithm,  size_t step_size=0,
+void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,const   matrix_multiplication_parameters algorithm,  size_t step_size=0,
                             const bool gpu_offload=false)
 {
 
@@ -3801,7 +3799,7 @@ acc_free(buffer);
 }
 
 template <typename T, typename CA,typename CB,typename CC>
-__attribute__((always_inline)) inline bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T,CC>& C,  bool gpu_upload=false)
+ bool matrix_multiply_dot(const mdspan<T,CA>& A, const  mdspan<T,CB>& B, mdspan<T,CC>& C,  bool gpu_upload=false)
 {
 
 
