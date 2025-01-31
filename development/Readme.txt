@@ -14,12 +14,18 @@ It  will also do the remaining multiplications in parallel if the Open_MPI compu
 If the matrices are small enogh, they can also be uploaded to the gpu for naive computation, and when that is finished, they are send back from the gpu to the smaller ranks to be combined.
 
 Some identified Issues:
+
 1) The initial support for the message passing interface was not tested yet in any way.
 
+2) The cholesky, lu, and qr decompositions have the matrix multiplications and dot products now inlined in plain. 
 
-2) The gpu functions are now declared as __forceinline, this removes the crashes with nvc++ at higher optimization levels. Hopefully, parallel execution is then also retained.
-In order to assist vectorization, the strides are now supplied in the operators() as const variables through the code.
+The open_acc standard says that functions designated as workers can call functions which have a worker loop.
+
+However, nvc++ apparently had problems to call these functions from a sequential loop. So they were inserted in plain text. Now these loops are parallelized. However, nvc++ often sees data dependencies, where there clearly are none, and refuses to vectorize. 
+
+This is a problem that may or may not be solved by suitable code refractorings...
 
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
+
 
