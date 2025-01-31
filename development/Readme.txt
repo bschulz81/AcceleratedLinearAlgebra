@@ -16,13 +16,9 @@ If the matrices are small enogh, they can also be uploaded to the gpu for naive 
 Some identified Issues:
 1) The initial support for the message passing interface was not tested yet in any way.
 
-2) with -O3, -O2 the qr decomposition fails on gpu with nvc++. On these optimization levels, nvc++ appears to try to parallelize loops which are marked as sequential.
 
-3) the qr decomposition is designated as a worker function on device. it this should be able to call vector functions when outside of a parallelized loop. however, when replacing   
-T norm = sqrt(gpu_dot_product_s(v,v));
-on line 2083 with the vector function
-T norm = sqrt(gpu_dot_product_v(v,v));
-one gets a sigsev even without -O2 or -O3.
+2) The gpu functions are now declared as __forceinline, this removes the crashes at higher optimization levels. Hopefully, parallel execution is then also retained.
+
 
 4) On clang, the functions that offload to gpu fail to get called there and can not access the uploaded variables.
 
