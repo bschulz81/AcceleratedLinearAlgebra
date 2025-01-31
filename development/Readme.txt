@@ -18,6 +18,7 @@ Some identified Issues:
 
 
 2) The gpu functions are now declared as __forceinline, this removes the crashes with nvc++ at higher optimization levels. Hopefully, parallel execution is then also retained.
+In order to assist vectorization, the strides are now supplied in the operators() as const variables through the code.
 
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
