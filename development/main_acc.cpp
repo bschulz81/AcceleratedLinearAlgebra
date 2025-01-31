@@ -104,6 +104,7 @@ size_t rows3 = 4, cols3 = 4;
 mdspan<double, std::vector<size_t>> A3(A3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> L3(L3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> U3(U3_data.data(), true, {rows3, cols3});
+
 matrix_multiplication_parameters par3;
 par3.gpu_offload=true;
 printmatrix(A3);
