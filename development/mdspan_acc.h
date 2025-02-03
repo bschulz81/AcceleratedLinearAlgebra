@@ -2113,18 +2113,18 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 norm=sqrt(norm);
 
 
-
-#pragma acc loop  independent
-        for (size_t i = 0; i < n; ++i)
+const T normc=norm;
+#pragma acc loop independent
+        for (size_t i = 0; i < pext0; ++i)
         {
-            v(i,pstrv0) = v(i,pstrv0)/norm;
+            v(i,pstrv0) = v(i,pstrv0)/normc;
         }
 
         // Set column c of Q
 
         const size_t h=c;
 #pragma acc loop  independent
-        for (size_t i = 0; i < n; ++i)
+        for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,h,qstr0,qstr1) = v(i,pstrv0);
         }
