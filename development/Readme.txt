@@ -19,12 +19,17 @@ Some identified Issues:
 
 2) The cholesky, lu, and qr decompositions have the matrix multiplications and dot products now inlined in plain. 
 
-The open_acc standard says that functions designated as workers can call functions which have a worker loop.
 
-However, nvc++ apparently had problems to call these functions from a sequential loop. So they were inserted in plain text. Now these loops are parallelized. However, nvc++ often sees data dependencies, where there clearly are none, and refuses to vectorize. 
+The open_acc standard says that functions designated as workers can call procedures which have a worker loop or contain vector loops.
 
-This is a problem that may or may not be solved by suitable code refractorings...
+However, nvc++ apparently had problems to call these functions from a sequential loop. It does clearly not correspond to the openacc standard that a function designated as worker, which contains a worker loop can not call a vector loop. After I inserted these internal loops in plain text, they are parallelized.  
 
+Additionally, nvc++ often saw data dependencies in simple loops, where there are none, and refused to vectorize. More precisely, nvc++ is often confused by the matrix strides if no independent clause is added to the loops. 
+By now, (03.02.2025), the openacc pragmas were set such that nvc++ can vectorize more openacc loops.
+
+Unfortunately, in contrast to openacc, openmp has no "independent" clause for loops. As a result, some openmp loops for the host are not vectorized with nvc++, sometimes this comes with the comment "not vectorized because unknown" from nvc++. 
+
+This seems to be different from other compilers, like gcc or clang, which can vectorize such code. Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. 
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
 
