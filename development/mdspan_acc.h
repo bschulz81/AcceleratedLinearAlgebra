@@ -1859,10 +1859,9 @@ template <typename T>
 
             const size_t strS0=S.pstrides[0];
             const size_t strS1=S.pstrides[1];
-#pragma acc loop independent
+#pragma acc loop independent collapse(2)
             for (size_t i = c; i < n; ++i)
             {
-                #pragma acc loop vector independent
                 for (size_t j = c; j < n; ++j)
                 {
                     tempA(i,j,strtA0,strtA1) -= S(i - c, j - c,strS0,strS1);
@@ -1875,7 +1874,7 @@ template <typename T>
         for (size_t i = c; i < n; ++i)
         {
             T temp=0;
-#pragma acc loop vector independent  reduction(+:temp)
+#pragma acc loop independent  reduction(+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp+= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
@@ -2083,7 +2082,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         datastruct<T> v = M.column(c,pextv,pstrv);
         const size_t pstrv0=pstrv[0];
         const size_t pext0=pextv[0];
-        #pragma acc loop
+        #pragma acc loop worker  independent
         for (size_t j = z; j < c; ++j)
         {
             size_t pextu[1];
@@ -2091,22 +2090,22 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             const datastruct<T> u = Q.column(j,pextu,pstru);
             const size_t pstru0=u.pstrides[0];
                 T dot_pr=0;
-            #pragma acc loop vector independent  reduction(+:dot_pr)
+            #pragma acc loop independent  reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
                 dot_pr += u(i,pstru0) * v(i,pstrv0);
             }
 
-            #pragma acc loop independent vector
+            #pragma acc loop worker independent
             for (size_t i = 0; i < pext0; ++i)
             {
                 v(i,pstrv0) -= dot_pr * u(i,pstru0);
             }
         }
         // Normalize v
-                T norm=0; // would crash: gpu_dot_product_v(v,v);
+               T norm=0; // would crash: gpu_dot_product_v(v,v);
               //would crash with nvc++ T norm=gpu_dot_product_s(v,v);
-#pragma acc loop vector independent reduction(+:norm)
+#pragma acc loop  independent reduction(+:norm)
     for (size_t i = 0; i < pext0; ++i)
     {
   norm += v(i,pstrv0) * v(i,pstrv0);
@@ -2115,16 +2114,16 @@ norm=sqrt(norm);
 
 
 
-#pragma acc loop independent vector
+#pragma acc loop  independent
         for (size_t i = 0; i < n; ++i)
         {
-            v(i,pstrv0) /= norm;
+            v(i,pstrv0) = v(i,pstrv0)/norm;
         }
 
         // Set column c of Q
 
         const size_t h=c;
-#pragma acc loop independent vector
+#pragma acc loop  independent
         for (size_t i = 0; i < n; ++i)
         {
             Q(i,h,qstr0,qstr1) = v(i,pstrv0);
@@ -3570,7 +3569,7 @@ acc_free(buffer);
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
+                #pragma omp parallel for collapse(2) shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
                 for (size_t i = c; i < n; ++i)
                 {
                     #pragma omp parallel for simd shared(c, tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
