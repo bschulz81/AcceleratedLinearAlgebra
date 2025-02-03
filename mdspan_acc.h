@@ -413,7 +413,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t *poffset
     {
 
 
-#pragma acc loop vector reduction( + : offset_index )
+#pragma acc loop vector independent reduction( + : offset_index )
         for (size_t i = 0; i < r; ++i)
         {
             offset_index += poffsets[i] * pstrides[i];
@@ -430,7 +430,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t *poffset
         indices=new size_t[r];
         global_indices= new size_t[r];
 
-#pragma acc loop vector
+#pragma acc loop vector independent
         for (size_t i=0; i<r; i++)
         {
             indices[i]=0;
@@ -441,7 +441,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t *poffset
         while (true)
         {
             // Compute the current global indices
-#pragma acc loop vector
+#pragma acc loop vector independent
             for (size_t i = 0; i < r; ++i)
             {
                 global_indices[i] = poffsets[i] + indices[i];
@@ -1645,7 +1645,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         adata=buffer+tempsize;
     }
 
-#pragma acc loop vector
+#pragma acc loop vector independent
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=A.pdata[i];
@@ -1691,14 +1691,14 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
     const size_t strC0=S.pstrides[0];
     const size_t strC1=S.pstrides[1];
 
-#pragma acc loop collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent  reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += R(i,k,strA0,strA1) *RT(k,j,strB0,strB1);
@@ -1708,9 +1708,10 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
     }
 
 
-#pragma acc loop collapse(2)
+#pragma acc loop independent
             for (size_t i = c; i < n; ++i)
             {
+                #pragma acc loop vector independent
                 for (size_t j = c; j < n; ++j)
                 {
                     tempA(i,j,strtA0,strtA1) -=S(i-c,j-c,strs0,strs1);
@@ -1721,7 +1722,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         }
 
         T temp = 0;
-#pragma acc loop reduction(+:temp)
+#pragma acc loop independent reduction(+:temp)
         for (size_t k = z; k < c; ++k)
         {
             T tmp3=L(c,k,strl0,strl1);
@@ -1733,11 +1734,11 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         L(c,c,strl0,strl1) = temp4;
 
 
-#pragma acc loop
+#pragma acc loop independent
         for (size_t i = c + 1; i < n; ++i)
         {
             T temp2 =0;
-#pragma acc loop vector reduction(+:temp2)
+#pragma acc loop vector independent reduction(+:temp2)
             for (size_t k = z; k < c; ++k)
             {
                 temp2 += L(i,k,strl0,strl1)*L(c,k,strl0,strl1);
@@ -1789,7 +1790,7 @@ template <typename T>
         adata=buffer+tempsize;
     }
 
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=dA.pdata[i];
@@ -1838,14 +1839,14 @@ template <typename T>
     const size_t strC0=S.pstrides[0];
     const size_t strC1=S.pstrides[1];
 
-#pragma acc loop collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += RL(i,k,strA0,strA1) *RU(k,j,strB0,strB1);
@@ -1858,9 +1859,10 @@ template <typename T>
 
             const size_t strS0=S.pstrides[0];
             const size_t strS1=S.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent
             for (size_t i = c; i < n; ++i)
             {
+                #pragma acc loop vector independent
                 for (size_t j = c; j < n; ++j)
                 {
                     tempA(i,j,strtA0,strtA1) -= S(i - c, j - c,strS0,strS1);
@@ -1869,11 +1871,11 @@ template <typename T>
             z = c;
         }
 
-#pragma acc loop worker
+#pragma acc loop independent
         for (size_t i = c; i < n; ++i)
         {
             T temp=0;
-#pragma acc loop vector reduction(+:temp)
+#pragma acc loop vector independent  reduction(+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp+= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
@@ -1881,11 +1883,11 @@ template <typename T>
             dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
         }
 
-#pragma acc loop worker
+#pragma acc loop independent
         for (size_t i = c; i < n; ++i)
         {
             T temp= 0;
-#pragma acc loop vector reduction(+:temp)
+#pragma acc loop vector independent reduction(+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp += dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
@@ -1942,19 +1944,19 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 
 
 
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i=0; i<nm; i++)
     {
         tempM[i]=A.pdata[i];
     }
 
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i=0; i<Q.pdatalength; i++)
     {
         Q.pdata[i]=0;
     }
 
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i=0; i<R.pdatalength; i++)
     {
         R.pdata[i]=0;
@@ -1969,6 +1971,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 
     const size_t mstr0=Mstrides[0];
     const size_t mstr1=Mstrides[1];
+
 #pragma acc loop seq
     for (size_t c = 0; c < m; ++c)
     {
@@ -2011,14 +2014,14 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
 
-#pragma acc loop collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
@@ -2045,14 +2048,14 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
     const size_t strC02=S.pstrides[0];
     const size_t strC12=S.pstrides[1];
 
-#pragma acc loop collapse(2)
+    #pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows2; ++i)
     {
         for (size_t j = 0; j < cols2; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
@@ -2064,7 +2067,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             const size_t strs0=strs[0];
             const size_t strs1=strs[1];
             // Update M: M[:, c:] -= S
-#pragma acc loop  collapse(2)
+            #pragma acc loop independent collapse(2)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = c; j <n; ++j)
@@ -2080,38 +2083,39 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         datastruct<T> v = M.column(c,pextv,pstrv);
         const size_t pstrv0=pstrv[0];
         const size_t pext0=pextv[0];
-    #pragma acc loop
+        #pragma acc loop
         for (size_t j = z; j < c; ++j)
         {
             size_t pextu[1];
             size_t pstru[1];
-            datastruct<T> u = Q.column(j,pextu,pstru);
+            const datastruct<T> u = Q.column(j,pextu,pstru);
             const size_t pstru0=u.pstrides[0];
                 T dot_pr=0;
-#pragma acc loop vector reduction(+:dot_pr)
-    for (size_t i = 0; i < pext0; ++i)
-    {
-        dot_pr += u(i,pstru0) * v(i,pstrv0);
-    }
+            #pragma acc loop vector independent  reduction(+:dot_pr)
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                dot_pr += u(i,pstru0) * v(i,pstrv0);
+            }
 
-            #pragma acc loop vector
+            #pragma acc loop independent vector
             for (size_t i = 0; i < pext0; ++i)
             {
                 v(i,pstrv0) -= dot_pr * u(i,pstru0);
             }
         }
         // Normalize v
-                T norm=0;
-#pragma acc loop vector reduction(+:norm)
+                T norm=0; // would crash: gpu_dot_product_v(v,v);
+              //would crash with nvc++ T norm=gpu_dot_product_s(v,v);
+#pragma acc loop vector independent reduction(+:norm)
     for (size_t i = 0; i < pext0; ++i)
     {
-        norm += v(i,pstrv0) * v(i,pstrv0);
-    }
+  norm += v(i,pstrv0) * v(i,pstrv0);
+   }
 norm=sqrt(norm);
 
 
 
-#pragma acc loop vector
+#pragma acc loop independent vector
         for (size_t i = 0; i < n; ++i)
         {
             v(i,pstrv0) /= norm;
@@ -2120,7 +2124,7 @@ norm=sqrt(norm);
         // Set column c of Q
 
         const size_t h=c;
-#pragma acc loop vector
+#pragma acc loop independent vector
         for (size_t i = 0; i < n; ++i)
         {
             Q(i,h,qstr0,qstr1) = v(i,pstrv0);
@@ -2134,6 +2138,7 @@ norm=sqrt(norm);
 
     datastruct<T> QT=Q.transpose(qtext,qtstrides);
     gpu_matrix_multiply_dot_w(QT,A,R);
+
     if(buffer==nullptr)
       {
     delete[] tempC;
@@ -2163,14 +2168,14 @@ template <typename T>
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
 
-#pragma acc parallel loop collapse(2)
+#pragma acc parallel loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
@@ -2198,14 +2203,14 @@ inline void gpu_matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
 
-#pragma acc loop collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
@@ -2228,14 +2233,14 @@ inline  void gpu_matrix_multiply_dot_v( const datastruct<T>& A, const  datastruc
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-   #pragma acc loop collapse(2)
+   #pragma acc loop independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-            #pragma acc loop vector reduction(+: sum)
+            #pragma acc loop vector independent reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
@@ -2260,13 +2265,13 @@ inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-    #pragma acc loop worker collapse(2)
+    #pragma acc loop worker independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
-            #pragma acc loop vector reduction(+:sum)
+            #pragma acc loop vector independent reduction(+:sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
@@ -2293,7 +2298,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_add_w(const datastruct<T>&
             const size_t strB1=B.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2318,7 +2323,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_subtract_w(const datastruc
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
@@ -2342,7 +2347,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2366,7 +2371,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2391,7 +2396,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_scalar_w(  const 
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop worker collapse(2)
+#pragma acc loop independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2408,7 +2413,7 @@ __attribute__((always_inline)) inline void gpu_vector_scalar_multiply_w( const d
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
-#pragma acc loop worker
+#pragma acc loop independent
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec(i,resstr)*scalar;
@@ -2436,7 +2441,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_w( const datastruct<T>
       const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-#pragma acc loop worker
+#pragma acc loop independent
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
@@ -2452,7 +2457,7 @@ __attribute__((always_inline)) inline void gpu_vector_subtract_w( const datastru
          const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-#pragma acc loop worker
+#pragma acc loop independent
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
@@ -2471,7 +2476,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_w(const  datastruct<T> v
     T result=0;
 
 
-#pragma acc loop reduction(+:result)
+#pragma acc loop independent reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -2492,7 +2497,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_add_v(const datastruct<T>
             const size_t strB1=B.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop vector collapse(2)
+#pragma acc loop vector independent collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2516,7 +2521,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_subtract_v(const datastru
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-#pragma acc loop vector collapse(2)
+#pragma acc loop vector independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
@@ -2539,7 +2544,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const 
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop vector collapse(2)
+#pragma acc loop vector independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2563,7 +2568,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const 
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop vector collapse(2)
+#pragma acc loop vector independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2588,7 +2593,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_scalar_v(  const
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-#pragma acc loop vector collapse(2)
+#pragma acc loop vector independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2604,7 +2609,7 @@ __attribute__((always_inline)) inline  void gpu_vector_scalar_multiply_v( const 
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec(i,resstr)*scalar;
@@ -2621,7 +2626,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_v( const datastruct<T>
       const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
@@ -2637,7 +2642,7 @@ __attribute__((always_inline)) inline  void gpu_vector_subtract_v( const datastr
          const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-#pragma acc loop vector
+#pragma acc loop independent vector
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
@@ -2653,7 +2658,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_v(const  datastruct<T> v
     const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
     T result=0;
-#pragma acc loop vector reduction(+:result)
+#pragma acc loop vector independent reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -2675,7 +2680,7 @@ __attribute__((always_inline)) inline void gpu_matrix_add_s(const datastruct<T>&
             const size_t strB1=B.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-   #pragma acc loop seq collapse(2)
+   #pragma acc loop seq independent collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2700,7 +2705,7 @@ __attribute__((always_inline)) inline void gpu_matrix_subtract_s(const datastruc
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq collapse(2)
+     #pragma acc loop seq independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
@@ -2724,7 +2729,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq collapse(2)
+     #pragma acc loop seq independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2747,7 +2752,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq collapse(2)
+     #pragma acc loop seq independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2772,7 +2777,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_scalar_s(  const 
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq collapse(2)
+     #pragma acc loop seq independent collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2789,7 +2794,7 @@ __attribute__((always_inline)) inline void gpu_vector_scalar_multiply_s( const d
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
-     #pragma acc loop seq
+     #pragma acc loop independent seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec(i,resstr)*scalar;
@@ -2805,7 +2810,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_s( const datastruct<T>
       const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-      #pragma acc loop seq
+      #pragma acc loop independent seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
@@ -2821,7 +2826,7 @@ __attribute__((always_inline)) inline void gpu_vector_subtract_s( const datastru
          const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-      #pragma acc loop seq
+      #pragma acc loop independent seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
@@ -2838,7 +2843,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_s(const  datastruct<T> v
     const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
     T result=0;
-     #pragma acc loop seq
+     #pragma acc loop independent seq
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -3565,10 +3570,10 @@ acc_free(buffer);
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for
+                #pragma omp parallel for shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
                 for (size_t i = c; i < n; ++i)
                 {
-                    #pragma omp parallel for simd
+                    #pragma omp parallel for simd shared(c, tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i, j,tempAstr0,tempAstr1) -= S(i - c, j - c,Sstr0,Sstr1);
@@ -3581,7 +3586,7 @@ acc_free(buffer);
 
             // Update the diagonal element L[c, c]
             T tmp=tempA(c, c,tempAstr0,tempAstr1);
-            #pragma omp parallel for simd reduction(-: tmp)
+            #pragma omp parallel for simd reduction(-: tmp) shared(L,lstr0,lstr1)
             for (size_t k = z; k < c; ++k)
             {
                 T tmp3=L(c,k,lstr0,lstr1);
@@ -3591,11 +3596,11 @@ acc_free(buffer);
             T temp4= sqrt(tmp);
             L(c, c,lstr0,lstr1) =temp4;
 
-            #pragma omp parallel for
+            #pragma omp parallel for shared(tempAstr0,tempAstr1,tempA)
             for (size_t i = c + 1; i < n; ++i)
             {
                 T tmp2 = tempA(i, c,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:tmp2)
+                #pragma omp parallel for simd reduction(-:tmp2) shared(L,lstr0,lstr1,temp4)
                 for (size_t k = z; k < c; ++k)
                 {
                     tmp2 -= L(i, k,lstr0,lstr1) * L(c, k,lstr0,lstr1);
@@ -3686,6 +3691,7 @@ acc_free(buffer);
         const size_t ustr0=U.pdatastruct.pstrides[0];
         const size_t ustr1=U.pdatastruct.pstrides[1];
         size_t z=0;
+
         for (size_t c = 0; c < n; ++c)
         {
             if (c == z + step_size)
@@ -3709,10 +3715,10 @@ acc_free(buffer);
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for
+                #pragma omp parallel for shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
                 for (size_t i = c; i < n; ++i)
                 {
-                    #pragma omp  parallel for simd
+                    #pragma omp  parallel for simd shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i,j,tempAstr0,tempAstr1) -= S(i - c, j - c,Sstr0,Sstr1);
@@ -3721,11 +3727,11 @@ acc_free(buffer);
                 z = c;
             }
 
-            #pragma omp parallel for
+            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
             for (size_t i = c; i < n; ++i)
             {
                 T temp=tempA(c,i,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:temp)
+                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1)
                 for (size_t k = z; k < c; ++k)
                 {
                     temp -= U( k,i,ustr0,ustr1) * L( c,k,lstr0,lstr1);
@@ -3733,11 +3739,11 @@ acc_free(buffer);
                 U(c,i,ustr0,ustr1)=temp;
             }
 
-            #pragma omp parallel for
+            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
             for (size_t i = c; i < n; ++i)
             {
                 T temp = tempA(i,c,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:temp)
+                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1)
                 for (size_t k = z; k < c; ++k)
                 {
                     temp -= U(k,c,ustr0,ustr1) * L( i,k,lstr0,lstr1);
@@ -3770,7 +3776,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         datastruct<T> dA= A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        T* buffer=(T*) acc_malloc(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]);
+        T* buffer=(T*) acc_malloc(2*(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]));
 
        create_in_struct(dA);
        create_out_struct(dQ);
@@ -3888,7 +3894,7 @@ acc_free(buffer);
                 #pragma omp parallel for
                 for (size_t i = 0; i < n; ++i)
                 {
-                    #pragma omp parallel for simd
+                    #pragma omp parallel for simd shared(Sstr0,Sstr1,Mstr0,Mstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         M(i, j,Mstr0,Mstr1) -= S(i, j-c,Sstr0,Sstr1);
@@ -3899,14 +3905,14 @@ acc_free(buffer);
             // Extract column c of M
             auto v = M.column(c);
             const size_t vstr0=v.pdatastruct.pstrides[0];
-             #pragma omp parallel for
+             #pragma omp parallel for shared(vstr0,v)
             for (size_t j = z; j < c; ++j)
             {
-                auto u = Q.column(j);
+                const auto u = Q.column(j);
                 const size_t ustr0=u.pdatastruct.pstrides[0];
                 T dot_pr =dot_product(u,v);
 
-                 #pragma omp parallel for simd
+                 #pragma omp parallel for simd shared(ustr0,u,v,dot_pr)
                 for (size_t i = 0; i < n; ++i)
                 {
                     v(i,vstr0) -= dot_pr * u(i,ustr0);
@@ -3915,14 +3921,14 @@ acc_free(buffer);
 
             // Normalize v
             T norm = sqrt(dot_product(v,v));
-             #pragma omp parallel for simd
+            #pragma omp parallel for simd shared(v,vstr0,norm)
             for (size_t i = 0; i < n; ++i)
             {
                 v(i,vstr0) /= norm;
             }
 
             // Set column c of Q
-            #pragma omp parallel for
+            #pragma omp parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)
             for (size_t i = 0; i < n; ++i)
             {
                 Q( i,c,Qstr0,Qstr1) = v(i,vstr0);
@@ -4015,13 +4021,13 @@ exit_struct(dC);
     }
     else
     {
-        #pragma omp parallel for collapse(2) shared(dC,dA,dB,rows,cols,inner_dim)
+        #pragma omp parallel for collapse(2) shared(dC,dA,dB,rows,cols,inner_dim, strC0,strC1,strA1,strA0,strB0,strB1)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
-                #pragma omp parallel for simd reduction (+:sum)
+                #pragma omp parallel for simd reduction (+:sum)  shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
                     sum += dA(i, k,strA0,strA1) * dB(k, j,strB0,strB1);
@@ -4049,10 +4055,10 @@ __attribute__((always_inline)) inline  bool matrix_add( const mdspan<T, CA>& A,c
     const size_t strC0=C.pdatastruct.pstrides[0];
     const size_t strC1=C.pdatastruct.pstrides[1];
 
-    #pragma omp parallel for
+    #pragma omp parallel for  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd
+        #pragma omp parallel for simd  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)=A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
@@ -4076,10 +4082,10 @@ __attribute__((always_inline)) inline  bool matrix_subtract( const mdspan<T, CA>
     const size_t strC1=C.pdatastruct.pstrides[1];
 
 
-    #pragma omp parallel for
+    #pragma omp parallel for  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd
+        #pragma omp parallel for simd  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)=A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
@@ -4106,10 +4112,10 @@ __attribute__((always_inline)) inline bool matrix_multiply_vector(const mdspan<T
 
 
     // Perform matrix multiplication: C = A * B
-    #pragma omp parallel for
+    #pragma omp parallel for  shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd
+        #pragma omp parallel for simd shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i, j),strM0,strM1 * V(j,strV0);  // This works because i, k, j are row/col indices
@@ -4133,10 +4139,10 @@ __attribute__((always_inline)) inline  bool matrix_multiply_vector(const mdspan<
     const size_t strC1=C.pdatastruct.pstrides[1];
 
 
-    #pragma omp parallel for
+    #pragma omp parallel for  shared(C,M,strM0,strM1,strC0,strC1,V)
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd
+        #pragma omp parallel for simd  shared(C,M,strM0,strM1,strC0,strC1,V)
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];
@@ -4162,11 +4168,11 @@ __attribute__((always_inline)) inline  bool matrix_multiply_scalar(const mdspan<
 
 
     // Perform matrix multiplication: C = A * B
-    #pragma omp parallel for
+    #pragma omp parallel for shared(C,M,strM0,strM1,strC0,strC1,V)
     for (size_t i = 0; i < rows; ++i)
     {
         T sum=0;
-        #pragma omp parallel for simd
+        #pragma omp parallel for simd shared(C,M,strM0,strM1,strC0,strC1,V)
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i,j,strM0,strM1)*V;
@@ -4187,7 +4193,7 @@ __attribute__((always_inline)) inline  T dot_product(const  mdspan<T, Container>
     const size_t strv2=vec2.pdatastruct.pstrides[0];
 
     T result = 0;
-    #pragma omp parallel for simd reduction(+:result)
+    #pragma omp parallel for simd reduction(+:result) shared(strv1,strv2)
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -4204,7 +4210,7 @@ __attribute__((always_inline)) inline  void vector_scalar_multiply( const mdspan
    const size_t strres=res.pdatastruct.pstrides[0];
 
 
-    #pragma omp parallel for simd
+    #pragma omp parallel for simd shared(res strres, strv, scalar)
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec(i,strv)*scalar;
@@ -4231,7 +4237,7 @@ __attribute__((always_inline)) inline  void vector_add( const mdspan<T, Containe
     const size_t strv1=vec1.pdatastruct.pstrides[0];
     const size_t strv2=vec2.pdatastruct.pstrides[0];
     const size_t strres=vec3.pdatastruct.pstrides[0];
-    #pragma omp parallel for simd
+    #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
     for(size_t i=0; i<n; i++)
     {
         vec3(i,strres)=vec1(i,strv1)+vec2(i,strv2);
@@ -4245,7 +4251,7 @@ __attribute__((always_inline)) inline  void vector_subtract( const mdspan<T, Con
     const size_t strv1=vec1.pdatastruct.pstrides[0];
     const size_t strv2=vec2.pdatastruct.pstrides[0];
     const size_t strres=vec3.pdatastruct.pstrides[0];
-    #pragma omp parallel for simd
+    #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
     for(size_t i=0; i<n; i++)
     {
         vec3(i,strres)=vec1(i,strv1)-vec2(i,strv2);
