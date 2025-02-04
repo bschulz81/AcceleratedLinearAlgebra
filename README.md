@@ -7,6 +7,7 @@ It has support for rowmajor and column mayor data (but that is not suffciently t
 
 The library uses open-mp and openacc. It contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
 
+
 The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms can also work entirely on GPU, in that case, they can only use naive matrix multiplication.
 
 Initial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
@@ -19,7 +20,4 @@ On clang, offload problems exist and the library does not work correctly, due to
 
 The cmakelists.txt creates a project for a simple test application that demonstrates some of the usage of the library with a bit documentation.
 
-
-
-.
-
+As of 04.02, i have used the __restrict and const keyword whereever useful. Apparently, by default nvc++ assumes that the pointers overlap (which i find quite strange, since this implies that the assumption is that a programmer writes a vector loop without knowing when this is possible. If given the restrict keyword, the gpu code is now much faster. Most warnings of non-parallelizable code are issued for functions and loops where no parallelization should happen (e.g. a printmatrix function). But there are still some issues with openmp loops. Openmp has no "independent" clause as it assumes the programmer to know what he does. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies that clearly are not there.
