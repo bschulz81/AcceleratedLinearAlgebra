@@ -14,7 +14,7 @@ Initial support for the message passing interface was added. But not tested yet.
 
 A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with Nvidia's nvc++ compiler from Nvidia's hpc sdk.
 
-Compilation with Gcc currently produces an internal compiler error due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 . For Windows support, one would have to add Windows specific support for memory mapped files. 
+Compilation with Gcc currently produces an internal compiler error due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518. For Windows support, one would have to add Windows specific support for memory mapped files. 
 
 On clang, offload problems exist and the library does not work correctly, due to openacc being in the initial stages.
 
