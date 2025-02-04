@@ -128,7 +128,7 @@ template <typename T>struct datastruct
 
 
 
-#pragma acc routine seq    
+#pragma acc routine seq
 __attribute__((always_inline)) inline size_t  compute_offset(const size_t* __restrict indices,  size_t*__restrict  strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
@@ -536,12 +536,6 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
         return datastruct(sub_data,0,prowmajor,tile_rows, tile_cols,sub_extents,sub_strides,true,true);
     }
 }
-
-
-
-
-
-
 
 
 
@@ -2095,11 +2089,11 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             {
                 dot_pr += u(i,pstru0) * v(i,pstrv0);
             }
-
+            const T cdot_pr=dot_pr;
             #pragma acc loop worker independent
             for (size_t i = 0; i < pext0; ++i)
             {
-                v(i,pstrv0) -= dot_pr * u(i,pstru0);
+                v(i,pstrv0) -= cdot_pr * u(i,pstru0);
             }
         }
         // Normalize v
@@ -2117,7 +2111,7 @@ const T normc=norm;
 #pragma acc loop independent
         for (size_t i = 0; i < pext0; ++i)
         {
-            v(i,pstrv0)/=normc;
+            v(i,pstrv0)= v(i,pstrv0)/normc;
         }
 
         // Set column c of Q
@@ -3937,7 +3931,7 @@ acc_free(buffer);
             {
                 const auto u = Q.column(j);
                 const size_t ustr0=u.pdatastruct.pstrides[0];
-                T dot_pr =dot_product(u,v);
+                const T dot_pr =dot_product(u,v);
 
                  #pragma omp parallel for simd shared(ustr0,u,v,dot_pr)
                 for (size_t i = 0; i < n; ++i)
@@ -3947,7 +3941,7 @@ acc_free(buffer);
             }
 
             // Normalize v
-            T norm = sqrt(dot_product(v,v));
+            const T norm = sqrt(dot_product(v,v));
             #pragma omp parallel for simd shared(v,vstr0,norm)
             for (size_t i = 0; i < n; ++i)
             {
