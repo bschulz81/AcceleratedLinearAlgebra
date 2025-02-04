@@ -128,7 +128,7 @@ template <typename T>struct datastruct
 
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 __attribute__((always_inline)) inline size_t  compute_offset(const size_t* __restrict indices,  size_t*__restrict  strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
@@ -168,7 +168,7 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t row, co
 }
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 __attribute__((always_inline)) inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
@@ -225,14 +225,14 @@ __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t r
 }
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 template<typename T>
 __attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t*__restrict indices)
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
 
-#pragma acc routine vector
+#pragma acc routine seq
 template<typename T>
 __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t* __restrict indices)const
 {
@@ -536,12 +536,6 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
         return datastruct(sub_data,0,prowmajor,tile_rows, tile_cols,sub_extents,sub_strides,true,true);
     }
 }
-
-
-
-
-
-
 
 
 
@@ -1881,7 +1875,7 @@ template <typename T>
             }
             dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
         }
-
+       const T temp4=dU(c,c,strU0,strU1);
 #pragma acc loop independent
         for (size_t i = c; i < n; ++i)
         {
@@ -1892,7 +1886,7 @@ template <typename T>
                 temp += dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
             }
             temp=tempA(i,c,strtA0,strtA1)-temp;
-            dL(i,c,strL0,strL1)=temp/dU(c,c,strU0,strU1);
+            dL(i,c,strL0,strL1)=temp/temp4;
         }
     }
 
@@ -2095,11 +2089,11 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             {
                 dot_pr += u(i,pstru0) * v(i,pstrv0);
             }
-
+            const T cdot_pr=dot_pr;
             #pragma acc loop worker independent
             for (size_t i = 0; i < pext0; ++i)
             {
-                v(i,pstrv0) -= dot_pr * u(i,pstru0);
+                v(i,pstrv0) -= cdot_pr * u(i,pstru0);
             }
         }
         // Normalize v
@@ -2117,7 +2111,7 @@ const T normc=norm;
 #pragma acc loop independent
         for (size_t i = 0; i < pext0; ++i)
         {
-            v(i,pstrv0)/=normc;
+            v(i,pstrv0)= v(i,pstrv0)/normc;
         }
 
         // Set column c of Q
@@ -3613,11 +3607,11 @@ acc_free(buffer);
             #pragma omp parallel for simd reduction(-: tmp) shared(L,lstr0,lstr1)
             for (size_t k = z; k < c; ++k)
             {
-                T tmp3=L(c,k,lstr0,lstr1);
+                const T tmp3=L(c,k,lstr0,lstr1);
                 tmp-= tmp3 * tmp3;
             }
 
-            T temp4= sqrt(tmp);
+            const T temp4= sqrt(tmp);
             L(c, c,lstr0,lstr1) =temp4;
 
             #pragma omp parallel for shared(tempAstr0,tempAstr1,tempA)
@@ -3764,6 +3758,7 @@ acc_free(buffer);
                 U(c,i,ustr0,ustr1)=temp;
             }
 
+            const T temp4=U(c,c,ustr0,ustr1);
             #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
             for (size_t i = c; i < n; ++i)
             {
@@ -3773,7 +3768,7 @@ acc_free(buffer);
                 {
                     temp -= U(k,c,ustr0,ustr1) * L( i,k,lstr0,lstr1);
                 }
-                L(i,c,lstr0,lstr1)=temp/U(c,c,ustr0,ustr1);
+                L(i,c,lstr0,lstr1)=temp/temp4;
             }
         }
 
@@ -3805,7 +3800,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
 
        create_in_struct(dA);
        create_out_struct(dQ);
-        create_out_struct(dR);
+       create_out_struct(dR);
 #pragma acc enter data copyin(step_size)
 
 #pragma acc parallel present(dA,dQ,dR, step_size) deviceptr(buffer)
@@ -3937,7 +3932,7 @@ acc_free(buffer);
             {
                 const auto u = Q.column(j);
                 const size_t ustr0=u.pdatastruct.pstrides[0];
-                T dot_pr =dot_product(u,v);
+                const T dot_pr =dot_product(u,v);
 
                  #pragma omp parallel for simd shared(ustr0,u,v,dot_pr)
                 for (size_t i = 0; i < n; ++i)
@@ -3947,7 +3942,7 @@ acc_free(buffer);
             }
 
             // Normalize v
-            T norm = sqrt(dot_product(v,v));
+            const T norm = sqrt(dot_product(v,v));
             #pragma omp parallel for simd shared(v,vstr0,norm)
             for (size_t i = 0; i < n; ++i)
             {
@@ -3958,7 +3953,7 @@ acc_free(buffer);
             #pragma omp parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)
             for (size_t i = 0; i < n; ++i)
             {
-                Q( i,c,Qstr0,Qstr1) = v(i,vstr0);
+                Q(i,c,Qstr0,Qstr1) = v(i,vstr0);
             }
         }
 
@@ -4054,7 +4049,7 @@ exit_struct(dC);
             for (size_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
-                #pragma omp parallel for simd reduction (+:sum)  shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
+                #pragma omp parallel for simd reduction (+:sum)  shared(inner_dim, strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
                     sum += dA(i, k,strA0,strA1) * dB(k, j,strB0,strB1);
