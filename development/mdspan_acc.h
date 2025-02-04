@@ -128,7 +128,7 @@ template <typename T>struct datastruct
 
 
 
-#pragma acc routine vector
+#pragma acc routine seq    
 __attribute__((always_inline)) inline size_t  compute_offset(const size_t* __restrict indices,  size_t*__restrict  strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
@@ -168,7 +168,7 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t row, co
 }
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 __attribute__((always_inline)) inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
