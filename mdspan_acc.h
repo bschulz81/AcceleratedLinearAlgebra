@@ -127,56 +127,28 @@ template <typename T>struct datastruct
 
 
 
-
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t  compute_offset(const size_t* __restrict indices,  size_t*__restrict  strides,const size_t r, bool rowmajor=true)
-{
-    size_t offset = 0;
-
-    if (rowmajor)
-    {
-        // Row-major layout: iterate outermost to innermost
-#pragma acc loop vector independent reduction(+ : offset)
-        for (size_t i = 0; i < r; ++i)
-        {
-            offset += indices[i] * strides[i];
-        }
-    }
-    else
-    {
-        // Column-major layout: iterate innermost to outermost
-#pragma acc loop vector independent reduction(+ : offset)
-        for (size_t i = 0; i < r; ++i)
-        {
-            offset += indices[r - 1 - i] * strides[r - 1 - i];
-        }
-    }
-
-    return offset;
-}
-
-#pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_offset(const size_t row, const size_t col,  size_t*__restrict  strides)
+inline size_t compute_offset(const size_t row, const size_t col,  size_t*__restrict  strides)
 {
     return row * strides[0]+col*strides[1];
 }
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_offset(const size_t row, const size_t col, const size_t matrixstride0, const size_t matrixstride1)
+inline size_t compute_offset(const size_t row, const size_t col, const size_t matrixstride0, const size_t matrixstride1)
 {
     return row * matrixstride0+col*matrixstride1;
 }
 
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+ inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
 
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-#pragma acc loop vector independent reduction(+ : offset)
+//#pragma acc loop vector independent reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -185,7 +157,7 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t * __res
     else
     {
         // Column-major layout: iterate innermost to outermost
-#pragma acc loop vector independent reduction(+ : offset)
+//#pragma acc loop vector independent reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -197,10 +169,10 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t * __res
 
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_data_length(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
+ inline size_t compute_data_length(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
-#pragma acc loop vector independent reduction(+:offset)
+//#pragma acc loop vector independent reduction(+:offset)
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
@@ -210,7 +182,7 @@ __attribute__((always_inline)) inline size_t compute_data_length(const size_t*__
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t row, const size_t stride)
+inline T& datastruct<T>::operator()(const size_t row, const size_t stride)
 {
 
     return pdata[row * stride];
@@ -218,7 +190,7 @@ __attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t 
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t row, const size_t stride)const
+ inline T datastruct<T>::operator()(const size_t row, const size_t stride)const
 {
 
     return pdata[row * stride];
@@ -227,28 +199,28 @@ __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t r
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t*__restrict indices)
+inline T& datastruct<T>::operator()(const size_t*__restrict indices)
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t* __restrict indices)const
+ inline T datastruct<T>::operator()(const size_t* __restrict indices)const
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)const
+inline T datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)const
 {
     return pdata[row * strides0 + col *strides1];
 }
 
 #pragma acc routine seq
 template<typename T>
-__attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)
+inline T& datastruct<T>::operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)
 {
     return pdata[row * strides0 + col * strides1];
 }
@@ -270,7 +242,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t* __rest
 
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline void fill_strides(const size_t* __restrict extents,size_t* __restrict strides, const size_t rank, const bool rowmajor)
+ inline void fill_strides(const size_t* __restrict extents,size_t* __restrict strides, const size_t rank, const bool rowmajor)
 {
     if (rowmajor)
     {
@@ -296,14 +268,14 @@ __attribute__((always_inline)) inline void fill_strides(const size_t* __restrict
 }
 
 
-#pragma acc routine seq
+#pragma acc routine
 template<typename T> datastruct<T>::datastruct(
     T* __restrict data,
      size_t datalength,
      bool rowm,
      size_t rank,
-    size_t* __restrict extents,
-    size_t* __restrict strides,
+     size_t* __restrict extents,
+     size_t* __restrict strides,
      bool compute_datalength,
      bool compute_strides_from_extents
 ) : pdata(data),
@@ -326,15 +298,15 @@ template<typename T> datastruct<T>::datastruct(
 }
 
 
-#pragma acc routine seq
+#pragma acc routine
 template<typename T> datastruct<T>::datastruct(
-    T* __restrict data,
+     T* __restrict data,
      size_t datalength,
      bool rowm,
      size_t rows,
      size_t cols,
-    size_t* __restrict extents,
-    size_t* __restrict strides,
+     size_t* __restrict extents,
+     size_t* __restrict strides,
      bool compute_datalength,
      bool compute_strides_from_extents
 ) : pdata(data),
@@ -362,7 +334,7 @@ template<typename T> datastruct<T>::datastruct(
 }
 
 
-#pragma acc routine seq
+#pragma acc routine
 template<typename T> datastruct<T>::datastruct(
     T* __restrict data,
     size_t datalength,
@@ -404,7 +376,7 @@ template<typename T> datastruct<T>::~datastruct()
 }
 
 
-#pragma acc routine seq
+#pragma acc routine
 template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* sub_data)
 {
     size_t offset_index = 0;
@@ -413,7 +385,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
     {
 
 
-#pragma acc loop vector independent reduction( + : offset_index )
+//#pragma acc loop vector independent reduction( + : offset_index )
         for (size_t i = 0; i < r; ++i)
         {
             offset_index += poffsets[i] * pstrides[i];
@@ -430,7 +402,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
         indices=new size_t[r];
         global_indices= new size_t[r];
 
-#pragma acc loop vector independent
+//#pragma acc loop vector independent
         for (size_t i=0; i<r; i++)
         {
             indices[i]=0;
@@ -441,7 +413,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
         while (true)
         {
             // Compute the current global indices
-#pragma acc loop vector independent
+//#pragma acc loop vector independent
             for (size_t i = 0; i < r; ++i)
             {
                 global_indices[i] = poffsets[i] + indices[i];
@@ -488,7 +460,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
 }
 
 
-#pragma acc routine seq
+#pragma acc routine
 template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *sub_extents,  size_t *sub_strides,  T*sub_data)
 {
     if(sub_data==nullptr)
@@ -507,7 +479,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             // Row-major layout: fill row by row
 //#pragma acc loop auto collapse (2)
 
-        #pragma acc loop  independent collapse(2)
+    //    #pragma acc loop  independent collapse(2)
             for (size_t i = 0; i < tile_rows; ++i)
             {
                 for (size_t j = 0; j < tile_cols; ++j)
@@ -523,7 +495,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             const T* __restrict pd=this->pdata;
             // Column-major layout: fill column by column
 //#pragma acc loop auto collapse (2)
-#pragma acc loop independent collapse(2)
+//#pragma acc loop independent collapse(2)
             for (size_t j = 0; j < tile_cols; ++j)
             {
                 for (size_t i = 0; i < tile_rows; ++i)
@@ -543,7 +515,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
 
 
 
-#pragma acc routine seq
+#pragma acc routine
 template <typename T>
 datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict extents,size_t *__restrict  new_strides)
 {
@@ -560,7 +532,7 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict exte
 
 
 
-#pragma acc routine seq
+#pragma acc routine
 template <typename T>
 datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t *__restrict new_strides)
 {
@@ -2281,7 +2253,7 @@ inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct
 #pragma acc routine worker
 
 template <typename T>
-__attribute__((always_inline)) inline bool gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+inline bool gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2306,7 +2278,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_add_w(const datastruct<T>&
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline bool gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+ inline bool gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2329,7 +2301,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_subtract_w(const datastruc
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
+ inline bool gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2354,7 +2326,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const d
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datastruct<T> & C)
+ inline bool gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2379,7 +2351,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_vector_w( const d
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline bool gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, datastruct<T>& C)
+ inline bool gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
     // Perform matrix multiplication: C = A * B
 
@@ -2402,7 +2374,7 @@ __attribute__((always_inline)) inline bool gpu_matrix_multiply_scalar_w(  const 
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
@@ -2414,7 +2386,7 @@ __attribute__((always_inline)) inline void gpu_vector_scalar_multiply_w( const d
 }
 
 template <typename T>
-__attribute__((always_inline)) inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& vec2, datastruct<T>& res)
+inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& vec2, datastruct<T>& res)
 {
     const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
@@ -2428,7 +2400,7 @@ __attribute__((always_inline)) inline void gpu_cross_product( const datastruct<T
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
       const size_t strv1=vec1.pstrides[0];
@@ -2444,7 +2416,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_w( const datastruct<T>
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
          const size_t strv1=vec1.pstrides[0];
@@ -2461,7 +2433,7 @@ __attribute__((always_inline)) inline void gpu_vector_subtract_w( const datastru
 
 #pragma acc routine worker
 template <typename T>
-__attribute__((always_inline)) inline T gpu_dot_product_w(const  datastruct<T> vec1, const datastruct<T> vec2)
+ inline T gpu_dot_product_w(const  datastruct<T> vec1, const datastruct<T> vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -2480,7 +2452,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_w(const  datastruct<T> v
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+ inline  void gpu_matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2504,7 +2476,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_add_v(const datastruct<T>
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+ inline  void gpu_matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2526,7 +2498,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_subtract_v(const datastru
 }
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
+inline  void gpu_matrix_multiply_vector_v( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2551,7 +2523,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const 
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const datastruct<T>M, const T*V, datastruct<T> & C)
+ inline  void gpu_matrix_multiply_vector_v( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2576,7 +2548,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_vector_v( const 
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, datastruct<T>& C)
+ inline  void gpu_matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
     // Perform matrix multiplication: C = A * B
 
@@ -2598,7 +2570,7 @@ __attribute__((always_inline)) inline  void gpu_matrix_multiply_scalar_v(  const
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+inline  void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
@@ -2613,7 +2585,7 @@ __attribute__((always_inline)) inline  void gpu_vector_scalar_multiply_v( const 
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline void gpu_vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
       const size_t strv1=vec1.pstrides[0];
@@ -2629,7 +2601,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_v( const datastruct<T>
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline  void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline  void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
          const size_t strv1=vec1.pstrides[0];
@@ -2645,7 +2617,7 @@ __attribute__((always_inline)) inline  void gpu_vector_subtract_v( const datastr
 
 #pragma acc routine vector
 template <typename T>
-__attribute__((always_inline)) inline T gpu_dot_product_v(const  datastruct<T> vec1, const datastruct<T> vec2)
+ inline T gpu_dot_product_v(const  datastruct<T> vec1, const datastruct<T> vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -2663,7 +2635,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_v(const  datastruct<T> v
 #pragma acc routine seq
 
 template <typename T>
-__attribute__((always_inline)) inline void gpu_matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+inline void gpu_matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2688,7 +2660,7 @@ __attribute__((always_inline)) inline void gpu_matrix_add_s(const datastruct<T>&
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_matrix_subtract_s(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+ inline void gpu_matrix_subtract_s(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
     const size_t n=A.pextents[0];
     const size_t m=A.pextents[1];
@@ -2711,7 +2683,7 @@ __attribute__((always_inline)) inline void gpu_matrix_subtract_s(const datastruc
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
+ inline void gpu_matrix_multiply_vector_s( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2735,7 +2707,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const datastruct<T>M, const T*V, datastruct<T> & C)
+ inline void gpu_matrix_multiply_vector_s( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
     // Perform matrix multiplication: C = A * B
@@ -2760,7 +2732,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_matrix_multiply_scalar_s(  const datastruct<T>& M, const T V, datastruct<T>& C)
+ inline void gpu_matrix_multiply_scalar_s(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
     // Perform matrix multiplication: C = A * B
 
@@ -2783,7 +2755,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_scalar_s(  const 
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_scalar_multiply_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+ inline void gpu_vector_scalar_multiply_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
@@ -2797,7 +2769,7 @@ __attribute__((always_inline)) inline void gpu_vector_scalar_multiply_s( const d
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_add_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline void gpu_vector_add_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
       const size_t strv1=vec1.pstrides[0];
@@ -2813,7 +2785,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_s( const datastruct<T>
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline void gpu_vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+ inline void gpu_vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.pextents[0];
          const size_t strv1=vec1.pstrides[0];
@@ -2830,7 +2802,7 @@ __attribute__((always_inline)) inline void gpu_vector_subtract_s( const datastru
 
 #pragma acc routine seq
 template <typename T>
-__attribute__((always_inline)) inline T gpu_dot_product_s(const  datastruct<T> vec1, const datastruct<T> vec2)
+ inline T gpu_dot_product_s(const  datastruct<T> vec1, const datastruct<T> vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -4064,7 +4036,7 @@ exit_struct(dC);
 
 
 template <typename T, typename CA,typename CB,typename CC>
-__attribute__((always_inline)) inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C)
+inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
 
     const size_t rows = C.pdatastruct.pextents[0];
@@ -4090,7 +4062,7 @@ __attribute__((always_inline)) inline  bool matrix_add( const mdspan<T, CA>& A,c
     return true;
 }
 template <typename T, typename CA,typename CB,typename CC>
-__attribute__((always_inline)) inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C)
+inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
 
     const size_t rows = C.pdatastruct.pextents[0];
@@ -4119,7 +4091,7 @@ __attribute__((always_inline)) inline  bool matrix_subtract( const mdspan<T, CA>
 
 
 template <typename T, typename CA,typename CB,typename CC>
-__attribute__((always_inline)) inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& V, mdspan<T, CC>& C)
+inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& V, mdspan<T, CC>& C)
 {
 
 
@@ -4148,7 +4120,7 @@ __attribute__((always_inline)) inline bool matrix_multiply_vector(const mdspan<T
 }
 
 template <typename T, typename CA,typename CB,typename CC>
-__attribute__((always_inline)) inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
+inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
 {
 
 
@@ -4175,7 +4147,7 @@ __attribute__((always_inline)) inline  bool matrix_multiply_vector(const mdspan<
 }
 
 template <typename T, typename CA,typename CC>
-__attribute__((always_inline)) inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T, CC>& C)
+inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T, CC>& C)
 {
 
 
@@ -4206,7 +4178,7 @@ __attribute__((always_inline)) inline  bool matrix_multiply_scalar(const mdspan<
 }
 
 template <typename T, typename Container>
-__attribute__((always_inline)) inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2)
+inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2)
 {
 
   const size_t n = vec1.pdatastruct.pextents[0];
@@ -4224,7 +4196,7 @@ __attribute__((always_inline)) inline  T dot_product(const  mdspan<T, Container>
 }
 
 template <typename T, typename Container>
-__attribute__((always_inline)) inline  void vector_scalar_multiply( const mdspan<T, Container>& vec, const T scalar,mdspan<T, Container>& res)
+inline  void vector_scalar_multiply( const mdspan<T, Container>& vec, const T scalar,mdspan<T, Container>& res)
 {
    const size_t n = vec.pdatastruct.pextents[0];
 
@@ -4241,7 +4213,7 @@ __attribute__((always_inline)) inline  void vector_scalar_multiply( const mdspan
 
 
 template <typename T, typename Container>
-__attribute__((always_inline)) inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Container>& vec2, mdspan<T, Container>& res)
+inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Container>& vec2, mdspan<T, Container>& res)
 {
     const size_t strv1=vec1.pdatastruct.pstrides[0];
     const size_t strv2=vec2.pdatastruct.pstrides[0];
@@ -4253,7 +4225,7 @@ __attribute__((always_inline)) inline  void cross_product(const mdspan<T, Contai
 
 }
 template <typename T, typename Container>
-__attribute__((always_inline)) inline  void vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
+inline  void vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
    const size_t n = vec1.pdatastruct.pextents[0];
     const size_t strv1=vec1.pdatastruct.pstrides[0];
@@ -4267,7 +4239,7 @@ __attribute__((always_inline)) inline  void vector_add( const mdspan<T, Containe
 }
 
 template <typename T, typename Container>
-__attribute__((always_inline)) inline  void vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
+inline  void vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
    const size_t n = vec1.pdatastruct.pextents[0];
     const size_t strv1=vec1.pdatastruct.pstrides[0];
