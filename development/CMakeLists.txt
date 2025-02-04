@@ -9,15 +9,14 @@ set(CMAKE_CXX_STANDARD 23 )
 #GCC compiler flags. currently show an internal compiler error
 
 #SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenacc -foffload=nvptx-none  -fcf-protection=none -fno-stack-protector -U_FORTIFY_SOURCE -std=c++23  -no-pie")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenacc -foffload=nvptx-none -foffload=-malias -fcf-protection=none -fno-stack-protector -U_FORTIFY_SOURCE -std=c++23  -no-pie")
 
 #Nvidia's nvc++ compiler. Path should be set manually.
-set (LANGUAGES "C;CXX")
+#set (LANGUAGES "C;CXX")
 find_package(OpenACC REQUIRED)
 set (CompilerPath "/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/compilers/bin")
 set (CMAKE_CXX_COMPILER "nvc++" CACHE STRING "C++ compiler" FORCE)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20   -acc=gpu -mp=multicore -Minfo=accel")
-
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20  -O4 -acc=gpu -mp=multicore -gpu=cuda12.6 -Minfo=all")
 project(arraytest VERSION 1.0)
 
 #set project binary folder:
@@ -34,17 +33,14 @@ link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.1/REDIST/compiler
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
     message(STATUS "Configuring for NVIDIA compiler (nvc++)")
-    target_compile_options(arraytest PRIVATE -std=c++20 -acc -gpu=cuda12.6 -Minfo=accel)
     target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi )
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
-    target_compile_options(arraytest PRIVATE -fopenacc -fopenmp -foffload=nvptx-none  -fcf-protection=none -fno-stack-protector -U_FORTIFY_SOURCE -std=c++23  -no-pie )
     target_link_libraries(arraytest PRIVATE rt m c stdc++ omp mpi)
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Configuring for Clang compiler")
-    target_compile_options(arraytest PRIVATE -fopenacc  -fopenmp   -fopenmp-targets=nvptx64-nvidia-cuda  -Wall )
     target_link_libraries(arraytest PRIVATE rt m c stdc++ gomp mpi)
 endif()
