@@ -16,7 +16,7 @@ set(CMAKE_CXX_STANDARD 23 )
 find_package(OpenACC REQUIRED)
 set (CompilerPath "/opt/nvidia/hpc_sdk/Linux_x86_64/25.1/compilers/bin")
 set (CMAKE_CXX_COMPILER "nvc++" CACHE STRING "C++ compiler" FORCE)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20  -O4 -acc=gpu -mp=multicore -gpu=cuda12.6 -Minfo=all")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20  -O4 -acc=gpu -mp=multicore -Msafeptr=all -gpu=cuda12.6 -Minfo=all")
 project(arraytest VERSION 1.0)
 
 #set project binary folder:
