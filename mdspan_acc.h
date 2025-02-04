@@ -64,9 +64,9 @@ struct matrix_multiplication_parameters
 
 template <typename T>struct datastruct
 {
-    T* pdata = nullptr;
-    size_t* pextents = nullptr;
-    size_t* pstrides = nullptr;
+    T* __restrict pdata = nullptr;
+    size_t* __restrict pextents = nullptr;
+    size_t* __restrict pstrides = nullptr;
     size_t pdatalength = 0;
     size_t prank = 0;
     bool prowmajor=true;
@@ -75,39 +75,39 @@ template <typename T>struct datastruct
        size_t pdatalength,
        bool rowm,
         size_t rank,
-       size_t* extents=nullptr,
-       size_t* strides = nullptr,
+       size_t* __restrict extents=nullptr,
+       size_t* __restrict strides = nullptr,
        bool pcompute_datalength=false,
        bool compute_strides_from_extents=false
     );
 
     datastruct(
-        T* data,
+        T*__restrict  data,
          size_t datalength,
          bool rowm,
          size_t rows,
          size_t cols,
-        size_t* extents=nullptr,
-        size_t* strides = nullptr,
+        size_t* __restrict extents=nullptr,
+        size_t* __restrict strides = nullptr,
          bool compute_datalength=true,
          bool compute_strides_from_extents=false
     );
 
     datastruct(
-        T* data,
+        T* __restrict data,
          size_t datalength,
          bool rowm,
          bool rowvector,
          size_t length,
-        size_t* extents=nullptr,
-        size_t* strides =nullptr,
+        size_t* __restrict extents=nullptr,
+        size_t* __restrict strides =nullptr,
          bool compute_datalength=true,
          bool compute_strides_from_extents=true
     );
 
     ~datastruct();
-    T&operator()(const size_t* indices) __attribute__((always_inline));;
-    T operator()(const size_t* indices)const __attribute__((always_inline));;
+    T&operator()(const size_t* __restrict indices) __attribute__((always_inline));;
+    T operator()(const size_t* __restrict indices)const __attribute__((always_inline));;
 
     T&operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1) __attribute__((always_inline));;
     T operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)const __attribute__((always_inline));;
@@ -116,20 +116,20 @@ template <typename T>struct datastruct
     T operator()(const size_t row, const size_t stride)const __attribute__((always_inline));
 
 
-    datastruct<T> substruct(const size_t *poffsets, const size_t *psub_extents, size_t*psub_strides=nullptr, T* sub_data=nullptr) ;
+    datastruct<T> substruct(const size_t __restrict *poffsets, const size_t __restrict *psub_extents, size_t* __restrict psub_strides=nullptr, T* __restrict sub_data=nullptr) ;
     datastruct<T> subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,
-                                 size_t*sub_extents, size_t *sub_strides=nullptr,  T*sub_data=nullptr) ;
+                                 size_t* __restrict sub_extents, size_t *__restrict sub_strides=nullptr,  T*__restrict  sub_data=nullptr) ;
 
-    datastruct<T> transpose(size_t*newextents, size_t *newstrides);
-    datastruct<T> row(const size_t row_index,size_t *newextents,size_t*newstrides);
-    datastruct<T> column(const size_t col_index,size_t *newextents,size_t *newstrides);
+    datastruct<T> transpose(size_t*__restrict newextents, size_t * __restrict newstrides);
+    datastruct<T> row(const size_t row_index,size_t *__restrict newextents,size_t* __restrictnewstrides);
+    datastruct<T> column(const size_t col_index,size_t *__restrict newextents,size_t * __restrict newstrides);
 };
 
 
 
 
 #pragma acc routine vector
-__attribute__((always_inline)) inline size_t  compute_offset(const size_t* indices,  size_t* strides,const size_t r, bool rowmajor=true)
+__attribute__((always_inline)) inline size_t  compute_offset(const size_t* __restrict indices,  size_t*__restrict  strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
 
@@ -156,7 +156,7 @@ __attribute__((always_inline)) inline size_t  compute_offset(const size_t* indic
 }
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_offset(const size_t row, const size_t col,  size_t* strides)
+__attribute__((always_inline)) inline size_t compute_offset(const size_t row, const size_t col,  size_t*__restrict  strides)
 {
     return row * strides[0]+col*strides[1];
 }
@@ -169,7 +169,7 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t row, co
 
 
 #pragma acc routine vector
-__attribute__((always_inline)) inline size_t compute_offset(const size_t *indices, const size_t* strides,const size_t r, bool rowmajor=true)
+__attribute__((always_inline)) inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
 
@@ -197,7 +197,7 @@ __attribute__((always_inline)) inline size_t compute_offset(const size_t *indice
 
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline size_t compute_data_length(const size_t* extents, const size_t* strides,const size_t rank)
+__attribute__((always_inline)) inline size_t compute_data_length(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
 #pragma acc loop vector independent reduction(+:offset)
@@ -227,14 +227,14 @@ __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t r
 
 #pragma acc routine vector
 template<typename T>
-__attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t* indices)
+__attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t*__restrict indices)
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
 
 #pragma acc routine vector
 template<typename T>
-__attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t* indices)const
+__attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t* __restrict indices)const
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
@@ -256,7 +256,7 @@ __attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t 
 
 
 #pragma acc routine seq
-template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t*newextents, size_t *newstrides)
+template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t* __restrict newextents, size_t *newstrides)
 {
     newextents[0]=pextents[1];
     newextents[1]=pextents[0];
@@ -270,7 +270,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t*newexte
 
 
 #pragma acc routine seq
-__attribute__((always_inline)) inline void fill_strides(const size_t* extents,size_t* strides, const size_t rank, const bool rowmajor)
+__attribute__((always_inline)) inline void fill_strides(const size_t* __restrict extents,size_t* __restrict strides, const size_t rank, const bool rowmajor)
 {
     if (rowmajor)
     {
@@ -298,12 +298,12 @@ __attribute__((always_inline)) inline void fill_strides(const size_t* extents,si
 
 #pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
-    T* data,
+    T* __restrict data,
      size_t datalength,
      bool rowm,
      size_t rank,
-    size_t* extents,
-    size_t* strides,
+    size_t* __restrict extents,
+    size_t* __restrict strides,
      bool compute_datalength,
      bool compute_strides_from_extents
 ) : pdata(data),
@@ -328,13 +328,13 @@ template<typename T> datastruct<T>::datastruct(
 
 #pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
-    T* data,
+    T* __restrict data,
      size_t datalength,
      bool rowm,
      size_t rows,
      size_t cols,
-    size_t* extents,
-    size_t* strides,
+    size_t* __restrict extents,
+    size_t* __restrict strides,
      bool compute_datalength,
      bool compute_strides_from_extents
 ) : pdata(data),
@@ -364,13 +364,13 @@ template<typename T> datastruct<T>::datastruct(
 
 #pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
-    T* data,
+    T* __restrict data,
     size_t datalength,
     bool rowm,
     bool rowvector,
     size_t noelements,
-    size_t* extents,
-    size_t* strides,
+    size_t* __restrict extents,
+    size_t* __restrict strides,
     bool compute_datalength,
     bool compute_strides_from_extents
 ) : pdata(data),
@@ -405,7 +405,7 @@ template<typename T> datastruct<T>::~datastruct()
 
 
 #pragma acc routine vector
-template<typename T>datastruct<T> datastruct<T>::substruct(const size_t *poffsets,const size_t *psub_extents, size_t*psub_strides, T* sub_data)
+template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* sub_data)
 {
     size_t offset_index = 0;
     const size_t r=this->prank;
@@ -424,8 +424,8 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t *poffset
     else
     {
         // Compute the new strides for the subspan
-        size_t *indices;
-        size_t *global_indices;
+        size_t * __restrict indices;
+        size_t *__restrict global_indices;
 
         indices=new size_t[r];
         global_indices= new size_t[r];
@@ -503,7 +503,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
         {
             const size_t s0=pstrides[0];
             const size_t s1=pstrides[1];
-            const T* pd=this->pdata;
+            const T* __restrict pd=this->pdata;
             // Row-major layout: fill row by row
 //#pragma acc loop auto collapse (2)
 
@@ -512,7 +512,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             {
                 for (size_t j = 0; j < tile_cols; ++j)
                 {
-                    sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
+                    sub_data[i * tile_cols + j] = pdata[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
@@ -520,7 +520,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
         {
             const size_t s0=pstrides[0];
             const size_t s1=pstrides[1];
-            const T* pd=this->pdata;
+            const T* __restrict pd=this->pdata;
             // Column-major layout: fill column by column
 //#pragma acc loop auto collapse (2)
 #pragma acc loop independent collapse(2)
@@ -528,7 +528,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             {
                 for (size_t i = 0; i < tile_rows; ++i)
                 {
-                    sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
+                    sub_data[j * tile_rows + i] = pdata[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
@@ -551,11 +551,11 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
 
 #pragma acc routine seq
 template <typename T>
-datastruct<T> datastruct<T>::row(const size_t row_index, size_t* extents,size_t *new_strides)
+datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict extents,size_t *__restrict  new_strides)
 {
 
     // Offset the data pointer to the start of the row
-    T* row_data = pdata + row_index * pstrides[0];
+    T* __restrict row_data = pdata + row_index * pstrides[0];
 
     // Fill the extents array with the appropriate values for the row
     extents[0] = pextents[1]; // Extent for a row is the number of columns
@@ -568,10 +568,10 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* extents,size_t 
 
 #pragma acc routine seq
 template <typename T>
-datastruct<T> datastruct<T>::column(const size_t col_index, size_t* extents,size_t *new_strides)
+datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t __restrict *new_strides)
 {
     // Offset the data pointer to the start of the column
-    T* col_data = pdata + col_index * pstrides[1];
+    T* __restrict col_data = pdata + col_index * pstrides[1];
 
     // Fill the extents array with the appropriate values for the column
     extents[0] = pextents[0]; // Extent for a column is the number of rows
@@ -785,10 +785,10 @@ public:
 
     // Constructors
     // Simplified constructors
-    mdspan(T* data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides);
-    mdspan(T* data, const bool rowm, const Container& extents, const Container& strides);
-    mdspan(T* data,const bool rowm, const Container& extents);
-    mdspan(T* data, const bool rowm,const size_t rows,const size_t cols);
+    mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides);
+    mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides);
+    mdspan(T* __restrict data,const bool rowm, const Container& extents);
+    mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols);
 
     mdspan(const size_t datalength, const bool rowm, const bool memmap, const Container& extents, const Container& strides);
     mdspan(const bool rowm,const  bool memmap, const Container& extents, const Container& strides);
@@ -813,7 +813,7 @@ public:
     inline T operator()(const size_t i, const size_t stride)const;
     inline T& operator()(const size_t i, const size_t stride);
     // Subspan methods
-    mdspan<T, Container> subspan(const Container& offsets, const Container& sub_extents, T* sub_data=nullptr) const;
+    mdspan<T, Container> subspan(const Container& offsets, const Container& sub_extents, T* __restrict sub_data=nullptr) const;
     mdspan<T, Container> subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*sub_data=nullptr)const;
     mdspan<T, Container> row(const size_t row_index);
     mdspan<T, Container> column(const size_t col_index);
@@ -1220,7 +1220,7 @@ mdspan<T, Container> &  mdspan<T, Container>::operator=(mdspan<T, Container> && 
 
 
 template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, const Container &sub_extents, T*sub_data)const
+mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, const Container &sub_extents, T* __restrict sub_data)const
 {
     const size_t r=pdatastruct.prank;
 
@@ -1286,7 +1286,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
 }
 
 template <typename T, typename Container>inline
-mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*sub_data)const
+mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*__restrict  sub_data)const
 {
 
     if(sub_data==nullptr)
@@ -1615,7 +1615,7 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
 
 #pragma acc routine worker
 template <typename T>
-inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*buffer=nullptr, size_t step_size=0)
+inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*__restrict buffer=nullptr, size_t step_size=0)
 {
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
@@ -1630,8 +1630,8 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
 
     const size_t nn=n*n;
     // Allocate memory for S on the device
-    T* sdata;
-    T* adata;
+    T* __restrict sdata;
+    T* __restrict adata;
 
     if (buffer==(T*) nullptr)
        // sdata=(T*) acc_malloc(sizeof(T)*tempsize);
@@ -1760,7 +1760,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
 
 #pragma acc routine worker
 template <typename T>
- inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* buffer=nullptr, size_t step_size=0)
+ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T*__restrict buffer=nullptr, size_t step_size=0)
 {
 
     const size_t n = dA.pextents[0];
@@ -1776,8 +1776,8 @@ template <typename T>
     const size_t nn=n*n;
 
 
-    T* sdata;
-    T* adata;
+    T* __restrict sdata;
+    T* __restrict adata;
 
     if (buffer==nullptr)
      {
@@ -1908,7 +1908,7 @@ template <typename T>
 
 #pragma acc routine worker
 template <typename T >
-inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* buffer=nullptr, size_t step_size=0)
+inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer=nullptr, size_t step_size=0)
 {
     const size_t n = A.pextents[0]; // Number of rows (assuming 2D matrix)
     const size_t m = A.pextents[1]; // Number of columns
@@ -1917,9 +1917,9 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         step_size=(size_t)pow(A.pextents[0],0.8385);
 
     const size_t nm=n*m;
-    T* tempC;
-    T* tempS;
-    T* tempM;
+    T* __restrict tempC;
+    T* __restrict tempS;
+    T* __restrict tempM;
 
     if(buffer==nullptr)
       {
@@ -2079,7 +2079,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         // Extract column c of M
         size_t pextv[1];
         size_t pstrv[1];
-        datastruct<T> v = M.column(c,pextv,pstrv);
+        datastruct<T>  v = M.column(c,pextv,pstrv);
         const size_t pstrv0=pstrv[0];
         const size_t pext0=pextv[0];
         #pragma acc loop worker  independent
@@ -2113,18 +2113,18 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 norm=sqrt(norm);
 
 
-
-#pragma acc loop  independent
-        for (size_t i = 0; i < n; ++i)
+const T normc=norm;
+#pragma acc loop independent
+        for (size_t i = 0; i < pext0; ++i)
         {
-            v(i,pstrv0) = v(i,pstrv0)/norm;
+            v(i,pstrv0)/=normc;
         }
 
         // Set column c of Q
 
         const size_t h=c;
 #pragma acc loop  independent
-        for (size_t i = 0; i < n; ++i)
+        for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,h,qstr0,qstr1) = v(i,pstrv0);
         }
@@ -3513,7 +3513,8 @@ acc_free(buffer);
         size_t nn=n*n;
         size_t tempsize=(n-step_size)*(n-step_size);
 
-        T *sdata,*adata;
+        T __restrict *sdata;
+        T __restrict *adata;
 
         if(algorithm.memmapped_files)
         {
@@ -3632,7 +3633,7 @@ template <typename T, typename CA>
         const datastruct<T>dA=A.pdatastruct;
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+        T *buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
        create_in_struct(dA);
        create_out_struct(dL);
         create_out_struct(dU);
@@ -3807,7 +3808,9 @@ acc_free(buffer);
         // Initialize Q and R matrices
         size_t nm=n*m, mm=m*m;
 
-        T* tempC,*tempS,*tempM;
+        T __restrict * tempC;
+        T __restrict *tempS;
+        T __restrict *tempM;
 
         if(algorithm.memmapped_files)
         {
