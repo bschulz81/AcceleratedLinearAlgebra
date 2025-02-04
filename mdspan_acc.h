@@ -404,7 +404,7 @@ template<typename T> datastruct<T>::~datastruct()
 }
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* sub_data)
 {
     size_t offset_index = 0;
