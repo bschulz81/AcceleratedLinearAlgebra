@@ -116,7 +116,7 @@ template <typename T>struct datastruct
     T operator()(const size_t row, const size_t stride)const __attribute__((always_inline));
 
 
-    datastruct<T> substruct(const size_t __restrict *poffsets, const size_t __restrict *psub_extents, size_t* __restrict psub_strides=nullptr, T* __restrict sub_data=nullptr) ;
+    datastruct<T> substruct(const size_t * __restrict poffsets, const size_t * __restrict psub_extents, size_t* __restrict psub_strides=nullptr, T* __restrict sub_data=nullptr) ;
     datastruct<T> subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,
                                  size_t* __restrict sub_extents, size_t *__restrict sub_strides=nullptr,  T*__restrict  sub_data=nullptr) ;
 
@@ -562,7 +562,7 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict exte
 
 #pragma acc routine seq
 template <typename T>
-datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t __restrict *new_strides)
+datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t *__restrict new_strides)
 {
     // Offset the data pointer to the start of the column
     T* __restrict col_data = pdata + col_index * pstrides[1];
@@ -2090,7 +2090,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
                 dot_pr += u(i,pstru0) * v(i,pstrv0);
             }
             const T cdot_pr=dot_pr;
-            #pragma acc loop worker independent
+            #pragma acc loop independent
             for (size_t i = 0; i < pext0; ++i)
             {
                 v(i,pstrv0) -= cdot_pr * u(i,pstru0);
@@ -2673,7 +2673,7 @@ __attribute__((always_inline)) inline void gpu_matrix_add_s(const datastruct<T>&
             const size_t strB1=B.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-   #pragma acc loop seq independent collapse(2)
+   #pragma acc loop seq  collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2698,7 +2698,7 @@ __attribute__((always_inline)) inline void gpu_matrix_subtract_s(const datastruc
     const size_t strB1=B.pstrides[1];
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq independent collapse(2)
+     #pragma acc loop seq  collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
@@ -2722,7 +2722,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq independent collapse(2)
+     #pragma acc loop seq  collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -2745,7 +2745,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_vector_s( const d
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq independent collapse(2)
+     #pragma acc loop seq  collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2770,7 +2770,7 @@ __attribute__((always_inline)) inline void gpu_matrix_multiply_scalar_s(  const 
             const size_t strM1=M.pstrides[1];
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
-     #pragma acc loop seq independent collapse(2)
+     #pragma acc loop seq  collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
@@ -2787,7 +2787,7 @@ __attribute__((always_inline)) inline void gpu_vector_scalar_multiply_s( const d
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
-     #pragma acc loop independent seq
+     #pragma acc loop  seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec(i,resstr)*scalar;
@@ -2803,7 +2803,7 @@ __attribute__((always_inline)) inline void gpu_vector_add_s( const datastruct<T>
       const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-      #pragma acc loop independent seq
+      #pragma acc loop  seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
@@ -2819,7 +2819,7 @@ __attribute__((always_inline)) inline void gpu_vector_subtract_s( const datastru
          const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
      const size_t strres=res.pstrides[0];
-      #pragma acc loop independent seq
+      #pragma acc loop seq
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
@@ -2836,7 +2836,7 @@ __attribute__((always_inline)) inline T gpu_dot_product_s(const  datastruct<T> v
     const size_t strv1=vec1.pstrides[0];
     const size_t strv2=vec2.pstrides[0];
     T result=0;
-     #pragma acc loop independent seq
+     #pragma acc loop seq
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -3531,8 +3531,8 @@ acc_free(buffer);
         size_t nn=n*n;
         size_t tempsize=(n-step_size)*(n-step_size);
 
-        T __restrict *sdata;
-        T __restrict *adata;
+        T *__restrict sdata;
+        T *__restrict adata;
 
         if(algorithm.memmapped_files)
         {
@@ -3588,7 +3588,7 @@ acc_free(buffer);
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for collapse(2) shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
+                #pragma omp parallel for shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
                 for (size_t i = c; i < n; ++i)
                 {
                     #pragma omp parallel for simd shared(c, tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
@@ -3651,7 +3651,7 @@ template <typename T, typename CA>
         const datastruct<T>dA=A.pdatastruct;
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        T __restrict *buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+        T *__restrict buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
        create_in_struct(dA);
        create_out_struct(dL);
         create_out_struct(dU);
@@ -3828,9 +3828,9 @@ acc_free(buffer);
         // Initialize Q and R matrices
         size_t nm=n*m, mm=m*m;
 
-        T __restrict * tempC;
-        T __restrict *tempS;
-        T __restrict *tempM;
+        T* __restrict  tempC;
+        T *__restrict tempS;
+        T *__restrict tempM;
 
         if(algorithm.memmapped_files)
         {
@@ -4232,7 +4232,7 @@ __attribute__((always_inline)) inline  void vector_scalar_multiply( const mdspan
    const size_t strres=res.pdatastruct.pstrides[0];
 
 
-    #pragma omp parallel for simd shared(res strres, strv, scalar)
+    #pragma omp parallel for simd shared(res ,strres, strv, scalar)
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec(i,strv)*scalar;
