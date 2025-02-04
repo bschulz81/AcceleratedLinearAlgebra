@@ -36,7 +36,7 @@ If given the __restrict keyword, the gpu code is now much much faster and gets o
 
 Unfortunately, in contrast to openacc, openmp has no "independent" clause for loops. As a result, some openmp loops for the host are not vectorized with nvc++, sometimes this comes with the comment "not vectorized because unknown" from nvc++. 
 
-This seems to be different from other compilers, like gcc or clang, which can vectorize such code. Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590
+This seems to be different from other compilers, like gcc or clang, which can vectorize such code. Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
 
 
 
