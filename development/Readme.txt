@@ -31,13 +31,18 @@ As of 04.02, i have used the __restrict and const keyword where ever useful. App
 
 If given the __restrict keyword, the gpu code is now much much faster and gets out instantly. 
 
-(Most warnings of non-parallelizable code are now issued for functions and loops where no parallelization should happen (e.g. a printmatrix function, which is also strange. Why does the compiler try to parallelize code where no openacc or openmp pragma appeared). But there are still some issues with openmp loops. Openmp has no "independent" clause as it assumes the programmer to know what he does. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies that clearly are not there. Sometimes this comes with the comment "not vectorized because unknown" from nvc++. 
+(Most warnings of non-parallelizable code are now issued for functions and loops where no parallelization should happen (e.g. a printmatrix function, which is also strange. Why does the compiler try to parallelize code where no openacc or openmp pragma appeared). But there are still some issues with openmp loops. Openmp has no "independent" clause as it assumes the programmer to know what he does. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies that clearly are not there. Sometimes this comes with the comment "not vectorized because unknown" from nvc++.  
 
-This seems to be different from other compilers, like gcc or clang, which can vectorize such code. Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
+This seems to be different from other compilers, like gcc or clang, which can vectorize such code. On 04.02.25, I now added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This seems to remove some of the pointer overlapping assumptions and now some optimizations can finally take place.
+
+
+Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
 
 Openacc support is better developed in nvc++. The matrix multiplication can be parallelized with openacc and nvc++ on the device but nvc++ refuses to parallelize the exactly same code with open-mp pragmas for the host.
 
 Also, apparently, from functions denoted as worker, if they have a sequential loop, one can not call any other parallelized functions, including those denoted as vectors in nvc++ currently. Therefore, the matrix multiplications in the Cholesky/LU/QR decompositions within these loops had to be inlined. Also, vector loops in the constructors of the datastruct class were removed in order to prevent crashes. In the current applications, these loops would not even be called, but for tensors, this could lead to a slower creation, since some of the loops in these constructors for tensors with rank>2 could be parallelized in theory.
+
+
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
 
