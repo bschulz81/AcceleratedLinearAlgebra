@@ -512,7 +512,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             {
                 for (size_t j = 0; j < tile_cols; ++j)
                 {
-                    sub_data[i * tile_cols + j] = pdata[compute_offset(row + i, col + j, s0, s1)];
+                    sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
@@ -528,7 +528,7 @@ template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t ro
             {
                 for (size_t i = 0; i < tile_rows; ++i)
                 {
-                    sub_data[j * tile_rows + i] = pdata[compute_offset(row + i, col + j, s0, s1)];
+                    sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
                 }
             }
         }
@@ -2890,12 +2890,23 @@ bool strassen_multiply(const  mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<
     size_t s=half_n*half_p,
            s2=half_n*half_m,
            s3=half_m*half_p;
-    T* M1_storage,*M2_storage,*M3_storage,*M4_storage,*M5_storage,*M6_storage,*M7_storage,
-    * A_result1_storage,*B_result1_storage,
-    * A_result2_storage,*B_result2_storage,
-    * A_result3_storage,*B_result3_storage,
-    * A_result4_storage,*B_result4_storage,
-    * A_result5_storage,*B_result5_storage;
+    T* __restrict M1_storage;
+    T* __restrict M2_storage;
+    T* __restrict M3_storage;
+    T* __restrict M4_storage;
+    T* __restrict M5_storage;
+    T* __restrict M6_storage;
+    T* __restrict M7_storage;
+    T* __restrict A_result1_storage;
+    T* __restrict B_result1_storage;
+    T* __restrict A_result2_storage;
+    T* __restrict B_result2_storage;
+    T* __restrict A_result3_storage;
+    T* __restrict B_result3_storage;
+    T* __restrict A_result4_storage;
+    T* __restrict B_result4_storage;
+    T* __restrict A_result5_storage;
+    T* __restrict B_result5_storage;
 
 
     if (algorithm.memmapped_files)
@@ -3198,10 +3209,23 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
     size_t s2=half_n*half_m;
     size_t s3=half_m*half_p;
 
-    T* M1_storage,*M2_storage,*M3_storage,*M4_storage,*M5_storage,*M6_storage,*M7_storage,
-    *S1_result_storage,*S2_result_storage,*S3_result_storage,*S4_result_storage,\
-    *S5_result_storage,*S6_result_storage,*S7_result_storage,*S8_result_storage,
-    *T1_result_storage,*T2_result_storage;
+    T* __restrict M1_storage;
+    T* __restrict M2_storage;
+    T* __restrict M3_storage;
+    T* __restrict M4_storage;
+    T* __restrict M5_storage;
+    T* __restrict M6_storage;
+    T* __restrict M7_storage;
+    T* __restrict S1_result_storage;
+    T* __restrict S2_result_storage;
+    T* __restrict S3_result_storage;
+    T* __restrict S4_result_storage;
+    T* __restrict S5_result_storage;
+    T* __restrict S6_result_storage;
+    T* __restrict S7_result_storage;
+    T* __restrict S8_result_storage;
+    T* __restrict T1_result_storage;
+    T* __restrict T2_result_storage;
     if (algorithm.memmapped_files)
     {
         #pragma omp parallel shared (M1_storage,M2_storage,M3_storage,M4_storage,M5_storage,M6_storage,M7_storage, \
@@ -3633,7 +3657,7 @@ template <typename T, typename CA>
         const datastruct<T>dA=A.pdatastruct;
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        T *buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+        T __restrict *buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
        create_in_struct(dA);
        create_out_struct(dL);
         create_out_struct(dU);
@@ -3664,7 +3688,8 @@ acc_free(buffer);
         size_t n = A.extent(0);
         size_t tempsize=(n-step_size)*(n-step_size);
         size_t nn=n*n;
-        T *sdata,*adata;
+        T * __restrict sdata;
+        T * __restrict adata;
         if(algorithm.memmapped_files)
         {
             sdata=create_temp_mmap<T>(tempsize);
@@ -3776,7 +3801,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         datastruct<T> dA= A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        T* buffer=(T*) acc_malloc(2*(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]));
+        T* __restrict buffer=(T*) acc_malloc(2*(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]));
 
        create_in_struct(dA);
        create_out_struct(dQ);
