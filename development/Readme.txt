@@ -27,9 +27,18 @@ However, nvc++ apparently had problems to call these functions from a sequential
 Additionally, nvc++ often saw data dependencies in simple loops, where there are none, and refused to vectorize. More precisely, nvc++ is often confused by the matrix strides if no independent clause is added to the loops. 
 By now, (03.02.2025), the openacc pragmas were set such that nvc++ can vectorize more openacc loops.
 
+As of 04.02, i have used the __restrict and const keyword whereever useful. Apparently, by default nvc++ assumes that the pointers overlap (which i find quite strange, since this implies that the assumption is that a programmer writes a vector loop without knowing when this is possible. 
+
+If given the __restrict keyword, the gpu code is now much much faster and gets out instantly. 
+
+(Most warnings of non-parallelizable code are now issued for functions and loops where no parallelization should happen (e.g. a printmatrix function, which is also strange. why does the compiler try to parallelize code where no openacc or openmp pragma appeared). But there are still some issues with openmp loops. Openmp has no "independent" clause as it assumes the programmer to know what he does. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies that clearly are not there.
+
+
 Unfortunately, in contrast to openacc, openmp has no "independent" clause for loops. As a result, some openmp loops for the host are not vectorized with nvc++, sometimes this comes with the comment "not vectorized because unknown" from nvc++. 
 
 This seems to be different from other compilers, like gcc or clang, which can vectorize such code. Unfortunately, gcc and clang have difficulties with the open-acc and openmp offload by now, which is still in development for these open-source compilers. 
+
+
 
 4) On clang, the functions that offload to gpu fail, unfortunately.
 
