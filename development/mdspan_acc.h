@@ -1875,7 +1875,7 @@ template <typename T>
             }
             dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
         }
-
+       const T temp4=dU(c,c,strU0,strU1);
 #pragma acc loop independent
         for (size_t i = c; i < n; ++i)
         {
@@ -1886,7 +1886,7 @@ template <typename T>
                 temp += dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
             }
             temp=tempA(i,c,strtA0,strtA1)-temp;
-            dL(i,c,strL0,strL1)=temp/dU(c,c,strU0,strU1);
+            dL(i,c,strL0,strL1)=temp/temp4;
         }
     }
 
@@ -3607,11 +3607,11 @@ acc_free(buffer);
             #pragma omp parallel for simd reduction(-: tmp) shared(L,lstr0,lstr1)
             for (size_t k = z; k < c; ++k)
             {
-                T tmp3=L(c,k,lstr0,lstr1);
+                const T tmp3=L(c,k,lstr0,lstr1);
                 tmp-= tmp3 * tmp3;
             }
 
-            T temp4= sqrt(tmp);
+            const T temp4= sqrt(tmp);
             L(c, c,lstr0,lstr1) =temp4;
 
             #pragma omp parallel for shared(tempAstr0,tempAstr1,tempA)
@@ -3758,6 +3758,7 @@ acc_free(buffer);
                 U(c,i,ustr0,ustr1)=temp;
             }
 
+            const T temp4=U(c,c,ustr0,ustr1);
             #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
             for (size_t i = c; i < n; ++i)
             {
@@ -3767,7 +3768,7 @@ acc_free(buffer);
                 {
                     temp -= U(k,c,ustr0,ustr1) * L( i,k,lstr0,lstr1);
                 }
-                L(i,c,lstr0,lstr1)=temp/U(c,c,ustr0,ustr1);
+                L(i,c,lstr0,lstr1)=temp/temp4;
             }
         }
 
@@ -3799,7 +3800,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
 
        create_in_struct(dA);
        create_out_struct(dQ);
-        create_out_struct(dR);
+       create_out_struct(dR);
 #pragma acc enter data copyin(step_size)
 
 #pragma acc parallel present(dA,dQ,dR, step_size) deviceptr(buffer)
@@ -3952,7 +3953,7 @@ acc_free(buffer);
             #pragma omp parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)
             for (size_t i = 0; i < n; ++i)
             {
-                Q( i,c,Qstr0,Qstr1) = v(i,vstr0);
+                Q(i,c,Qstr0,Qstr1) = v(i,vstr0);
             }
         }
 
@@ -4048,7 +4049,7 @@ exit_struct(dC);
             for (size_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
-                #pragma omp parallel for simd reduction (+:sum)  shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
+                #pragma omp parallel for simd reduction (+:sum)  shared(inner_dim, strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
                     sum += dA(i, k,strA0,strA1) * dB(k, j,strB0,strB1);
