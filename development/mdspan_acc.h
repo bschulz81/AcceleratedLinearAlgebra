@@ -225,14 +225,14 @@ __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t r
 }
 
 
-#pragma acc routine vector
+#pragma acc routine seq
 template<typename T>
 __attribute__((always_inline)) inline T& datastruct<T>::operator()(const size_t*__restrict indices)
 {
     return pdata[compute_offset(indices, pstrides, prank)];
 }
 
-#pragma acc routine vector
+#pragma acc routine seq
 template<typename T>
 __attribute__((always_inline)) inline T datastruct<T>::operator()(const size_t* __restrict indices)const
 {
