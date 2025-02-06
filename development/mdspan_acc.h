@@ -604,7 +604,7 @@ void inline create_in_struct(const datastruct<T>& dA)
 template<typename T>
 void inline create_out_struct(datastruct<T>& dA)
 {
-    acc_copyin((void*)dA.pdata, sizeof(T)*dA.pdatalength);
+    acc_create((void*)dA.pdata, sizeof(T)*dA.pdatalength);
     acc_copyin((void*)dA.pextents,sizeof(size_t)*dA.prank);
     acc_copyin((void*) dA.pstrides,sizeof(size_t)*dA.prank);
     acc_copyin(&dA, sizeof(dA));
