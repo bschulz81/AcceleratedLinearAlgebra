@@ -2034,7 +2034,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
                     T sum = 0;
 
 #pragma acc loop vector independent reduction(+: sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
+                    for (size_t k = 0; k < inner_dim2; ++k)
                     {
                         sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
                     }
@@ -3495,7 +3495,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
 
 #pragma acc parallel present(dA,dL, step_size)deviceptr(buffer)
         {
-            gpu_cholesky_decomposition(dA,dL, (T*) nullptr,step_size);
+            gpu_cholesky_decomposition(dA,dL, (T*) buffer,step_size);
         }
 
         update_host(dL);
