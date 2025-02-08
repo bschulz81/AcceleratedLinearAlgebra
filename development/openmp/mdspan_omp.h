@@ -64,9 +64,9 @@ struct matrix_multiplication_parameters
 template <typename T>
 struct datastruct
 {
-    T*  pdata = nullptr;
-    size_t*  pextents = nullptr;
-    size_t*  pstrides = nullptr;
+    T*  __restrict pdata = nullptr;
+    size_t* __restrict pextents = nullptr;
+    size_t*  __restrict pstrides = nullptr;
     size_t pdatalength = 0;
     size_t prank = 0;
     bool prowmajor = true;
