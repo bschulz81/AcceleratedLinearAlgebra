@@ -2387,10 +2387,11 @@ inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scala
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
+  const size_t vecstr=vec.pstrides[0];
 #pragma acc loop independent
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i,resstr) = vec(i,vecstr)*scalar;
     }
 }
 
@@ -2583,10 +2584,11 @@ inline  void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scal
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
+    const size_t vecstr=vec.pstrides[0];
 #pragma acc loop independent vector
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i,resstr) = vec(i,vecstr)*scalar;
     }
 }
 
@@ -2768,10 +2770,11 @@ inline void gpu_vector_scalar_multiply_s( const datastruct<T>& vec,const T scala
 {
     const size_t n=vec.pextents[0];
     const size_t resstr=res.pstrides[0];
+    const size_t vecstr=vec.pstrides[0];
 #pragma acc loop  seq
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i,resstr) = vec(i,vecstr)*scalar;
     }
 }
 
