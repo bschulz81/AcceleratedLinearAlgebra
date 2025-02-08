@@ -141,13 +141,13 @@ printmatrix(Q4);
 printmatrix(R4);
 
 //
-//std::fill(Q4_data.begin(),Q4_data.end(),0);
-//std::fill(R4_data.begin(),R4_data.end(),0);
+std::fill(Q4_data.begin(),Q4_data.end(),0);
+std::fill(R4_data.begin(),R4_data.end(),0);
 //
-//cout<<"Entirely on gpu"<<std::endl;
-//qr_decomposition(A4,Q4,R4,par4,0,true);
-//printmatrix(Q4);
-//printmatrix(R4);
+cout<<"Entirely on gpu"<<std::endl;
+qr_decomposition(A4,Q4,R4,par4,0,true);
+printmatrix(Q4);
+printmatrix(R4);
 
 
 cout<<"In order to test the qr decomposition, we can use Strassen's algorithm"<<endl;
