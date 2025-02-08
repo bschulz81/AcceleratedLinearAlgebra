@@ -1725,7 +1725,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
             {
                 temp2 += L(i,k,strl0,strl1)*L(c,k,strl0,strl1);
             }
-            temp2= tempA(i,c,strl0,strl1)-temp2;
+            temp2= tempA(i,c,strtA0,strtA1)-temp2;
             L(i,c,strl0,strl1) = temp2 / temp4;
         }
     }
