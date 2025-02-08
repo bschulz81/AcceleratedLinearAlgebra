@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 23 )
 SET (CMAKE_CXX_COMPILER "clang++" CACHE STRING "C++ compiler" FORCE)
 SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++20    -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda  -Wall")
 
+
 #GCC compiler flags. currently show an internal compiler error
 
 #SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
