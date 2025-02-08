@@ -1617,7 +1617,6 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
     T* __restrict adata;
 
     if (buffer==(T*) nullptr)
-        // sdata=(T*) acc_malloc(sizeof(T)*tempsize);
     {
         sdata=new T[tempsize];
         adata=new T[nn];
@@ -1805,9 +1804,6 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
             datastruct<T> RU = dU.subspanmatrix(z, c, v, u,pRUext,pRUstr);
 
             datastruct<T> S(sdata,  0, dA.prowmajor,u, u,pSext, pSstrides,true,true);
-
-
-            gpu_matrix_multiply_dot_w(RL,RU,S);
 
             const size_t rows=RL.pextents[0];
             const size_t cols=RU.pextents[1];
@@ -2089,7 +2085,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         {
             norm += v(i,pstrv0) * v(i,pstrv0);
         }
-        norm=sqrt(norm);
+        norm=fabs(sqrt(norm));
 
 
         const T normc=norm;
@@ -2446,7 +2442,7 @@ inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T
 
 #pragma acc routine worker
 template <typename T>
-inline T gpu_dot_product_w(const  datastruct<T> vec1, const datastruct<T> vec2)
+inline T gpu_dot_product_w(const  datastruct<T>& vec1, const datastruct<T> &vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -2630,7 +2626,7 @@ inline  void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<
 
 #pragma acc routine vector
 template <typename T>
-inline T gpu_dot_product_v(const  datastruct<T> vec1, const datastruct<T> vec2)
+inline T gpu_dot_product_v(const  datastruct<T>& vec1, const datastruct<T> &vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -2815,7 +2811,7 @@ inline void gpu_vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T
 
 #pragma acc routine seq
 template <typename T>
-inline T gpu_dot_product_s(const  datastruct<T> vec1, const datastruct<T> vec2)
+inline T gpu_dot_product_s(const  datastruct<T> &vec1, const datastruct<T> &vec2)
 {
     const size_t n=vec1.pextents[0];
     const size_t strv1=vec1.pstrides[0];
@@ -3487,7 +3483,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
     {
         const datastruct<T> dA=A.pdatastruct;
         datastruct<T> dL=L.pdatastruct;
-        T*buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+        T*buffer=(T*) acc_malloc(sizeof(T)*2*A.pdatastruct.pdatalength);
         create_in_struct(dA);
         create_out_struct(dL);
 
@@ -3636,7 +3632,7 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         const datastruct<T>dA=A.pdatastruct;
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        T *__restrict buffer=(T*) acc_malloc(2*A.pdatastruct.pdatalength);
+        T *__restrict buffer=(T*) acc_malloc(sizeof(T) *2*A.pdatastruct.pdatalength);
         create_in_struct(dA);
         create_out_struct(dL);
         create_out_struct(dU);
@@ -3781,7 +3777,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         datastruct<T> dA= A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        T* __restrict buffer=(T*) acc_malloc(2*(dA.pextents[1]*dA.pextents[1]+dA.pextents[0]* dA.pextents[1]*dA.pextents[0]* dA.pextents[1]));
+        T* __restrict buffer=(T*) acc_malloc(sizeof(T)*(dA.pextents[1]*dA.pextents[1]+2*dA.pextents[0]* dA.pextents[1]));
 
         create_in_struct(dA);
         create_out_struct(dQ);
@@ -3927,7 +3923,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
             }
 
             // Normalize v
-            const T norm = sqrt(dot_product(v,v));
+            const T norm = fabs(sqrt(dot_product(v,v)));
             #pragma omp parallel for simd shared(v,vstr0,norm)
             for (size_t i = 0; i < n; ++i)
             {
