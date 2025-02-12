@@ -61,36 +61,48 @@ struct matrix_multiplication_parameters
     bool size_for_mpi=2;
 };
 
-
-template <typename T>struct datastruct
+template <typename T>
+struct datastruct
 {
-    T* __restrict pdata = nullptr;
+    T*  __restrict pdata = nullptr;
     size_t* __restrict pextents = nullptr;
-    size_t* __restrict pstrides = nullptr;
+    size_t*  __restrict pstrides = nullptr;
     size_t pdatalength = 0;
     size_t prank = 0;
-    bool prowmajor=true;
+    bool prowmajor = true;
+
+    // Constructors
     datastruct(
-        T* data,
+        T* __restrict data,
         size_t pdatalength,
         bool rowm,
         size_t rank,
-        size_t* __restrict extents=nullptr,
-        size_t* __restrict strides = nullptr,
-        bool pcompute_datalength=false,
-        bool compute_strides_from_extents=false
+        size_t*  __restrict extents,
+        size_t* __restrict  strides,
+        bool pcompute_datalength,
+        bool compute_strides_from_extents
     );
 
     datastruct(
-        T*__restrict  data,
+        T* __restrict data,
+        size_t pdatalength,
+        bool rowm,
+        size_t*  __restrict extents,
+        size_t* __restrict  strides,
+        bool pcompute_datalength,
+        bool compute_strides_from_extents
+    );
+
+    datastruct(
+        T* __restrict data,
         size_t datalength,
         bool rowm,
         size_t rows,
         size_t cols,
-        size_t* __restrict extents=nullptr,
-        size_t* __restrict strides = nullptr,
-        bool compute_datalength=true,
-        bool compute_strides_from_extents=false
+        size_t* __restrict extents,
+        size_t* __restrict strides,
+        bool compute_datalength,
+        bool compute_strides_from_extents
     );
 
     datastruct(
@@ -99,39 +111,58 @@ template <typename T>struct datastruct
         bool rowm,
         bool rowvector,
         size_t length,
-        size_t* __restrict extents=nullptr,
-        size_t* __restrict strides =nullptr,
-        bool compute_datalength=true,
-        bool compute_strides_from_extents=true
+        size_t* __restrict extents,
+        size_t* __restrict strides,
+        bool compute_datalength,
+        bool compute_strides_from_extents
+    );
+
+    datastruct(
+        T* __restrict data,
+        size_t datalength,
+        bool rowm,  size_t rank,
+        size_t* __restrict extents,
+        size_t* __restrict strides
     );
 
     ~datastruct();
-    T&operator()(const size_t* __restrict indices) __attribute__((always_inline));;
-    T operator()(const size_t* __restrict indices)const __attribute__((always_inline));;
 
-    T&operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1) __attribute__((always_inline));;
-    T operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1)const __attribute__((always_inline));;
+    // Operator overloads
+    T& operator()(const size_t* __restrict indices) __attribute__((always_inline));
+    T operator()(const size_t* __restrict indices) const __attribute__((always_inline));
 
-    T&operator()(const size_t row, const size_t stride) __attribute__((always_inline));
-    T operator()(const size_t row, const size_t stride)const __attribute__((always_inline));
+    T& operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1) __attribute__((always_inline));
+    T operator()(const size_t row, const size_t col, const size_t strides0, const size_t strides1) const __attribute__((always_inline));
+
+    T& operator()(const size_t row, const size_t stride) __attribute__((always_inline));
+    T operator()(const size_t row, const size_t stride) const __attribute__((always_inline));
 
 
-    datastruct<T> substruct(const size_t * __restrict poffsets, const size_t * __restrict psub_extents, size_t* __restrict psub_strides=nullptr, T* __restrict sub_data=nullptr) ;
-    datastruct<T> subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,
-                                 size_t* __restrict sub_extents, size_t *__restrict sub_strides=nullptr,  T*__restrict  sub_data=nullptr) ;
+    datastruct<T>substruct_t(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides);
+    datastruct<T>substruct_t(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data );
+    datastruct<T>substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides);
+    datastruct<T>substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data);
+    datastruct<T>subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides);
+    datastruct<T>subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
+    datastruct<T>subspanmatrix_t( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
+    datastruct<T>subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
+    datastruct<T>substruct_s(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T*__restrict sub_data);
 
-    datastruct<T> transpose(size_t*__restrict newextents, size_t * __restrict newstrides);
-    datastruct<T> row(const size_t row_index,size_t *__restrict newextents,size_t* __restrictnewstrides);
-    datastruct<T> column(const size_t col_index,size_t *__restrict newextents,size_t * __restrict newstrides);
+
+    datastruct<T> transpose(size_t* __restrict newextents, size_t* __restrict newstrides);
+    datastruct<T> row(const size_t row_index, size_t* __restrict newextents, size_t* __restrict newstrides);
+    datastruct<T> column(const size_t col_index, size_t* __restrict newextents, size_t* __restrict newstrides);
 };
 
 
 
+
 #pragma acc routine seq
-inline size_t compute_offset(const size_t row, const size_t col,  size_t*__restrict  strides)
+inline size_t compute_offset(const size_t row, const size_t col, const size_t* __restrict  strides)
 {
     return row * strides[0]+col*strides[1];
 }
+
 
 #pragma acc routine seq
 inline size_t compute_offset(const size_t row, const size_t col, const size_t matrixstride0, const size_t matrixstride1)
@@ -140,15 +171,15 @@ inline size_t compute_offset(const size_t row, const size_t col, const size_t ma
 }
 
 
-#pragma acc routine seq
-inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+#pragma acc routine worker
+inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
 {
     size_t offset = 0;
 
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-//#pragma acc loop vector independent reduction(+ : offset)
+#pragma acc loop reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -157,7 +188,32 @@ inline size_t compute_offset(const size_t * __restrict indices, const size_t* __
     else
     {
         // Column-major layout: iterate innermost to outermost
-//#pragma acc loop vector independent reduction(+ : offset)
+#pragma acc loop reduction(+ : offset)
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[r - 1 - i] * strides[r - 1 - i];
+        }
+    }
+
+    return offset;
+}
+
+#pragma acc routine seq
+inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+{
+    size_t offset = 0;
+
+    if (rowmajor)
+    {
+        // Row-major layout: iterate outermost to innermost
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
+    }
+    else
+    {
+        // Column-major layout: iterate innermost to outermost
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -168,17 +224,113 @@ inline size_t compute_offset(const size_t * __restrict indices, const size_t* __
 }
 
 
-#pragma acc routine seq
-inline size_t compute_data_length(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
+inline size_t compute_offset(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+{
+    size_t offset = 0;
+
+    if (rowmajor)
+    {
+        // Row-major layout: iterate outermost to innermost
+        #pragma omp simd
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
+    }
+    else
+    {
+        // Column-major layout: iterate innermost to outermost
+        #pragma omp  simd
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[r - 1 - i] * strides[r - 1 - i];
+        }
+    }
+
+    return offset;
+}
+
+
+
+
+
+
+#pragma acc routine vector
+inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+{
+    size_t offset = 0;
+
+    if (rowmajor)
+    {
+        // Row-major layout: iterate outermost to innermost
+#pragma acc loop vector reduction(+ : offset)
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
+    }
+    else
+    {
+        // Column-major layout: iterate innermost to outermost
+#pragma acc loop vector  reduction(+ : offset)
+        for (size_t i = 0; i < r; ++i)
+        {
+            offset += indices[r - 1 - i] * strides[r - 1 - i];
+        }
+    }
+
+    return offset;
+}
+
+
+
+
+#pragma acc routine vector
+inline size_t compute_data_length_v(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
-//#pragma acc loop vector independent reduction(+:offset)
+#pragma acc loop vector
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
     }
     return offset+1;
 }
+
+
+#pragma acc routine worker
+inline size_t compute_data_length_w(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
+{
+    size_t offset=0;
+#pragma acc loop
+    for (size_t i = 0; i < rank; ++i)
+    {
+        offset += (extents[i]-1) * strides[i];
+    }
+    return offset+1;
+}
+
+
+
+
+
+#pragma acc routine seq
+inline size_t compute_data_length_s(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
+{
+    size_t offset=0;
+#pragma acc loop seq
+    for (size_t i = 0; i < rank; ++i)
+    {
+        offset += (extents[i]-1) * strides[i];
+    }
+    return offset+1;
+}
+
+
+
+
+
+
 
 #pragma acc routine seq
 template<typename T>
@@ -188,11 +340,11 @@ inline T& datastruct<T>::operator()(const size_t row, const size_t stride)
     return pdata[row * stride];
 }
 
+
 #pragma acc routine seq
 template<typename T>
 inline T datastruct<T>::operator()(const size_t row, const size_t stride)const
 {
-
     return pdata[row * stride];
 }
 
@@ -201,15 +353,17 @@ inline T datastruct<T>::operator()(const size_t row, const size_t stride)const
 template<typename T>
 inline T& datastruct<T>::operator()(const size_t*__restrict indices)
 {
-    return pdata[compute_offset(indices, pstrides, prank)];
+    return pdata[compute_offset_s(indices, pstrides, prank)];
 }
+
 
 #pragma acc routine seq
 template<typename T>
 inline T datastruct<T>::operator()(const size_t* __restrict indices)const
 {
-    return pdata[compute_offset(indices, pstrides, prank)];
+    return pdata[compute_offset_s(indices, pstrides, prank)];
 }
+
 
 #pragma acc routine seq
 template<typename T>
@@ -217,6 +371,7 @@ inline T datastruct<T>::operator()(const size_t row, const size_t col, const siz
 {
     return pdata[row * strides0 + col *strides1];
 }
+
 
 #pragma acc routine seq
 template<typename T>
@@ -235,8 +390,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t* __rest
 
     newstrides[0]=pstrides[1];
     newstrides[1]=pstrides[0];
-
-    return datastruct(pdata,pdatalength,prowmajor,newextents[0],newextents[1],newextents,newstrides,false,false);
+    return datastruct(pdata,pdatalength,prowmajor,2,newextents,newstrides);
 
 }
 
@@ -268,7 +422,7 @@ inline void fill_strides(const size_t* __restrict extents,size_t* __restrict str
 }
 
 
-#pragma acc routine
+#pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
     T* __restrict data,
     size_t datalength,
@@ -292,13 +446,36 @@ template<typename T> datastruct<T>::datastruct(
     }
     if(compute_datalength==true && pextents!=nullptr && pstrides!=nullptr && rank !=0)
     {
-        pdatalength=compute_data_length(pextents,pstrides,rank);
+        pdatalength=compute_data_length_s(pextents,pstrides,rank);
     }
 
 }
 
 
-#pragma acc routine
+
+
+
+#pragma acc routine seq
+template<typename T> datastruct<T>::datastruct(
+    T* __restrict data,
+    size_t datalength,
+    bool rowm,
+    size_t rank,
+    size_t* __restrict extents,
+    size_t* __restrict strides
+) : pdata(data),pextents(extents),
+    pstrides(strides),
+    pdatalength(datalength),
+    prank(rank),
+    prowmajor(rowm)
+{}
+
+
+
+
+
+
+#pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
     T* __restrict data,
     size_t datalength,
@@ -334,7 +511,7 @@ template<typename T> datastruct<T>::datastruct(
 }
 
 
-#pragma acc routine
+#pragma acc routine seq
 template<typename T> datastruct<T>::datastruct(
     T* __restrict data,
     size_t datalength,
@@ -370,28 +547,167 @@ template<typename T> datastruct<T>::datastruct(
 
 }
 
+#pragma acc routine seq
 template<typename T> datastruct<T>::~datastruct()
 {
 
 }
 
 
-#pragma acc routine
-template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* sub_data)
+
+#pragma acc routine worker
+template<typename T>
+datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides)
+{
+    size_t offset_index = 0;
+    const size_t r=this->prank;
+#pragma acc loop reduction( + : offset_index )
+    for (size_t i = 0; i < r; ++i)
+    {
+        offset_index += poffsets[i] * pstrides[i];
+        psub_strides[i]=pstrides[i];
+    }
+    size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
+    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
+
+}
+
+#pragma acc routine worker
+template<typename T>
+datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data)
+{
+    // Compute the new strides for the subspan
+    size_t * __restrict indices;
+    size_t *__restrict global_indices;
+    const size_t r=this->prank;
+    indices=new size_t[r];
+    global_indices= new size_t[r];
+
+#pragma acc loop
+    for (size_t i=0; i<r; i++)
+    {
+        indices[i]=0;
+    }
+
+    size_t largest_buffer_index=0;
+    // Fill the supplied buffer with subspan data
+    fill_strides(psub_extents,psub_strides,r,prowmajor);
+    while (true)
+    {
+        // Compute the current global indices
+#pragma acc loop
+        for (size_t i = 0; i < r; ++i)
+        {
+            global_indices[i] = poffsets[i] + indices[i];
+        }
+
+        // Compute the offsets for the original data and the new buffer
+        size_t original_index = compute_offset_w(global_indices, pstrides, prowmajor);
+        size_t buffer_index = compute_offset_w(indices,psub_strides, prowmajor);
+
+        // Copy the data from the original tensor to the sub-buffer
+        sub_data[buffer_index] = pdata[original_index];
+
+        if(buffer_index>largest_buffer_index)
+            largest_buffer_index=buffer_index;
+
+        // Increment the indices for the Cartesian product
+        size_t dim = r;
+        while (dim-- > 0)
+        {
+            if (++indices[dim] < psub_extents[dim])
+            {
+                break; // If no overflow, stop carrying
+            }
+            indices[dim] = 0; // Reset the current dimension and carry to the next
+        }
+
+        // If all dimensions have overflowed, we're done
+        if (dim == size_t(-1))
+        {
+            break;
+        }
+
+    }
+    // Create and return a new mdspan with the updated pointer, extents, and strides
+    size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
+    datastruct pd(sub_data,pl,prowmajor,psub_extents, psub_strides);
+
+    delete[] global_indices;
+    delete[] indices;
+
+    return pd;
+}
+
+
+#pragma acc routine seq
+template<typename T>
+datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides)
+{
+    psub_strides[0]=pstrides[0];
+    psub_strides[1]=pstrides[1];
+    psub_extents[0]=(prowmajor==true)?tile_rows:tile_cols;
+    psub_extents[1]=(prowmajor==true)?tile_cols:tile_rows;
+    size_t pl=(psub_extents[0]-1) * psub_strides[0]+ (psub_extents[1]-1) * psub_strides[1]+1;
+    size_t offset=+row * pstrides[0]+col * pstrides[1];
+    return datastruct(pdata+offset,pl,prowmajor,2,psub_extents,psub_strides);
+}
+
+
+#pragma acc routine worker
+template<typename T>
+datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
+{
+    if (prowmajor)
+    {
+        const size_t s0=pstrides[0];
+        const size_t s1=pstrides[1];
+        const T* __restrict pd=this->pdata;
+#pragma acc loop collapse(2)
+        for (size_t i = 0; i < tile_rows; ++i)
+        {
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
+            }
+        }
+    }
+    else
+    {
+        const size_t s0=pstrides[0];
+        const size_t s1=pstrides[1];
+        const T* __restrict pd=this->pdata;
+#pragma acc loop collapse(2)
+        for (size_t j = 0; j < tile_cols; ++j)
+        {
+            for (size_t i = 0; i < tile_rows; ++i)
+            {
+                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
+            }
+        }
+    }
+    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
+    size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
+    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
+}
+
+
+
+#pragma acc routine seq
+template<typename T>
+datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T*__restrict sub_data)
 {
     size_t offset_index = 0;
     const size_t r=this->prank;
     if(sub_data==nullptr)
     {
-
-
-//#pragma acc loop vector independent reduction( + : offset_index )
         for (size_t i = 0; i < r; ++i)
         {
             offset_index += poffsets[i] * pstrides[i];
             psub_strides[i]=pstrides[i];
         }
-        return datastruct(pdata + offset_index,0,this->prowmajor, r,this->prowmajor, psub_extents,pstrides, true,false );
+        size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
+        return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
     }
     else
     {
@@ -402,7 +718,7 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
         indices=new size_t[r];
         global_indices= new size_t[r];
 
-//#pragma acc loop vector independent
+
         for (size_t i=0; i<r; i++)
         {
             indices[i]=0;
@@ -410,18 +726,18 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
 
         size_t largest_buffer_index=0;
         // Fill the supplied buffer with subspan data
+        fill_strides(psub_extents,psub_strides,r,prowmajor);
         while (true)
         {
             // Compute the current global indices
-//#pragma acc loop vector independent
             for (size_t i = 0; i < r; ++i)
             {
                 global_indices[i] = poffsets[i] + indices[i];
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset(global_indices, pstrides, prowmajor);
-            size_t buffer_index = compute_offset(indices,psub_strides, prowmajor);
+            size_t original_index = compute_offset_s(global_indices, pstrides, prowmajor);
+            size_t buffer_index = compute_offset_s(indices,psub_strides, prowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
             sub_data[buffer_index] = pdata[original_index];
@@ -447,9 +763,9 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
             }
 
         }
-
+        size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        datastruct pd(sub_data,0,prowmajor,psub_extents, psub_strides,true,true);
+        datastruct pd(sub_data,pl,prowmajor,psub_extents, psub_strides);
 
         delete[] global_indices;
         delete[] indices;
@@ -460,62 +776,50 @@ template<typename T>datastruct<T> datastruct<T>::substruct(const size_t * __rest
 }
 
 
-#pragma acc routine
-template<typename T>datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *sub_extents,  size_t *sub_strides,  T*sub_data)
+#pragma acc routine seq
+template<typename T>
+datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
 {
-    if(sub_data==nullptr)
+    if (prowmajor)
     {
-        sub_strides[0]=pstrides[0];
-        sub_strides[1]=pstrides[1];
-        return datastruct(pdata +row * pstrides[0]+col * pstrides[1],0,prowmajor,tile_rows,tile_cols,sub_extents,sub_strides,true,false);
+        const size_t s0=pstrides[0];
+        const size_t s1=pstrides[1];
+        const T* __restrict pd=this->pdata;
+        // Row-major layout: fill row by row
+
+        for (size_t i = 0; i < tile_rows; ++i)
+        {
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
+            }
+        }
     }
     else
     {
-        if (prowmajor)
-        {
-            const size_t s0=pstrides[0];
-            const size_t s1=pstrides[1];
-            const T* __restrict pd=this->pdata;
-            // Row-major layout: fill row by row
-//#pragma acc loop auto collapse (2)
+        const size_t s0=pstrides[0];
+        const size_t s1=pstrides[1];
+        const T* __restrict pd=this->pdata;
+        // Column-major layout: fill column by column
 
-            //    #pragma acc loop  independent collapse(2)
+        for (size_t j = 0; j < tile_cols; ++j)
+        {
             for (size_t i = 0; i < tile_rows; ++i)
             {
-                for (size_t j = 0; j < tile_cols; ++j)
-                {
-                    sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
-                }
+                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
             }
         }
-        else
-        {
-            const size_t s0=pstrides[0];
-            const size_t s1=pstrides[1];
-            const T* __restrict pd=this->pdata;
-            // Column-major layout: fill column by column
-//#pragma acc loop auto collapse (2)
-//#pragma acc loop independent collapse(2)
-            for (size_t j = 0; j < tile_cols; ++j)
-            {
-                for (size_t i = 0; i < tile_rows; ++i)
-                {
-                    sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
-                }
-            }
-        }
-
-        return datastruct(sub_data,0,prowmajor,tile_rows, tile_cols,sub_extents,sub_strides,true,true);
     }
+    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
+    size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
+    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
 }
 
 
 
 
 
-
-
-#pragma acc routine
+#pragma acc routine seq
 template <typename T>
 datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict extents,size_t *__restrict  new_strides)
 {
@@ -526,13 +830,13 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict exte
     // Fill the extents array with the appropriate values for the row
     extents[0] = pextents[1]; // Extent for a row is the number of columns
     new_strides[0]=pstrides[0];
-    return datastruct<T>(row_data,  pstrides[1] * extents[0],prowmajor,   1, &extents[0],    new_strides,false,false  );
+    return datastruct<T>(row_data,  pstrides[1] * extents[0],prowmajor,   1, &extents[0],    new_strides );
 }
 
 
 
 
-#pragma acc routine
+#pragma acc routine seq
 template <typename T>
 datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t *__restrict new_strides)
 {
@@ -542,7 +846,7 @@ datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  e
     // Fill the extents array with the appropriate values for the column
     extents[0] = pextents[0]; // Extent for a column is the number of rows
     new_strides[0]=pstrides[0];
-    return datastruct(col_data, pstrides[0] * extents[0],prowmajor,  1, &extents[0],   new_strides,false, false );
+    return datastruct(col_data, pstrides[0] * extents[0],prowmajor,  1, &extents[0],   new_strides );
 }
 
 #pragma acc routine seq
@@ -992,7 +1296,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
       // Initialize pdatastruct with placeholders
 {
     initialize_extents_and_strides(extents,strides);
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_v(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
 }
 
 
@@ -1006,7 +1310,7 @@ mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
     pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_v(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
 }
 
 
@@ -1041,7 +1345,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
 
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_s(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
 }
 
 
@@ -1063,7 +1367,7 @@ mdspan<T, Container>::mdspan( const bool rowm,const bool memmap, const Container
     : pdatastruct(nullptr, 0,rowm,extents.size(),nullptr,nullptr,false,false)
 {
     initialize_extents_and_strides(extents,strides,rowm);
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_s(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     allocate_data(memmap,pdatastruct.pdatalength);
 }
 
@@ -1079,7 +1383,7 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap,const  Container&
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
 
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_s(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     pownsdata=true;
     allocate_data(memmap,pdatastruct.pdatalength);
 }
@@ -1108,7 +1412,7 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap, const size_t row
 
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_s(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     allocate_data(memmap,pdatastruct.pdatalength);
 
 }
@@ -1598,7 +1902,7 @@ mdspan<T, Container> mdspan<T, Container>::transpose()
 
 #pragma acc routine worker
 template <typename T>
-inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& L, T*__restrict buffer=nullptr, size_t step_size=0)
+inline  void gpu_cholesky_decomposition_w( const datastruct<T>& A, datastruct<T>& L, T*__restrict buffer, size_t step_size)
 {
     const size_t n = A.pextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
@@ -1627,7 +1931,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         adata=buffer+tempsize;
     }
 
-#pragma acc loop vector independent
+#pragma acc loop worker vector independent
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=A.pdata[i];
@@ -1673,13 +1977,12 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
             const size_t strC0=S.pstrides[0];
             const size_t strC1=S.pstrides[1];
 
-#pragma acc loop independent collapse(2)
+#pragma acc loop worker independent collapse(2)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
                 {
                     T sum = 0;
-
 #pragma acc loop vector independent  reduction(+: sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
@@ -1689,14 +1992,13 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
                 }
             }
 
-
-#pragma acc loop independent
-            for (size_t i = c; i < n; ++i)
+            const size_t h=c;
+#pragma acc loop worker independent collapse(2)
+            for (size_t i = h; i < n; ++i)
             {
-#pragma acc loop vector independent
-                for (size_t j = c; j < n; ++j)
+                for (size_t j = h; j < n; ++j)
                 {
-                    tempA(i,j,strtA0,strtA1) -=S(i-c,j-c,strs0,strs1);
+                    tempA(i,j,strtA0,strtA1) -=S(i-h,j-h,strs0,strs1);
                 }
             }
 
@@ -1704,7 +2006,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         }
 
         T temp = 0;
-#pragma acc loop independent reduction(+:temp)
+#pragma acc loop worker vector independent reduction(+:temp)
         for (size_t k = z; k < c; ++k)
         {
             T tmp3=L(c,k,strl0,strl1);
@@ -1716,7 +2018,7 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
         L(c,c,strl0,strl1) = temp4;
 
 
-#pragma acc loop independent
+#pragma acc loop worker independent
         for (size_t i = c + 1; i < n; ++i)
         {
             T temp2 =0;
@@ -1740,9 +2042,12 @@ inline  void gpu_cholesky_decomposition( const datastruct<T>& A, datastruct<T>& 
 
 }
 
+
+
+
 #pragma acc routine worker
 template <typename T>
-inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T*__restrict buffer=nullptr, size_t step_size=0)
+inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T*__restrict buffer, size_t step_size)
 {
 
     const size_t n = dA.pextents[0];
@@ -1772,7 +2077,7 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
         adata=buffer+tempsize;
     }
 
-#pragma acc loop independent vector
+#pragma acc loop  worker independent
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=dA.pdata[i];
@@ -1818,7 +2123,7 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
             const size_t strC0=S.pstrides[0];
             const size_t strC1=S.pstrides[1];
 
-#pragma acc loop independent collapse(2)
+#pragma acc loop worker independent collapse(2)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -1838,7 +2143,7 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
 
             const size_t strS0=S.pstrides[0];
             const size_t strS1=S.pstrides[1];
-#pragma acc loop independent collapse(2)
+#pragma acc loop worker independent collapse(2)
             for (size_t i = c; i < n; ++i)
             {
                 for (size_t j = c; j < n; ++j)
@@ -1849,11 +2154,11 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
             z = c;
         }
 
-#pragma acc loop independent
+#pragma acc loop worker independent
         for (size_t i = c; i < n; ++i)
         {
             T temp=0;
-#pragma acc loop independent  reduction(+:temp)
+#pragma acc loop vector independent  reduction(+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp+= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
@@ -1861,7 +2166,7 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
             dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
         }
         const T temp4=dU(c,c,strU0,strU1);
-#pragma acc loop independent
+#pragma acc loop worker independent
         for (size_t i = c; i < n; ++i)
         {
             T temp= 0;
@@ -1885,9 +2190,12 @@ inline  void gpu_lu_decomposition(const  datastruct<T>& dA, datastruct<T>& dL, d
 
 }
 
+
+
+
 #pragma acc routine worker
-template <typename T >
-inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer=nullptr, size_t step_size=0)
+template <typename T>
+inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer, size_t step_size)
 {
     const size_t n = A.pextents[0]; // Number of rows (assuming 2D matrix)
     const size_t m = A.pextents[1]; // Number of columns
@@ -1922,19 +2230,259 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 
 
 
-#pragma acc loop independent vector
+#pragma acc loop worker vector independent
     for (size_t i=0; i<nm; i++)
     {
         tempM[i]=A.pdata[i];
     }
 
-#pragma acc loop independent vector
+#pragma acc loop worker vector independent
     for (size_t i=0; i<Q.pdatalength; i++)
     {
         Q.pdata[i]=0;
     }
 
-#pragma acc loop independent vector
+#pragma acc loop worker vector independent
+    for (size_t i=0; i<R.pdatalength; i++)
+    {
+        R.pdata[i]=0;
+    }
+
+
+    datastruct<T> M(tempM,A.pdatalength,A.prowmajor,A.prank,Mext,Mstrides,false,false); //Copy of A
+    size_t z = 0;
+
+    const size_t qstr0=Q.pstrides[0];
+    const size_t qstr1=Q.pstrides[1];
+
+    const size_t mstr0=Mstrides[0];
+    const size_t mstr1=Mstrides[1];
+
+#pragma acc loop seq
+    for (size_t c = 0; c < m; ++c)
+    {
+        if (c == z +step_size)
+        {
+            // Extract submatrices
+            size_t cz=c-z;
+            size_t mc=m-c;
+
+            size_t exts[2];
+            size_t strs[2];
+            size_t extbq[2];
+            size_t extbm[2];
+            size_t strbq[2];
+            size_t strbm[2];
+            size_t extc[2];
+            size_t strc[2];
+            size_t extbqt[2];
+            size_t strbqt[2];
+
+            datastruct<T> BQ = Q.subspanmatrix(0, z, n, cz,extbq,strbq);
+            datastruct<T> BM = M.subspanmatrix(0, c, n, mc,extbm,strbm);
+
+            // Compute C = BQ^T * BM
+            datastruct<T> C(tempC,0, BM.prowmajor,cz, mc,extc,strc,true,true);
+            datastruct<T> BQT=BQ.transpose(extbqt,strbqt);
+
+
+            const size_t rows=BQT.pextents[0];
+            const size_t cols=BM.pextents[1];
+            const size_t inner_dim=BQT.pextents[1];
+
+            const size_t strA0=BQT.pstrides[0];
+            const size_t strA1=BQT.pstrides[1];
+
+            const size_t strB0=BM.pstrides[0];
+            const size_t strB1=BM.pstrides[1];
+
+            const size_t strC0=C.pstrides[0];
+            const size_t strC1=C.pstrides[1];
+
+#pragma acc loop worker independent collapse(2)
+            for (size_t i = 0; i < rows; ++i)
+            {
+                for (size_t j = 0; j < cols; ++j)
+                {
+                    T sum = 0;
+
+#pragma acc loop vector independent reduction(+: sum)
+                    for (size_t k = 0; k < inner_dim; ++k)
+                    {
+                        sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
+                    }
+                    C(i,j,strC0,strC1)= sum;
+                }
+            }
+            // Compute S = BQ * C
+            datastruct<T>S(tempS, 0,BQ.prowmajor,n, mc,exts,strs,true,true);
+
+            const size_t rows2=BQ.pextents[0];
+            const size_t cols2=C.pextents[1];
+            const size_t inner_dim2=BQ.pextents[1];
+
+            const size_t strA02=BQ.pstrides[0];
+            const size_t strA12=BQ.pstrides[1];
+
+            const size_t strB02=C.pstrides[0];
+            const size_t strB12=C.pstrides[1];
+
+            const size_t strC02=S.pstrides[0];
+            const size_t strC12=S.pstrides[1];
+
+#pragma acc loop worker independent collapse(2)
+            for (size_t i = 0; i < rows2; ++i)
+            {
+                for (size_t j = 0; j < cols2; ++j)
+                {
+                    T sum = 0;
+
+#pragma acc loop vector independent reduction(+: sum)
+                    for (size_t k = 0; k < inner_dim2; ++k)
+                    {
+                        sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
+                    }
+                    S(i,j,strC02,strC12)= sum;
+                }
+            }
+
+            const size_t strs0=strs[0];
+            const size_t strs1=strs[1];
+            // Update M: M[:, c:] -= S
+#pragma acc loop worker independent collapse(2)
+            for (size_t i = 0; i < n; ++i)
+            {
+                for (size_t j = c; j <n; ++j)
+                {
+                    M(i,  j, mstr0, mstr1) -= S(i, j-c,strs0,strs1);
+                }
+            }
+            z = c;
+        }
+        // Extract column c of M
+        size_t pextv[1];
+        size_t pstrv[1];
+        datastruct<T>  v = M.column(c,pextv,pstrv);
+        const size_t pstrv0=pstrv[0];
+        const size_t pext0=pextv[0];
+        for (size_t j = z; j < c; ++j)
+        {
+            size_t pextu[1];
+            size_t pstru[1];
+            const datastruct<T> u = Q.column(j,pextu,pstru);
+            const size_t pstru0=u.pstrides[0];
+            T dot_pr=0;
+#pragma acc loop worker  independent  reduction(+:dot_pr)
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                dot_pr += u(i,pstru0) * v(i,pstrv0);
+            }
+            const T cdot_pr=dot_pr;
+#pragma acc loop worker independent
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                v(i,pstrv0) -= cdot_pr * u(i,pstru0);
+            }
+        }
+        // Normalize v
+        T norm=0; // would crash: gpu_dot_product_v(v,v);
+        //would crash with nvc++ T norm=gpu_dot_product_s(v,v);
+#pragma acc loop worker independent reduction(+:norm)
+        for (size_t i = 0; i < pext0; ++i)
+        {
+            norm += v(i,pstrv0) * v(i,pstrv0);
+        }
+        norm=fabs(sqrt(norm));
+
+
+        const T normc=norm;
+#pragma acc loop worker independent
+        for (size_t i = 0; i < pext0; ++i)
+        {
+            v(i,pstrv0)= v(i,pstrv0)/normc;
+        }
+
+        // Set column c of Q
+
+        const size_t h=c;
+#pragma acc loop worker independent
+        for (size_t i = 0; i < pext0; ++i)
+        {
+            Q(i,h,qstr0,qstr1) = v(i,pstrv0);
+        }
+    }
+
+    // Compute R = Q^T * A
+    size_t qtext[2];
+    size_t qtstrides[2];
+
+
+    datastruct<T> QT=Q.transpose(qtext,qtstrides);
+    gpu_matrix_multiply_dot_w(QT,A,R);
+
+    if(buffer==nullptr)
+    {
+        delete[] tempC;
+        delete[] tempS;
+        delete[] tempM;
+    }
+
+
+}
+
+
+
+
+#pragma acc routine gang
+template <typename T >
+inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer, size_t step_size)
+{
+       const size_t n = A.pextents[0]; // Number of rows (assuming 2D matrix)
+    const size_t m = A.pextents[1]; // Number of columns
+
+    if(step_size==0)
+        step_size=(size_t)pow(A.pextents[0],0.8385);
+
+    const size_t nm=n*m;
+    T* __restrict tempC;
+    T* __restrict tempS;
+    T* __restrict tempM;
+
+    if(buffer==nullptr)
+    {
+        tempC=new T[m*m];
+        tempS=new T[nm];
+        tempM=new T[nm];
+    }
+    else
+    {
+        tempC=buffer;
+        tempS=buffer+m*m;
+        tempM=tempS+nm;
+    }
+
+    size_t Mext[2];
+    Mext[0]= A.pextents[1];
+    Mext[1]=A.pextents[0];
+    size_t Mstrides[2];
+    Mstrides[0]= A.pstrides[0];
+    Mstrides[1]=A.pstrides[1];
+
+
+
+#pragma acc loop  vector independent
+    for (size_t i=0; i<nm; i++)
+    {
+        tempM[i]=A.pdata[i];
+    }
+
+#pragma acc loop  vector independent
+    for (size_t i=0; i<Q.pdatalength; i++)
+    {
+        Q.pdata[i]=0;
+    }
+
+#pragma acc loop  vector independent
     for (size_t i=0; i<R.pdatalength; i++)
     {
         R.pdata[i]=0;
@@ -1998,7 +2546,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
                 {
                     T sum = 0;
 
-#pragma acc loop vector independent reduction(+: sum)
+#pragma acc loop worker independent reduction(+: sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
                         sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
@@ -2022,14 +2570,14 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             const size_t strC02=S.pstrides[0];
             const size_t strC12=S.pstrides[1];
 
-#pragma acc loop independent collapse(2)
+#pragma acc loop  independent collapse(2)
             for (size_t i = 0; i < rows2; ++i)
             {
                 for (size_t j = 0; j < cols2; ++j)
                 {
                     T sum = 0;
 
-#pragma acc loop vector independent reduction(+: sum)
+#pragma acc loop worker independent reduction(+: sum)
                     for (size_t k = 0; k < inner_dim2; ++k)
                     {
                         sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
@@ -2041,7 +2589,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             const size_t strs0=strs[0];
             const size_t strs1=strs[1];
             // Update M: M[:, c:] -= S
-#pragma acc loop independent collapse(2)
+#pragma acc loop worker independent collapse(2)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = c; j <n; ++j)
@@ -2057,7 +2605,6 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         datastruct<T>  v = M.column(c,pextv,pstrv);
         const size_t pstrv0=pstrv[0];
         const size_t pext0=pextv[0];
-#pragma acc loop worker  independent
         for (size_t j = z; j < c; ++j)
         {
             size_t pextu[1];
@@ -2065,13 +2612,13 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
             const datastruct<T> u = Q.column(j,pextu,pstru);
             const size_t pstru0=u.pstrides[0];
             T dot_pr=0;
-#pragma acc loop independent  reduction(+:dot_pr)
+#pragma acc loop  vector independent  reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
                 dot_pr += u(i,pstru0) * v(i,pstrv0);
             }
             const T cdot_pr=dot_pr;
-#pragma acc loop independent
+#pragma acc loop  vector independent
             for (size_t i = 0; i < pext0; ++i)
             {
                 v(i,pstrv0) -= cdot_pr * u(i,pstru0);
@@ -2080,7 +2627,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         // Normalize v
         T norm=0; // would crash: gpu_dot_product_v(v,v);
         //would crash with nvc++ T norm=gpu_dot_product_s(v,v);
-#pragma acc loop  independent reduction(+:norm)
+#pragma acc loop  vector independent reduction(+:norm)
         for (size_t i = 0; i < pext0; ++i)
         {
             norm += v(i,pstrv0) * v(i,pstrv0);
@@ -2089,7 +2636,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
 
 
         const T normc=norm;
-#pragma acc loop independent
+#pragma acc loop  vector independent
         for (size_t i = 0; i < pext0; ++i)
         {
             v(i,pstrv0)= v(i,pstrv0)/normc;
@@ -2098,7 +2645,7 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         // Set column c of Q
 
         const size_t h=c;
-#pragma acc loop  independent
+#pragma acc loop  vector independent
         for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,h,qstr0,qstr1) = v(i,pstrv0);
@@ -2120,13 +2667,16 @@ inline void gpu_qr_decomposition( const datastruct<T>&A, datastruct<T> Q, datast
         delete[] tempM;
     }
 
-
 }
+
+
+
+
 
 
 #pragma acc routine gang
 template <typename T>
-inline void gpu_matrix_multiply_dot_g( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+inline void gpu_matrix_multiply_dot_t( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
 {
 
     const size_t rows=A.pextents[0];
@@ -2142,14 +2692,14 @@ inline void gpu_matrix_multiply_dot_g( const datastruct<T>& A, const  datastruct
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
 
-#pragma acc parallel loop independent collapse(2)
+#pragma acc loop gang independent collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
 
-#pragma acc loop vector independent reduction(+: sum)
+#pragma acc loop worker reduction(+: sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
@@ -2258,6 +2808,32 @@ inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct
 
 
 
+#pragma acc routine gang
+
+template <typename T>
+inline bool gpu_matrix_add_t(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+{
+    const size_t n=A.pextents[0];
+    const size_t m=A.pextents[1];
+    const size_t strA0=A.pstrides[0];
+    const size_t strA1=A.pstrides[1];
+    const size_t strB0=B.pstrides[0];
+    const size_t strB1=B.pstrides[1];
+    const size_t strC0=C.pstrides[0];
+    const size_t strC1=C.pstrides[1];
+#pragma acc  loop gang independent collapse(2)
+    for (size_t i = 0; i < n; ++i)
+    {
+        for (size_t j = 0; j <m ; ++j)
+        {
+            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+        }
+    }
+
+    return true;
+}
+
+
 
 #pragma acc routine worker
 
@@ -2285,6 +2861,30 @@ inline bool gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, data
 }
 
 
+#pragma acc routine gang
+template <typename T>
+inline bool gpu_matrix_subtract_t(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+{
+    const size_t n=A.pextents[0];
+    const size_t m=A.pextents[1];
+    const size_t strA0=A.pstrides[0];
+    const size_t strA1=A.pstrides[1];
+    const size_t strB0=B.pstrides[0];
+    const size_t strB1=B.pstrides[1];
+    const size_t strC0=C.pstrides[0];
+    const size_t strC1=C.pstrides[1];
+#pragma acc parallel loop gang independent collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j < m; ++j)
+        {
+            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+        }
+    }
+    return true;
+}
+
+
 #pragma acc routine worker
 template <typename T>
 inline bool gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
@@ -2308,6 +2908,32 @@ inline bool gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B
     return true;
 }
 
+
+#pragma acc routine gang
+template <typename T>
+inline bool gpu_matrix_multiply_vector_t( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
+{
+
+    // Perform matrix multiplication: C = A * B
+    const size_t n= M.pextents[0];
+    const size_t m=V.pextents[0];
+    const size_t strV0=V.pstrides[0];
+    const size_t strM0=M.pstrides[0];
+    const size_t strM1=M.pstrides[1];
+    const size_t strC0=C.pstrides[0];
+    const size_t strC1=C.pstrides[1];
+#pragma acc parallel loop gang independent collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j <m ; ++j)
+        {
+            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
+        }
+    }
+    return true;
+}
+
+
 #pragma acc routine worker
 template <typename T>
 inline bool gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
@@ -2329,6 +2955,31 @@ inline bool gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruc
             C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
         }
     }
+    return true;
+}
+
+
+#pragma acc routine gang
+template <typename T>
+inline bool gpu_matrix_multiply_vector_t( const datastruct<T>M, const T*V, datastruct<T> & C)
+{
+
+    // Perform matrix multiplication: C = A * B
+    const size_t n= M.pextents[0];
+    const size_t m=M.pextents[1];
+    const size_t strM0=M.pstrides[0];
+    const size_t strM1=M.pstrides[1];
+    const size_t strC0=C.pstrides[0];
+    const size_t strC1=C.pstrides[1];
+#pragma acc parallel loop gang independent collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j <  m; ++j)
+        {
+            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
+        }
+    }
+
     return true;
 }
 
@@ -2358,6 +3009,30 @@ inline bool gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datas
 }
 
 
+#pragma acc routine gang
+template <typename T>
+inline bool gpu_matrix_multiply_scalar_t(  const datastruct<T>& M, const T V, datastruct<T>& C)
+{
+    // Perform matrix multiplication: C = A * B
+
+    const size_t n=C.pextents[0];
+    const size_t m= C.pextents[1];
+    const size_t strM0=M.pstrides[0];
+    const size_t strM1=M.pstrides[1];
+    const size_t strC0=C.pstrides[0];
+    const size_t strC1=C.pstrides[1];
+#pragma acc parallel loop gang independent collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j <  m; ++j)
+        {
+            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
+        }
+    }
+    return true;
+}
+
+
 #pragma acc routine worker
 template <typename T>
 inline bool gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, datastruct<T>& C)
@@ -2380,6 +3055,22 @@ inline bool gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, da
     }
     return true;
 }
+
+
+#pragma acc routine gang
+template <typename T>
+inline void gpu_vector_scalar_multiply_t( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+{
+    const size_t n=vec.pextents[0];
+    const size_t resstr=res.pstrides[0];
+    const size_t vecstr=vec.pstrides[0];
+#pragma acc parallel loop gang independent
+    for (size_t i = 0; i < n; ++i)
+    {
+        res(i,resstr) = vec(i,vecstr)*scalar;
+    }
+}
+
 
 #pragma acc routine worker
 template <typename T>
@@ -2408,6 +3099,23 @@ inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& 
 }
 
 
+#pragma acc routine gang
+template <typename T>
+inline void gpu_vector_add_t( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+{
+    const size_t n=vec1.pextents[0];
+    const size_t strv1=vec1.pstrides[0];
+    const size_t strv2=vec2.pstrides[0];
+    const size_t strres=res.pstrides[0];
+#pragma acc loop independent
+    for (size_t i = 0; i < n; ++i)
+    {
+        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
+    }
+
+}
+
+
 #pragma acc routine worker
 template <typename T>
 inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
@@ -2424,6 +3132,24 @@ inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& ve
 
 }
 
+
+#pragma acc routine gang
+template <typename T>
+inline void gpu_vector_subtract_t( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+{
+    const size_t n=vec1.pextents[0];
+    const size_t strv1=vec1.pstrides[0];
+    const size_t strv2=vec2.pstrides[0];
+    const size_t strres=res.pstrides[0];
+#pragma acc parallel loop gang independent
+    for (size_t i = 0; i < n; ++i)
+    {
+        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
+    }
+
+}
+
+
 #pragma acc routine worker
 template <typename T>
 inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
@@ -2439,6 +3165,7 @@ inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T
     }
 
 }
+
 
 
 #pragma acc routine worker
@@ -3484,25 +4211,26 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
 {
     if (gpu_offload==true)
     {
-        const datastruct<T> dA=A.pdatastruct;
+        datastruct<T> dA=A.pdatastruct;
         datastruct<T> dL=L.pdatastruct;
-        T*buffer=(T*) acc_malloc(sizeof(T)*2*A.pdatastruct.pdatalength);
+        T*buffer=(T*) acc_malloc(sizeof(T)*3*A.pdatastruct.pdatalength);
         create_in_struct(dA);
         create_out_struct(dL);
-
-#pragma acc enter data copyin(step_size)
-
-#pragma acc parallel present(dA,dL, step_size)deviceptr(buffer)
+        bool c;
+#pragma acc kernels present(dA,dL)deviceptr(buffer)
+{
+        do
         {
-            gpu_cholesky_decomposition(dA,dL, (T*) buffer,step_size);
+            gpu_cholesky_decomposition_w(dA,dL, (T*) buffer,step_size);
+            c=false;
         }
-
+        while(c);
+}
         update_host(dL);
 
         exit_struct(dA);
         exit_struct(dL);
 
-#pragma acc exit data delete(step_size)
 
         acc_free(buffer);
 
@@ -3632,30 +4360,29 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
     if (gpu_offload==true)
     {
 
-        const datastruct<T>dA=A.pdatastruct;
+        datastruct<T>dA=A.pdatastruct;
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        T *__restrict buffer=(T*) acc_malloc(sizeof(T) *2*A.pdatastruct.pdatalength);
+        T *__restrict buffer=(T*) acc_malloc(sizeof(T) *3*A.pdatastruct.pdatalength);
         create_in_struct(dA);
         create_out_struct(dL);
         create_out_struct(dU);
-
-#pragma acc enter data copyin (step_size)
-
-#pragma acc parallel present(dA,dL,dU,step_size)deviceptr(buffer)
+        bool c;
+#pragma acc kernels present(dA,dL,dU)deviceptr(buffer)
+{
+        do
         {
-            gpu_lu_decomposition( dA,  dL, dU, buffer,step_size);
+            gpu_lu_decomposition_w( dA,  dL, dU, buffer,step_size);
+            c=false;
         }
-
+        while(c);
+}
         update_host(dL);
         update_host(dU);
 
         exit_struct(dA);
         exit_struct(dL);
         exit_struct(dU);
-
-
-
         acc_free(buffer);
 
     }
@@ -3769,6 +4496,8 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         }
     }
 }
+
+
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T, typename CA>
 void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   matrix_multiplication_parameters algorithm,  size_t step_size=0,
@@ -3785,12 +4514,17 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         create_in_struct(dA);
         create_out_struct(dQ);
         create_out_struct(dR);
-#pragma acc enter data copyin(step_size)
 
-#pragma acc parallel present(dA,dQ,dR, step_size) deviceptr(buffer)
-        {
-            gpu_qr_decomposition(dA,dQ,dR,buffer,step_size);
-        }
+        bool c;
+
+#pragma acc kernels present(dA,dQ,dR) deviceptr(buffer)
+            do
+            {
+                gpu_qr_decomposition_w(dA,dQ,dR,buffer,step_size);
+                c=false;
+            }
+            while(c);
+
         update_host(dQ);
         update_host(dR);
 
@@ -3798,7 +4532,6 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         exit_struct(dQ);
         exit_struct(dR);
 
-#pragma acc exit data delete   (step_size)
         acc_free(buffer);
     }
     else
@@ -3911,7 +4644,6 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
             // Extract column c of M
             auto v = M.column(c);
             const size_t vstr0=v.pdatastruct.pstrides[0];
-            #pragma omp parallel for shared(vstr0,v)
             for (size_t j = z; j < c; ++j)
             {
                 const auto u = Q.column(j);
@@ -4008,7 +4740,7 @@ void matrix_multiply_dot(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdspan
             for (size_t j = 0; j < cols; ++j)
             {
                 T sum=0;
-#pragma acc loop reduction(+:sum)
+#pragma acc loop worker reduction(+:sum)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
                     sum+=dA(i,k,strA0,strA1)*dB(k,j,strB0,strB1);
