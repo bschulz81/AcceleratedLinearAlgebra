@@ -25,6 +25,8 @@ On 03.02.2025, the openacc loops were set with the "independent" clause such tha
 
 I also added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This seems to remove some of the pointer overlapping assumptions and now some optimizations can finally take place but there are still issues. sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies that are not relevant to the computation, or are not there. Some loops are not parallelized with reasons given as "not vectorized because unknown" from nvc++. On some loops nvc++ makes parallelization attempts even if no acc clause was added.  
 
+4) I have yet to figure out how to turn the LU/Cholesky/QR decompositions into gang routines. Unfortunately, during attempts to make the matrix multiplications gang loops in a gang routine, they turned out to yield wrong and different numbers at each run. By now (on 12.02.2025), after running a few hundred tests with several matrices, i think I can now asses that the worker loop versions of the QR/Cholesky/LU decomposition work correctly.
+
 4) Unfortunately, gcc and clang have difficulties with the open-acc and open-mp offload compilers, which are still in development. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
 
 On clang, the functions that offload to gpu fail, unfortunately, due to openacc being in deelopment.
