@@ -2120,7 +2120,7 @@ void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* _
             const size_t strC0=S.pstrides[0];
             const size_t strC1=S.pstrides[1];
 
-            #pragma omp teams distribute collapse(2)  
+            #pragma omp teams distribute collapse(2)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -2138,7 +2138,7 @@ void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* _
 
 
             const size_t h=c;
-            #pragma omp  teams distribute parallel for collapse(2) shared(h,tempA,strtA0,strtA1,S,strs0,strs1) 
+            #pragma omp  teams distribute parallel for collapse(2) shared(h,tempA,strtA0,strtA1,S,strs0,strs1)
             for (size_t i = h; i < n; ++i)
             {
                 for (size_t j = h; j < n; ++j)
@@ -2163,7 +2163,7 @@ void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* _
         L(c,c,strl0,strl1) = temp4;
 
 
-        #pragma omp  teams distribute shared(c,L,strl0,strl1,tempA,strtA0,strtA1) 
+        #pragma omp  teams distribute shared(c,L,strl0,strl1,tempA,strtA0,strtA1)
         for (size_t i = c + 1; i < n; ++i)
         {
             T temp2 =0;
@@ -2270,7 +2270,7 @@ inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL,
             const size_t strC1=S.pstrides[1];
 
 
-            #pragma omp teams distribute parallel for collapse(2) 
+            #pragma omp teams distribute parallel for collapse(2)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -2874,7 +2874,7 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
             const size_t strC02=S.pstrides[0];
             const size_t strC12=S.pstrides[1];
 
-            #pragma omp teams distribute parallel for collapse(2) 
+            #pragma omp teams distribute parallel for collapse(2)
             for (size_t i = 0; i < rows2; ++i)
             {
                 for (size_t j = 0; j < cols2; ++j)
@@ -2896,7 +2896,7 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
             // Update M: M[:, c:] -= S
             const size_t h=c;
 
-            #pragma omp  teams distribute shared(M,S,h,strs0,strs1,mstr0,mstr1) 
+            #pragma omp  teams distribute shared(M,S,h,strs0,strs1,mstr0,mstr1)
             for (size_t i = 0; i < n; ++i)
             {
                 #pragma omp parallel for shared(M,S,h,strs0,strs1,mstr0,mstr1)
@@ -3030,7 +3030,7 @@ inline void gpu_matrix_multiply_dot_t( const datastruct<T>& A, const  datastruct
     const size_t strC0=C.pstrides[0];
     const size_t strC1=C.pstrides[1];
 
-    #pragma omp  teams distribute collapse(2) shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1,rows,cols, inner_dim) 
+    #pragma omp  teams distribute collapse(2) shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1,rows,cols, inner_dim)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
@@ -4534,7 +4534,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         create_out_struct(dL);
         #pragma omp target
         {
-            gpu_cholesky_decomposition_w(dA,dL, (T*) buffer,step_size);
+            gpu_cholesky_decomposition_t(dA,dL, (T*) buffer,step_size);
         }
         update_host(dL);
         exit_struct(dA);
@@ -4681,7 +4681,7 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
 
         #pragma omp target
         {
-            gpu_lu_decomposition_w( dA,  dL, dU, buffer,step_size);
+            gpu_lu_decomposition_t( dA,  dL, dU, buffer,step_size);
         }
 //
         update_host(dL);
@@ -4825,7 +4825,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
 
         #pragma omp target
         {
-            gpu_qr_decomposition_w(dA,dQ,dR, (T*) buffer,step_size);
+            gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
         }
         update_host(dQ);
         update_host(dR);
