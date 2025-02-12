@@ -12,7 +12,7 @@ One may, for example, configure the message passing interface such that there is
 (and if the untested mpi support works as designed), Strassen's algorithm will, work parallel with several cpu's for the additions.
 It  will also do the remaining multiplications in parallel if the Open_MPI computers have all been send a sub matrix, or if a certain size has been reached where openmp should be used. 
 
-If the matrices are small enogh, they can also be uploaded to the gpu for naive computation, and when that is finished, they are send back from the gpu to the smaller ranks to be combined.
+If the matrices are small enough, they can also be uploaded to the gpu for naive computation, and when that is finished, they are send back from the gpu to the smaller ranks to be combined.
 
 Some identified Issues:
 
@@ -27,8 +27,10 @@ I also added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This see
 
 4) I have yet to figure out how to turn the LU/Cholesky/QR decompositions into gang routines. Unfortunately, during attempts to make the matrix multiplications gang loops in a gang routine, they turned out to yield wrong and different numbers at each run. By now (on 12.02.2025), after running a few hundred tests with several matrices, i think I can now asses that the worker loop versions of the QR/Cholesky/LU decomposition work correctly.
 
-4) Unfortunately, gcc and clang have difficulties with the open-acc and open-mp offload compilers, which are still in development. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
+5) Unfortunately, gcc and clang have difficulties with the open-acc and open-mp offload compilers, which are still in development. Gcc compilation currently fails because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 .
 
 On clang, the functions that offload to gpu fail, unfortunately, due to openacc being in deelopment.
+
+6) I have added an openmp branch. this is for development purposes only. Currently, on Clang, during every 20.th run or so, there seem to be offload and copy problems.
 
 
