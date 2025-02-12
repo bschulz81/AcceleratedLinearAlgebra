@@ -21,7 +21,12 @@ The cmakelists.txt creates a project for a simple test application that demonstr
 
 Apparently, by default nvc++ assumes that the pointers overlap. As of 04.02, I have used the __restrict and const keyword wherever they seemed to be useful. I also added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This compile option seems to remove some of the pointer overlapping assumptions of nvc++ and now some optimizations can finally take place. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies" that do not seem to be there.
 
-Also, apparently, from functions denoted as worker, if they have a sequential loop, one can not call any other parallelized functions, including those denoted as vectors in nvc++ currently. Therefore, the matrix multiplications in the Cholesky/LU/QR decompositions within these loops had to be inlined by copy and paste.  Unfortunately, i have not yet been able to produce gang loop versions of the lu,cholesky and qr decomposition, only worker loop versions. If i convert the procedures into gang routines and turn  the outer loops of the multiplications into gang loops, they would yield different numbers at each run.
+Also, apparently, from functions denoted as worker, if they have a sequential loop, one can not call any other parallelized functions, including those denoted as vectors in nvc++ currently. Therefore, the matrix multiplications in the Cholesky/LU/QR decompositions within these loops had to be inlined by copy and paste. 
+
+Unfortunately, i have not yet been able to produce gang loop versions of the lu,cholesky and qr decomposition, only worker loop versions. If i convert the procedures into gang routines and turn  the outer loops of the multiplications into gang loops, they would yield different numbers at each run. 
+For the worker loops versions of the qr, lu and Cholesky decompositions, after running them a few hundreds of times and with different matrices, i can now, by 12.02.2025, asses that they appear to work correctly.
+
+
 
 
 On clang, offload problems with open-acc exist and the open_acc version of the library does not work correctly, due to openacc being in the initial stages.
