@@ -55,9 +55,9 @@ printmatrix(C);
 
 
 //Another set of data
-vector<double>A2_data={4,12,-16,12,37,-43,-16,-43,98};
-vector<double>L2_data(9,0);
-size_t rows2 = 3, cols2 = 3;
+vector<double>A2_data={16,4,16,-4,4,5,6,-9,16,6,33,-28,-4,-9,-28,58};
+vector<double>L2_data(16,0);
+size_t rows2 = 4, cols2 = 4;
 
 
 //we want to do a cholesky decomposition with it
@@ -170,4 +170,3 @@ printmatrix(C4);
 
 
 }
-
