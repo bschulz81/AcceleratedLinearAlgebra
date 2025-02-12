@@ -7,6 +7,7 @@ Unfortunately, this code fails on clang at runtime with optimizations set on, se
 https://github.com/llvm/llvm-project/issues/126342  It seems to have something to do with openmp optimizations:
 
 Also, In order to make the qr-decomposition work on gpu, i even had to remove some parallel for statements, and remove simd loops.
+Also, unfortunately, during each 20-th run, there seems to be a copy/offloading problem with the QR/LU/Cholesky decompoosition on clang.
 
 
 Compilation with nvc++ seems to fail because nvc++ does not recognize #pragma omp begin declare target commands, even though this is openmp standard...
