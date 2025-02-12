@@ -2301,7 +2301,7 @@ inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL,
         }
 
 
-        #pragma omp teams distribute shared(dU,dL,strU0,strU1,strL0,strL1) ancestor
+        #pragma omp teams distribute shared(dU,dL,strU0,strU1,strL0,strL1) 
         for (size_t i = c; i < n; ++i)
         {
             T temp=0;
@@ -2314,7 +2314,7 @@ inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL,
         }
         const T temp4=dU(c,c,strU0,strU1);
 
-        #pragma omp   teams distribute shared(dU,dL,strU0,strU1,strL0,strL1) ancestor
+        #pragma omp   teams distribute shared(dU,dL,strU0,strU1,strL0,strL1) 
         for (size_t i = c; i < n; ++i)
         {
             T temp= 0;
@@ -2844,7 +2844,7 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
             const size_t strC0=C.pstrides[0];
             const size_t strC1=C.pstrides[1];
 
-            #pragma omp teams distribute parallel for collapse(2) ancestor
+            #pragma omp teams distribute parallel for collapse(2) 
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
