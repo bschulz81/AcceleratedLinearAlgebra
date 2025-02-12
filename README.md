@@ -19,12 +19,16 @@ Compilation with Gcc currently produces an internal compiler error due to https:
 
 The cmakelists.txt creates a project for a simple test application that demonstrates some of the usage of the library with a bit documentation.
 
-Apparently, by default nvc++ assumes that the pointers overlap. As of 04.02, I have used the __restrict and const keyword wherever they seemed to be useful. I also added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This compile option seems to remove some of the pointer overlapping assumptions of nvc++ and now some optimizations can finally take place. Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies" that do not seem to be there.
+Apparently, by default nvc++ assumes that the pointers overlap. As of 04.02, I have used the __restrict and const keyword wherever they seemed to be useful. I also added the option  -Msafeptr=all to the Cmakelists.txt for nvc++. This compile option seems to remove some of the pointer overlapping assumptions of nvc++ and now some optimizations can finally take place.
+Sometimes nvc++ refuses to vectorize openmp code for reasons it calls "unknown" or for "data dependencies" that do not seem to be there.
 
 Also, apparently, from functions denoted as worker, if they have a sequential loop, one can not call any other parallelized functions, including those denoted as vectors in nvc++ currently. Therefore, the matrix multiplications in the Cholesky/LU/QR decompositions within these loops had to be inlined by copy and paste. 
 
-Unfortunately, i have not yet been able to produce gang loop versions of the lu,cholesky and qr decomposition, only worker loop versions. If i convert the procedures into gang routines and turn  the outer loops of the multiplications into gang loops, they would yield different numbers at each run. 
-For the worker loops versions of the qr, lu and Cholesky decompositions, after running them a few hundreds of times and with different matrices, i can now, by 12.02.2025, asses that they appear to work correctly.
+Unfortunately, i have not yet been able to produce gang loop versions of the lu,cholesky and qr decomposition, only worker loop versions. If i convert the procedures into gang routines and turn  the outer loops of the multiplications into gang loops, they would yield different numbers at each run.  
+
+
+For the worker loops versions of the qr, lu and Cholesky decompositions, after running them a few hundreds of times and with different matrices,
+I can now, by 12.02.2025, asses that they appear to work correctly if the gpu driver and the cuda version are the most recent. Also, most of the loops that are parallelizable are now parallelized.
 
 
 
@@ -36,8 +40,7 @@ In the development folder, I have now put in an open-mp version of the library. 
 
 However, on clang, the openmp version of the library compiles and works at runtime, but only if all optimizations for the compiler are switched off. 
 I have filed a bug for clang because of this https://github.com/llvm/llvm-project/issues/126342 , and if these problems are fixed, the library may then work in full with clang.
-
-On 12.02. 2025, I found that there are sometimes copy and offload problems in clang for the worker routines with the openmp versions. Clang also prints out warnings that it can not guarantee to copy the structs directly into gpu memory.
+On 12.02. 2025, I found that there are sometimes copy and offload problems in clang with the openmp development code. Clang also prints out warnings that it can not guarantee to copy the structs directly into gpu memory.
 
 In general, OpenMP would be preferable for a scientific library, because in OpenMP one can have nested parallelism, where parallel for loops can call functions which open other parallel for loops. This is essential if one has complex algorithms where one may have complex procedures within a repeated parallelizable loop, like solving eigenvalue problems which contain parallel loops themselves.
 
