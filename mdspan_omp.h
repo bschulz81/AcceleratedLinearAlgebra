@@ -4622,7 +4622,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         T*buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
         create_in_struct(dA);
         create_out_struct(dL);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_cholesky_decomposition_t(dA,dL, (T*) buffer,step_size);
         }
@@ -4763,7 +4763,7 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         create_in_struct(dA);
         create_out_struct(dL);
         create_out_struct(dU);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_lu_decomposition_t( dA,  dL, dU, buffer,step_size);
         }
@@ -4903,7 +4903,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         create_in_struct(dA);
         create_out_struct(dQ);
         create_out_struct(dR);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
         }
