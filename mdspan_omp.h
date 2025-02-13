@@ -4618,7 +4618,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
     {
         datastruct<T> dA=A.pdatastruct;
         datastruct<T> dL=L.pdatastruct;
-        size_t bl=sizeof(T)*5*A.pdatastruct.pdatalength;
+        size_t bl=sizeof(T)*2*A.pdatastruct.pdatalength;
         T*buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
         create_in_struct(dA);
         create_out_struct(dL);
