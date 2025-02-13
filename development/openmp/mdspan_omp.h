@@ -2014,8 +2014,8 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
 
     if (buffer==(T*) nullptr)
     {
-        sdata=(T*) malloc(sizeof(T*)*tempsize);
-        adata=(T*) malloc(sizeof(T*)*nn);
+        sdata=(T*) omp_alloc(sizeof(T*)*tempsize,omp_large_cap_mem_alloc);
+        adata=(T*) omp_alloc(sizeof(T*)*nn,omp_large_cap_mem_alloc);
     }
     else
     {
@@ -2125,8 +2125,8 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
 
     if(buffer==nullptr)
     {
-        free(sdata);
-        free(adata);
+        omp_free(sdata,omp_large_cap_mem_alloc);
+        omp_free(adata,omp_large_cap_mem_alloc);
     }
 }
 #pragma omp end declare target
@@ -2154,8 +2154,8 @@ void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* _
 
     if (buffer==(T*) nullptr)
     {
-        sdata=(T*) malloc(sizeof(T*)*tempsize);
-        adata=(T*) malloc(sizeof(T*)*nn);
+        sdata=(T*) omp_alloc(sizeof(T*)*tempsize,omp_large_cap_mem_alloc);
+        adata=(T*) omp_alloc(sizeof(T*)*nn,omp_large_cap_mem_alloc,);
     }
     else
     {
@@ -2267,11 +2267,13 @@ void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* _
         }
     }
 
+
     if(buffer==nullptr)
     {
-        free(sdata);
-        free(adata);
+        omp_free(sdata,omp_large_cap_mem_alloc);
+        omp_free(adata,omp_large_cap_mem_alloc);
     }
+
 }
 #pragma omp end declare target
 
@@ -2304,8 +2306,8 @@ inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL,
 
     if (buffer==nullptr)
     {
-        sdata=(T*)malloc(sizeof(T)*tempsize);
-        adata=(T*)malloc(sizeof(T)*nn);
+        sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
+        adata=(T*)omp_alloc(sizeof(T)*nn,omp_large_cap_mem_alloc);
     }
     else
     {
@@ -2420,8 +2422,8 @@ inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL,
 
     if(buffer==nullptr)
     {
-        free(sdata);
-        free(adata);
+        omp_free(sdata,omp_large_cap_mem_alloc);
+        omp_free(adata,omp_large_cap_mem_alloc);
     }
 
 
@@ -2454,8 +2456,8 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
 
     if (buffer==nullptr)
     {
-        sdata=(T*)malloc(sizeof(T)*tempsize);
-        adata=(T*)malloc(sizeof(T)*nn);
+        sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
+        adata=(T*)omp_alloc(sizeof(T)*nn,omp_large_cap_mem_alloc);
     }
     else
     {
@@ -2564,8 +2566,8 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
 
     if(buffer==nullptr)
     {
-        free(sdata);
-        free(adata);
+        omp_free(sdata,omp_large_cap_mem_alloc);
+        omp_free(adata,omp_large_cap_mem_alloc);
     }
 
 
@@ -2836,9 +2838,9 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
 
     if(buffer==nullptr)
     {
-        tempC=(T*)malloc(sizeof(T)*m*m);
-        tempS=(T*)malloc(sizeof(T)*nm);
-        tempM=(T*)malloc(sizeof(T)*nm);
+        tempC=(T*)omp_alloc(sizeof(T)*m*m,omp_large_cap_mem_alloc);
+        tempS=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
+        tempM=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
     }
     else
     {
@@ -3039,10 +3041,11 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
         // Set column c of Q
 
         // removing the out commenting will lead clang to crash.
-    //    #pragma omp   parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
+       // #pragma omp   parallel for shared(v, Q,c,pstrv0,qstr0,qstr1)
         for (size_t i = 0; i < pext0; ++i)
         {
-            Q(i,c,qstr0,qstr1) = v(i,pstrv0);
+
+            Q.pdata[i * qstr0 + c *qstr1]= v.pdata[i*pstrv0];
         }
     }
 
@@ -3056,11 +3059,10 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
 
     if(buffer==nullptr)
     {
-        free(tempM);
-        free(tempS);
-        free(tempC);
+        omp_free(tempM,omp_large_cap_mem_alloc);
+        omp_free(tempS,omp_large_cap_mem_alloc);
+        omp_free(tempC,omp_large_cap_mem_alloc);
     }
-
 
 }
 #pragma omp end declare target
@@ -4617,19 +4619,17 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         datastruct<T> dA=A.pdatastruct;
         datastruct<T> dL=L.pdatastruct;
         size_t bl=sizeof(T)*5*A.pdatastruct.pdatalength;
-        T*buffer=(T*) malloc(bl);
-        #pragma omp target enter data map(alloc: buffer[0:bl])
+        T*buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
         create_in_struct(dA);
         create_out_struct(dL);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_cholesky_decomposition_t(dA,dL, (T*) buffer,step_size);
         }
         update_host(dL);
         exit_struct(dA);
         exit_struct(dL);
-
-        #pragma omp target exit data map(delete: buffer[0:bl])
+        omp_target_free(buffer,omp_get_default_device());
     }
     else
     {
@@ -4759,12 +4759,11 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
 
         datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
         size_t bl=sizeof(T)*2*dA.pdatalength;
-        T *__restrict buffer=(T*) malloc(bl);
-        #pragma omp target enter data map(alloc:buffer[0:bl])
+        T *__restrict buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
         create_in_struct(dA);
         create_out_struct(dL);
         create_out_struct(dU);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_lu_decomposition_t( dA,  dL, dU, buffer,step_size);
         }
@@ -4775,8 +4774,8 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         exit_struct(dU);
         exit_struct(dL);
         exit_struct(dA);
+       omp_target_free(buffer,omp_get_default_device());
 //
-#pragma omp target exit data map(delete:buffer[0:bl])
     }
     else
     {
@@ -4899,13 +4898,12 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         datastruct<T> dA=A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        size_t bl=6*sizeof(T)*(dA.pextents[1]*dA.pextents[1]+2*dA.pextents[0]* dA.pextents[1]);
-        T* __restrict buffer=(T*) malloc(bl);
-        #pragma omp target enter data map (alloc: buffer[0:bl])
+        size_t bl=sizeof(T)*(dA.pextents[1]*dA.pextents[1]+2*dA.pextents[0]* dA.pextents[1]);
+        T* __restrict buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
         create_in_struct(dA);
         create_out_struct(dQ);
         create_out_struct(dR);
-        #pragma omp target
+        #pragma omp target is_device_ptr(buffer)
         {
             gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
         }
@@ -4915,7 +4913,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         exit_struct(dQ);
         exit_struct(dA);
 
-         #pragma omp target exit data map (delete: buffer[0:bl])
+       omp_target_free(buffer,omp_get_default_device());
     }
     else
     {
