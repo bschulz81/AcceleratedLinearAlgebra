@@ -181,7 +181,7 @@ inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* 
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-        #pragma omp parallel for simd reduction(+ : offset)
+        #pragma omp parallel for reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -247,7 +247,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
     else
     {
         // Column-major layout: iterate innermost to outermost
-        #pragma omp parallel for  reduction(+ : offset)
+        #pragma omp simd  reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
