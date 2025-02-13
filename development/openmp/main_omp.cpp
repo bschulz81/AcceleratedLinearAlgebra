@@ -80,7 +80,7 @@ cout<<"A Cholesky decomposition with the multiplication on gpu"<<std::endl;
 printmatrix(A2);
 matrix_multiplication_parameters par2;
 
-par2.gpu_offload=true;
+par2.gpu_offload=false;
 
 cholesky_decomposition(A2,L2,par2,0);
 
@@ -106,7 +106,7 @@ mdspan<double, std::vector<size_t>> L3(L3_data.data(), true, {rows3, cols3});
 mdspan<double, std::vector<size_t>> U3(U3_data.data(), true, {rows3, cols3});
 
 matrix_multiplication_parameters par3;
-par3.gpu_offload=true;
+par3.gpu_offload=false;
 printmatrix(A3);
 cout<<"Just the multiplication on gpu"<<std::endl;
 lu_decomposition(A3,L3,U3,par3,0,false);
@@ -135,15 +135,15 @@ matrix_multiplication_parameters par4;
 printmatrix(A4);
 
 cout<<"Just the multiplication on gpu"<<std::endl;
-par4.gpu_offload=true;
+par4.gpu_offload=false;
 qr_decomposition(A4,Q4,R4,par4,0,false);
 printmatrix(Q4);
 printmatrix(R4);
 
-//
+
 std::fill(Q4_data.begin(),Q4_data.end(),0);
 std::fill(R4_data.begin(),R4_data.end(),0);
-//
+
 cout<<"Entirely on gpu"<<std::endl;
 qr_decomposition(A4,Q4,R4,par4,0,true);
 printmatrix(Q4);
@@ -157,6 +157,8 @@ mdspan<double, std::vector<size_t>> C4(C4_data.data(), true, {rows4, cols4});
 
 strassen_multiply(Q4, R4, C4,par4);
 
+
+
 printmatrix(C4);
 cout<<"or its Winograd variant, with the smaller matrices computed on gpu"<<endl;
 
@@ -168,4 +170,3 @@ printmatrix(C4);
 
 
 }
-
