@@ -4907,7 +4907,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         create_out_struct(dR);
         #pragma omp target
         {
-            gpu_qr_decomposition_w(dA,dQ,dR, (T*) buffer,step_size);
+            gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
         }
         update_host(dQ);
         update_host(dR);
