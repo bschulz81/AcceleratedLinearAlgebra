@@ -40,9 +40,5 @@ In the development folder, I have now put in an open-mp version of the library. 
 
 However, on clang, the openmp version of the library compiles and works at runtime, but only if all optimizations for the compiler are switched off. 
 I have filed a bug for clang because of this https://github.com/llvm/llvm-project/issues/126342 , and if these problems are fixed, the library may then work in full with clang.
-On 12.02. 2025, I found that there are sometimes copy and offload problems in clang with the openmp development code. Clang also prints out warnings that it can not guarantee to copy the structs directly into gpu memory.
 
-In general, OpenMP would be preferable for a scientific library, because in OpenMP one can have nested parallelism, where parallel for loops can call functions which open other parallel for loops. This is essential if one has complex algorithms where one may have complex procedures within a repeated parallelizable loop, like solving eigenvalue problems which contain parallel loops themselves.
-
-
-
+On 13.02.2025, I fixed a data race which led in some cases to a wrong calculation of the offloaded datalength. now the openmp code yields the same results as the openacc code. The openmp code can use the teams distribute/gang loop, but clang currently provides no simd optimizations for the gpu. Also, because of https://github.com/llvm/llvm-project/issues/126342 , one can not compile the openmp branch in the development folder with optimizations turned on.
