@@ -181,7 +181,7 @@ inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* 
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-        #pragma omp parallel for reduction(+ : offset)
+        #pragma omp parallel for  reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -247,7 +247,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
     else
     {
         // Column-major layout: iterate innermost to outermost
-        #pragma omp simd  reduction(+ : offset)
+        #pragma omp simd   reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -624,7 +624,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
 {
     size_t offset_index = 0;
     const size_t r=this->prank;
-    #pragma omp parallel for simd reduction( + : offset_index )
+    #pragma omp parallel for reduction( + : offset_index )
     for (size_t i = 0; i < r; ++i)
     {
         offset_index += poffsets[i] * pstrides[i];
@@ -647,7 +647,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
     indices=new size_t[r];
     global_indices= new size_t[r];
 
-    #pragma omp parallel for simd
+    #pragma omp parallel for
     for (size_t i=0; i<r; i++)
     {
         indices[i]=0;
@@ -2782,7 +2782,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
         const T normc= sqrt(norm);
 
         //  const T normc=norm;
-        #pragma for  shared(v,pstrv0,normc)
+        #pragma omp parallel for  shared(v,pstrv0,normc)
         for (size_t i = 0; i < pext0; ++i)
         {
             v(i,pstrv0)= v(i,pstrv0)/normc;
@@ -2791,7 +2791,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
         // Set column c of Q
 
         // removing the out commenting will lead clang to crash.
-         #pragma parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
+     //    #pragma omp parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
         for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,c,qstr0,qstr1) = v(i,pstrv0);
@@ -2886,7 +2886,6 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
     const size_t qstr0=Q.pstrides[0];
     const size_t qstr1=Q.pstrides[1];
 
-    size_t c=0;
     for (size_t c = 0; c < m; ++c)
     {
 
@@ -3040,7 +3039,7 @@ inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, data
         // Set column c of Q
 
         // removing the out commenting will lead clang to crash.
-         #pragma teams distribute parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
+    //    #pragma omp   parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
         for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,c,qstr0,qstr1) = v(i,pstrv0);
@@ -4908,7 +4907,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         create_out_struct(dR);
         #pragma omp target
         {
-            gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
+            gpu_qr_decomposition_w(dA,dQ,dR, (T*) buffer,step_size);
         }
         update_host(dQ);
         update_host(dR);
