@@ -205,7 +205,7 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
 
     if (rowmajor)
     {
-        // Row-major layout: iterate outermost to innermost
+       #pragma acc loop seq  reduction(+:offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -213,7 +213,7 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
     }
     else
     {
-        // Column-major layout: iterate innermost to outermost
+        #pragma acc loop seq reduction(+:offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -231,7 +231,7 @@ inline size_t compute_offset(const size_t * __restrict indices, const size_t* __
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-        #pragma omp simd
+        #pragma omp simd reduction(+:offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -240,7 +240,7 @@ inline size_t compute_offset(const size_t * __restrict indices, const size_t* __
     else
     {
         // Column-major layout: iterate innermost to outermost
-        #pragma omp  simd
+        #pragma omp  simd reduction(+:offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -263,7 +263,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
     if (rowmajor)
     {
         // Row-major layout: iterate outermost to innermost
-#pragma acc loop vector reduction(+ : offset)
+#pragma acc loop vector independent reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[i] * strides[i];
@@ -272,7 +272,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
     else
     {
         // Column-major layout: iterate innermost to outermost
-#pragma acc loop vector  reduction(+ : offset)
+#pragma acc loop vector independent  reduction(+ : offset)
         for (size_t i = 0; i < r; ++i)
         {
             offset += indices[r - 1 - i] * strides[r - 1 - i];
@@ -289,7 +289,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
 inline size_t compute_data_length_v(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
-#pragma acc loop vector
+#pragma acc loop vector independent reduction(+:offset)
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
@@ -302,7 +302,7 @@ inline size_t compute_data_length_v(const size_t*__restrict  extents, const size
 inline size_t compute_data_length_w(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
-#pragma acc loop
+#pragma acc loop independent worker reduction(+:offset)
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
@@ -318,7 +318,7 @@ inline size_t compute_data_length_w(const size_t*__restrict  extents, const size
 inline size_t compute_data_length_s(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
-#pragma acc loop seq
+#pragma acc loop seq reduction(+:offset)
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
@@ -2189,6 +2189,9 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
 
 
 }
+
+
+
 
 
 
@@ -4790,3 +4793,4 @@ void printvector(const mdspan<T, Container>& span)
 
 
 #endif
+
