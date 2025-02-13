@@ -33,6 +33,12 @@ On clang, the functions that offload to gpu fail, unfortunately, due to openacc 
 
 6) I have added an openmp branch. This is for development purposes only. 
 
-On 13.02.2025, I fixed a bug in the openmp branch where a data race often caused wrong results for the length of the data to be uploaded. After this is fixed, the openmp version now works and compiles with clang. Due to a clang bug in the optimizer (which seems to be  a problem with a parallelizable loop within a non-parallelizable for loop), one can not compile the code with optimizations turned on. Without optimizations, the code would run fine and yield correct results. With optimizations turned on, clang's code would cause a memory segfault at runtime.
+On 13.02.2025, I fixed a bug in the openmp branch where a data race often caused wrong results for the length of the data to be uploaded. 
+The openmp version now compiles with clang and yields correct results.
+
+Unfortunately, it can only be compiled currently if no compiler optimizations were turned on in clang. Due to a clang bug in the optimizer https://github.com/llvm/llvm-project/issues/126342 (which seems to be  a problem with a parallelizable loop within a non-parallelizable for loop), clang's code would cause a memory segfault at runtime if optimizations are turned on.
+
+The openmp branch can use teams distribute/gang loops. Unfortunately, clang currently does not support simd vectorizations on gpu.
+
 
 
