@@ -31,6 +31,8 @@ By now (on 12.02.2025), after running a few hundred tests with several matrices,
 
 On clang, the functions that offload to gpu fail, unfortunately, due to openacc being in deelopment.
 
-6) I have added an openmp branch. This is for development purposes only. On 13.02.2025, I fixed a bug where a data race often caused wrong results for the length of the data to be uploaded. After this is fixed, the openmp version now works and compiles with clang. Due to a clang bug in the optimizer (which seems to be  a problem with a parallelizable loop within a non-parallelizable for loop), one can not compile the code with optimizations turned on. Without optimizations, the code would run fine and yield correct results. With optimizations turned on, clang's code would cause a memory segfault at runtime.
+6) I have added an openmp branch. This is for development purposes only. 
+
+On 13.02.2025, I fixed a bug in the openmp branch where a data race often caused wrong results for the length of the data to be uploaded. After this is fixed, the openmp version now works and compiles with clang. Due to a clang bug in the optimizer (which seems to be  a problem with a parallelizable loop within a non-parallelizable for loop), one can not compile the code with optimizations turned on. Without optimizations, the code would run fine and yield correct results. With optimizations turned on, clang's code would cause a memory segfault at runtime.
 
 
