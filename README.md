@@ -24,4 +24,4 @@ After running them a few hundreds of times and with different matrices, I can by
 
 On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
 
-Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. On some cases with reductions, one unfortunately still has to use threads with parallel for. The library now compiles with -O3 with clang.
+Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. On some cases with reductions, one unfortunately still has to use threads with parallel for. 
