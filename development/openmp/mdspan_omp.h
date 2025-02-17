@@ -32,6 +32,10 @@
 #include <thread>
 #include <mpi.h>
 
+#if (Unified_Shared_Memory==true)
+#pragma omp requires unified_shared_memory
+#endif
+
 
 enum Matrix_Multiplication_Algorithm
 {
@@ -64,9 +68,9 @@ struct matrix_multiplication_parameters
 template <typename T>
 struct datastruct
 {
-    T*  __restrict pdata = nullptr;
-    size_t* __restrict pextents = nullptr;
-    size_t*  __restrict pstrides = nullptr;
+    T*   pdata = nullptr;
+    size_t*  pextents = nullptr;
+    size_t*   pstrides = nullptr;
     size_t pdatalength = 0;
     size_t prank = 0;
     bool prowmajor = true;
@@ -138,15 +142,12 @@ struct datastruct
     T operator()(const size_t row, const size_t stride) const __attribute__((always_inline));
 
 
-    datastruct<T>substruct_t(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides);
-    datastruct<T>substruct_t(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data );
     datastruct<T>substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides);
     datastruct<T>substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data);
     datastruct<T>substruct_v(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides);
     datastruct<T>substruct_v(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T* __restrict sub_data);
     datastruct<T>subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides);
     datastruct<T>subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
-    datastruct<T>subspanmatrix_t( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
     datastruct<T> subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data);
     datastruct<T>substruct_s(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T*__restrict sub_data);
 
@@ -293,6 +294,7 @@ inline size_t compute_data_length_v(const size_t*__restrict  extents, const size
 inline size_t compute_data_length_s(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
     size_t offset=0;
+    #pragma omp ordered
     for (size_t i = 0; i < rank; ++i)
     {
         offset += (extents[i]-1) * strides[i];
@@ -375,7 +377,7 @@ inline void fill_strides(const size_t* __restrict extents,size_t* __restrict str
     {
         // Row-major layout: last dimension has stride 1
         strides[rank - 1] = 1;
-
+        #pragma omp ordered
         for (int i = rank - 2; i >= 0; --i)
         {
             strides[i] = strides[i + 1] * extents[i + 1];
@@ -385,6 +387,7 @@ inline void fill_strides(const size_t* __restrict extents,size_t* __restrict str
     {
         // Column-major layout: first dimension has stride 1
         strides[0] = 1;
+        #pragma omp ordered
         for (size_t i = 1; i < rank; ++i)
         {
             strides[i] = strides[i - 1] * extents[i - 1];
@@ -535,7 +538,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
 {
     size_t offset_index = 0;
     const size_t r=this->prank;
-    #pragma omp simd reduction( + : offset_index )
+    #pragma omp parallel for simd reduction( + : offset_index )
     for (size_t i = 0; i < r; ++i)
     {
         offset_index += poffsets[i] * pstrides[i];
@@ -558,7 +561,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
     indices=new size_t[r];
     global_indices= new size_t[r];
 
-    #pragma omp simd
+    #pragma omp parallel for simd
     for (size_t i=0; i<r; i++)
     {
         indices[i]=0;
@@ -570,7 +573,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
     while (true)
     {
         // Compute the current global indices
-        #pragma omp simd
+        #pragma omp parallel for simd
         for (size_t i = 0; i < r; ++i)
         {
             global_indices[i] = poffsets[i] + indices[i];
@@ -756,45 +759,6 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
     return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
 }
 #pragma omp end declare target
-
-#pragma omp begin declare target
-template<typename T>
-datastruct<T>  datastruct<T>::subspanmatrix_t( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
-{
-    if (prowmajor)
-    {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
-        #pragma omp teams distribute parallel for collapse(2)
-        for (size_t i = 0; i < tile_rows; ++i)
-        {
-            for (size_t j = 0; j < tile_cols; ++j)
-            {
-                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
-        }
-    }
-    else
-    {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
-        #pragma omp teams distribute parallel for collapse(2)
-        for (size_t j = 0; j < tile_cols; ++j)
-        {
-            for (size_t i = 0; i < tile_rows; ++i)
-            {
-                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
-        }
-    }
-    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
-    size_t pl=compute_data_length_w(psub_extents,psub_strides,2);
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
-}
-#pragma omp end declare target
-
 
 
 
@@ -992,44 +956,58 @@ void printvector(const datastruct<T>&span)
 template<typename T>
 inline void update_device(datastruct<T>& dL)
 {
-      size_t l=dL.pdatalength;
+#if (Unified_Shared_Memory==false)
+    size_t l=dL.pdatalength;
     #pragma omp target update to(dL.pdata[0:l])
+#endif
 }
 
 template<typename T>
 inline void update_host(datastruct<T>& dL)
 {
+#if (Unified_Shared_Memory==false)
     size_t l=dL.pdatalength;
     #pragma omp target update from (dL.pdata[0:l])
+#endif
 }
 
 template<typename T>
-void inline create_in_struct(const datastruct<T>& dA)
+void inline create_in_struct(datastruct<T>& dA)
 {
-      size_t l=dA.pdatalength;
-      size_t r=dA.prank;
+#if (Unified_Shared_Memory==false)
+    size_t l=dA.pdatalength;
+    size_t r=dA.prank;
     #pragma omp target enter data map(to: dA,dA.pdata[0:l],dA.pextents[0:r],dA.pstrides[0:r])
+#endif
 }
 
 template<typename T>
 void inline create_out_struct(datastruct<T>& dA)
 {
-       size_t l=dA.pdatalength;
-      size_t r=dA.prank;
-   #pragma omp target enter data map(to: dA,dA.pdata[0:l],dA.pextents[0:r],dA.pstrides[0:r])
+#if (Unified_Shared_Memory==false)
+    size_t l=dA.pdatalength;
+    size_t r=dA.prank;
+    #pragma omp target enter data map(to: dA,dA.pdata[0:l],dA.pextents[0:r],dA.pstrides[0:r])
+#endif
 }
 template<typename T>
 inline void exit_struct(datastruct<T> &dA)
 {
-       size_t l=dA.pdatalength;
-      size_t r=dA.prank;
+#if (Unified_Shared_Memory==false)
+    size_t l=dA.pdatalength;
+    size_t r=dA.prank;
     #pragma omp target exit data map(delete: dA.pstrides[0:r],dA.pextents[0:r],dA.pdata[0:l],dA)
+#endif
 }
 
 template<typename T>
 inline void exit_struct(const datastruct<T> &dA)
 {
-    #pragma omp target exit data map(delete: dA.pstrides[0:dA.prank],dA.pextents[0:dA.prank],dA.pdata[0:dA.pdatalength],dA)
+#if (Unified_Shared_Memory==false)
+    size_t l=dA.pdatalength;
+    size_t r=dA.prank;
+    #pragma omp target exit data map(delete: dA.pstrides[0:r],dA.pextents[0:r],dA.pdata[0:l],dA)
+#endif
 }
 
 
@@ -2004,6 +1982,7 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
 
     const size_t tempsize = (n - step_size) * (n - step_size);
 
+
     size_t pext3[2];
     size_t pstrides3[2];
 
@@ -2011,7 +1990,6 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
     // Allocate memory for S on the device
     T* __restrict sdata;
     T* __restrict adata;
-
 
     if (buffer==(T*) nullptr)
     {
@@ -2024,12 +2002,15 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
         adata=buffer+tempsize;
     }
 
-    #pragma omp parallel for shared(A,L)
+    #pragma omp parallel for  shared(A,L)
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=A.pdata[i];
         L.pdata[i]=0;
     }
+
+
+
 
     datastruct<T> tempA(adata, 0,A.prowmajor,n, n,pext3, pstrides3,true,true);
     const size_t strtA0=tempA.pstrides[0];
@@ -2037,17 +2018,13 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
     const size_t strl0=L.pstrides[0];
     const size_t strl1=L.pstrides[1];
 
-
-
-
     for (size_t c = 0; c < n; ++c)
     {
         if (c == z + step_size)
         {
             size_t u=n-c;
             size_t v=c-z;
-            size_t rtext[2];
-            size_t rtstrides[2];
+
 
             size_t pSstrides[2];
             size_t pSext[2];
@@ -2055,20 +2032,19 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
             size_t pRstr[2];
 
             datastruct<T> R =L.subspanmatrix(c, z, u, v,pRext,pRstr);
-            datastruct<T> RT=R.transpose(rtext,rtstrides);
             datastruct<T> S(sdata, 0, A.prowmajor,u, u, pSext, pSstrides,true,true);
             const size_t strs0=S.pstrides[0];
             const size_t strs1=S.pstrides[1];
 
             const size_t rows=R.pextents[0];
-            const size_t cols=RT.pextents[1];
+            const size_t cols=R.pextents[0];
             const size_t inner_dim=R.pextents[1];
 
             const size_t strA0=R.pstrides[0];
             const size_t strA1=R.pstrides[1];
 
-            const size_t strB0=RT.pstrides[0];
-            const size_t strB1=RT.pstrides[1];
+            const size_t strB0=R.pstrides[1];
+            const size_t strB1=R.pstrides[0];
 
             const size_t strC0=S.pstrides[0];
             const size_t strC1=S.pstrides[1];
@@ -2079,9 +2055,10 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
                 for (size_t j = 0; j < cols; ++j)
                 {
                     T sum = 0;
+                    #pragma omp loop reduction(+:sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
-                        sum += R(i,k,strA0,strA1) *RT(k,j,strB0,strB1);
+                        sum += R(i,k,strA0,strA1) *R(k,j,strB0,strB1);
                     }
                     S(i,j,strC0,strC1)= sum;
                 }
@@ -2101,31 +2078,31 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
             z = c;
         }
 
-        T temp = 0;
-        #pragma omp parallel for reduction(+:temp) shared(L,strl0,strl1,c)
+
+        T tmp=tempA(c, c,strtA0,strtA1);
+        #pragma omp parallel for reduction(-:tmp) shared(strl0,strl1,c)
         for (size_t k = z; k < c; ++k)
         {
-            T tmp3=L(c,k,strl0,strl1);
-            temp +=  tmp3*tmp3;
+            const T tmp3=L(c,k,strl0,strl1);
+            tmp-= tmp3 * tmp3;
         }
+        L(c, c,strl0,strl1) =sqrt(tmp);
 
-        temp=tempA(c,c,strtA0,strtA1)-temp;
-        T temp4=sqrt(temp);
-        L(c,c,strl0,strl1) = temp4;
-
-
-        #pragma omp parallel for shared(c,L,strl0,strl1,tempA,strtA0,strtA1)
+        T tmp4=L(c, c,strl0,strl1);
+        #pragma omp parallel for
         for (size_t i = c + 1; i < n; ++i)
         {
-            T temp2 =0;
+
+            T tmp2 = tempA(i, c,strtA0,strtA1);
+            #pragma omp loop  reduction(-:tmp2)
             for (size_t k = z; k < c; ++k)
             {
-                temp2 += L(i,k,strl0,strl1)*L(c,k,strl0,strl1);
+                tmp2 -= L(i, k,strl0,strl1) * L(c, k,strl0,strl1);
             }
-            temp2= tempA(i,c,strtA0,strtA1)-temp2;
-            L(i,c,strl0,strl1) = temp2 / temp4;
+            L(i, c,strl0,strl1)=tmp2/tmp4;
         }
     }
+
 
     if(buffer==nullptr)
     {
@@ -2136,306 +2113,6 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
 #pragma omp end declare target
 
 
-
-#pragma omp begin declare target
-template <typename T>
-void gpu_cholesky_decomposition_t(const datastruct<T>& A, datastruct<T>& L, T* __restrict buffer=nullptr, size_t step_size=0)
-{
-    const size_t n = A.pextents[0];
-    size_t z = 0; // Zero-based indexing, starts at the first column
-
-    step_size=(size_t)pow(n,0.8385);
-
-    const size_t tempsize = (n - step_size) * (n - step_size);
-
-    size_t pext3[2];
-    size_t pstrides3[2];
-
-    const size_t nn=n*n;
-    // Allocate memory for S on the device
-    T* __restrict sdata;
-    T* __restrict adata;
-
-    if (buffer==(T*) nullptr)
-    {
-        sdata=(T*) omp_alloc(sizeof(T*)*tempsize,omp_large_cap_mem_alloc);
-        adata=(T*) omp_alloc(sizeof(T*)*nn,omp_large_cap_mem_alloc,);
-    }
-    else
-    {
-        sdata=buffer;
-        adata=buffer+tempsize;
-    }
-
-    #pragma omp teams distribute parallel for
-    for (size_t i=0; i<nn; i++)
-    {
-        adata[i]=A.pdata[i];
-        L.pdata[i]=0;
-    }
-
-    datastruct<T> tempA(adata, 0,A.prowmajor,n, n,pext3, pstrides3,true,true);
-    const size_t strtA0=tempA.pstrides[0];
-    const size_t strtA1=tempA.pstrides[1];
-    const size_t strl0=L.pstrides[0];
-    const size_t strl1=L.pstrides[1];
-
-
-    for (size_t c = 0; c < n; ++c)
-    {
-        if (c == z + step_size)
-        {
-            size_t u=n-c;
-            size_t v=c-z;
-            size_t rtext[2];
-            size_t rtstrides[2];
-
-            size_t pSstrides[2];
-            size_t pSext[2];
-            size_t pRext[2];
-            size_t pRstr[2];
-            datastruct<T> R = L.subspanmatrix(c, z, u, v,pRext,pRstr);
-            datastruct<T> RT=R.transpose(rtext,rtstrides);
-            datastruct<T> S(sdata, 0, A.prowmajor,u, u, pSext, pSstrides,true,true);
-
-
-            const size_t strs0=S.pstrides[0];
-            const size_t strs1=S.pstrides[1];
-
-            const size_t rows=R.pextents[0];
-            const size_t cols=RT.pextents[1];
-            const size_t inner_dim=R.pextents[1];
-
-            const size_t strA0=R.pstrides[0];
-            const size_t strA1=R.pstrides[1];
-
-            const size_t strB0=RT.pstrides[0];
-            const size_t strB1=RT.pstrides[1];
-
-            const size_t strC0=S.pstrides[0];
-            const size_t strC1=S.pstrides[1];
-
-            #pragma omp teams distribute collapse(2)
-            for (size_t i = 0; i < rows; ++i)
-            {
-                for (size_t j = 0; j < cols; ++j)
-                {
-                    T sum = 0;
-                    #pragma omp parallel for reduction(+: sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum += R(i,k,strA0,strA1) *RT(k,j,strB0,strB1);
-                    }
-                    S(i,j,strC0,strC1)= sum;
-                }
-            }
-
-
-
-            const size_t h=c;
-            #pragma omp  teams distribute parallel for collapse(2) shared(h,tempA,strtA0,strtA1,S,strs0,strs1)
-            for (size_t i = h; i < n; ++i)
-            {
-                for (size_t j = h; j < n; ++j)
-                {
-                    tempA(i,j,strtA0,strtA1) -=S(i-h,j-h,strs0,strs1);
-                }
-            }
-
-            z = c;
-        }
-
-        T temp = 0;
-        #pragma omp parallel for reduction(+:temp) shared(L,strl0,strl1,c)
-        for (size_t k = z; k < c; ++k)
-        {
-            T tmp3=L(c,k,strl0,strl1);
-            temp +=  tmp3*tmp3;
-        }
-
-        temp=tempA(c,c,strtA0,strtA1)-temp;
-        T temp4=sqrt(temp);
-        L(c,c,strl0,strl1) = temp4;
-
-
-        #pragma omp  teams distribute shared(c,L,strl0,strl1,tempA,strtA0,strtA1)
-        for (size_t i = c + 1; i < n; ++i)
-        {
-            T temp2 =0;
-            #pragma omp parallel for reduction(+:temp2) shared(c,L,strl0,strl1,tempA,strtA0,strtA1)
-            for (size_t k = z; k < c; ++k)
-            {
-                temp2 += L(i,k,strl0,strl1)*L(c,k,strl0,strl1);
-            }
-            temp2= tempA(i,c,strtA0,strtA1)-temp2;
-            L(i,c,strl0,strl1) = temp2 / temp4;
-        }
-    }
-
-
-    if(buffer==nullptr)
-    {
-        omp_free(sdata,omp_large_cap_mem_alloc);
-        omp_free(adata,omp_large_cap_mem_alloc);
-    }
-
-}
-#pragma omp end declare target
-
-
-
-
-
-
-
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_lu_decomposition_t(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* __restrict buffer=nullptr, size_t step_size=0)
-{
-
-
-    const size_t n = dA.pextents[0];
-    size_t z = 0; // Zero-based indexing, starts at the first column
-
-    if(step_size==0)
-        step_size=(size_t)pow(n,0.8385);
-
-    const size_t tempsize = (n - step_size) * (n - step_size);
-    size_t pext3[2];
-    size_t pstrides3[2];
-    const size_t nn=n*n;
-
-
-    T* __restrict sdata;
-    T* __restrict adata;
-
-    if (buffer==nullptr)
-    {
-        sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
-        adata=(T*)omp_alloc(sizeof(T)*nn,omp_large_cap_mem_alloc);
-    }
-    else
-    {
-        sdata=buffer;
-        adata=buffer+tempsize;
-    }
-
-    #pragma omp teams distribute parallel for shared(dA,dL,dU)
-    for (size_t i=0; i<nn; i++)
-    {
-        adata[i]=dA.pdata[i];
-        dL.pdata[i]=0;
-        dU.pdata[i]=0;
-    }
-    datastruct<T> tempA(adata,  0, dA.prowmajor,n, n,pext3, pstrides3,true,true);
-    const size_t strtA0=tempA.pstrides[0];
-    const size_t strtA1=tempA.pstrides[1];
-
-    const size_t strU0=dU.pstrides[0];
-    const size_t strU1=dU.pstrides[1];
-    const size_t strL0=dL.pstrides[0];
-    const size_t strL1=dL.pstrides[1];
-
-    for (size_t c = 0; c < n; ++c)
-    {
-        if (c == z + step_size)
-        {
-            const size_t u=n-c;
-            const size_t v=c-z;
-            size_t pRLext[2];
-            size_t pRLstr[2];
-            size_t pRUext[2];
-            size_t pRUstr[2];
-            size_t pSstrides[2];
-            size_t pSext[2];
-            datastruct<T> RL = dL.subspanmatrix(c, z, u, v,pRLext,pRLstr);
-            datastruct<T> RU = dU.subspanmatrix(z, c, v, u,pRUext,pRUstr);
-
-            datastruct<T> S(sdata,  0, dA.prowmajor,u, u,pSext, pSstrides,true,true);
-
-            const size_t rows=RL.pextents[0];
-            const size_t cols=RU.pextents[1];
-            const size_t inner_dim=RL.pextents[1];
-
-            const size_t strA0=RL.pstrides[0];
-            const size_t strA1=RL.pstrides[1];
-
-            const size_t strB0=RU.pstrides[0];
-            const size_t strB1=RU.pstrides[1];
-
-            const size_t strC0=S.pstrides[0];
-            const size_t strC1=S.pstrides[1];
-
-
-            #pragma omp teams distribute collapse(2)
-            for (size_t i = 0; i < rows; ++i)
-            {
-                for (size_t j = 0; j < cols; ++j)
-                {
-                    T sum = 0;
-
-                    #pragma omp parallel for reduction(+: sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum += RL(i,k,strA0,strA1) *RU(k,j,strB0,strB1);
-                    }
-                    S(i,j,strC0,strC1)= sum;
-                }
-            }
-
-
-            const size_t strS0=S.pstrides[0];
-            const size_t strS1=S.pstrides[1];
-            #pragma omp  teams distribute  parallel for collapse(2) shared(S,tempA,strtA0,strtA1,strS0,strS1)
-            for (size_t i = c; i < n; ++i)
-            {
-                for (size_t j = c; j < n; ++j)
-                {
-                    tempA(i,j,strtA0,strtA1) -= S(i - c, j - c,strS0,strS1);
-                }
-            }
-            z = c;
-        }
-
-
-        #pragma omp teams distribute shared(dU,dL,strU0,strU1,strL0,strL1)
-        for (size_t i = c; i < n; ++i)
-        {
-            T temp=0;
-            #pragma omp parallel for reduction(+:temp)
-            for (size_t k = z; k < c; ++k)
-            {
-                temp+= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
-            }
-            dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
-        }
-        const T temp4=dU(c,c,strU0,strU1);
-
-        #pragma omp  teams distribute shared(dU,dL,strU0,strU1,strL0,strL1)
-        for (size_t i = c; i < n; ++i)
-        {
-            T temp= 0;
-            #pragma omp parallel for reduction(+:temp) shared(dU,dL,strU0,strU1,strL0,strL1)
-            for (size_t k = z; k < c; ++k)
-            {
-                temp += dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
-            }
-            temp=tempA(i,c,strtA0,strtA1)-temp;
-            dL(i,c,strL0,strL1)=temp/temp4;
-        }
-    }
-
-    if(buffer==nullptr)
-    {
-        omp_free(sdata,omp_large_cap_mem_alloc);
-        omp_free(adata,omp_large_cap_mem_alloc);
-    }
-
-
-
-
-}
-#pragma omp end declare target
 
 
 
@@ -2470,7 +2147,7 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
         adata=buffer+tempsize;
     }
 
-    #pragma omp teams distribute parallel for shared(adata,dA,dL,dU)
+    #pragma omp parallel for shared(adata,dA,dL,dU)
     for (size_t i=0; i<nn; i++)
     {
         adata[i]=dA.pdata[i];
@@ -2522,6 +2199,7 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
                 for (size_t j = 0; j < cols; ++j)
                 {
                     T sum = 0;
+                    #pragma omp loop reduction(+: sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
                         sum += RL(i,k,strA0,strA1) *RU(k,j,strB0,strB1);
@@ -2547,24 +2225,25 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
         #pragma omp parallel for shared(dU,dL,strU0,strU1,strL0,strL1)
         for (size_t i = c; i < n; ++i)
         {
-            T temp=0;
+            T temp=tempA(c,i,strtA0,strtA1);
+            #pragma omp loop reduction(-:temp)
             for (size_t k = z; k < c; ++k)
             {
-                temp+= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
+                temp-= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
             }
-            dU(c,i,strU0,strU1)=tempA(c,i,strtA0,strtA1)-temp;
+            dU(c,i,strU0,strU1)=temp;
         }
         const T temp4=dU(c,c,strU0,strU1);
 
         #pragma omp parallel for shared(dU,dL,strU0,strU1,strL0,strL1,temp4)
         for (size_t i = c; i < n; ++i)
         {
-            T temp= 0;
+            T temp= tempA(i,c,strtA0,strtA1);
+            #pragma omp loop reduction (-:temp)
             for (size_t k = z; k < c; ++k)
             {
-                temp += dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
+                temp -= dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
             }
-            temp=tempA(i,c,strtA0,strtA1)-temp;
             dL(i,c,strL0,strL1)=temp/temp4;
         }
     }
@@ -2699,6 +2378,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
                 for (size_t j = 0; j < cols; ++j)
                 {
                     T sum = 0;
+                    #pragma omp loop reduction(+:sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
                         sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
@@ -2728,6 +2408,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
                 for (size_t j = 0; j < cols2; ++j)
                 {
                     T sum = 0;
+                    #pragma omp loop reduction(+:sum)
                     for (size_t k = 0; k < inner_dim2; ++k)
                     {
                         sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
@@ -2744,6 +2425,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             #pragma omp parallel for shared(mstr0,mstr1,M,S,strs0,strs1,h)
             for (size_t i = 0; i < n; ++i)
             {
+                #pragma omp loop
                 for (size_t j = h; j <n; ++j)
                 {
                     M(i,  j, mstr0, mstr1) -= S(i, j-h,strs0,strs1);
@@ -2779,12 +2461,12 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             }
         }
         // Normalize v
-            T norm=0;
-            #pragma omp parallel for shared(v,pstrv0) reduction(+: norm)
-            for (size_t i = 0; i < pext0; ++i)
-            {
-                norm += v(i,pstrv0) * v(i,pstrv0);
-            }
+        T norm=0;
+        #pragma omp parallel for shared(v,pstrv0) reduction(+: norm)
+        for (size_t i = 0; i < pext0; ++i)
+        {
+            norm += v(i,pstrv0) * v(i,pstrv0);
+        }
 
         const T normc= sqrt(norm);
 
@@ -2798,7 +2480,7 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
         // Set column c of Q
 
         // removing the out commenting will lead clang to crash.
-        // #pragma omp parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
+        //#pragma omp parallel for shared(v,Q,c,pstrv0,qstr0,qstr1)
         for (size_t i = 0; i < pext0; ++i)
         {
             Q(i,c,qstr0,qstr1) = v(i,pstrv0);
@@ -2824,252 +2506,6 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
 }
 #pragma omp end declare target
 
-
-
-#pragma omp begin declare target
-template <typename T >
-inline void gpu_qr_decomposition_t( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer=nullptr, size_t step_size=0)
-{
-    const size_t n = A.pextents[0];
-    const size_t m = A.pextents[1];
-
-    if(step_size==0)
-        step_size=(size_t)pow(A.pextents[0],0.8385);
-
-    const size_t nm=n*m;
-    T* __restrict tempC;
-    T* __restrict tempS;
-    T* __restrict tempM;
-
-    if(buffer==nullptr)
-    {
-        tempC=(T*)omp_alloc(sizeof(T)*m*m,omp_large_cap_mem_alloc);
-        tempS=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
-        tempM=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
-    }
-    else
-    {
-        tempC=buffer;
-        tempS=buffer+m*m;
-        tempM=tempS+nm;
-    }
-
-    size_t Mext[2];
-    Mext[0]= A.pextents[1];
-    Mext[1]=A.pextents[0];
-    size_t Mstrides[2];
-    Mstrides[0]= A.pstrides[0];
-    Mstrides[1]=A.pstrides[1];
-
-
-
-    #pragma omp  teams distribute  parallel for shared(A,tempM)
-    for (size_t i=0; i<nm; i++)
-    {
-        tempM[i]=A.pdata[i];
-    }
-
-
-    #pragma omp teams distribute  parallel for  shared(Q)
-    for (size_t i=0; i<Q.pdatalength; i++)
-    {
-        Q.pdata[i]=0;
-    }
-//
-//
-    #pragma omp teams distribute  parallel for  shared(R)
-    for (size_t i=0; i<R.pdatalength; i++)
-    {
-        R.pdata[i]=0;
-    }
-
-
-    datastruct<T> M(tempM,A.pdatalength,A.prowmajor,A.prank,Mext,Mstrides,false,false); //Copy of A
-    size_t z = 0;
-
-
-    const size_t mstr0=Mstrides[0];
-    const size_t mstr1=Mstrides[1];
-    const size_t qstr0=Q.pstrides[0];
-    const size_t qstr1=Q.pstrides[1];
-
-    for (size_t c = 0; c < m; ++c)
-    {
-
-
-        if (c == z +step_size)
-        {
-            // Extract submatrices
-            size_t cz=c-z;
-            size_t mc=m-c;
-
-            size_t exts[2];
-            size_t strs[2];
-            size_t extbq[2];
-            size_t extbm[2];
-            size_t strbq[2];
-            size_t strbm[2];
-            size_t extc[2];
-            size_t strc[2];
-            size_t extbqt[2];
-            size_t strbqt[2];
-
-            datastruct<T> BQ = Q.subspanmatrix(0, z, n, cz,extbq,strbq);
-            datastruct<T> BM = M.subspanmatrix(0, c, n, mc,extbm,strbm);
-
-            // Compute C = BQ^T * BM
-            datastruct<T> C(tempC,0, BM.prowmajor,cz, mc,extc,strc,true,true);
-
-            datastruct<T> BQT=BQ.transpose(extbqt,strbqt);
-
-
-            const size_t rows=BQT.pextents[0];
-            const size_t cols=BM.pextents[1];
-            const size_t inner_dim=BQT.pextents[1];
-
-            const size_t strA0=BQT.pstrides[0];
-            const size_t strA1=BQT.pstrides[1];
-
-            const size_t strB0=BM.pstrides[0];
-            const size_t strB1=BM.pstrides[1];
-
-            const size_t strC0=C.pstrides[0];
-            const size_t strC1=C.pstrides[1];
-
-            #pragma omp teams distribute collapse(2)
-            for (size_t i = 0; i < rows; ++i)
-            {
-                for (size_t j = 0; j < cols; ++j)
-                {
-                    T sum = 0;
-                    #pragma omp parallel for reduction(+: sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
-                    }
-                    C(i,j,strC0,strC1)= sum;
-                }
-            }
-            // Compute S = BQ * C
-            datastruct<T>S(tempS, 0,BQ.prowmajor,n, mc,exts,strs,true,true);
-
-            const size_t rows2=BQ.pextents[0];
-            const size_t cols2=C.pextents[1];
-            const size_t inner_dim2=BQ.pextents[1];
-
-            const size_t strA02=BQ.pstrides[0];
-            const size_t strA12=BQ.pstrides[1];
-
-            const size_t strB02=C.pstrides[0];
-            const size_t strB12=C.pstrides[1];
-
-            const size_t strC02=S.pstrides[0];
-            const size_t strC12=S.pstrides[1];
-
-            #pragma omp teams distribute collapse(2)
-            for (size_t i = 0; i < rows2; ++i)
-            {
-                for (size_t j = 0; j < cols2; ++j)
-                {
-                    T sum = 0;
-                    #pragma omp parallel for reduction(+: sum)
-                    for (size_t k = 0; k < inner_dim2; ++k)
-                    {
-                        sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
-                    }
-                    S(i,j,strC02,strC12)= sum;
-                }
-            }
-
-            const size_t strs0=strs[0];
-            const size_t strs1=strs[1];
-            // Update M: M[:, c:] -= S
-            const size_t h=c;
-            #pragma omp  teams distribute shared(M,S,h,strs0,strs1,mstr0,mstr1)
-            for (size_t i = 0; i < n; ++i)
-            {
-                #pragma omp parallel for shared(M,S,h,strs0,strs1,mstr0,mstr1)
-                for (size_t j = h; j <n; ++j)
-                {
-                    M(i,  j, mstr0, mstr1) -= S(i, j-h,strs0,strs1);
-                }
-            }
-            z = c;
-        }
-        // Extract column c of M
-        size_t pextv[1];
-        size_t pstrv[1];
-        datastruct<T>  v = M.column(c,pextv,pstrv);
-        const size_t pstrv0=pstrv[0];
-        const size_t pext0=pextv[0];
-
-        for (size_t j = z; j < c; ++j)
-        {
-            size_t pextu[1];
-            size_t pstru[1];
-            const datastruct<T> u = Q.column(j,pextu,pstru);
-            const size_t pstru0=u.pstrides[0];
-
-            T dot_pr=0;
-            #pragma omp  parallel for shared(u,v,pstru0,pstrv0)reduction(+:dot_pr)
-            for (size_t i = 0; i < pext0; ++i)
-            {
-                dot_pr += u(i,pstru0) * v(i,pstrv0);
-            }
-
-            const T cdot_pr=dot_pr;
-            #pragma omp  parallel for shared(u,cdot_pr,pstrv0,pstru0)
-            for (size_t i = 0; i < pext0; ++i)
-            {
-                v(i,pstrv0) -= cdot_pr * u(i,pstru0);
-            }
-        }
-        // Normalize v
-
- // Normalize v
-            T norm=0;
-           #pragma omp parallel for shared(v,pstrv0) reduction(+: norm)
-            for (size_t i = 0; i < pext0; ++i)
-            {
-                norm += v(i,pstrv0) * v(i,pstrv0);
-            }
-
-        const T normc= sqrt(norm);
-
-        //  const T normc=norm;
-       #pragma omp teams distribute parallel for shared(v,pstrv0,normc)
-        for (size_t i = 0; i < pext0; ++i)
-        {
-            v(i,pstrv0)= v(i,pstrv0)/normc;
-        }
-
-        // Set column c of Q
-
-        // removing the out commenting will lead clang to crash.
-        #pragma omp teams distribute shared(v, Q,c,pstrv0,qstr0,qstr1)
-        for (size_t i = 0; i < pext0; ++i)
-        {
-            Q.pdata[i * qstr0 + c *qstr1]= v.pdata[i*pstrv0];
-        }
-    }
-
-    // Compute R = Q^T * A
-    size_t qtext[2];
-    size_t qtstrides[2];
-
-
-    datastruct<T> QT=Q.transpose(qtext,qtstrides);
-    gpu_matrix_multiply_dot_t(QT,A,R);
-
-    if(buffer==nullptr)
-    {
-        omp_free(tempM,omp_large_cap_mem_alloc);
-        omp_free(tempS,omp_large_cap_mem_alloc);
-        omp_free(tempC,omp_large_cap_mem_alloc);
-    }
-
-}
-#pragma omp end declare target
 
 
 
@@ -3107,118 +2543,6 @@ inline void gpu_matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct
 }
 #pragma omp end declare target
 
-
-#pragma omp begin declare target
-template <typename T>
-inline void gpu_matrix_multiply_dot_t( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
-{
-
-    const size_t rows=A.pextents[0];
-    const size_t cols=B.pextents[1];
-    const size_t inner_dim=A.pextents[1];
-
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-
-    #pragma omp  teams distribute collapse(2) shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1,rows,cols, inner_dim)
-    for (size_t i = 0; i < rows; ++i)
-    {
-        for (size_t j = 0; j < cols; ++j)
-        {
-            T sum = 0;
-            #pragma omp parallel for reduction(+:sum) shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1,rows,cols, inner_dim)
-            for (size_t k = 0; k < inner_dim; ++k)
-            {
-                sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
-            }
-            C(i,j,strC0,strC1)= sum;
-        }
-    }
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline bool gpu_matrix_add_t(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
-{
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp teams distribute parallel for collapse(2) shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1)
-    for (size_t i = 0; i < n; ++i)
-    {
-        for (size_t j = 0; j <m ; ++j)
-        {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
-        }
-    }
-
-    return true;
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline bool gpu_matrix_subtract_t(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
-{
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp teams distribute parallel for collapse(2)  shared(C,strC0,strC1,A,strA0,strA1,B,strB0,strB1)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j < m; ++j)
-        {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
-        }
-    }
-    return true;
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline bool gpu_matrix_multiply_vector_t( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
-{
-
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp teams distribute parallel for collapse(2)  shared(C,strC0,strC1,M,strM0,strM1,V,strV0)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <m ; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
-        }
-    }
-    return true;
-}
-#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -3273,95 +2597,6 @@ inline bool gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datas
 #pragma omp end declare target
 
 
-#pragma omp begin declare target
-template <typename T>
-inline bool gpu_matrix_multiply_scalar_t(  const datastruct<T>& M, const T V, datastruct<T>& C)
-{
-    // Perform matrix multiplication: C = A * B
-
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp teams distribute parallel for collapse(2) shared(C,strC0,strC1,M,strM0,strM1,V)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <  m; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
-        }
-    }
-    return true;
-}
-#pragma omp end declare target
-
-
-
-#pragma omp begin declare target
-template <typename T>
-inline void gpu_vector_subtract_t( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
-{
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp teams distribute parallel for  shared (res,strres,vec1,strv1,vec2,strv2)
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
-    }
-
-}
-#pragma omp end declare target
-
-
-
-
-#pragma omp begin declare target
-template <typename T>
-inline bool gpu_matrix_multiply_vector_t( const datastruct<T>M, const T*V, datastruct<T> & C)
-{
-
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp teams distribute parallel for collapse(2)  shared(C,strC0,strC1,M,strM0,strM1,V)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <  m; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
-        }
-    }
-
-    return true;
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline void gpu_vector_add_t( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
-{
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp teams distribute parallel for shared (res,strres,vec1,strv1,vec2,strv2)
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
-    }
-
-}
-#pragma omp end declare target
-
 
 #pragma omp begin declare target
 template <typename T>
@@ -3379,22 +2614,6 @@ inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T
 
 }
 #pragma omp end declare target
-
-#pragma omp begin declare target
-template <typename T>
-inline void gpu_vector_scalar_multiply_t( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
-{
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
-    const size_t vecstr=vec.pstrides[0];
-    #pragma omp teams distribute parallel for  shared (res,resstr,vec,vecstr,scalar)
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,resstr) = vec(i,vecstr)*scalar;
-    }
-}
-#pragma omp end  declare target
-
 
 #pragma omp begin declare target
 template <typename T>
@@ -3427,127 +2646,6 @@ inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& 
 #pragma omp end declare target
 
 
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
-{
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i < n; ++i)
-    {
-        for (size_t j = 0; j <m ; ++j)
-        {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
-        }
-    }
-
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
-{
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j < m; ++j)
-        {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
-        }
-    }
-
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_matrix_multiply_vector_v( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
-{
-
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <m ; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
-        }
-    }
-}
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_matrix_multiply_vector_v( const datastruct<T>M, const T*V, datastruct<T> & C)
-{
-
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <  m; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
-        }
-    }
-}
-#pragma omp end declare target
-//
-//
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, datastruct<T>& C)
-{
-    // Perform matrix multiplication: C = A * B
-
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i <n; ++i)
-    {
-        for (size_t j = 0; j <  m; ++j)
-        {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
-        }
-    }
-}
-#pragma omp end declare target
-//
 
 //
 #pragma omp begin declare target
@@ -3660,77 +2758,7 @@ inline  void gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, d
 
 
 
-//
-//
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
-{
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
-    const size_t vecstr=vec.pstrides[0];
-    #pragma omp simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,resstr) = vec(i,vecstr)*scalar;
-    }
-}
-#pragma omp end declare target
-////
-////
-//
-#pragma omp begin declare target
-template <typename T>
-inline void gpu_vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
-{
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
-    }
 
-}
-#pragma omp end declare target
-//
-#pragma omp begin declare target
-template <typename T>
-inline  void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
-{
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
-    }
-
-}
-#pragma omp end declare target
-//
-//
-#pragma omp begin declare target
-template <typename T>
-inline T gpu_dot_product_v(const  datastruct<T> vec1, const datastruct<T> vec2)
-{
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    T result=0;
-    #pragma omp simd reduction(+:result)
-    for (size_t i = 0; i < n; ++i)
-    {
-        result += vec1(i,strv1) * vec2(i,strv2);
-    }
-    return result;
-}
-
-#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -4616,24 +3644,70 @@ bool winograd_multiply(const  mdspan<T, CA>& A, const mdspan<T, CB>& B, mdspan<T
 
 
 template <typename T, typename CA>
-void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplication_parameters algorithm, size_t step_size=0,  bool gpu_offload=false)
+void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_multiplication_parameters algorithm, size_t step_size=0,  int gpu_offload=false)
 {
+
     if (gpu_offload==true)
     {
+
         datastruct<T> dA=A.pdatastruct;
         datastruct<T> dL=L.pdatastruct;
-        size_t bl=sizeof(T)*2*A.pdatastruct.pdatalength;
-        T*buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
+
+        const size_t n = dA.pextents[0];
+
+
+
+        const size_t nn=n*n;
+#if (Unified_Shared_Memory==false)
         create_in_struct(dA);
         create_out_struct(dL);
-        #pragma omp target is_device_ptr(buffer)
+#endif
+        #pragma omp target teams distribute parallel for shared(dA,dL)
+        for (size_t i=0; i<nn; i++)
         {
-            gpu_cholesky_decomposition_t(dA,dL, (T*) buffer,step_size);
+            dL.pdata[i]=0;
         }
+
+
+        const size_t strtA0=dA.pstrides[0];
+        const size_t strtA1=dA.pstrides[1];
+        const size_t strl0=dL.pstrides[0];
+        const size_t strl1=dL.pstrides[1];
+
+        for (size_t c = 0; c < n; ++c)
+        {
+            #pragma omp target
+            {
+                T tmp=dA(c, c,strtA0,strtA1);
+                #pragma omp parallel for reduction(-:tmp) shared(dL,strl0,strl1,c)
+                for (size_t k = 0; k < c; ++k)
+                {
+                    const T tmp3=dL(c,k,strl0,strl1);
+                    tmp-= tmp3 * tmp3;
+                }
+                dL(c, c,strl0,strl1) =sqrt(tmp);
+            }
+            #pragma omp target
+            {
+                #pragma omp teams distribute shared(dA,dL,c,strtA0,strtA1,strl0,strl1)
+                for (size_t i = c + 1; i < n; ++i)
+                {
+                    T tmp4=dL(c, c,strl0,strl1);
+                    T tmp2 = dA(i, c,strtA0,strtA1);
+                    #pragma omp parallel for reduction(-:tmp2) shared(dL,c,strl0,strl1)
+                    for (size_t k = 0; k < c; ++k)
+                    {
+                        tmp2 -= dL(i, k,strl0,strl1) * dL(c, k,strl0,strl1);
+                    }
+                    dL(i, c,strl0,strl1)=tmp2/tmp4;
+                }
+            }
+        }
+#if (Unified_Shared_Memory==false)
         update_host(dL);
-        exit_struct(dA);
         exit_struct(dL);
-        omp_target_free(buffer,omp_get_default_device());
+        exit_struct(dA);
+#endif
     }
     else
     {
@@ -4653,11 +3727,14 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         }
         else
         {
-            sdata=(T*) omp_alloc(sizeof(T)*tempsize,omp_null_allocator);
-            adata=(T*) omp_alloc(sizeof(T*)*nn,omp_null_allocator);
+            sdata=(T*) omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
+            adata=(T*) omp_alloc(sizeof(T*)*nn,omp_large_cap_mem_alloc);
         }
-
-        #pragma omp parallel for simd
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for shared(A,L)
+#else
+        #pragma omp parallel for simd shared(A,L)
+#endif
         for (size_t i=0; i<nn; i++)
         {
             adata[i]=A.pdatastruct.pdata[i];
@@ -4697,45 +3774,62 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
                     winograd_multiply(R,RT,S,algorithm);
                 }
 
-
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for shared(tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
+#if (Unified_Shared_Memory==true)
+                #pragma omp target teams distribute parallel for  collapse (2) shared(c,tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
+#else
+                #pragma omp parallel for simd  collapse (2) shared(c,tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
+#endif
                 for (size_t i = c; i < n; ++i)
                 {
-                    #pragma omp parallel for simd shared(c, tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i, j,tempAstr0,tempAstr1) -= S(i - c, j - c,Sstr0,Sstr1);
                     }
                 }
-
                 // Update the block boundary
                 z = c;
             }
 
             // Update the diagonal element L[c, c]
-            T tmp=tempA(c, c,tempAstr0,tempAstr1);
-            #pragma omp parallel for simd reduction(-: tmp) shared(L,lstr0,lstr1)
-            for (size_t k = z; k < c; ++k)
+
+#if (Unified_Shared_Memory==true)
+            #pragma omp target
+#endif
             {
-                const T tmp3=L(c,k,lstr0,lstr1);
-                tmp-= tmp3 * tmp3;
+                T tmp=tempA(c, c,tempAstr0,tempAstr1);
+#if (Unified_Shared_Memory==true)
+                #pragma omp parallel for reduction(-: tmp) shared(c,L,lstr0,lstr1)
+#else
+                #pragma omp parallel for simd reduction(-: tmp) shared(c,L,lstr0,lstr1)
+#endif
+                for (size_t k = z; k < c; ++k)
+                {
+                    const T tmp3=L(c,k,lstr0,lstr1);
+                    tmp-= tmp3 * tmp3;
+                }
+                L(c, c,lstr0,lstr1) =sqrt(tmp);
             }
-
-            const T temp4= sqrt(tmp);
-            L(c, c,lstr0,lstr1) =temp4;
-
-            #pragma omp parallel for shared(tempAstr0,tempAstr1,tempA)
+#if (Unified_Shared_Memory==true)
+            #pragma omp target teams distribute shared(c, tempAstr0,tempAstr1,tempA,lstr0,lstr1,L)
+#else
+            #pragma omp parallel for shared(c, tempAstr0,tempAstr1,tempA,lstr0,lstr1,tempA,L )
+#endif
             for (size_t i = c + 1; i < n; ++i)
             {
                 T tmp2 = tempA(i, c,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:tmp2) shared(L,lstr0,lstr1,temp4)
+                T tmp4=L(c, c,lstr0,lstr1);
+#if (Unified_Shared_Memory==true)
+                #pragma omp parallel for reduction(-:tmp2) shared(c,lstr0,lstr1,L)
+#else
+                #pragma omp simd reduction(-:tmp2)
+#endif
                 for (size_t k = z; k < c; ++k)
                 {
                     tmp2 -= L(i, k,lstr0,lstr1) * L(c, k,lstr0,lstr1);
                 }
-                L(i, c,lstr0,lstr1)=tmp2/temp4;
+                L(i, c,lstr0,lstr1)=tmp2/tmp4;
             }
         }
         if(algorithm.memmapped_files)
@@ -4745,8 +3839,8 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         }
         else
         {
-            omp_free(sdata,omp_null_allocator);
-            omp_free(adata,omp_null_allocator);
+            omp_free(sdata,omp_large_cap_mem_alloc);
+            omp_free(adata,omp_large_cap_mem_alloc);
         }
     }
 }
@@ -4755,31 +3849,75 @@ template <typename T, typename CA>
 void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matrix_multiplication_parameters &algorithm,  size_t step_size=0,
                       bool gpu_offload=false)
 {
-
-
     if (gpu_offload==true)
     {
-        datastruct<T>dA=A.pdatastruct;
-
-        datastruct<T> dL=L.pdatastruct, dU=U.pdatastruct;
-        size_t bl=sizeof(T)*2*dA.pdatalength;
-        T *__restrict buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
+        datastruct<T> dA=A.pdatastruct;
+        datastruct<T> dL=L.pdatastruct;
+        datastruct<T> dU=U.pdatastruct;
+#if (Unified_Shared_Memory==false)
         create_in_struct(dA);
         create_out_struct(dL);
         create_out_struct(dU);
-        #pragma omp target is_device_ptr(buffer)
+#endif
+        size_t n = dA.pextents[0];
+        size_t nn=n*n;
+        #pragma omp target teams distribute parallel for shared(dL,dU)
+        for (size_t i=0; i<nn; i++)
         {
-            gpu_lu_decomposition_t( dA,  dL, dU, buffer,step_size);
+            dL.pdata[i]=0;
+            dU.pdata[i]=0;
         }
-//
+
+
+
+        const size_t strtA0=dA.pstrides[0];
+        const size_t strtA1=dA.pstrides[1];
+
+        const size_t strU0=dU.pstrides[0];
+        const size_t strU1=dU.pstrides[1];
+        const size_t strL0=dL.pstrides[0];
+        const size_t strL1=dL.pstrides[1];
+
+        size_t z=0;
+        for (size_t c = 0; c < n; ++c)
+        {
+            #pragma omp target
+            {
+                #pragma omp teams distribute shared(dA,strtA0,strtA1,c,dL,dU,strU0,strU1,strL0,strL1)
+                for (size_t i = c; i < n; ++i)
+                {
+                    T temp=dA(c,i,strtA0,strtA1);
+                    #pragma omp parallel for reduction(-:temp) shared(c,dL,dU,strU0,strU1,strL0,strL1)
+                    for (size_t k = z; k < c; ++k)
+                    {
+                        temp -= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
+                    }
+                    dU(c,i,strU0,strU1)=temp;
+                }
+            }
+            #pragma omp target
+            {
+                #pragma omp teams distribute shared(dA,strtA0,strtA1,c,dL,dU,strU0,strU1,strL0,strL1)
+                for (size_t i = c; i < n; ++i)
+                {
+                    const T temp4=dU(c,c,strU0,strU1);
+                    T temp = dA(i,c,strtA0,strtA1);
+                    #pragma omp parallel for reduction (-:temp)shared(dU,dL,c,strU0,strU1,strL0,strL1)
+                    for (size_t k = z; k < c; ++k)
+                    {
+                        temp -= dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
+                    }
+                    dL(i,c,strL0,strL1)=temp/temp4;
+                }
+            }
+        }
+#if (Unified_Shared_Memory==false)
         update_host(dL);
         update_host(dU);
-//
-        exit_struct(dU);
         exit_struct(dL);
+        exit_struct(dU);
         exit_struct(dA);
-        omp_target_alloc(bl,omp_get_default_device());
-//
+#endif
     }
     else
     {
@@ -4797,11 +3935,14 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         }
         else
         {
-            sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_null_allocator);
-            adata=(T*)omp_alloc(sizeof(T)*nn,omp_null_allocator);
+            sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
+            adata=(T*)omp_alloc(sizeof(T)*nn,omp_large_cap_mem_alloc);
         }
-
-        #pragma omp parallel for simd
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for shared(adata,A,L,U)
+#else
+        #pragma omp parallel for simd  shared(adata,A,L,U)
+#endif
         for (size_t i=0; i<nn; i++)
         {
             adata[i]=A.pdatastruct.pdata[i];
@@ -4816,7 +3957,7 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         const size_t ustr0=U.pdatastruct.pstrides[0];
         const size_t ustr1=U.pdatastruct.pstrides[1];
         size_t z=0;
-
+        #pragma omp ordered
         for (size_t c = 0; c < n; ++c)
         {
             if (c == z + step_size)
@@ -4840,10 +3981,13 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
+#if (Unified_Shared_Memory==true)
+                #pragma omp target teams distribute parallel for collapse(2) shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
+#else
+                #pragma omp parallel for simd collapse(2) shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
+#endif
                 for (size_t i = c; i < n; ++i)
                 {
-                    #pragma omp  parallel for simd shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i,j,tempAstr0,tempAstr1) -= S(i - c, j - c,Sstr0,Sstr1);
@@ -4852,11 +3996,19 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
                 z = c;
             }
 
-            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
+#if (Unified_Shared_Memory==true)
+            #pragma omp target teams distribute shared(tempA,tempAstr0,L,U,tempAstr1,ustr0,ustr1,lstr0,lstr1,c)
+#else
+            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1,ustr0,ustr1,lstr0,lstr1,c)
+#endif
             for (size_t i = c; i < n; ++i)
             {
                 T temp=tempA(c,i,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1)
+#if (Unified_Shared_Memory==true)
+                #pragma omp parallel for reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1,c)
+#else
+                #pragma omp simd reduction(-:temp)
+#endif
                 for (size_t k = z; k < c; ++k)
                 {
                     temp -= U( k,i,ustr0,ustr1) * L( c,k,lstr0,lstr1);
@@ -4865,11 +4017,20 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
             }
 
             const T temp4=U(c,c,ustr0,ustr1);
-            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1)
+
+#if (Unified_Shared_Memory==true)
+            #pragma omp target teams distribute shared(tempA,tempAstr0,L,U,tempAstr1,c,ustr0,ustr1,lstr0,lstr1)
+#else
+            #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1,c,ustr0,ustr1,lstr0,lstr1)
+#endif
             for (size_t i = c; i < n; ++i)
             {
                 T temp = tempA(i,c,tempAstr0,tempAstr1);
-                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1)
+#if (Unified_Shared_Memory==true)
+                #pragma omp parallel for reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1,c)
+#else
+                #pragma omp simd reduction(-:temp)
+#endif
                 for (size_t k = z; k < c; ++k)
                 {
                     temp -= U(k,c,ustr0,ustr1) * L( i,k,lstr0,lstr1);
@@ -4886,8 +4047,8 @@ void lu_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U
         }
         else
         {
-            omp_free(sdata,omp_null_allocator);
-            omp_free(adata,omp_null_allocator);
+            omp_free(sdata,omp_large_cap_mem_alloc);
+            omp_free(adata,omp_large_cap_mem_alloc);
         }
     }
 }
@@ -4902,22 +4063,129 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         datastruct<T> dA=A.pdatastruct;
         datastruct<T> dQ=Q.pdatastruct;
         datastruct<T> dR=R.pdatastruct;
-        size_t bl=sizeof(T)*(dA.pextents[1]*dA.pextents[1]+2*dA.pextents[0]* dA.pextents[1]);
-        T* __restrict buffer=(T*) omp_target_alloc(bl,omp_get_default_device());
+
+        const size_t m = dA.pextents[1];
+
+
+        size_t extm[2]= {dA.pextents[0],dA.pextents[1]};
+        size_t strm[2]= {dA.pstrides[0],dA.pstrides[1]};
+        T* Md=(T*)omp_alloc(sizeof(T)*dA.pdatalength,omp_large_cap_mem_alloc);
+        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm);
+#if (Unified_Shared_Memory==false)
         create_in_struct(dA);
         create_out_struct(dQ);
         create_out_struct(dR);
-        #pragma omp target is_device_ptr(buffer)
+        create_out_struct(dM);
+#endif
+        #pragma omp target teams distribute parallel for shared(dQ)
+        for (size_t i=0; i<dQ.pdatalength; i++)
         {
-            gpu_qr_decomposition_t(dA,dQ,dR, (T*) buffer,step_size);
+            dQ.pdata[i]=0;
+            dM.pdata[i]=dA.pdata[i];
         }
+
+
+
+        size_t z = 0;
+
+        #pragma omp target
+        {
+            const size_t qstr0=dQ.pstrides[0];
+            const size_t qstr1=dQ.pstrides[1];
+            const size_t mstr0=dM.pstrides[0];
+            const size_t mstr1=dM.pstrides[1];
+            for (size_t c = 0; c < m; ++c)
+            {
+                size_t pextv[1];
+                size_t pstrv[1];
+                datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                const size_t pstrv0=pstrv[0];
+                const size_t pext0=pextv[0];
+                for (size_t j = z; j < c; ++j)
+                {
+                    size_t pextu[1];
+                    size_t pstru[1];
+                    const datastruct<T> du = dQ.column(j,pextu,pstru);
+                    const size_t pstru0=du.pstrides[0];
+                    T dot_pr=0;
+                    #pragma omp parallel for shared(du,dv,pstru0,pstrv0)reduction(+:dot_pr)
+                    for (size_t i = 0; i < pext0; ++i)
+                    {
+                        dot_pr += du(i,pstru0) * dv(i,pstrv0);
+                    }
+
+                    const T cdot_pr=dot_pr;
+                    #pragma omp parallel for shared(pstrv0,du,cdot_pr,pstru0)
+                    for (size_t i = 0; i < pext0; ++i)
+                    {
+                        dv(i,pstrv0) -= cdot_pr * du(i,pstru0);
+                    }
+                }
+                // Normalize v
+                T norm=0;
+                #pragma omp parallel for shared(dv,pstrv0) reduction(+: norm)
+                for (size_t i = 0; i < pext0; ++i)
+                {
+                    norm += dv(i,pstrv0) * dv(i,pstrv0);
+                }
+
+                const T normc= sqrt(norm);
+                #pragma omp parallel for  shared(dv,pstrv0,normc)
+                for (size_t i = 0; i < pext0; ++i)
+                {
+                    dv(i,pstrv0)= dv(i,pstrv0)/normc;
+                }
+
+                #pragma omp parallel for shared(dv,Q,c,pstrv0,qstr0,qstr1)
+                for (size_t i = 0; i < pext0; ++i)
+                {
+                    dQ(i,c,qstr0,qstr1) = dv(i,pstrv0);
+                }
+            }
+        }
+
+
+
+
+
+        const size_t rows = dQ.pextents[0]; // Number of rows in A and C
+        const size_t cols = dA.pextents[1]; // Number of columns in B and C
+        const  size_t inner_dim = dQ.pextents[1]; // Number of columns in A and rows in B
+
+        const size_t strA0=dQ.pstrides[0];
+        const size_t strA1=dQ.pstrides[1];
+
+        const size_t strB0=dA.pstrides[0];
+        const size_t strB1=dA.pstrides[1];
+
+        const size_t strC0=dR.pstrides[0];
+        const size_t strC1=dR.pstrides[1];
+
+
+        #pragma omp target teams distribute shared(dR,strC0,strC1,dQ,strA0,strA1,dA,strB0,strB1,rows,cols, inner_dim)
+        for (size_t i = 0; i < rows; ++i)
+        {
+            for (size_t j = 0; j < cols; ++j)
+            {
+                T sum = 0;
+                #pragma omp parallel for reduction(+:sum)
+                for (size_t k = 0; k < inner_dim; ++k)
+                {
+                    sum += dQ(k,i,strA0,strA1) *dA(k,j,strB0,strB1);
+                }
+                dR(i,j,strC0,strC1)= sum;
+            }
+        }
+
+#if (Unified_Shared_Memory==false)
         update_host(dQ);
         update_host(dR);
         exit_struct(dR);
         exit_struct(dQ);
+        exit_struct(dM);
         exit_struct(dA);
-
-       omp_target_free(buffer,omp_get_default_device());
+#endif
+        omp_free(Md,omp_large_cap_mem_alloc);
     }
     else
     {
@@ -4942,23 +4210,35 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         }
         else
         {
-            tempC=(T*)omp_alloc(sizeof(T)*m*m,omp_null_allocator);
-            tempS=(T*)omp_alloc(sizeof(T)*nm,omp_null_allocator);
-            tempM=(T*)omp_alloc(sizeof(T)*nm,omp_null_allocator);
+            tempC=(T*)omp_alloc(sizeof(T)*m*m,omp_large_cap_mem_alloc);
+            tempS=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
+            tempM=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
         }
 
-        #pragma omp parallel for simd
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for simd  shared(tempM,A)
+#else
+        #pragma omp parallel for simd  shared(tempM,A)
+#endif
         for (size_t i=0; i<nm; i++)
         {
             tempM[i]=A.pdatastruct.pdata[i];
         }
-        #pragma omp parallel for simd
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for simd  shared(Q)
+#else
+        #pragma omp parallel for simd  shared(Q)
+#endif
         for (size_t i=0; i<Q.pdatastruct.pdatalength; i++)
         {
             Q.pdatastruct.pdata[i]=0;
         }
 
-        #pragma omp parallel for simd
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for simd  shared(R)
+#else
+        #pragma omp parallel for simd  shared(R)
+#endif
         for (size_t i=0; i<R.pdatastruct.pdatalength; i++)
         {
             R.pdatastruct.pdata[i]=0;
@@ -4969,7 +4249,7 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         const size_t Qstr0=Q.pdatastruct.pstrides[0];
         const size_t Qstr1=Q.pdatastruct.pstrides[1];
         size_t z = 0;
-
+        #pragma omp ordered
         for (size_t c = 0; c < m; ++c)
         {
             if (c == z +step_size)
@@ -5015,10 +4295,14 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
 
                 const size_t Sstr0=S.pdatastruct.pstrides[0];
                 const size_t Sstr1=S.pdatastruct.pstrides[1];
-                #pragma omp parallel for
+#if (Unified_Shared_Memory==true)
+                #pragma omp target teams distribute parallel for  shared(M,S,Sstr0,Sstr1,Mstr0,Mstr1)
+#else
+                #pragma omp parallel for   shared(M,S,Sstr0,Sstr1,Mstr0,Mstr1)
+#endif
                 for (size_t i = 0; i < n; ++i)
                 {
-                    #pragma omp parallel for simd shared(Sstr0,Sstr1,Mstr0,Mstr1)
+                    #pragma omp parallel loop   shared(M,S,Sstr0,Sstr1,Mstr0,Mstr1)
                     for (size_t j = c; j < n; ++j)
                     {
                         M(i, j,Mstr0,Mstr1) -= S(i, j-c,Sstr0,Sstr1);
@@ -5029,14 +4313,18 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
             // Extract column c of M
             auto v = M.column(c);
             const size_t vstr0=v.pdatastruct.pstrides[0];
-            #pragma omp parallel for shared(vstr0,v)
+
+
             for (size_t j = z; j < c; ++j)
             {
                 const auto u = Q.column(j);
                 const size_t ustr0=u.pdatastruct.pstrides[0];
                 const T dot_pr =dot_product(u,v);
-
-                #pragma omp parallel for simd shared(ustr0,u,v,dot_pr)
+#if (Unified_Shared_Memory==true)
+                #pragma omp target teams distribute parallel for   shared(ustr0,u,v,dot_pr)
+#else
+                #pragma omp parallel for   simd shared(ustr0,u,v,dot_pr)
+#endif
                 for (size_t i = 0; i < n; ++i)
                 {
                     v(i,vstr0) -= dot_pr * u(i,ustr0);
@@ -5045,14 +4333,23 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
 
             // Normalize v
             const T norm = sqrt(dot_product(v,v));
-            #pragma omp parallel for simd shared(v,vstr0,norm)
+#if (Unified_Shared_Memory==true)
+            #pragma omp target teams distribute parallel for  shared(v,vstr0,norm)
+#else
+            #pragma omp parallel for   simd shared(v,vstr0,norm)
+#endif
             for (size_t i = 0; i < n; ++i)
             {
                 v(i,vstr0) /= norm;
             }
 
             // Set column c of Q
+
+#if (Unified_Shared_Memory==true)
+            #pragma omp target teams distribute parallel for  shared(Q,v,vstr0,Qstr0,Qstr1,c)
+#else
             #pragma omp parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)
+#endif
             for (size_t i = 0; i < n; ++i)
             {
                 Q(i,c,Qstr0,Qstr1) = v(i,vstr0);
@@ -5082,9 +4379,9 @@ void qr_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R
         }
         else
         {
-            omp_free(tempC,omp_null_allocator);
-            omp_free(tempS,omp_null_allocator);
-            omp_free(tempM,omp_null_allocator);
+            omp_free(tempC,omp_large_cap_mem_alloc);
+            omp_free(tempS,omp_large_cap_mem_alloc);
+            omp_free(tempM,omp_large_cap_mem_alloc);
         }
     }
 
@@ -5095,8 +4392,8 @@ void matrix_multiply_dot(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdspan
 {
 
 
-    const datastruct<T> dA=A.pdatastruct;
-    const datastruct<T> dB=B.pdatastruct;
+    datastruct<T> dA=A.pdatastruct;
+    datastruct<T> dB=B.pdatastruct;
     datastruct<T> dC=C.pdatastruct;
 
     const size_t rows = dA.pextents[0]; // Number of rows in A and C
@@ -5114,31 +4411,34 @@ void matrix_multiply_dot(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdspan
 
     if (gpu_offload==true)
     {
+
+#if (Unified_Shared_Memory==true)
+        #pragma omp target teams distribute parallel for collapse(2) shared(dA, dB, dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)
+#else
         create_in_struct(dA);
         create_in_struct(dB);
         create_out_struct(dC);
-        #pragma omp target enter data map(to: inner_dim, rows, cols,strA0,strA1,strB0,strB1,strC0,strC1)
-        #pragma omp target teams distribute collapse(2) shared(dA, dB, dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)
-            for (size_t i = 0; i < rows; ++i)
+        #pragma omp target teams distribute parallel for collapse(2) shared(dA, dB, dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)
+#endif
+        for (size_t i = 0; i < rows; ++i)
+        {
+            for (size_t j = 0; j < cols; ++j)
             {
-                for (size_t j = 0; j < cols; ++j)
+                T sum=0;
+                #pragma omp loop reduction (+:sum)
+                for (size_t k = 0; k < inner_dim; ++k)
                 {
-                    T sum=0;
-                    #pragma omp parallel for reduction(+:sum) shared(dA, dB, dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum+=dA(i,k,strA0,strA1)*dB(k,j,strB0,strB1);
-                    }
-                    dC(i,j,strC0,strC1)=sum;
+                    sum+=dA(i,k,strA0,strA1)*dB(k,j,strB0,strB1);
                 }
+                dC(i,j,strC0,strC1)=sum;
             }
-
+        }
+#if (Unified_Shared_Memory==false)
         update_host(dC);
-
-        #pragma omp target exit data map (delete: inner_dim, rows, cols,strA0,strA1,strB0,strB1,strC0,strC1)
         exit_struct(dA);
         exit_struct(dB);
         exit_struct(dC);
+#endif
     }
     else
     {
@@ -5148,7 +4448,7 @@ void matrix_multiply_dot(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdspan
             for (size_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
-                #pragma omp parallel for simd reduction (+:sum)  shared(inner_dim, strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
+                #pragma omp simd reduction (+:sum)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
                     sum += dA(i, k,strA0,strA1) * dB(k, j,strB0,strB1);
@@ -5175,11 +4475,18 @@ inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan
     const size_t strB1=B.pdatastruct.pstrides[1];
     const size_t strC0=C.pdatastruct.pstrides[0];
     const size_t strC1=C.pdatastruct.pstrides[1];
-
-    #pragma omp parallel for  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#else
+    #pragma omp parallel for shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#endif
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#if (Unified_Shared_Memory==true)
+        #pragma omp loop
+#else
+        #pragma omp simd
+#endif
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)=A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
@@ -5203,10 +4510,18 @@ inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, m
     const size_t strC1=C.pdatastruct.pstrides[1];
 
 
-    #pragma omp parallel for  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for   shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#else
+    #pragma omp parallel for shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#endif
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd  shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+#if (Unified_Shared_Memory==true)
+        #pragma omp loop
+#else
+        #pragma omp simd
+#endif
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)=A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
@@ -5233,10 +4548,19 @@ inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& 
 
 
     // Perform matrix multiplication: C = A * B
-    #pragma omp parallel for  shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
+
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for  shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
+#else
+    #pragma omp parallel for shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
+#endif
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
+#if (Unified_Shared_Memory==true)
+        #pragma omp loop
+#else
+        #pragma omp simd
+#endif
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i, j),strM0,strM1 * V(j,strV0);  // This works because i, k, j are row/col indices
@@ -5259,11 +4583,18 @@ inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T,
     const size_t strC0=C.pdatastruct.pstrides[0];
     const size_t strC1=C.pdatastruct.pstrides[1];
 
-
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for  shared(C,M,strM0,strM1,strC0,strC1,V)
+#else
     #pragma omp parallel for  shared(C,M,strM0,strM1,strC0,strC1,V)
+#endif
     for (size_t i = 0; i < rows; ++i)
     {
-        #pragma omp parallel for simd  shared(C,M,strM0,strM1,strC0,strC1,V)
+#if (Unified_Shared_Memory==true)
+        #pragma omp loop
+#else
+        #pragma omp simd
+#endif
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];
@@ -5289,11 +4620,20 @@ inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T
 
 
     // Perform matrix multiplication: C = A * B
+
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for shared(C,M,strM0,strM1,strC0,strC1,V)
+#else
     #pragma omp parallel for shared(C,M,strM0,strM1,strC0,strC1,V)
+#endif
     for (size_t i = 0; i < rows; ++i)
     {
         T sum=0;
-        #pragma omp parallel for simd shared(C,M,strM0,strM1,strC0,strC1,V)
+#if (Unified_Shared_Memory==true)
+        #pragma omp loop
+#else
+        #pragma omp simd
+#endif
         for (size_t j = 0; j < cols; ++j)
         {
             C(i,j,strC0,strC1)= M(i,j,strM0,strM1)*V;
@@ -5314,7 +4654,12 @@ inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Contai
     const size_t strv2=vec2.pdatastruct.pstrides[0];
 
     T result = 0;
+
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for reduction(+:result) shared(strv1,strv2)
+#else
     #pragma omp parallel for simd reduction(+:result) shared(strv1,strv2)
+#endif
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i,strv1) * vec2(i,strv2);
@@ -5330,8 +4675,11 @@ inline  void vector_scalar_multiply( const mdspan<T, Container>& vec, const T sc
     const size_t strv=vec.pdatastruct.pstrides[0];
     const size_t strres=res.pdatastruct.pstrides[0];
 
-
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for shared(res ,strres, strv, scalar)
+#else
     #pragma omp parallel for simd shared(res ,strres, strv, scalar)
+#endif
     for (size_t i = 0; i < n; ++i)
     {
         res(i,strres) = vec(i,strv)*scalar;
@@ -5358,7 +4706,12 @@ inline  void vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Cont
     const size_t strv1=vec1.pdatastruct.pstrides[0];
     const size_t strv2=vec2.pdatastruct.pstrides[0];
     const size_t strres=vec3.pdatastruct.pstrides[0];
+
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for shared(vec3,vec2,vec1,strres,strv1,strv2)
+#else
     #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
+#endif
     for(size_t i=0; i<n; i++)
     {
         vec3(i,strres)=vec1(i,strv1)+vec2(i,strv2);
@@ -5372,7 +4725,12 @@ inline  void vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, 
     const size_t strv1=vec1.pdatastruct.pstrides[0];
     const size_t strv2=vec2.pdatastruct.pstrides[0];
     const size_t strres=vec3.pdatastruct.pstrides[0];
+
+#if (Unified_Shared_Memory==true)
+    #pragma omp target teams distribute parallel for shared(vec3,vec2,vec1,strres,strv1,strv2)
+#else
     #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
+#endif
     for(size_t i=0; i<n; i++)
     {
         vec3(i,strres)=vec1(i,strv1)-vec2(i,strv2);
