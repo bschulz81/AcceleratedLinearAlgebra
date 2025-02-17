@@ -11,6 +11,7 @@
 // see <https://www.gnu.org/licenses/>.
 //
 
+
 #include "mdspan_omp.h"
 
 using namespace std;
@@ -80,7 +81,7 @@ cout<<"A Cholesky decomposition with the multiplication on gpu"<<std::endl;
 printmatrix(A2);
 matrix_multiplication_parameters par2;
 
-par2.gpu_offload=false;
+par2.gpu_offload=true;
 
 cholesky_decomposition(A2,L2,par2,0);
 
@@ -114,6 +115,7 @@ printmatrix(L3);
 printmatrix(U3);
 
 cout<<"Entirely on gpu"<<std::endl;
+
 std::fill(L3_data.begin(),L3_data.end(),0);
 std::fill(U3_data.begin(),U3_data.end(),0);
 lu_decomposition(A3,L3,U3,par3,0,true);
@@ -170,3 +172,4 @@ printmatrix(C4);
 
 
 }
+
