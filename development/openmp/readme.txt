@@ -1,10 +1,10 @@
 The files here are an initial openmp port of the openacc code.
 
 On 13.02, I found a data race in compute_datalength. 
-After fixing this, the code produces correct results everytime. but the bug in clangs optimizer currently forbids compilation at higher o levels.
-However, the teams versions of the loops now work in the openmp implementation, which should yield a speed increase. Unfortunately, clang does not yet support openmp simd loops on the gpu.
+After fixing this, the code produces correct results everytime. 
 
 On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
+The rewrite took Openmp's restrictions for the teams distribute pragma into account.
 
 Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. 
 
