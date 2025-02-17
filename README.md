@@ -14,14 +14,14 @@ The Cholesky, LU and QR decomposition can be set such that they work with multip
 
 Initial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
 
-A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with clang if no optimizations are turned on.
-Unfortunately, there seems to be a bug in the clang optimizer for gpu code when parallel loops are within non parallelizable loops.
-I have filed a bug for clang because of this https://github.com/llvm/llvm-project/issues/126342 , and if these problems are fixed, the library may then work in full with clang.
-However, even the non optimized code is parallelized by openmp.
+A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with clang. Since 17.02.2025, it runs and compiles with -O3 optimizations switched on.
 
 Compilation with Gcc currently produces an internal compiler error due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118794 . For Windows support, one would have to add Windows specific support for memory mapped files. 
+
 
 On 13.02.2025, I fixed a data race which led in some cases to a wrong calculation of the offloaded datalength. now the openmp code yields the same results as the old openacc code.
 After running them a few hundreds of times and with different matrices, I can by 13.02.2025, asses that they appear to work correctly if the gpu driver and the cuda version are the most recent.
 
-On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. On some cases with reductions, one unfortunately still has to use threads with parallel for. The library now compiles with -O3 with clang.
+On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
+
+Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. On some cases with reductions, one unfortunately still has to use threads with parallel for. The library now compiles with -O3 with clang.
