@@ -10,13 +10,40 @@ Currently, the library uses open-mp. An older version that contains openmp code 
 The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
 
 
-The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms can also work entirely on GPU, in that case, they can only use naive matrix multiplication.
+The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
 
-Initial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
+Iitial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
 
-A cmakelists.txt file is supplied. Currently, the library is known to compile on linux with clang. Since 17.02.2025, it runs and compiles with -O3 optimizations switched on.
+A cmakelists.txt file is supplied. 
+
+Version History:
+
+By 30.06, the library works on gcc 15.1 if no optimizations are switched on.
+
+The Cholesky, LU and QR decompositions now use all available three parallelization levels of the GPU, if the compiler supports them and accepts simd as parallelization level (currently only for gcc).
+Also, an initial support for offloading into multiple GPU devices has been added.
+
+With optimizations -O1 of GCC switched on, the compile will currently trigger the following internal compiler error https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120865#add_comment 
+
+On clang, the QR decomposition now fails with the following internal compiler error https://github.com/llvm/llvm-project/issues/146262 This error manifested with the recent code that uses all parallelization levels of the GPU.
+
+
+The Strassen algorithm only performs the last multiplication on gpu, and if executed on GPU, the Cholesky, LU and QR decomposition do not use the fastest algorithm that is theoretically available (which would use the Strassen algorithm).
+One reason reason is that because of this compiler issue https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120753 it is currently difficult to have classes and structs which use device pointers and then run a loop over them. Also, memory copy to the gpu is inherently slow on gpu devices if they are installed in a PCI port. Therefore, the Strassen algorithm is only used for the decompositions if one works on the host, where it should also be possible to use the message passing interface over several nodes (but that is still untested). 
+
+By now, the library also has some support for unified_shared_memory, which, however, is only fast in few (and expensive) nvidia and amd devices https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120679:
+
+More linear algebra routines were added.
+
+
+
+
+
+Since 17.02.2025, it runs and compiles with -O3 optimizations switched on.
 
 Compilation with Gcc currently produces an internal compiler error due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118794 . For Windows support, one would have to add Windows specific support for memory mapped files. 
+
+
 
 
 On 13.02.2025, I fixed a data race which led in some cases to a wrong calculation of the offloaded datalength. now the openmp code yields the same results as the old openacc code.
