@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 23 )
 #GCC compiler flags. currently show an internal compiler error
 #
 SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-stack-protector  -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
 
 #Nvidia's nvc++ compiler. Path should be set manually.
 #set (LANGUAGES "C;CXX")
