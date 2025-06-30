@@ -17,10 +17,14 @@ Iitial support for the message passing interface was added. But not tested yet. 
 A cmakelists.txt file is supplied. 
 
 Version History:
+
 With gcc 15.1, the functions of the library can work on the GPU.
 
 By 01.07, the library now compiles on clang again. 
 Unfortunately, in contrast to gcc 15.1 where it can execute on GPU, clang does not seem to run most functions on the GPU device, even if requested. I do not know why that is so.
+
+In the Cmakelists.txt, -fno-math-errno -fno-trapping-math were added, which speeds the computations up a bit, even if we can not use -O3 currently...
+
 
 By 30.06, the library works on gcc 15.1 if no optimizations are switched on.
 
@@ -38,7 +42,6 @@ By now, the library also has some support for unified_shared_memory, which, howe
 
 More linear algebra routines were added.
 
-In the Cmakelists.txt, -fno-math-errno -fno-trapping-math were added, which speeds the computations up a bit, even if we can not use -O3 currently...
 
 
 
