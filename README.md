@@ -35,6 +35,8 @@ By now, the library also has some support for unified_shared_memory, which, howe
 
 More linear algebra routines were added.
 
+In the Cmakelists.txt, -fno-math-errno -fno-trapping-math were added, which speeds the computations up a bit, even if we can not use -O3 currently...
+
 
 
 
