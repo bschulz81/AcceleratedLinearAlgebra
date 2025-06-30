@@ -20,8 +20,12 @@ Version History:
 
 With gcc 15.1, the functions of the library can work on the GPU.
 
-By 01.07, the library now compiles on clang again. 
-Unfortunately, in contrast to gcc 15.1 where it can execute on GPU, clang does not seem to run most functions on the GPU device, even if requested. I do not know why that is so.
+By 01.07, the library now compiles with optimizations  on gcc 25.1.
+
+It also compiles on clang again, after I removed incorrect code in a function which was not even called by the test application.
+
+Unfortunately, in contrast to gcc 15.1 where it can execute on GPU, clang does not seem to run most functions on the GPU device, even if requested. 
+I currently do not know why that is so. The code produces no warnings if compiled with gcc.
 
 In the Cmakelists.txt, -fno-math-errno -fno-trapping-math were added, which speeds the computations up a bit, even if we can not use -O3 currently...
 
