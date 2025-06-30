@@ -4262,7 +4262,6 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
             #pragma omp target teams distribute parallel for shared(strl0,strl1,c,tmp4)device(devicenum)
             for (size_t i = c + 1; i < n; ++i)
             {
-
                 T tmp2 = dA(i, c,strtA0,strtA1);
                 #pragma omp simd reduction(-:tmp2)
                 for (size_t k = 0; k < c; ++k)
@@ -4719,6 +4718,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
                     #pragma omp target teams distribute  parallel for simd shared(cdot_pr)device(devicenum)
                     for (size_t i = 0; i < pext0; ++i)
                     {
+
                         datastruct<T> du = dQ.column(j,pextu,pstru);
                         datastruct<T>  dv = dM.column(c,pextv,pstrv);
                         const size_t pstru0=du.pstrides[0];
@@ -4987,7 +4987,6 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
             winograd_multiply(QT,A,R,algorithm,default_device,devicenum);
         }
 
-
         if(algorithm.memmapped_files)
         {
             delete_temp_mmap<T>(tempC,mm);
@@ -5052,7 +5051,7 @@ bool matrix_multiply_dot( mdspan<T, CA>& A,   mdspan<T, CB>& B, mdspan<T, CC>& C
         const size_t strC0=dC.pstrides[0];
         const size_t strC1=dC.pstrides[1];
 
-        #pragma omp target teams distribute parallel for collapse(2) shared(inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)device(devicenum)
+        #pragma omp target teams distribute parallel for collapse(2) shared(dA,dB,dC,inner_dim, rows, cols,strA1,strA0,strB0,strB1,strC0,strC1)device(devicenum)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
@@ -5158,15 +5157,19 @@ void matrix_multiply_dot_v(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdsp
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+            datastruct<T> dA=A.get_datastruct();
+        datastruct<T> dB=B.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
 
-    const size_t strA0=A.get_datastruct().pstrides[0];
-    const size_t strA1=A.get_datastruct().pstrides[1];
-    const size_t strB0=B.get_datastruct().pstrides[0];
-    const size_t strB1=B.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
+
+    const size_t strA0=dA.pstrides[0];
+    const size_t strA1=dA.pstrides[1];
+    const size_t strB0=dB.pstrides[0];
+    const size_t strB1=dB.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     if (on_gpu==true)
     {
@@ -5175,23 +5178,23 @@ inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan
         if (B.is_offloaded(devicenum)==false) return false;
         if (C.is_offloaded(devicenum)==false) return false;
 
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C) device(devicenum)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC) device(devicenum)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)=A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+                dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)+dB(i,j,strB0,strB1);
             }
         }
     }
     else
     {
-        #pragma omp parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+        #pragma omp parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)=A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+                dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)+dB(i,j,strB0,strB1);
             }
         }
 
@@ -5204,22 +5207,26 @@ inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_add_v( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+            datastruct<T> dA=A.get_datastruct();
+        datastruct<T> dB=B.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
 
-    const size_t strA0=A.get_datastruct().pstrides[0];
-    const size_t strA1=A.get_datastruct().pstrides[1];
-    const size_t strB0=B.get_datastruct().pstrides[0];
-    const size_t strB1=B.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
+
+    const size_t strA0=dA.pstrides[0];
+    const size_t strA1=dA.pstrides[1];
+    const size_t strB0=dB.pstrides[0];
+    const size_t strB1=dB.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     #pragma omp simd collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            C(i,j,strC0,strC1)=A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+            dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)+dB(i,j,strB0,strB1);
         }
     }
 
@@ -5231,16 +5238,19 @@ inline  bool matrix_add_v( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdsp
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
+        datastruct<T> dA=A.get_datastruct();
+        datastruct<T> dB=B.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
 
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
 
-    const size_t strA0=A.get_datastruct().pstrides[0];
-    const size_t strA1=A.get_datastruct().pstrides[1];
-    const size_t strB0=B.get_datastruct().pstrides[0];
-    const size_t strB1=B.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t strA0=dA.pstrides[0];
+    const size_t strA1=dA.pstrides[1];
+    const size_t strB0=dB.pstrides[0];
+    const size_t strB1=dB.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     if (on_gpu==true)
     {
@@ -5249,23 +5259,23 @@ inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, m
         if (B.is_offloaded(devicenum)==false) return false;
         if (C.is_offloaded(devicenum)==false) return false;
 
-        #pragma omp target teams distribute parallel for simd shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)device(devicenum)
+        #pragma omp target teams distribute parallel for simd shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)device(devicenum)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)=A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+                dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)-dB(i,j,strB0,strB1);
             }
         }
     }
     else
     {
-        #pragma omp parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,A,B,C)
+        #pragma omp parallel for simd collapse(2) shared(strC0,strC1,strA1,strA0,strB0,strB1,dA,dB,dC)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)=A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+                dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)-dB(i,j,strB0,strB1);
             }
         }
     }
@@ -5277,23 +5287,26 @@ inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, m
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_subtract_v( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
+        datastruct<T> dA=A.get_datastruct();
+        datastruct<T> dB=B.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
 
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
 
-    const size_t strA0=A.get_datastruct().pstrides[0];
-    const size_t strA1=A.get_datastruct().pstrides[1];
-    const size_t strB0=B.get_datastruct().pstrides[0];
-    const size_t strB1=B.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t strA0=dA.pstrides[0];
+    const size_t strA1=dA.pstrides[1];
+    const size_t strB0=dB.pstrides[0];
+    const size_t strB1=dB.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     #pragma omp simd collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            C(i,j,strC0,strC1)=A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+            dC(i,j,strC0,strC1)=dA(i,j,strA0,strA1)-dB(i,j,strB0,strB1);
         }
     }
 
@@ -5306,15 +5319,17 @@ inline  bool matrix_subtract_v( const mdspan<T, CA>& A,  const mdspan<T, CB>& B,
 template <typename T, typename CA, typename CB, typename CC>
 inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& V, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
+        datastruct<T> dM=M.get_datastruct();
+        datastruct<T> dV=V.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
 
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
-
-    const size_t strM0=M.get_datastruct().pstrides[0];
-    const size_t strM1=M.get_datastruct().pstrides[1];
-    const size_t strV0=V.get_datastruct().pstrides[0];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t strM0=dM.pstrides[0];
+    const size_t strM1=dM.pstrides[1];
+    const size_t strV0=dV.pstrides[0];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     if (on_gpu==true)
     {
@@ -5323,25 +5338,25 @@ inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& 
         if (V.is_offloaded(devicenum)==false) return false;
         if (C.is_offloaded(devicenum)==false) return false;
 
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,strM0,strM1,strC0,strC1,V,strV0) device(devicenum)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,dV,strV0) device(devicenum)
 
         for (size_t i = 0; i < rows; ++i)
         {
 
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)= M(i, j),strM0,strM1 * V(j,strV0);  // This works because i, k, j are row/col indices
+                dC(i,j,strC0,strC1)= dM(i, j,strM0,strM1)* dV(j,strV0);  // This works because i, k, j are row/col indices
             }
         }
     }
     else
     {
-        #pragma omp parallel for simd collapse(2) shared(C,M,strM0,strM1,strC0,strC1,V,strV0)
+        #pragma omp parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,dV,strV0)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)= M(i, j),strM0,strM1 * V(j,strV0);  // This works because i, k, j are row/col indices
+                dC(i,j,strC0,strC1)= dM(i, j,strM0,strM1) * dV(j,strV0);  // This works because i, k, j are row/col indices
             }
         }
 
@@ -5352,19 +5367,20 @@ inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& 
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
 {
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
-
-    const size_t strM0=M.get_datastruct().pstrides[0];
-    const size_t strM1=M.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
-    #pragma omp parallel for simd collapse(2) shared(C,M,strM0,strM1,strC0,strC1,V)
+            datastruct<T> dM=M.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
+    const size_t strM0=dM.pstrides[0];
+    const size_t strM1=dM.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
+    #pragma omp parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,V)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];
+            dC(i,j,strC0,strC1)= dM(i, j,strM0,strM1) * V[i];
         }
     }
     return true;
@@ -5373,20 +5389,22 @@ inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T,
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_multiply_vector_v(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
 {
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+            datastruct<T> dM=M.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
 
-    const size_t strM0=M.get_datastruct().pstrides[0];
-    const size_t strM1=M.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t strM0=dM.pstrides[0];
+    const size_t strM1=dM.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
     #pragma omp simd collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];
+            dC(i,j,strC0,strC1)= dM(i, j,strM0,strM1) * V[i];
         }
     }
 
@@ -5398,13 +5416,17 @@ template <typename T, typename CA, typename CC>
 inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
 
-    const size_t rows = C.get_datastruct().pextents[0];
-    const size_t cols = C.get_datastruct().pextents[1];
+        datastruct<T> dM=M.get_datastruct();
+        datastruct<T> dV=V.get_datastruct();
+        datastruct<T> dC=C.get_datastruct();
 
-    const size_t strM0=M.get_datastruct().pstrides[0];
-    const size_t strM1=M.get_datastruct().pstrides[1];
-    const size_t strC0=C.get_datastruct().pstrides[0];
-    const size_t strC1=C.get_datastruct().pstrides[1];
+    const size_t rows = dC.pextents[0];
+    const size_t cols = dC.pextents[1];
+
+    const size_t strM0=dM.pstrides[0];
+    const size_t strM1=dM.pstrides[1];
+    const size_t strC0=dC.pstrides[0];
+    const size_t strC1=dC.pstrides[1];
 
 
     // Perform matrix multiplication: C = A * B
@@ -5414,23 +5436,23 @@ inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T
         if (M.is_offloaded(devicenum)==false) return false;
         if (V.is_offloaded(devicenum)==false) return false;
         if (C.is_offloaded(devicenum)==false) return false;
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,strM0,strM1,strC0,strC1,V) device(devicenum)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,V) device(devicenum)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)= M(i,j,strM0,strM1)*V;
+                dC(i,j,strC0,strC1)= dM(i,j,strM0,strM1)*dV;
             }
         }
     }
     else
     {
-        #pragma omp parallel for simd collapse(2) shared(C,M,strM0,strM1,strC0,strC1,V)
+        #pragma omp parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,V)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
             {
-                C(i,j,strC0,strC1)= M(i,j,strM0,strM1)*V;
+                dC(i,j,strC0,strC1)= dM(i,j,strM0,strM1)*V;
             }
         }
     }
@@ -5441,27 +5463,31 @@ inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T
 template <typename T, typename Container>
 inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
+            datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
     T result = 0;
     if (on_gpu==true)
     {
         if(default_device) devicenum=omp_get_default_device();
         if (vec1.is_offloaded(devicenum)==false) return false;
         if (vec2.is_offloaded(devicenum)==false) return false;
-        #pragma omp target teams distribute parallel for simd reduction(+:result) shared(strv1,strv2) device(devicenum)
+
+
+        #pragma omp target teams distribute parallel for simd reduction(+:result) shared(dvec1,dvec2,strv1,strv2) device(devicenum)
         for (size_t i = 0; i < n; ++i)
         {
-            result += vec1(i,strv1) * vec2(i,strv2);
+            result += dvec1(i,strv1) * dvec2(i,strv2);
         }
     }
     else
     {
-        #pragma omp parallel for simd reduction(+:result) shared(strv1,strv2)
+        #pragma omp parallel for simd reduction(+:result) shared(dvec1,dvec2,strv1,strv2)
         for (size_t i = 0; i < n; ++i)
         {
-            result += vec1(i,strv1) * vec2(i,strv2);
+            result += dvec1(i,strv1) * dvec2(i,strv2);
         }
     }
     return result;
@@ -5470,14 +5496,16 @@ inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Contai
 template <typename T, typename Container>
 inline  T dot_product_v(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
+                datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
     T result = 0;
     #pragma omp simd reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i,strv1) * vec2(i,strv2);
+        result += dvec1(i,strv1) * dvec2(i,strv2);
     }
     return result;
 }
@@ -5486,26 +5514,28 @@ inline  T dot_product_v(const  mdspan<T, Container>& vec1,const   mdspan<T, Cont
 template <typename T, typename Container>
 inline  bool vector_scalar_multiply( const mdspan<T, Container>& vec, const T scalar,mdspan<T, Container>& res, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-    const size_t n = vec.get_datastruct().pextents[0];
+            datastruct<T> dvec=vec.get_datastruct();
+                    datastruct<T> dres=res.get_datastruct();
 
-    const size_t strv=vec.get_datastruct().pstrides[0];
-    const size_t strres=res.get_datastruct().pstrides[0];
+    const size_t n = dvec.pextents[0];
+    const size_t strv=dvec.pstrides[0];
+    const size_t strres=dres.pstrides[0];
     if (on_gpu==true)
     {
         if(default_device) devicenum=omp_get_default_device();
         if (vec.is_offloaded(devicenum)==false) return false;
-        #pragma omp target teams distribute parallel for simd shared(res ,strres, strv, scalar) device(devicenum)
+        #pragma omp target teams distribute parallel for simd shared(dres,dvec,strres, strv, scalar) device(devicenum)
         for (size_t i = 0; i < n; ++i)
         {
-            res(i,strres) = vec(i,strv)*scalar;
+            dres(i,strres) = dvec(i,strv)*scalar;
         }
     }
     else
     {
-        #pragma omp parallel for simd shared(res ,strres, strv, scalar)
+        #pragma omp parallel for simd shared(dres,dvec ,strres, strv, scalar)
         for (size_t i = 0; i < n; ++i)
         {
-            res(i,strres) = vec(i,strv)*scalar;
+            dres(i,strres) = dvec(i,strv)*scalar;
         }
     }
     return true;
@@ -5517,14 +5547,15 @@ inline  bool vector_scalar_multiply( const mdspan<T, Container>& vec, const T sc
 template <typename T, typename Container>
 inline  bool vector_scalar_multiply_v( const mdspan<T, Container>& vec, const T scalar,mdspan<T, Container>& res)
 {
-    const size_t n = vec.get_datastruct().pextents[0];
+    datastruct<T> dvec=vec.get_datastruct();
+    const size_t n = vec.pextents[0];
 
-    const size_t strv=vec.get_datastruct().pstrides[0];
-    const size_t strres=res.get_datastruct().pstrides[0];
+    const size_t strv=vec.pstrides[0];
+    const size_t strres=res.pstrides[0];
     #pragma omp simd
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec(i,strv)*scalar;
+        res(i,strres) = dvec(i,strv)*scalar;
     }
     return true;
 
@@ -5533,12 +5564,15 @@ inline  bool vector_scalar_multiply_v( const mdspan<T, Container>& vec, const T 
 template <typename T, typename Container>
 inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Container>& vec2, mdspan<T, Container>& res)
 {
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
-    const size_t strres=res.get_datastruct().pstrides[0];
-    res(0,strres) = vec1(1,strv1) * vec2(2,strv2) - vec1(2,strv1) * vec2(1,strv2);
-    res(1,strres) = vec1(2,strv1) * vec2(0,strv2) - vec1(0,strv1) * vec2(2,strv2);
-    res(2,strres) = vec1(0,strv1) * vec2(1,strv2) - vec1(1,strv1) * vec2(0,strv2);
+      datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+        datastruct<T> dres=res.get_datastruct();
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
+    const size_t strres=dres.pstrides[0];
+    dres(0,strres) = dvec1(1,strv1) * dvec2(2,strv2) - dvec1(2,strv1) * dvec2(1,strv2);
+    dres(1,strres) = dvec1(2,strv1) * dvec2(0,strv2) - dvec1(0,strv1) * dvec2(2,strv2);
+    dres(2,strres) = dvec1(0,strv1) * dvec2(1,strv2) - dvec1(1,strv1) * dvec2(0,strv2);
 }
 
 
@@ -5546,10 +5580,13 @@ inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Con
 template <typename T, typename Container>
 inline  bool vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
-    const size_t strres=vec3.get_datastruct().pstrides[0];
+            datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+        datastruct<T> dvec3=vec3.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
+    const size_t strres=dvec3.pstrides[0];
 
     if (on_gpu==true)
     {
@@ -5558,18 +5595,18 @@ inline  bool vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Cont
         if (vec2.is_offloaded(devicenum)==false) return false;
         if (vec3.is_offloaded(devicenum)==false) return false;
 
-        #pragma omp target teams distribute parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2) device(devicenum)
+        #pragma omp target teams distribute parallel for simd shared(dvec3,dvec2,dvec1,strres,strv1,strv2) device(devicenum)
         for(size_t i=0; i<n; i++)
         {
-            vec3(i,strres)=vec1(i,strv1)+vec2(i,strv2);
+            dvec3(i,strres)=dvec1(i,strv1)+dvec2(i,strv2);
         }
     }
     else
     {
-        #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
+        #pragma omp parallel for simd shared(dvec3,dvec2,dvec1,strres,strv1,strv2)
         for(size_t i=0; i<n; i++)
         {
-            vec3(i,strres)=vec1(i,strv1)+vec2(i,strv2);
+            dvec3(i,strres)=dvec1(i,strv1)+dvec2(i,strv2);
         }
     }
     return true;
@@ -5579,15 +5616,18 @@ inline  bool vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Cont
 template <typename T, typename Container>
 inline  bool vector_add_v( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
-    const size_t strres=vec3.get_datastruct().pstrides[0];
+                datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+        datastruct<T> dvec3=vec3.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
+    const size_t strres=dvec3.pstrides[0];
 
-    #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
+    #pragma omp parallel for simd shared(dvec3,dvec2,dvec1,strres,strv1,strv2)
     for(size_t i=0; i<n; i++)
     {
-        vec3(i,strres)=vec1(i,strv1)+vec2(i,strv2);
+        dvec3(i,strres)=dvec1(i,strv1)+dvec2(i,strv2);
     }
 
     return true;
@@ -5597,10 +5637,13 @@ inline  bool vector_add_v( const mdspan<T, Container>& vec1, const  mdspan<T, Co
 template <typename T, typename Container>
 inline  bool vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
-    const size_t strres=vec3.get_datastruct().pstrides[0];
+        datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+        datastruct<T> dvec3=vec3.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
+    const size_t strres=dvec3.pstrides[0];
 
     if (on_gpu==true)
     {
@@ -5609,18 +5652,19 @@ inline  bool vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, 
         if (vec2.is_offloaded(devicenum)==false) return false;
         if (vec3.is_offloaded(devicenum)==false) return false;
 
-        #pragma omp target teams distribute parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2) device(devicenum)
+
+        #pragma omp target teams distribute parallel for simd shared(dvec3,dvec2,dvec1,strres,strv1,strv2) device(devicenum)
         for(size_t i=0; i<n; i++)
         {
-            vec3(i,strres)=vec1(i,strv1)-vec2(i,strv2);
+            dvec3(i,strres)=dvec1(i,strv1)-dvec2(i,strv2);
         }
     }
     else
     {
-        #pragma omp parallel for simd shared(vec3,vec2,vec1,strres,strv1,strv2)
+        #pragma omp parallel for simd shared(dvec3,dvec2,dvec1,strres,strv1,strv2)
         for(size_t i=0; i<n; i++)
         {
-            vec3(i,strres)=vec1(i,strv1)-vec2(i,strv2);
+            dvec3(i,strres)=dvec1(i,strv1)-dvec2(i,strv2);
         }
     }
     return true;
@@ -5629,15 +5673,18 @@ inline  bool vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, 
 template <typename T, typename Container>
 inline  bool vector_subtract_v( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
-    const size_t n = vec1.get_datastruct().pextents[0];
-    const size_t strv1=vec1.get_datastruct().pstrides[0];
-    const size_t strv2=vec2.get_datastruct().pstrides[0];
-    const size_t strres=vec3.get_datastruct().pstrides[0];
+                datastruct<T> dvec1=vec1.get_datastruct();
+        datastruct<T> dvec2=vec2.get_datastruct();
+        datastruct<T> dvec3=vec3.get_datastruct();
+    const size_t n = dvec1.pextents[0];
+    const size_t strv1=dvec1.pstrides[0];
+    const size_t strv2=dvec2.pstrides[0];
+    const size_t strres=dvec3.pstrides[0];
 
     #pragma omp simd
     for(size_t i=0; i<n; i++)
     {
-        vec3(i,strres)=vec1(i,strv1)-vec2(i,strv2);
+        dvec3(i,strres)=dvec1(i,strv1)-dvec2(i,strv2);
     }
     return true;
 }
