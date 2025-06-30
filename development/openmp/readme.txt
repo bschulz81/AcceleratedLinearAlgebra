@@ -1,3 +1,7 @@
+01.07:
+I fixed several functions which were not called by the small test application. Now the code compiles with gcc 15.1 even if optimizations are switched on.
+It also compiles with clang again. Unfortunately, clang does not seem to execute many of the loops on the gpu device, even if requested.
+In contrast, the code produced by gcc starts cuda kernels and runs on my GPU device
 
 30.06:
 
