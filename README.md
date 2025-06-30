@@ -17,6 +17,10 @@ Iitial support for the message passing interface was added. But not tested yet. 
 A cmakelists.txt file is supplied. 
 
 Version History:
+With gcc 15.1, the functions of the library can work on the GPU.
+
+By 01.07, the library now compiles on clang again. 
+Unfortunately, in contrast to gcc 15.1 where it can execute on GPU, clang does not seem to run most functions on the GPU device, even if requested. I do not know why that is so.
 
 By 30.06, the library works on gcc 15.1 if no optimizations are switched on.
 
@@ -25,7 +29,6 @@ Also, an initial support for offloading into multiple GPU devices has been added
 
 With optimizations -O1 of GCC switched on, the compile will currently trigger the following internal compiler error https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120865#add_comment 
 
-On clang, the QR decomposition now fails with the following internal compiler error https://github.com/llvm/llvm-project/issues/146262 This error manifested with the recent code that uses all parallelization levels of the GPU.
 
 
 The Strassen algorithm only performs the last multiplication on gpu, and if executed on GPU, the Cholesky, LU and QR decomposition do not use the fastest algorithm that is theoretically available (which would use the Strassen algorithm).
