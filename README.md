@@ -20,7 +20,7 @@ Version History:
 
 With gcc 15.1, the functions of the library can work on the GPU.
 
-By 01.07, the library now compiles with optimizations  on gcc 25.1.
+By 01.07, the library now compiles with optimizations  on gcc 15.1.
 
 It also compiles on clang again, after I removed incorrect code in a function which was not even called by the test application.
 
