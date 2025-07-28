@@ -1,3 +1,18 @@
+
+28.07.2025 
+Support was added for tensors whose data lies entirely on device.
+
+Fixes for the functions recieving and sending tensors witht he message passing interface was added. (still entirely untested)
+
+Support was added for the message passing interface to send tensors purely to and from device (still entirely untested)
+
+Todo:
+
+Test of the tensor library with the message passing interface.
+Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
+Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
+
+
 01.07:
 I fixed several functions which were not called by the small test application. Now the code compiles with gcc 15.1 even if optimizations are switched on.
 It also compiles with clang again. Unfortunately, clang does not seem to execute many of the loops on the gpu device, even if requested.
@@ -12,6 +27,7 @@ The Cholesky, LU, LU factorizations now use all 3 parallelization levels that gp
 
 Initial support for offloading to several gpu devices added
 Compiles with gcc 15.1 if no optimizations are enabled.
+
 
 Compilation with clang will trigger an internal compiler error with the QR factorization https://github.com/llvm/llvm-project/issues/146262
 Compilation with -O1 with gcc will trigger an interla compiler error https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120865
