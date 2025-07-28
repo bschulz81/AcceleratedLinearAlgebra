@@ -6,7 +6,7 @@ project(arraytest VERSION 1.1.1)
 
 #GCC compiler flags.
 SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
 
 
 
@@ -23,17 +23,20 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-sta
 
 
 
-#set project binary folder:
 set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build/)
 
-#set project source folder:
+
 include_directories(arraytest ${CMAKE_CURRENT_SOURCE_DIR})
 
 
-
-#add executable target name (if project is built as executable)
 add_executable(arraytest ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_omp.cpp)
-target_compile_definitions(arraytest PRIVATE Unified_Shared_Memory=false)
+
+#Set this to True if you want to use unified_shared_memory support
+target_compile_definitions(arraytest PRIVATE Unified_Shared_Memory=False)
+
+
+
+
 #link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
 
 
@@ -44,6 +47,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
     target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi)
 endif()
+
 #if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 #    message(STATUS "Configuring for Clang compiler")
 #    target_link_libraries(arraytest PRIVATE rt m c stdc++ gomp mpi)
