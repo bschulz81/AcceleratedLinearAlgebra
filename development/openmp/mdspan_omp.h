@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-
+#include<string.h>
 
 
 #include <iostream>
@@ -33,7 +33,7 @@
 #include <mpi.h>
 
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
 #pragma omp requires unified_shared_memory
 #endif
 
@@ -223,7 +223,9 @@ struct datastruct
     size_t pdatalength = 0;
     size_t prank = 0;
     bool prowmajor = true;
-    bool data_is_dev_ptr=false;
+    bool pdata_is_devptr=false;
+    bool pstrides_is_devptr=false;
+    bool pextents_is_devptr=false;
 
     // Constructors
     datastruct(
@@ -233,18 +235,24 @@ struct datastruct
         size_t rank,
         size_t*  __restrict extents,
         size_t* __restrict  strides,
-        bool pcompute_datalength,
-        bool compute_strides_from_extents
+        bool compute_datalength,
+        bool compute_strides_from_extents,
+        bool data_is_devptr,
+        bool strides_is_devptr,
+        bool extents_is_devptr
     );
 
     datastruct(
         T* __restrict data,
         size_t pdatalength,
         bool rowm,
-        size_t*  __restrict extents,
+        size_t* __restrict extents,
         size_t* __restrict  strides,
-        bool pcompute_datalength,
-        bool compute_strides_from_extents
+        bool compute_datalength,
+        bool compute_strides_from_extents,
+        bool data_is_devptr,
+        bool strides_is_devptr,
+        bool extents_is_devptr
     );
 
     datastruct(
@@ -256,7 +264,10 @@ struct datastruct
         size_t* __restrict extents,
         size_t* __restrict strides,
         bool compute_datalength,
-        bool compute_strides_from_extents
+        bool compute_strides_from_extents,
+        bool data_is_devptr,
+        bool strides_is_devptr,
+        bool extents_is_devptr
     );
 
     datastruct(
@@ -268,15 +279,22 @@ struct datastruct
         size_t* __restrict extents,
         size_t* __restrict strides,
         bool compute_datalength,
-        bool compute_strides_from_extents
+        bool compute_strides_from_extents,
+        bool data_is_devptr,
+        bool strides_is_devptr,
+        bool extents_is_devptr
     );
 
     datastruct(
         T* __restrict data,
         size_t datalength,
-        bool rowm,  size_t rank,
+        bool rowm,
+        size_t rank,
         size_t* __restrict extents,
-        size_t* __restrict strides
+        size_t* __restrict strides,
+        bool data_is_devptr,
+        bool strides_is_devptr,
+        bool extents_is_devptr
     );
 
     ~datastruct();
@@ -343,7 +361,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t* __rest
 
     newstrides[0]=pstrides[1];
     newstrides[1]=pstrides[0];
-    return datastruct(pdata,pdatalength,prowmajor,2,newextents,newstrides);
+    return datastruct(pdata,pdatalength,prowmajor,2,newextents,newstrides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 
 }
 #pragma omp end declare target
@@ -385,14 +403,19 @@ template<typename T> datastruct<T>::datastruct(
     size_t* __restrict extents,
     size_t* __restrict strides,
     bool compute_datalength,
-    bool compute_strides_from_extents
+    bool compute_strides_from_extents,
+    bool data_is_devptr,
+    bool strides_is_devptr,
+    bool extents_is_devptr
 ) : pdata(data),
     pextents(extents),
     pstrides(strides),
     pdatalength(datalength),
     prank(rank),
-    prowmajor(rowm)
-
+    prowmajor(rowm),
+    pdata_is_devptr(data_is_devptr),
+    pstrides_is_devptr(strides_is_devptr),
+    pextents_is_devptr(extents_is_devptr)
 {
     if(compute_strides_from_extents==true && pextents!=nullptr && pstrides!=nullptr && rank !=0)
     {
@@ -416,12 +439,18 @@ template<typename T> datastruct<T>::datastruct(
     bool rowm,
     size_t rank,
     size_t* __restrict extents,
-    size_t* __restrict strides
+    size_t* __restrict strides,
+    bool data_is_devptr,
+    bool strides_is_devptr,
+    bool extents_is_devptr
 ) : pdata(data),pextents(extents),
     pstrides(strides),
     pdatalength(datalength),
     prank(rank),
-    prowmajor(rowm)
+    prowmajor(rowm),
+    pdata_is_devptr(data_is_devptr),
+    pstrides_is_devptr(strides_is_devptr),
+    pextents_is_devptr(extents_is_devptr)
 {}
 #pragma omp end declare target
 
@@ -439,13 +468,19 @@ template<typename T> datastruct<T>::datastruct(
     size_t* __restrict extents,
     size_t* __restrict strides,
     bool compute_datalength,
-    bool compute_strides_from_extents
+    bool compute_strides_from_extents,
+    bool data_is_devptr,
+    bool strides_is_devptr,
+    bool extents_is_devptr
 ) : pdata(data),
     pextents(extents),
     pstrides(strides),
     pdatalength(datalength),
     prank(2),
-    prowmajor(rowm)
+    prowmajor(rowm),
+    pdata_is_devptr(data_is_devptr),
+    pstrides_is_devptr(strides_is_devptr),
+    pextents_is_devptr(extents_is_devptr)
 {
     if(extents!=nullptr)
     {
@@ -475,13 +510,19 @@ template<typename T> datastruct<T>::datastruct(
     size_t* __restrict extents,
     size_t* __restrict strides,
     bool compute_datalength,
-    bool compute_strides_from_extents
+    bool compute_strides_from_extents,
+    bool data_is_devptr,
+    bool strides_is_devptr,
+    bool extents_is_devptr
 ) : pdata(data),
     pextents(extents),
     pstrides(strides),
     pdatalength(datalength),
     prank(1),
-    prowmajor(true)
+    prowmajor(true),
+    pdata_is_devptr(data_is_devptr),
+    pstrides_is_devptr(strides_is_devptr),
+    pextents_is_devptr(extents_is_devptr)
 {
     if(extents!=nullptr)
     {
@@ -524,7 +565,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
         psub_strides[i]=pstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
+    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -543,7 +584,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
         psub_strides[i]=pstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
+    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -561,7 +602,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
         psub_strides[i]=pstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
+    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -584,7 +625,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
             psub_strides[i]=pstrides[i];
         }
         size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-        return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides);
+        return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
     }
     else
     {
@@ -642,12 +683,11 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
         }
         size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        datastruct pd(sub_data,pl,prowmajor,psub_extents, psub_strides);
-
         delete[] global_indices;
         delete[] indices;
 
-        return pd;
+        return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+
     }
 
 }
@@ -712,13 +752,11 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
 
     }
     // Create and return a new mdspan with the updated pointer, extents, and strides
-    size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    datastruct pd(sub_data,pl,prowmajor,psub_extents, psub_strides);
-
     delete[] global_indices;
     delete[] indices;
 
-    return pd;
+    size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
+    return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -782,12 +820,11 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
     }
     // Create and return a new mdspan with the updated pointer, extents, and strides
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    datastruct pd(sub_data,pl,prowmajor,psub_extents, psub_strides);
 
     delete[] global_indices;
     delete[] indices;
 
-    return pd;
+    return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -804,7 +841,7 @@ datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,
     psub_extents[1]=(prowmajor==true)?tile_cols:tile_rows;
     size_t pl=(psub_extents[0]-1) * psub_strides[0]+ (psub_extents[1]-1) * psub_strides[1]+1;
     size_t offset=+row * pstrides[0]+col * pstrides[1];
-    return datastruct(pdata+offset,pl,prowmajor,2,psub_extents,psub_strides);
+    return datastruct(pdata+offset,pl,prowmajor,2,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -844,7 +881,7 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
     }
     fill_strides(psub_extents,psub_strides,2,this->prowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
+    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -883,7 +920,7 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
     }
     fill_strides(psub_extents,psub_strides,2,this->prowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
+    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -926,7 +963,7 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
     }
     fill_strides(psub_extents,psub_strides,2,this->prowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides);
+    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -938,10 +975,20 @@ inline void update_device(datastruct<T>& dL,int devicenum)
 #if (Unified_Shared_Memory==false)
     size_t l=dL.pdatalength;
     size_t r=dL.prank;
-    #pragma omp target update to(dL.pdata[0:l])device(devicenum)
+
     #pragma omp target update to (dL) device(devicenum)
-    #pragma omp target update to (dL.pextents[0:r])device(devicenum)
-    #pragma omp target update to (dL.pstrides[0:r])device(devicenum)
+    if(!dL.pdata_is_devptr)
+    {
+        #pragma omp target update to (dL.pdata[0:l])device(devicenum)
+    }
+    if(!dL.pextents_is_devptr)
+    {
+        #pragma omp target update to (dL.pextents[0:r])device(devicenum)
+    }
+    if(!dL.pstrides_is_devptr)
+    {
+        #pragma omp target update to (dL.pstrides[0:r])device(devicenum)
+    }
 #endif
 }
 
@@ -951,10 +998,19 @@ inline void update_host(datastruct<T>& dL,int devicenum)
 #if (Unified_Shared_Memory==false)
     size_t l=dL.pdatalength;
     size_t r=dL.prank;
-    #pragma omp target update from (dL.pdata[0:l])device(devicenum)
     #pragma omp target update from (dL) device(devicenum)
-    #pragma omp target update from (dL.pextents[0:r])device(devicenum)
-    #pragma omp target update from (dL.pstrides[0:r])device(devicenum)
+    if(!dL.pdata_is_devptr)
+    {
+        #pragma omp target update from (dL.pdata[0:l])device(devicenum)
+    }
+    if(!dL.pextents_is_devptr)
+    {
+        #pragma omp target update from (dL.pextents[0:r])device(devicenum)
+    }
+    if(!dL.pstrides_is_devptr)
+    {
+        #pragma omp target update from (dL.pstrides[0:r])device(devicenum)
+    }
 #endif
 }
 
@@ -964,12 +1020,24 @@ void inline create_out_struct(datastruct<T>& dA,int devicenum)
 #if (Unified_Shared_Memory==false)
     size_t l=dA.pdatalength;
     size_t r=dA.prank;
-    #pragma omp target enter data map(alloc: dA,dA.pdata[0:l],dA.pextents[0:r],dA.pstrides[0:r])device(devicenum)
-    #pragma omp target update to (dA) device(devicenum)
-    #pragma omp target update to (dA.pextents[0:r])device(devicenum)
-    #pragma omp target update to (dA.pstrides[0:r])device(devicenum)
+    #pragma omp target enter data map(to: dA) device(devicenum)
+    if(!dA.pdata_is_devptr)
+    {
+        #pragma omp target enter data map(alloc: dA.pdata[0:l])device(devicenum)
+    }
+    if(!dA.pextents_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.pextents[0:r])device(devicenum)
+    }
+    if(!dA.pstrides_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.pstrides[0:r])device(devicenum)
+    }
+
 #endif
 }
+
+
 
 template<typename T>
 void inline create_in_struct(datastruct<T>& dA,int devicenum)
@@ -977,7 +1045,19 @@ void inline create_in_struct(datastruct<T>& dA,int devicenum)
 #if (Unified_Shared_Memory==false)
     size_t l=dA.pdatalength;
     size_t r=dA.prank;
-    #pragma omp target enter data map(to: dA,dA.pdata[0:l],dA.pextents[0:r],dA.pstrides[0:r])device(devicenum)
+    #pragma omp target enter data map(to: dA)device(devicenum)
+    if(!dA.pdata_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.pdata[0:l])device(devicenum)
+    }
+    if(!dA.pstrides_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.pextents[0:r])device(devicenum)
+    }
+    if(!dA.pextents_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.pstrides[0:r])device(devicenum)
+    }
 #endif
 }
 template<typename T>
@@ -986,16 +1066,46 @@ inline void exit_struct(datastruct<T> &dA,int devicenum)
 #if (Unified_Shared_Memory==false)
     size_t l=dA.pdatalength;
     size_t r=dA.prank;
-    #pragma omp target exit data map(delete: dA.pstrides[0:r],dA.pextents[0:r],dA.pdata[0:l],dA)device(devicenum)
+    if(!dA.pdata_is_devptr)
+    {
+        #pragma omp target exit data map(delete:dA.pdata[0:l])device(devicenum)
+    }
+    if(!dA.pstrides_is_devptr)
+    {
+        #pragma omp target exit data map(delete: dA.pstrides[0:r])device(devicenum)
+    }
+
+    if(!dA.pextents_is_devptr)
+    {
+        #pragma omp target exit data map(delete:dA.pextents[0:r])device(devicenum)
+    }
+    #pragma omp target exit data map(delete:dA)device(devicenum)
+
 #endif
 }
+
+
 template<typename T>
 inline void release_struct(datastruct<T> &dA,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
     size_t l=dA.pdatalength;
     size_t r=dA.prank;
-    #pragma omp target exit data map(release: dA.pstrides[0:r],dA.pextents[0:r],dA.pdata[0:l],dA)device(devicenum)
+    if(!dA.pdata_is_devptr)
+    {
+        #pragma omp target exit data map(release:dA.pdata[0:l])device(devicenum)
+    }
+    if(!dA.pstrides_is_devptr)
+    {
+        #pragma omp target exit data map(release: dA.pstrides[0:r])device(devicenum)
+    }
+
+    if(!dA.pextents_is_devptr)
+    {
+        #pragma omp target exit data map(release:dA.pextents[0:r])device(devicenum)
+    }
+    #pragma omp target exit data map(release:dA)device(devicenum)
+
 #endif
 }
 
@@ -1013,7 +1123,7 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict exte
     // Fill the extents array with the appropriate values for the row
     extents[0] = pextents[1]; // Extent for a row is the number of columns
     new_strides[0]=pstrides[0];
-    return datastruct<T>(row_data,  pstrides[1] * extents[0],prowmajor,   1, &extents[0],    new_strides );
+    return datastruct<T>(row_data,  pstrides[1] * extents[0],prowmajor,   1, &extents[0],    new_strides, pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1030,7 +1140,7 @@ datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  e
     // Fill the extents array with the appropriate values for the column
     extents[0] = pextents[0]; // Extent for a column is the number of rows
     new_strides[0]=pstrides[0];
-    return datastruct(col_data, pstrides[0] * extents[0],prowmajor,  1, &extents[0],   new_strides );
+    return datastruct(col_data, pstrides[0] * extents[0],prowmajor,  1, &extents[0],   new_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr );
 }
 #pragma omp end declare target
 
@@ -1190,9 +1300,12 @@ public:
     mdspan& operator=(mdspan&& other) noexcept;
     ~mdspan();
 
+
     // Deleted copy constructor and copy assignment
     mdspan(const mdspan<T, Container>&) = delete;
     mdspan& operator=(const mdspan<T, Container>&) = delete;
+
+
     // Access operators
     inline T& operator()(const Container& extents);
     inline T operator()(const Container& extents)const;
@@ -1416,7 +1529,7 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm, const Container& extents, const Container& strides)
-    :pdatastruct(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false),
+    :pdatastruct(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false),
      pownsdata(false),
      pwith_memmap(false)
 {
@@ -1428,7 +1541,7 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm,
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, const Container& strides )
-    : pdatastruct(data, 0,rowm,extents.size(),nullptr,nullptr,false,false),
+    : pdatastruct(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false),
       pownsdata(false),
       pwith_memmap(false)
       // Initialize pdatastruct with placeholders
@@ -1442,7 +1555,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
-    :  pdatastruct(data,0,rowm,extents.size(),nullptr,nullptr,false,false),
+    :  pdatastruct(data,0,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false),
        pownsdata(false),
        pwith_memmap(false)
 {
@@ -1460,7 +1573,7 @@ mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const size_t cols)
-    :  pdatastruct(data,0,rowm,2,nullptr,nullptr,false,false),
+    :  pdatastruct(data,0,rowm,2,nullptr,nullptr,false,false,false,false,false),
        pownsdata(false),
        pwith_memmap(false)
 
@@ -1606,6 +1719,7 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other) noexcept
 }
 
 
+
 // Move assignment operator
 
 template <typename T, typename Container>
@@ -1622,8 +1736,7 @@ mdspan<T, Container> &  mdspan<T, Container>::operator=(mdspan<T, Container> && 
         }
         pownsdata=other.pownsdata;
         pwith_memmap=other.pwith_memmap;
-
-        pdatastruct.pdata = other.get_datastruct().pdata;
+        pdatastruct.pdata = std::move(other.get_datastruct().pdata);
         pdatastruct.pdatalength=other.get_datastruct().pdatalength;
         pdatastruct.prank=other.get_datastruct().prank;
         pdatastruct.prowmajor=other.get_datastruct().prowmajor;
@@ -1822,9 +1935,12 @@ bool mdspan<T, Container>:: device_upload(bool default_device,int devicenum)
     if(devicenum>omp_get_num_devices()) return false;
 
     this->pis_offloaded.try_emplace(devicenum, true);
-    device_datastruct_upload(this->get_datastruct(),devicenum);
+
+    create_in_struct(this->get_datastruct(),devicenum);
     return true;
 }
+
+
 template <typename T, typename Container>inline
 bool mdspan<T, Container>:: device_alloc(bool default_device,int devicenum)
 {
@@ -1833,7 +1949,7 @@ bool mdspan<T, Container>:: device_alloc(bool default_device,int devicenum)
 
     if(devicenum>omp_get_num_devices()) return false;
     this->pis_offloaded.try_emplace(devicenum, true);
-    device_datastruct_alloc(this->get_datastruct(),devicenum);
+    create_out_struct(this->get_datastruct(),devicenum);
     return true;
 }
 
@@ -1848,10 +1964,13 @@ bool mdspan<T, Container>:: device_download_release(bool default_device,int devi
     if(devicenum>omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    device_datastruct_download_release(this->get_datastruct(),devicenum);
+    update_host(this->get_datastruct(),devicenum);
+    release_struct(this->get_datastruct(),devicenum);
     this->pis_offloaded.at(devicenum)=false;
     return true;
 }
+
+
 template <typename T, typename Container>inline
 bool mdspan<T, Container>:: device_delete(bool default_device,int devicenum)
 {
@@ -1860,7 +1979,7 @@ bool mdspan<T, Container>:: device_delete(bool default_device,int devicenum)
     if(devicenum>omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    device_datastruct_delete(this->get_datastruct(),devicenum);
+    exit_struct(this->get_datastruct(),devicenum);
     this->pis_offloaded.at(devicenum)=false;
     return true;
 }
@@ -1872,17 +1991,8 @@ bool mdspan<T, Container>:: device_release(bool default_device,int devicenum)
     if(devicenum>omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    device_datastruct_release(this->get_datastruct(),devicenum);
+    release_struct(this->get_datastruct(),devicenum);
     this->pis_offloaded.at(devicenum)=false;
-    return true;
-}
-template <typename T, typename Container>inline
-bool mdspan<T, Container>:: host_update_async(bool default_device,int devicenum)
-{
-    if (default_device)  devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices()) return false;
-    if(this->pis_offloaded.contains(devicenum)==false) return false;
-    host_datastruct_update_async(this->get_datastruct(),devicenum);
     return true;
 }
 
@@ -1892,7 +2002,7 @@ bool mdspan<T, Container>:: host_update(bool default_device,int devicenum)
     if (default_device)  devicenum=omp_get_default_device();
     if(devicenum>omp_get_num_devices()) return false;
     if(this->pis_offloaded.contains(devicenum)==false) return false;
-    host_datastruct_update(this->get_datastruct(),devicenum);
+    update_host(this->get_datastruct(),devicenum);
     return true;
 
 }
@@ -1904,22 +2014,292 @@ bool mdspan<T, Container>:: device_update(bool default_device,int devicenum)
     if(devicenum>omp_get_num_devices()) return false;
     if(this->pis_offloaded.contains(devicenum)==false) return false;
 
-    device_datastruct_update(this->get_datastruct(),devicenum);
+    update_device(this->get_datastruct(),devicenum);
     return true;
 
 }
-template <typename T, typename Container>inline
-bool mdspan<T, Container>:: device_update_async(bool default_device,int devicenum)
+
+
+
+
+template <typename T>
+void MPI_send_datastruct(datastruct<T> &m, int dest, int tag, MPI_Comm pcomm)
 {
-    if (default_device)  devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices()) return false;
-    if(this->pis_offloaded.contains(devicenum)==false) return false;
-
-    device_datastruct_update_async(this->get_datastruct(),devicenum);
-    return true;
+    MPI_Send(&m.pdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.prank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.prowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.pdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.pextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.pstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(m.pextents, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(m.pstrides, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(m.pdata,sizeof(T)* m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 
+
+template <typename T>
+datastruct<T>& MPI_rcv__alloc_datastruct(bool with_memmap, bool on_device,  bool defaultdevice,int devicenum, const int source, int tag, MPI_Comm pcomm)
+{
+    MPI_Status status;
+    size_t pdatalength, prank;
+    bool prowmajor;
+    bool pdataisdevptr,pstridesisdevptr,pextentsisdevptr;
+
+    MPI_Recv(&pdatalength, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    MPI_Recv(&prank, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    MPI_Recv(&prowmajor, 1, MPI_C_BOOL, source, tag, pcomm, &status);
+
+    MPI_Recv(&pdataisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
+    MPI_Recv(&pextentsisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
+    MPI_Recv(&pstridesisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
+
+    pdataisdevptr=on_device;
+    pextentsisdevptr=on_device;
+    pstridesisdevptr=on_device;
+
+    if (defaultdevice)
+        devicenum=omp_get_default_device();
+
+    size_t *pextents,*pstrides;
+
+    T* pdata;
+
+    if (pextentsisdevptr)
+    {
+#if (Unified_Shared_Memory==True)
+        pextents= (size_t*)malloc(sizeof(size_t)*prank);
+        MPI_Recv(&pextents[0],prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+#else
+        pextents= (size_t*)omp_target_alloc(sizeof(size_t)*prank,devicenum);
+        MPI_Recv(&pextents,prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+#endif
+    }
+    else
+    {
+        pextents= (size_t*)malloc(sizeof(size_t)*prank);
+        MPI_Recv(&pextents[0],prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    }
+
+    if (pstridesisdevptr)
+    {
+#if (Unified_Shared_Memory==True)
+        pstrides= (size_t*)malloc(sizeof(size_t)*prank);
+        MPI_Recv(&pstrides,pstrides, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+#else
+        pstrides=(size_t*) omp_target_alloc(sizeof(size_t)*prank,devicenum);
+        MPI_Recv(&pstrides,prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+#endif
+    }
+    else
+    {
+        pstrides= (size_t*)malloc(sizeof(size_t)*prank);
+        MPI_Recv(&pstrides,pstrides, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    }
+
+    if(pdataisdevptr)
+    {
+#if (Unified_Shared_Memory==True)
+        pdata=(T*)malloc(sizeof(T)*pdatalength);
+        MPI_Recv(pdata,sizeof(size_t)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+#else
+        pdata= (size_t*) omp_target_alloc(sizeof(size_t)*pdatalength,devicenum);
+        MPI_Recv(pdata,pdatalength, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+#endif
+    }
+    else
+    {
+        if(with_memmap)
+        {
+            pdata=create_temp_mmap<T>(pdatalength);
+        }
+        else
+        {
+            pdata=(T*)malloc(sizeof(T)*pdatalength);
+        }
+        MPI_Recv(pdata,sizeof(size_t)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+    }
+
+    return datastruct<T>(pdata,pdatalength,prowmajor,prank,pextents,pstrides,false,false,pdataisdevptr,pstridesisdevptr,pextentsisdevptr);
+}
+
+
+template <typename T>
+void datastruct_free(datastruct<T> &m,bool created_with_memmap, bool on_device,  bool defaultdevice,int devicenum)
+{
+    if (defaultdevice)
+        devicenum=omp_get_default_device();
+
+    if (m.pextents_is_devptr)
+#if (Unified_Shared_Memory==True)
+        free(m.pextents);
+#else
+        omp_target_free(m.pextents, devicenum);
+#endif
+    else
+        free(m.pextents);
+
+    if (m.pstrides_is_devptr)
+#if (Unified_Shared_Memory==True)
+        free(m.pstrides);
+#else
+        omp_target_free(m.pstrides, devicenum);
+#endif
+
+
+    else
+        free(m.pstrides);
+
+    if (m.pdata_is_devptr)
+#if (Unified_Shared_Memory==True)
+        free(m.pdata);
+#else
+        omp_target_free(m.pdata, devicenum);
+#endif
+
+    else
+    {
+        if (created_with_memmap)
+            delete_temp_mmap(m.pdata,m.pdatalength);
+        else
+            free(m.pdata);
+    }
+}
+
+template <typename T>
+datastruct<T>& datastruct_heap(T* data,size_t datalength, bool rowmajor, size_t *extents,size_t* strides,size_t rank,bool create_memmap, bool on_device,  bool defaultdevice,int devicenum)
+{
+    size_t pextents;
+    size_t pstrides;
+    size_t pdata;
+    if (on_device)
+    {
+        if (defaultdevice)
+            devicenum=omp_get_default_device();
+
+        if (extents==nullptr )
+#if (Unified_Shared_Memory==True)
+            pextents=malloc(sizeof(T)*rank);
+#else
+            pextents=omp_target_alloc(sizeof(T)*rank,devicenum);
+#endif
+
+        else
+        {
+#if (Unified_Shared_Memory==True)
+            pextents=malloc(sizeof(T)*rank);
+            memcpy(pextents,extents,sizeof(T)*rank);
+#else
+            pextents=omp_target_alloc(sizeof(T)*rank,devicenum);
+            omp_target_memcpy(pextents,extents,sizeof(T)*rank,0,0,devicenum,omp_get_initial_device());
+#endif
+        }
+
+        if (strides==nullptr )
+#if (Unified_Shared_Memory==True)
+            pstrides=malloc(sizeof(T)*rank);
+#else
+            pstrides=omp_target_alloc(sizeof(T)*rank,devicenum);
+#endif
+        else
+        {
+#if (Unified_Shared_Memory==True)
+            pstrides=malloc(sizeof(T)*rank);
+            memcpy(pstrides,extents,sizeof(T)*rank);
+#else
+            pstrides=omp_target_alloc(sizeof(T)*rank,devicenum);
+            omp_target_memcpy(pstrides,extents,sizeof(T)*rank,0,0,devicenum,omp_get_initial_device());
+#endif
+        }
+        if (data==nullptr )
+#if (Unified_Shared_Memory==True)
+            pdata=malloc(sizeof(T)*datalength);
+#else
+            pdata=omp_target_alloc(sizeof(T)*datalength,devicenum);
+#endif
+        else
+        {
+#if (Unified_Shared_Memory==True)
+            pdata=malloc(sizeof(T)*datalength);
+            memcpy(pdata,data,sizeof(T)*datalength);
+#else
+            pdata=omp_target_alloc(sizeof(T)*datalength,devicenum);
+            omp_target_memcpy(pdata,data,sizeof(T)*datalength,0,0,devicenum,omp_get_initial_device());
+#endif
+
+
+        }
+        return datastruct<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,true,true,true);
+    }
+
+    else
+    {
+        if (extents==nullptr )
+            pextents=malloc(sizeof(T)*rank);
+        else
+        {
+            pextents=malloc(sizeof(T)*rank);
+            memcpy(pextents,extents,sizeof(T)*rank);
+        }
+        if (strides==nullptr )
+            pstrides=malloc(sizeof(T)*rank);
+        else
+        {
+            pstrides=malloc(sizeof(T)*rank);
+            memcpy(pstrides,extents,sizeof(T)*rank);
+        }
+
+        if (create_memmap)
+        {
+            pdata=create_temp_mmap<T>(datalength);
+        }
+        else
+        {
+            if(data==nullptr)
+                pdata=malloc(sizeof(T)*datalength);
+            else
+            {
+                pdata=malloc(sizeof(T)*datalength);
+                memcpy(pdata,data,sizeof(T)*rank);
+            }
+
+        }
+        return datastruct<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false, false);
+    }
+
+}
+
+
+
+
+
+template <typename T>
+void MPI_Irecv_datastruct_pdata(datastruct<T> &mds, const int source, const int tag,const  MPI_Comm pcomm)
+{
+    MPI_Request request;
+    MPI_Irecv(mds.pdata,sizeof(T)* mds.pdatalength, MPI_BYTE, source, tag, pcomm, &request);
+}
+
+template <typename T, typename Container>
+void MPI_Isend_mdspan_pdata(datastruct<T> &m, const int dest,const  int tag,const MPI_Comm pcomm)
+{
+    MPI_Request request;
+    MPI_Isend(m.pdata,sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm,&request);
+}
+
+
+template <typename T>
+void MPI_recv_mdspan_pdata(datastruct<T>& mds,const int source, const int tag,const  MPI_Comm pcomm)
+{
+    MPI_Status status;
+    MPI_Recv(mds.pdata,sizeof(T)* mds.pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+}
+
+template <typename T, typename Container>
+void MPI_send_mdspan_pdata(datastruct<T> & m, int dest, int tag,MPI_Comm pcomm)
+{
+    MPI_Send(m.pdata,sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm);
+}
 
 
 
@@ -1932,43 +2312,61 @@ mdspan<T, vector<size_t>> & MPI_recv_mdspan(const bool memmap, const int source,
     MPI_Status status;
     size_t pdatalength, prank;
     bool prowmajor;
+    bool pdataisdevptr,pstridesisdevptr,pextentsisdevptr;
+
     MPI_Recv(&pdatalength, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
     MPI_Recv(&prank, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
     MPI_Recv(&prowmajor, 1, MPI_C_BOOL, source, tag, pcomm, &status);
 
-    vector<size_t> extents(prank,0);
-    vector<size_t> strides(prank,0);
+    MPI_Recv(&pdataisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
+    MPI_Recv(&pextentsisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
+    MPI_Recv(&pstridesisdevptr,1, MPI_C_BOOL, source, tag, pcomm,&status);
 
-    MPI_Recv(extents.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
-    MPI_Recv(strides.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    vector<size_t> extents;
+    vector<size_t> strides;
+    extents.resize(prank);
+    strides.resize(prank);
+
+//    if (pextentsisdevptr)
+//    {
+//        size_t* pr= (size_t*)omp_alloc(sizeof(size_t)*prank,omp_get_default_device());
+//        MPI_Recv(&pr,prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+//        omp_target_memcpy(&extents[0],pr,sizeof(size_t)*prank,0,0,omp_get_initial_device(),omp_get_default_device());
+//        omp_target_free(pr,omp_get_default_device());
+//    }
+//    else
+//    {
+    MPI_Recv(&extents[0],prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    //  }
+
+//    if (pstridesisdevptr)
+//    {
+//        size_t*pr= (size_t*) omp_target_alloc(sizeof(size_t)*prank,omp_get_default_device());
+//        MPI_Recv(&pr,prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+//        omp_target_memcpy(&strides[0],pr,sizeof(size_t)*prank,0,0,omp_get_initial_device(),omp_get_default_device());
+//        omp_target_free(pr,omp_get_default_device());
+//    }
+//    else
+//    {
+    MPI_Recv(&strides[0],prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+    //  }
+
 
     mdspan<T, vector<size_t>> md(pdatalength,prowmajor,memmap,extents,strides);
+//
+//    if(pdataisdevptr)
+//    {
+//        size_t*pr= (size_t*) omp_target_alloc(sizeof(size_t)*pdatalength,omp_get_default_device());
+//        MPI_Recv(&pr,pdatalength, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
+//        omp_target_memcpy(md.get_datastruct().pdata,pr,sizeof(size_t)*pdatalength,0,0,omp_get_initial_device(),omp_get_default_device());
+//        omp_target_free(pr,omp_get_default_device());
+//    }
+//    else
+//    {
 
-    MPI_Recv(md.get_datastruct().pdata,sizeof(T)* md.get_datastruct().pdata, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Recv(md.get_datastruct().pdata,sizeof(size_t)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+//    }
 
-    return md;
-}
-
-template <typename T>
-mdspan<T, vector<size_t>> & MPI_Irecv_mdspan(const bool memmap, const int source, const int tag,const MPI_Comm pcomm)
-{
-    MPI_Request request;
-    // Receive metadata
-    size_t pdatalength, prank;
-    bool prowmajor;
-    MPI_Irecv(&pdatalength, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
-    MPI_Irecv(&prank, 1, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
-    MPI_Irecv(&prowmajor, 1, MPI_C_BOOL, source, tag, pcomm, &request);
-
-    vector<size_t> extents(prank,0);
-    vector<size_t> strides(prank,0);
-    // Allocate memory for extents and strides
-    MPI_Irecv(extents.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
-    MPI_Irecv(strides.data(),prank, MPI_UNSIGNED_LONG, source, tag, pcomm, &request);
-
-    mdspan<T, vector<size_t>> md(pdatalength,prowmajor,memmap,extents,strides);
-
-    MPI_Irecv(md.get_datastruct().pdata,sizeof(T)* md.get_datastruct().pdata, MPI_BYTE, source, tag, pcomm, &request);
 
     return md;
 }
@@ -1987,33 +2385,23 @@ void MPI_send_mdspan_pdata(mdspan<T, Container> & m, int dest, int tag,MPI_Comm 
     MPI_Send(m.get_datastruct().pdata,sizeof(T)* m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
+
 template <typename T>
 void MPI_Irecv_mdspan_pdata(mdspan<T, vector<size_t>> & mds, const int source, const int tag,const  MPI_Comm pcomm)
 {
-    MPI_Status status;
-    MPI_Irecv(mds.get_datastruct().pdata,sizeof(T)* mds.get_datastruct().pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Request request;
+    MPI_Irecv(mds.get_datastruct().pdata,sizeof(T)* mds.get_datastruct().pdatalength, MPI_BYTE, source, tag, pcomm, &request);
 }
 
 template <typename T, typename Container>
 void MPI_Isend_mdspan_pdata(mdspan<T, Container> & m, const int dest,const  int tag,const MPI_Comm pcomm)
 {
-    MPI_Isend(m.get_datastruct().pdata,sizeof(T)* m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm);
+    MPI_Request request;
+    MPI_Isend(m.get_datastruct().pdata,sizeof(T)* m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm,&request);
 }
 
 
-template <typename T, typename Container>
-void MPI_Isend_mdspan(mdspan<T, Container> & m, const int dest,const  int tag,const MPI_Comm pcomm)
-{
-    MPI_Isend(&m.get_datastruct().pdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Isend(&m.get_datastruct().prank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Isend(&m.get_datastruct().prowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
 
-    MPI_Isend(m.get_datastruct().pextents, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Isend(m.get_datastruct().pstrides, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-
-    MPI_Isend(m.get_datastruct().pdata,sizeof(T)*m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm);
-
-}
 
 
 
@@ -2023,12 +2411,12 @@ void MPI_send_mdspan(mdspan<T, Container> & m, int dest, int tag, MPI_Comm pcomm
     MPI_Send(&m.get_datastruct().pdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
     MPI_Send(&m.get_datastruct().prank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
     MPI_Send(&m.get_datastruct().prowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
-
+    MPI_Send(&m.get_datastruct().pdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.get_datastruct().pextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.get_datastruct().pstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
     MPI_Send(m.get_datastruct().pextents, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
     MPI_Send(m.get_datastruct().pstrides, m.get_datastruct().prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-
     MPI_Send(m.get_datastruct().pdata,sizeof(T)* m.get_datastruct().pdatalength, MPI_BYTE, dest, tag, pcomm);
-
 }
 
 template <typename T>
@@ -4301,7 +4689,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         }
 
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
         #pragma omp target teams distribute parallel for simd shared(A,L)device(devicenum)
 #else
         #pragma omp parallel for simd shared(A,L)
@@ -4348,7 +4736,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
                 const size_t Sstr0=S.get_datastruct().pstrides[0];
                 const size_t Sstr1=S.get_datastruct().pstrides[1];
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp target teams distribute parallel for  collapse (2) shared(c,tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)device(devicenum)
 #else
                 #pragma omp parallel for simd  collapse (2) shared(c,tempA,tempAstr0,tempAstr1,S,Sstr0,Sstr1)
@@ -4370,7 +4758,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
             tmp=tempA(c, c,tempAstr0,tempAstr1);
 
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute parallel for simd reduction(-: tmp) shared(c,L,lstr0,lstr1)device(devicenum)
 #else
             #pragma omp parallel for simd reduction(-: tmp) shared(c,L,lstr0,lstr1)
@@ -4382,7 +4770,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
             }
             L(c, c,lstr0,lstr1) =sqrt(tmp);
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute shared(c, tempAstr0,tempAstr1,tempA,lstr0,lstr1,L)device(devicenum)
 #else
             #pragma omp parallel for shared(c, tempAstr0,tempAstr1,tempA,lstr0,lstr1,L )
@@ -4391,7 +4779,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
             {
                 T tmp2 = tempA(i, c,tempAstr0,tempAstr1);
                 T tmp4=L(c, c,lstr0,lstr1);
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp parallel for simd reduction(-:tmp2) shared(c,lstr0,lstr1,L)
 #else
                 #pragma omp simd reduction(-:tmp2)
@@ -4457,30 +4845,30 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
         for (size_t c = 0; c < n; ++c)
         {
             #pragma omp target teams distribute shared(dA,strtA0,strtA1,c,dL,dU,strU0,strU1,strL0,strL1)device(devicenum)
-                for (size_t i = c; i < n; ++i)
-                {
+            for (size_t i = c; i < n; ++i)
+            {
 
-                    T temp=dA(c,i,strtA0,strtA1);
-                    #pragma omp parallel for simd reduction(-:temp) shared(c,dL,dU,strU0,strU1,strL0,strL1)
-                    for (size_t k = z; k < c; ++k)
-                    {
-                        temp -= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
-                    }
-                    dU(c,i,strU0,strU1)=temp;
+                T temp=dA(c,i,strtA0,strtA1);
+                #pragma omp parallel for simd reduction(-:temp) shared(c,dL,dU,strU0,strU1,strL0,strL1)
+                for (size_t k = z; k < c; ++k)
+                {
+                    temp -= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
                 }
+                dU(c,i,strU0,strU1)=temp;
+            }
 
             #pragma omp target teams distribute shared(dA,strtA0,strtA1,c,dL,dU,strU0,strU1,strL0,strL1)device(devicenum)
-                for (size_t i = c; i < n; ++i)
+            for (size_t i = c; i < n; ++i)
+            {
+                const T temp4=dU(c,c,strU0,strU1);
+                T temp = dA(i,c,strtA0,strtA1);
+                #pragma omp parallel for simd reduction (-:temp)shared(dU,dL,c,strU0,strU1,strL0,strL1)
+                for (size_t k = z; k < c; ++k)
                 {
-                    const T temp4=dU(c,c,strU0,strU1);
-                    T temp = dA(i,c,strtA0,strtA1);
-                    #pragma omp parallel for simd reduction (-:temp)shared(dU,dL,c,strU0,strU1,strL0,strL1)
-                    for (size_t k = z; k < c; ++k)
-                    {
-                        temp -= dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
-                    }
-                    dL(i,c,strL0,strL1)=temp/temp4;
+                    temp -= dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
                 }
+                dL(i,c,strL0,strL1)=temp/temp4;
+            }
         }
 
         if (!Loffloaded)
@@ -4511,7 +4899,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
             sdata=(T*)omp_alloc(sizeof(T)*tempsize,omp_large_cap_mem_alloc);
             adata=(T*)omp_alloc(sizeof(T)*nn,omp_large_cap_mem_alloc);
         }
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
         #pragma omp target teams distribute parallel for simd shared(adata,A,L,U)device(devicenum)
 #else
         #pragma omp parallel for simd  shared(adata,A,L,U)
@@ -4554,7 +4942,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
 
                 const size_t Sstr0=S.get_datastruct().pstrides[0];
                 const size_t Sstr1=S.get_datastruct().pstrides[1];
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp target teams distribute parallel for collapse(2) shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)device(devicenum)
 #else
                 #pragma omp parallel for collapse(2) shared(tempA,S, tempAstr0,tempAstr1,Sstr0,Sstr1)
@@ -4569,7 +4957,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
                 z = c;
             }
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute shared(tempA,tempAstr0,L,U,tempAstr1,ustr0,ustr1,lstr0,lstr1,c)device(devicenum)
 #else
             #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1,ustr0,ustr1,lstr0,lstr1,c)
@@ -4577,7 +4965,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
             for (size_t i = c; i < n; ++i)
             {
                 T temp=tempA(c,i,tempAstr0,tempAstr1);
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1,c)
 #else
                 #pragma omp simd reduction(-:temp)
@@ -4591,7 +4979,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
 
             const T temp4=U(c,c,ustr0,ustr1);
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute shared(tempA,tempAstr0,L,U,tempAstr1,c,ustr0,ustr1,lstr0,lstr1)device(devicenum)
 #else
             #pragma omp parallel for shared(tempA,tempAstr0,L,U,tempAstr1,c,ustr0,ustr1,lstr0,lstr1)
@@ -4599,8 +4987,8 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
             for (size_t i = c; i < n; ++i)
             {
                 T temp = tempA(i,c,tempAstr0,tempAstr1);
-#if (Unified_Shared_Memory==true)
-                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1,c)device(devicenum)
+#if (Unified_Shared_Memory==True)
+                #pragma omp parallel for simd reduction(-:temp) shared(L,U,ustr0,ustr1,lstr0,lstr1,c)
 #else
                 #pragma omp simd reduction(-:temp)
 #endif
@@ -4647,17 +5035,15 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         size_t extm[2]= {dA.pextents[0],dA.pextents[1]};
         size_t strm[2]= {dA.pstrides[0],dA.pstrides[1]};
 
-        T* Md;
-        if(algorithm.memmapped_files)
-        {
-            Md=create_temp_mmap<T>(dA.pdatalength);
-        }
-        else
-        {
-            Md=(T*)omp_alloc(sizeof(T)*dA.pdatalength,omp_large_cap_mem_alloc);
-        }
+#if (Unified_Shared_Memory==True)
+        T* Md=(T*) malloc(sizeof(T)*dA.pdatalength);
+        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm,false,false,false);
+#else
+        T* Md=(T*) omp_target_alloc(sizeof(T)*dA.pdatalength,devicenum);
+        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm,true,false,false);
+#endif
 
-        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm);
+
 
 
         create_in_struct(dA,devicenum);
@@ -4687,73 +5073,67 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         const size_t qstr0=dQ.pstrides[0];
         const size_t qstr1=dQ.pstrides[1];
 
-
-
         for (size_t c = 0; c < m; ++c)
         {
             size_t pextv[1];
             size_t pstrv[1];
-            //temporary datastruct on host to fill pextv,pstrv
-            datastruct<T>gg=dM.column(c,pextv,pstrv);
-            size_t pext0=pextv[0];
+            size_t pext0=dM.pextents[0];
+
+
+            for (size_t j = z; j < c; ++j)
             {
-
-                for (size_t j = z; j < c; ++j)
-                {
-                    size_t pextu[1];
-                    size_t pstru[1];
-
-                    T dot_pr=0;
-                    #pragma omp target teams distribute parallel for simd reduction(+:dot_pr)device(devicenum)
-                    for (size_t i = 0; i < pext0; ++i)
-                    {
-                        datastruct<T> du = dQ.column(j,pextu,pstru);
-                        datastruct<T> dv = dM.column(c,pextv,pstrv);
-                        const size_t pstru0=du.pstrides[0];
-                        const size_t pstrv0=pstrv[0];
-                        dot_pr += du(i,pstru0) * dv(i,pstrv0);
-                    }
-
-                    const T cdot_pr=dot_pr;
-                    #pragma omp target teams distribute  parallel for simd shared(cdot_pr)device(devicenum)
-                    for (size_t i = 0; i < pext0; ++i)
-                    {
-
-                        datastruct<T> du = dQ.column(j,pextu,pstru);
-                        datastruct<T>  dv = dM.column(c,pextv,pstrv);
-                        const size_t pstru0=du.pstrides[0];
-                        const size_t pstrv0=pstrv[0];
-                        dv(i,pstrv0) -= cdot_pr * du(i,pstru0);
-                    }
-                }
-                // Normalize v
-                T norm=0;
-                #pragma omp target teams distribute  parallel for simd reduction(+: norm)device(devicenum)
+                size_t pextu[1];
+                size_t pstru[1];
+                T dot_pr=0;
+                #pragma omp target teams distribute parallel for simd reduction(+:dot_pr)device(devicenum)
                 for (size_t i = 0; i < pext0; ++i)
                 {
-                    datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                    datastruct<T> du = dQ.column(j,pextu,pstru);
+                    datastruct<T> dv = dM.column(c,pextv,pstrv);
+                    const size_t pstru0=du.pstrides[0];
                     const size_t pstrv0=pstrv[0];
-                    norm += dv(i,pstrv0) * dv(i,pstrv0);
+                    dot_pr += du(i,pstru0) * dv(i,pstrv0);
                 }
 
-                const T normc= sqrt(norm);
-                #pragma omp target teams distribute  parallel for simd device(devicenum)
+                const T cdot_pr=dot_pr;
+                #pragma omp target teams distribute  parallel for simd shared(cdot_pr)device(devicenum)
                 for (size_t i = 0; i < pext0; ++i)
                 {
+                    datastruct<T> du = dQ.column(j,pextu,pstru);
                     datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                    const size_t pstru0=du.pstrides[0];
                     const size_t pstrv0=pstrv[0];
-                    dv(i,pstrv0)= dv(i,pstrv0)/normc;
-                }
-
-                #pragma omp target teams distribute  parallel for simd device(devicenum)
-                for (size_t i = 0; i < pext0; ++i)
-                {
-                    datastruct<T>  dv = dM.column(c,pextv,pstrv);
-                    const size_t pstrv0=pstrv[0];
-                    dQ(i,c,qstr0,qstr1) = dv(i,pstrv0);
+                    dv(i,pstrv0) -= cdot_pr * du(i,pstru0);
                 }
             }
+            // Normalize v
+            T norm=0;
+            #pragma omp target teams distribute  parallel for simd reduction(+: norm)device(devicenum)
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                const size_t pstrv0=pstrv[0];
+                norm += dv(i,pstrv0) * dv(i,pstrv0);
+            }
+
+            const T normc= sqrt(norm);
+            #pragma omp target teams distribute  parallel for simd device(devicenum)
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                const size_t pstrv0=pstrv[0];
+                dv(i,pstrv0)= dv(i,pstrv0)/normc;
+            }
+
+            #pragma omp target teams distribute  parallel for simd device(devicenum)
+            for (size_t i = 0; i < pext0; ++i)
+            {
+                datastruct<T>  dv = dM.column(c,pextv,pstrv);
+                const size_t pstrv0=pstrv[0];
+                dQ(i,c,qstr0,qstr1) = dv(i,pstrv0);
+            }
         }
+
 
 
         const size_t rows = dQ.pextents[0]; // Number of rows in A and C
@@ -4795,14 +5175,15 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         release_struct(dQ,devicenum);
 
         release_struct(dA,devicenum);
-        if(algorithm.memmapped_files)
-        {
-            delete_temp_mmap<T>(Md,dA.pdatalength);
-        }
-        else
-        {
-            omp_free(Md,omp_large_cap_mem_alloc);
-        }
+
+#if (Unified_Shared_Memory==True)
+        free(Md);
+#else
+        omp_target_free(Md,devicenum);
+#endif
+
+
+
 
     }
     else
@@ -4833,7 +5214,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
             tempM=(T*)omp_alloc(sizeof(T)*nm,omp_large_cap_mem_alloc);
         }
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
         #pragma omp target teams distribute parallel for simd  shared(tempM,A)device(devicenum)
 #else
         #pragma omp parallel for simd  shared(tempM,A)
@@ -4842,7 +5223,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         {
             tempM[i]=A.get_datastruct().pdata[i];
         }
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
         #pragma omp target teams distribute parallel for simd  shared(Q)device(devicenum)
 #else
         #pragma omp parallel for simd  shared(Q)
@@ -4852,7 +5233,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
             Q.get_datastruct().pdata[i]=0;
         }
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
         #pragma omp target teams distribute parallel for simd  shared(R)device(devicenum)
 #else
         #pragma omp parallel for simd  shared(R)
@@ -4913,7 +5294,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 
                 const size_t Sstr0=S.get_datastruct().pstrides[0];
                 const size_t Sstr1=S.get_datastruct().pstrides[1];
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp target teams distribute parallel for simd shared(M,S,Sstr0,Sstr1,Mstr0,Mstr1)device(devicenum)
 #else
                 #pragma omp parallel for  simd collapse(2) shared(M,S,Sstr0,Sstr1,Mstr0,Mstr1)
@@ -4937,7 +5318,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
                 const auto u = Q.column(j);
                 const size_t ustr0=u.get_datastruct().pstrides[0];
                 const T dot_pr =dot_product(u,v);
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
                 #pragma omp target teams distribute parallel for simd  shared(ustr0,u,v,dot_pr)device(devicenum)
 #else
                 #pragma omp parallel for   simd shared(ustr0,u,v,dot_pr)
@@ -4950,7 +5331,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 
             // Normalize v
             const T norm = sqrt(dot_product(v,v));
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute parallel for simd shared(v,vstr0,norm)device(devicenum)
 #else
             #pragma omp parallel for   simd shared(v,vstr0,norm)
@@ -4962,7 +5343,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 
             // Set column c of Q
 
-#if (Unified_Shared_Memory==true)
+#if (Unified_Shared_Memory==True)
             #pragma omp target teams distribute parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)device(devicenum)
 #else
             #pragma omp parallel for simd shared(Q,v,vstr0,Qstr0,Qstr1,c)
@@ -5157,9 +5538,9 @@ void matrix_multiply_dot_v(const mdspan<T, CA>& A, const  mdspan<T, CB>& B, mdsp
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-            datastruct<T> dA=A.get_datastruct();
-        datastruct<T> dB=B.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dA=A.get_datastruct();
+    datastruct<T> dB=B.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
 
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
@@ -5207,9 +5588,9 @@ inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_add_v( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
-            datastruct<T> dA=A.get_datastruct();
-        datastruct<T> dB=B.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dA=A.get_datastruct();
+    datastruct<T> dB=B.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
 
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
@@ -5238,9 +5619,9 @@ inline  bool matrix_add_v( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdsp
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-        datastruct<T> dA=A.get_datastruct();
-        datastruct<T> dB=B.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dA=A.get_datastruct();
+    datastruct<T> dB=B.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
 
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
@@ -5287,9 +5668,9 @@ inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, m
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_subtract_v( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, mdspan<T, CC>& C)
 {
-        datastruct<T> dA=A.get_datastruct();
-        datastruct<T> dB=B.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dA=A.get_datastruct();
+    datastruct<T> dB=B.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
 
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
@@ -5319,9 +5700,9 @@ inline  bool matrix_subtract_v( const mdspan<T, CA>& A,  const mdspan<T, CB>& B,
 template <typename T, typename CA, typename CB, typename CC>
 inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& V, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-        datastruct<T> dM=M.get_datastruct();
-        datastruct<T> dV=V.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dM=M.get_datastruct();
+    datastruct<T> dV=V.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
 
@@ -5367,8 +5748,8 @@ inline bool matrix_multiply_vector(const mdspan<T, CA>& M, const mdspan<T, CB>& 
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
 {
-            datastruct<T> dM=M.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dM=M.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
     const size_t strM0=dM.pstrides[0];
@@ -5389,8 +5770,8 @@ inline  bool matrix_multiply_vector(const mdspan<T, CA>& M,const  T*V, mdspan<T,
 template <typename T, typename CA, typename CB, typename CC>
 inline  bool matrix_multiply_vector_v(const mdspan<T, CA>& M,const  T*V, mdspan<T, CC>& C)
 {
-            datastruct<T> dM=M.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dM=M.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
 
@@ -5416,9 +5797,9 @@ template <typename T, typename CA, typename CC>
 inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T, CC>& C, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
 
-        datastruct<T> dM=M.get_datastruct();
-        datastruct<T> dV=V.get_datastruct();
-        datastruct<T> dC=C.get_datastruct();
+    datastruct<T> dM=M.get_datastruct();
+    datastruct<T> dV=V.get_datastruct();
+    datastruct<T> dC=C.get_datastruct();
 
     const size_t rows = dC.pextents[0];
     const size_t cols = dC.pextents[1];
@@ -5436,6 +5817,8 @@ inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T
         if (M.is_offloaded(devicenum)==false) return false;
         if (V.is_offloaded(devicenum)==false) return false;
         if (C.is_offloaded(devicenum)==false) return false;
+
+
         #pragma omp target teams distribute parallel for simd collapse(2) shared(dC,dM,strM0,strM1,strC0,strC1,V) device(devicenum)
         for (size_t i = 0; i < rows; ++i)
         {
@@ -5463,8 +5846,8 @@ inline  bool matrix_multiply_scalar(const mdspan<T, CA>& M, const T& V, mdspan<T
 template <typename T, typename Container>
 inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-            datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
@@ -5496,8 +5879,8 @@ inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Contai
 template <typename T, typename Container>
 inline  T dot_product_v(const  mdspan<T, Container>& vec1,const   mdspan<T, Container>& vec2)
 {
-                datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
@@ -5514,8 +5897,8 @@ inline  T dot_product_v(const  mdspan<T, Container>& vec1,const   mdspan<T, Cont
 template <typename T, typename Container>
 inline  bool vector_scalar_multiply( const mdspan<T, Container>& vec, const T scalar,mdspan<T, Container>& res, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-            datastruct<T> dvec=vec.get_datastruct();
-                    datastruct<T> dres=res.get_datastruct();
+    datastruct<T> dvec=vec.get_datastruct();
+    datastruct<T> dres=res.get_datastruct();
 
     const size_t n = dvec.pextents[0];
     const size_t strv=dvec.pstrides[0];
@@ -5564,9 +5947,9 @@ inline  bool vector_scalar_multiply_v( const mdspan<T, Container>& vec, const T 
 template <typename T, typename Container>
 inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Container>& vec2, mdspan<T, Container>& res)
 {
-      datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
-        datastruct<T> dres=res.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dres=res.get_datastruct();
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
     const size_t strres=dres.pstrides[0];
@@ -5580,9 +5963,9 @@ inline  void cross_product(const mdspan<T, Container>& vec1,const  mdspan<T, Con
 template <typename T, typename Container>
 inline  bool vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-            datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
-        datastruct<T> dvec3=vec3.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec3=vec3.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
@@ -5616,9 +5999,9 @@ inline  bool vector_add( const mdspan<T, Container>& vec1, const  mdspan<T, Cont
 template <typename T, typename Container>
 inline  bool vector_add_v( const mdspan<T, Container>& vec1, const  mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
-                datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
-        datastruct<T> dvec3=vec3.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec3=vec3.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
@@ -5637,9 +6020,9 @@ inline  bool vector_add_v( const mdspan<T, Container>& vec1, const  mdspan<T, Co
 template <typename T, typename Container>
 inline  bool vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3, bool on_gpu=false,bool default_device=true,int devicenum=0)
 {
-        datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
-        datastruct<T> dvec3=vec3.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec3=vec3.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
@@ -5673,9 +6056,9 @@ inline  bool vector_subtract( const mdspan<T, Container>& vec1, const mdspan<T, 
 template <typename T, typename Container>
 inline  bool vector_subtract_v( const mdspan<T, Container>& vec1, const mdspan<T, Container>& vec2, mdspan<T, Container>& vec3)
 {
-                datastruct<T> dvec1=vec1.get_datastruct();
-        datastruct<T> dvec2=vec2.get_datastruct();
-        datastruct<T> dvec3=vec3.get_datastruct();
+    datastruct<T> dvec1=vec1.get_datastruct();
+    datastruct<T> dvec2=vec2.get_datastruct();
+    datastruct<T> dvec3=vec3.get_datastruct();
     const size_t n = dvec1.pextents[0];
     const size_t strv1=dvec1.pstrides[0];
     const size_t strv2=dvec2.pstrides[0];
