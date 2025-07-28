@@ -6,7 +6,7 @@ project(arraytest VERSION 1.1.1)
 
 #GCC compiler flags.
 SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
 
 
 
