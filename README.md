@@ -18,9 +18,23 @@ A cmakelists.txt file is supplied.
 
 Version History:
 
-With gcc 15.1, the functions of the library can work on the GPU.
+By 28.07.2025
+Support was added for tensors whose data lies entirely on device.
+Fixes for the functions recieving and sending tensors witht he message passing interface was added. (still entirely untested)
+Support was added for the message passing interface to send tensors purely to and from device (still entirely untested)
 
-By 01.07, the library now compiles with optimizations  on gcc 15.1.
+Todo:
+1) Test of the tensor library with the message passing interface.
+2) Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
+3) Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
+
+Once this is finished:
+4) Then implement more complex mathematical functions for function minimization, auto differentation, differential equations 
+
+
+
+By 01.07.2025 the library now compiles with optimizations  on gcc 15.1.
+With gcc 15.1, the functions of the library can work on the GPU.
 
 It also compiles on clang again, after I removed incorrect code in a function which was not even called by the test application.
 
