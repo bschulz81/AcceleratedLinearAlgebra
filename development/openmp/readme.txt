@@ -1,3 +1,15 @@
+Todo:
+
+Test of the tensor library with the message passing interface.
+Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
+Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
+
+05:08:
+Fixed constructors when the memory is managed by the mdspan class. (important for usage with the Message passing interface)
+Shallow copies now work when the data is managed by the mdspan class 
+a sharedptr dummy reference counter was introduced that calls a custom deleter which clears the array and memory mapped files, gpu data if necessary.
+(note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
+
 
 28.07.2025 
 Support was added for tensors whose data lies entirely on device.
@@ -6,11 +18,6 @@ Fixes for the functions recieving and sending tensors witht he message passing i
 
 Support was added for the message passing interface to send tensors purely to and from device (still entirely untested)
 
-Todo:
-
-Test of the tensor library with the message passing interface.
-Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
-Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
 
 
 01.07:
