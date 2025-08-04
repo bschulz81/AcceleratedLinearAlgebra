@@ -25,6 +25,8 @@
 #include <numeric>
 #include <cmath>
 #include <numbers>
+#include <memory>
+
 
 #include <omp.h>
 
@@ -1289,21 +1291,12 @@ public:
     // Simplified constructors
     mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides);
     mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides);
-    mdspan(T* __restrict data,const bool rowm, const Container& extents);
+    mdspan(T* __restrict data, const bool rowm, const Container& extents);
     mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols);
     mdspan(const size_t datalength, const bool rowm, const bool memmap, const Container& extents, const Container& strides);
     mdspan(const bool rowm,const  bool memmap, const Container& extents, const Container& strides);
     mdspan(const bool rowm,const  bool memmap, const Container& extents);
     mdspan(const bool rowm, const bool memmap, const size_t rows, const size_t cols);
-
-    mdspan(mdspan<T, Container>&& other) noexcept;
-    mdspan& operator=(mdspan&& other) noexcept;
-    ~mdspan();
-
-
-    // Deleted copy constructor and copy assignment
-    mdspan(const mdspan<T, Container>&) = delete;
-    mdspan& operator=(const mdspan<T, Container>&) = delete;
 
 
     // Access operators
@@ -1377,6 +1370,7 @@ public:
     {
         return pis_offloaded.contains(devicenum);
     };
+
     map<int,bool> is_offloaded() const
     {
         return pis_offloaded;
@@ -1386,18 +1380,28 @@ public:
     {
         return pdatastruct;
     };
+
     datastruct<T> & get_datastruct()
     {
         return pdatastruct;
     };
+
+    bool ownsdata() const
+    {
+        return pownsdata;
+    };
+
 private:
     datastruct<T> pdatastruct;
+    shared_ptr<T> p_refctr;
+
     bool pownsdata=false;
     bool pwith_memmap=false;
 
     void initialize_extents_and_strides(const Container&extents,const Container & strides);
     void initialize_extents(const Container&extents);
     void allocate_data(const bool memmap,const size_t datalength);
+
 
     // Private member variables
     map<int,bool> pis_offloaded;
@@ -1547,7 +1551,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
       // Initialize pdatastruct with placeholders
 {
     initialize_extents_and_strides(extents,strides);
-    pdatastruct.pdatalength=compute_data_length_v(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
 
 }
 
@@ -1576,7 +1580,6 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     :  pdatastruct(data,0,rowm,2,nullptr,nullptr,false,false,false,false,false),
        pownsdata(false),
        pwith_memmap(false)
-
 {
     const size_t r=2;
     if constexpr (StaticContainer<Container>)
@@ -1597,7 +1600,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
 
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length_v(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
 }
 
 
@@ -1606,7 +1609,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan( const size_t datalength,  const bool rowm,const bool memmap, const Container& extents, const Container& strides)
-    :pdatastruct(nullptr, datalength,rowm,extents.size(),nullptr,nullptr,false,false)
+    :pdatastruct(nullptr, datalength,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false)
 {
     initialize_extents_and_strides(extents,strides,rowm);
     allocate_data(memmap,pdatastruct.pdatalength);
@@ -1616,10 +1619,10 @@ mdspan<T, Container>::mdspan( const size_t datalength,  const bool rowm,const bo
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan( const bool rowm,const bool memmap, const Container& extents, const Container& strides )
-    : pdatastruct(nullptr, 0,rowm,extents.size(),nullptr,nullptr,false,false)
+    : pdatastruct(nullptr, 0,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false)
 {
     initialize_extents_and_strides(extents,strides,rowm);
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     allocate_data(memmap,pdatastruct.pdatalength);
 }
 
@@ -1627,16 +1630,13 @@ mdspan<T, Container>::mdspan( const bool rowm,const bool memmap, const Container
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(const bool rowm,const bool memmap,const  Container& extents)
-    :  pdatastruct(nullptr,0,rowm,extents.size(),nullptr,nullptr,false,false)
+    :  pdatastruct(nullptr,0,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
-    // Assign actual pointers to datastruct
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
-
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
-    pownsdata=true;
+    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     allocate_data(memmap,pdatastruct.pdatalength);
 }
 
@@ -1644,7 +1644,7 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap,const  Container&
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(const bool rowm,const bool memmap, const size_t rows, const size_t cols)
-    :  pdatastruct(nullptr,0,rowm,2,nullptr,nullptr,false,false)
+    :  pdatastruct(nullptr,0,rowm,2,nullptr,nullptr,false,false,false,false,false)
 
 {
     const size_t r=2;
@@ -1664,22 +1664,14 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap, const size_t row
 
     pdatastruct.pextents = pextents.data();
     pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
     allocate_data(memmap,pdatastruct.pdatalength);
 
 }
 
-template <typename T, typename Container>
-mdspan<T, Container>::~mdspan()
-{
-    if(pownsdata==true)
-    {
-        if (pwith_memmap==true)
-            delete_temp_mmap<T>(pdatastruct.pdata,sizeof(T)*pdatastruct.pdatalength);
-        else
-            delete[] pdatastruct.pdata;
-    }
-}
+
+
+
 
 template <typename T, typename Container>
 void mdspan<T, Container>::allocate_data(bool memmap, size_t datalength)
@@ -1691,66 +1683,32 @@ void mdspan<T, Container>::allocate_data(bool memmap, size_t datalength)
         pdatastruct.pdata = create_temp_mmap<T>(s);
         pwith_memmap = true;
     }
+
     else
     {
         pdatastruct.pdata = new T[datalength];
         pwith_memmap = false;
     }
-}
 
-template <typename T, typename Container>
-mdspan<T, Container>::mdspan(mdspan<T, Container>&& other) noexcept
-    : pstrides(std::move(other.pstrides)),
-      pextents(std::move(other.pextents)),
-      pdatastruct(other.get_datastruct().pdata,other.get_datastruct().pdatalength,other.get_datastruct().rowmajor,nullptr,nullptr,false,false)
-{
-    pownsdata=other.pownsdata;
-    pwith_memmap=other.pwith_memmap;
-    // Update pointers in datastruct to the new strides and extents
-    pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pextents = pextents.data();
-
-    // Null out the other's pointers to avoid double delete
-    other.get_datastruct().pdata = nullptr;
-    other.get_datastruct().pstrides = nullptr;
-    other.get_datastruct().pextents = nullptr;
-    other.get_datastruct().pdata = nullptr;
-
-}
-
-
-
-// Move assignment operator
-
-template <typename T, typename Container>
-mdspan<T, Container> &  mdspan<T, Container>::operator=(mdspan<T, Container> && other) noexcept
-{
-    if (this != &other)
+    p_refctr=shared_ptr<T>(pdatastruct.pdata,[this](T* p)
     {
+        #pragma omp parallel for
+        for (size_t k=0; k<pis_offloaded.size(); k++)
+            if(pis_offloaded.at(k)==true)
+                exit_struct(pdatastruct,(int) k);
+
         if(pownsdata==true)
         {
             if (pwith_memmap==true)
-                delete_temp_mmap(pdatastruct.pdata,sizeof(T)*pdatastruct.pdatalength);
+                munmap(p,sizeof(T)*pdatastruct.pdatalength);
             else
-                delete[] pdatastruct.pdata;
+                delete[] p;
         }
-        pownsdata=other.pownsdata;
-        pwith_memmap=other.pwith_memmap;
-        pdatastruct.pdata = std::move(other.get_datastruct().pdata);
-        pdatastruct.pdatalength=other.get_datastruct().pdatalength;
-        pdatastruct.prank=other.get_datastruct().prank;
-        pdatastruct.prowmajor=other.get_datastruct().prowmajor;
-        pstrides = std::move(other.pstrides);
-        pextents = std::move(other.pextents);
-        pdatastruct.pstrides = pstrides.data();
-        pdatastruct.pextents = pextents.data();
-        other.get_datastruct().pdata = nullptr;
-        other.get_datastruct().pstrides = nullptr;
-        other.get_datastruct().pextents = nullptr;
-        other.get_datastruct().pdata = nullptr;
-    }
-    return *this;
+    });
+
 }
+
+
 
 
 template <typename T, typename Container>
