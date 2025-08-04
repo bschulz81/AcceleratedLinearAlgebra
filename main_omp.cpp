@@ -23,7 +23,50 @@ using namespace std;
 int main()
 {
 
+
+
 size_t rows = 4, cols = 4;
+
+
+cout<< "We create a 4x4 matrix that owns its own data buffer in a memapped file and then fill the buffer and print it"<<endl;
+mdspan<double, std::vector<size_t>> O( true,true,{rows, cols});
+
+
+for (size_t i=0;i<16;i++)
+{
+O.get_datastruct().pdata[i]=(double)i;
+}
+
+
+printmatrix(O);
+
+cout<<"does this matrix own the data?"<<endl;
+cout <<O.ownsdata()<<endl;
+
+cout<<"now we create a 4x4 matrix with data in a separate vector"<<endl;
+
+vector<double>O2_data(16,2);
+mdspan<double, std::vector<size_t>> O2(O2_data.data(), true, {rows, cols});
+printmatrix(O2);
+
+cout<<"does this matrix own the data?"<<endl;
+cout <<O2.ownsdata()<<endl;
+
+cout<< "now we make a shallow copy of the first matrix on the second"<<endl;
+
+O2=O;
+printmatrix(O2);
+
+cout<<"does the second matrix own the data?"<<endl;
+cout <<O2.ownsdata()<<endl;
+
+cout<<"We test the shallow copy by setting the first element of the first matrix to 42 and then print the first and second matrix"<<endl;
+O.get_datastruct().pdata[0]=42;
+
+printmatrix(O);
+printmatrix(O2);
+
+cout<< "On termination, the shared ptr variable with dummy ref counter should call a deleter that removes the created memory (on device, on the memmapped file, or on heap)"<<endl;
 
 // Define some data for matrix multiplication A*B=C;
 vector<double>A_data(16,0);
@@ -37,6 +80,10 @@ vector<double>C_data(16,1);
         B_data[i] = i ; // Example initialization
     }
 
+
+
+
+
 //the same code base can have the strides and extents on heap(vector) or on the stack(array)
 //Here, we define row-major data (column major support is included but was not tested).
 //the array class has many constructors for various initialization methods and supports higher ranks than 2,
@@ -44,6 +91,11 @@ vector<double>C_data(16,1);
 mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows, cols});
 mdspan<double, std::array<size_t,2>> B(B_data.data(), true, {rows, cols});
 mdspan<double, std::vector<size_t>> C(C_data.data(), true, {rows, cols});
+
+
+
+
+
 //
 //
 //simple matrix multiplication, if the boolean flag is set to true, the multiplication is done on gpu.
