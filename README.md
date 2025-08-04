@@ -24,7 +24,7 @@ Test of the tensor library with the message passing interface.
 Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
 Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
 
-05:08:
+05.08.2025:
 Fixed constructors when the memory is managed by the mdspan class. (important for usage with the Message passing interface)
 Shallow copies now work when the data is managed by the mdspan class 
 a sharedptr dummy reference counter was introduced that calls a custom deleter which clears the array and memory mapped files, gpu data if necessary.
