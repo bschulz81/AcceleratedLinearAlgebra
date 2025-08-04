@@ -4,14 +4,14 @@ Test of the tensor library with the message passing interface.
 Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
 Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
 
-05:08:
+05.08.2025:
 Fixed constructors when the memory is managed by the mdspan class. (important for usage with the Message passing interface)
 Shallow copies now work when the data is managed by the mdspan class 
 a sharedptr dummy reference counter was introduced that calls a custom deleter which clears the array and memory mapped files, gpu data if necessary.
 (note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
 
 
-28.07.2025 
+28.07.2025:
 Support was added for tensors whose data lies entirely on device.
 
 Fixes for the functions recieving and sending tensors witht he message passing interface was added. (still entirely untested)
@@ -20,12 +20,12 @@ Support was added for the message passing interface to send tensors purely to an
 
 
 
-01.07:
+01.07.2025:
 I fixed several functions which were not called by the small test application. Now the code compiles with gcc 15.1 even if optimizations are switched on.
 It also compiles with clang again. Unfortunately, clang does not seem to execute many of the loops on the gpu device, even if requested.
 In contrast, the code produced by gcc starts cuda kernels and runs on my GPU device
 
-30.06:
+30.06.2025:
 
 More linear algebra routines were added
 Initial support for unified shared memory was added
