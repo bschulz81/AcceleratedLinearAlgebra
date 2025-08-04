@@ -25,9 +25,12 @@ Implementation of the strassen algorithm with device pointers and cuda aware mes
 Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
 
 05.08.2025:
+
 Fixed constructors when the memory is managed by the mdspan class. (important for usage with the Message passing interface)
 Shallow copies now work when the data is managed by the mdspan class 
+
 a sharedptr dummy reference counter was introduced that calls a custom deleter which clears the array and memory mapped files, gpu data if necessary.
+
 (note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
 
 
