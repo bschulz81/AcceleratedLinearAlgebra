@@ -28,6 +28,7 @@ Todo:
 4) Then use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
 
 Once this is finished:
+
 5) Refractoring: 
 Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
 
