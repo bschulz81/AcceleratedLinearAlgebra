@@ -32,10 +32,12 @@ Once this is finished:
 5) Refractoring: 
 Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
 
-6) Then add functions for statistics, function minimization, optimization, differential equations
+6) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+
 
 
 By 07.08.2025, 
+
 Some OpenMP shared clauses were fixed,
 MPI recieve was put as a constructor into the mdspan class,
 MPI send was put in as a method, for the entire class with span fields, and for just the data.
@@ -45,8 +47,6 @@ It can be run with  mpirun -np 12 ./arraytest_mpi
 
 Unfortunately, the Strassen Algorithm and its Winograd version still have problems and crash when using the Message Passing interface. 
 They currently work only on CPU and once the problem is small enough, start conventional multiplication on GPU.
-
- implement more complex mathematical functions for function minimization, auto differentation, differential equations 
 
 
 05.08.2025:
