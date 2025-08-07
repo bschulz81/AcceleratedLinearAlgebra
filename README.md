@@ -10,19 +10,43 @@ Currently, the library uses open-mp. An older version that contains openmp code 
 The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
 
 
-The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
+The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms for Cholesky, LU and QR decomposition, can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
 
-Iitial support for the message passing interface was added. But not tested yet. With this, the Strassen algorithm can then send smaller matrices to other nodes, which can be configured such with the MPI that they are on separate computers. Once the matrix is small enough, it will then be uploaded to the gpu, computed, downloaded and send back to the lower rank in the mpi comm world. The remaining parts of the computations are then done with openmp in parallel.
+Initial support for the message passing interface was added (Broadcast, Send and Recieve. Unfortunately, MPI has not much support for tensors with multiple strides (only matrices seem to work fine with custom MPI vector types). 
+
+Unfortunately, the Strassen algorithm and the Winograd algorithm currently break when they are used with the Message Passing interface. 
+At least on OpenMP they work fine, as well as they can upload smaller problems to the gpu.
 
 A cmakelists.txt file is supplied. 
 
 Version History:
 
 Todo:
+1) Fix the Strassen and Winograd Algorithms when they should work with the Message Passing Interface
+2) Expand the use of the Message Passing Interface to other algorithms. Unfortunately, MPI seems not to have much support for tensors with multiple different strides.
+3) Implementation of the Strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
+4) Then use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
 
-Test of the tensor library with the message passing interface.
-Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
-Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
+Once this is finished:
+5) Refractoring: 
+Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
+
+6) Then add functions for statistics, function minimization, optimization, differential equations
+
+
+By 07.08.2025, 
+Some OpenMP shared clauses were fixed,
+MPI recieve was put as a constructor into the mdspan class,
+MPI send was put in as a method, for the entire class with span fields, and for just the data.
+Some Message Passing Interface functions (MPI Send, MPI recieve, MPI Bcast were tested. The test application was updated and now compiles a second application with the OpenMPI replacement compiler.
+
+It can be run with  mpirun -np 12 ./arraytest_mpi 
+
+Unfortunately, the Strassen Algorithm and its Winograd version still have problems and crash when using the Message Passing interface. 
+They currently work only on CPU and once the problem is small enough, start conventional multiplication on GPU.
+
+ implement more complex mathematical functions for function minimization, auto differentation, differential equations 
+
 
 05.08.2025:
 
@@ -32,29 +56,6 @@ Shallow copies now work when the data is managed by the mdspan class
 a sharedptr dummy reference counter was introduced that calls a custom deleter which clears the array and memory mapped files, gpu data if necessary.
 
 (note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
-
-By 07.08.2025, 
-Some OpenMP shared clauses were fixed,
-MPI recieve was put as a constructor into the mdspan class,
-MPI send was put in as a method, for the entire class with span fields, and for just the data.
-Some Message Passing Interface functions (MPI Send, MPI recieve, MPI Bcast were tested. The test application was updated and now compiles a second application with the OpenMPI replacement compiler.
-It can be run with  mpirun -np 12 ./arraytest_mpi 
-
-Unfortunately, the Strassen Algorithm and its Winograd version still have problems and crash when using the Message Passing interface. 
-They currently work only on CPU and once the problem is small enough, start conventional multiplication on GPU.
-
-Todo:
-1) Fix the Strassen and Winograd Algorithms when they should work with the Message Passing Interface
-2) Expand the use of the Message Passing Interface to other algorithms. Unfortunately, MPI seems not to have much support for tensors with multiple different strides.
-3) Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
-5) Then use this Strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
-
-Once this is finished:
-6) Refractoring: 
-Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
-
-4) Then implement more complex mathematical functions for function minimization, auto differentation, differential equations 
-
 
 By 28.07.2025
 Support was added for tensors whose data lies entirely on device.
