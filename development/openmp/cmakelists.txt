@@ -5,9 +5,12 @@ set(CMAKE_CXX_STANDARD 23 )
 project(arraytest VERSION 1.1.1)
 
 #GCC compiler flags.
-SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+#SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
 
+#mpicc compiler flags.
+SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
 
 
 #Clang compiler flags
@@ -21,23 +24,30 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-
 #set (CMAKE_CXX_COMPILER "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/compilers/bin/nvc++" CACHE STRING "C++ compiler" )
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20  -mp=gpu -Msafeptr=all  -Minfo=all")
 
-
-
 set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build/)
 
+#arraytest is an executable that tests functions with openmp and gpu offload
+
+#arraytest_mpi is an executable that tests functions with the message passing interface.
+#it is to be run with  mpirun -np 8 ./arraytest_mpi
 
 include_directories(arraytest ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(arraytest_mpi ${CMAKE_CURRENT_SOURCE_DIR})
 
 
 add_executable(arraytest ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_omp.cpp)
+add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
+
+
 
 #Set this to True if you want to use unified_shared_memory support
+
 target_compile_definitions(arraytest PRIVATE Unified_Shared_Memory=False)
 
+target_compile_definitions(arraytest_mpi PRIVATE Unified_Shared_Memory=False)
 
 
 
-#link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
 
 
 
@@ -53,6 +63,24 @@ endif()
 #    target_link_libraries(arraytest PRIVATE rt m c stdc++ gomp mpi)
 #endif()
 #if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
+#link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
 #    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
 #    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi )
 #endif()
+
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message(STATUS "Configuring for GNU compiler (gcc)")
+    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi)
+endif()
+
+#if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+#link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
+#    message(STATUS "Configuring for Clang compiler")
+#    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ gomp mpi)
+#endif()
+#if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
+#    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
+#    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi )
+#endif()
+
