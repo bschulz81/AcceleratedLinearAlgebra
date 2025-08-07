@@ -33,6 +33,27 @@ a sharedptr dummy reference counter was introduced that calls a custom deleter w
 
 (note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
 
+By 07.08.2025, 
+Some OpenMP shared clauses were fixed,
+MPI recieve was put as a constructor into the mdspan class,
+MPI send was put in as a method, for the entire class with span fields, and for just the data.
+Some Message Passing Interface functions (MPI Send, MPI recieve, MPI Bcast were tested. The test application was updated and now compiles a second application with the OpenMPI replacement compiler.
+It can be run with  mpirun -np 12 ./arraytest_mpi 
+
+Unfortunately, the Strassen Algorithm and its Winograd version still have problems and crash when using the Message Passing interface. 
+They currently work only on CPU and once the problem is small enough, start conventional multiplication on GPU.
+
+Todo:
+1) Fix the Strassen and Winograd Algorithms when they should work with the Message Passing Interface
+2) Expand the use of the Message Passing Interface to other algorithms. Unfortunately, MPI seems not to have much support for tensors with multiple different strides.
+3) Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
+5) Then use this Strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
+
+Once this is finished:
+6) Refractoring: 
+Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
+
+4) Then implement more complex mathematical functions for function minimization, auto differentation, differential equations 
 
 
 By 28.07.2025
@@ -40,13 +61,6 @@ Support was added for tensors whose data lies entirely on device.
 Fixes for the functions recieving and sending tensors witht he message passing interface was added. (still entirely untested)
 Support was added for the message passing interface to send tensors purely to and from device (still entirely untested)
 
-Todo:
-1) Test of the tensor library with the message passing interface.
-2) Implementation of the strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
-3) Then use this strassen algorithm and modify the LU, Cholesky, QR decomposition for the gpu to use this version...
-
-Once this is finished:
-4) Then implement more complex mathematical functions for function minimization, auto differentation, differential equations 
 
 
 
