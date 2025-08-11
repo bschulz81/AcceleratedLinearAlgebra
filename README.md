@@ -12,7 +12,12 @@ The library contains functions for matrix multiplication on accelerators, as wel
 
 The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms for Cholesky, LU and QR decomposition, can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
 
-Initial support for the message passing interface was added (Send and Recieve.)
+Initial support for the message passing interface was added. The Strassen Algorithm and its Winograd variant can use the Message Passing interface. 
+
+If set up such that one node has a processor and gpu, the algorithms can distribute the multiplication into these submatrices which resist on these nodes. Then, the problem can be offloaded to the gpu. 
+
+This approach may be useful for problems that are too large for a single gpu. A test application may be run with mpirun -np 12 ./arraytest_mpi Be sure to use more or equal nodes than are needed by the recursion. Otherwise cuda will complain maybe because it can not easily start several virtual machines in one process.
+
 
 
 A cmakelists.txt file is supplied. 
