@@ -2435,7 +2435,6 @@ void MPI_recursive_multiplication_helper(matrix_multiplication_parameters &par)
                    colsC=B1.get_datastruct().pextents[1];
 
             mdspan<T, std::vector<size_t>> C1(true,par.memmapped_files, rowsC, colsC);
-            matrix_multiplication_parameters algorithm;
 
             strassen_multiply(A1,B1,C1,par);
             C1.MPI_Send_mdspan_pdata(status.MPI_SOURCE,3,par.comm);
