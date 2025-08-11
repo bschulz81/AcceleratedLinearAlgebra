@@ -27,7 +27,7 @@ A short tutorial how to configure gcc for gpu-offload is here for the gentoo lin
 
 With clang 20.1.8, the library currently fails even to link due to this problem: https://github.com/llvm/llvm-project/issues/152955 Earlier versions of the library linked, but then clang failed to generate cuda code for most loops.
 
-In contrast, with gcc 15.2, the library works on accelerator devices and on distributed systems.
+In contrast, with gcc 15.2, the library works on accelerator devices with correctly performing cuda kernels and it works on distributed systems with the MPI.
 
 A cmakelists.txt file which compiles two test applications that aim to document how the library is used, is supplied. 
 
