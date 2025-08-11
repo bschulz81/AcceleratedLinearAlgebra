@@ -105,8 +105,12 @@ cout<<"Ordinary matrix multiplication, on gpu"<<std::endl;
 printmatrix(A);
 printmatrix(B);
 
+matrix_multiplication_parameters uh;
+uh.gpu_offload=false;
+uh.mpi=false;
+uh.omp=true;
 
- matrix_multiply_dot(A, B, C,false,true);
+matrix_multiply_dot(A, B, C,true,0);
 
 
 printmatrix(C);
@@ -144,7 +148,7 @@ printmatrix(C);
     matrix_multiplication_parameters par2;
 
     par2.gpu_offload=true;
-
+    par2.memmapped_files=true;
     cholesky_decomposition(A2,L2,par2,0,false,false,0);
 
 
@@ -211,14 +215,14 @@ printmatrix(C);
     std::fill(R4_data.begin(),R4_data.end(),0);
 
     cout<<"Entirely on gpu"<<std::endl;
-    par4.gpu_offload=true;
+    par4.gpu_offload=false;
     qr_decomposition(A4,Q4,R4,par4,0,true);
     printmatrix(Q4);
     printmatrix(R4);
 
 
     cout<<"In order to test the qr decomposition, we can use Strassen's algorithm"<<endl;
-
+ par4.gpu_offload=true;
     vector<double>C4_data(9,0);
     mdspan<double, std::vector<size_t>> C4(C4_data.data(), true, {rows4, cols4});
 
@@ -231,7 +235,7 @@ printmatrix(C);
 
     std::fill(C4_data.begin(),C4_data.end(),0);
 
-    winograd_multiply(Q4, R4, C4,par4);
+   winograd_multiply(Q4, R4, C4,par4);
 
     printmatrix(C4);
 
