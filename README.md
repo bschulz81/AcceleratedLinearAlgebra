@@ -29,7 +29,7 @@ With clang 20.1.8, the library currently fails even to link due to this problem:
 
 In contrast, with gcc 15.2, the library works on accelerator devices and on distributed systems.
 
-A cmakelists.txt file is supplied. 
+A cmakelists.txt file which compiles two test applications that aim to document how the library is used, is supplied. 
 
 Version History:
 
