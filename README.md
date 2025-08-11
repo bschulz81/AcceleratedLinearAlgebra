@@ -21,6 +21,7 @@ Initial support for the message passing interface was added. The Strassen Algori
 If set up such that one node has a processor and gpu, the algorithms can distribute the multiplication into these submatrices which resist on these nodes. Then, the problem can be offloaded to the gpu. 
 
 This approach may be useful for problems that are too large for a single gpu. A test application may be run with 
+
 mpirun -np 12 ./arraytest_mpi 
 
 Be sure to use more or equal nodes than are needed by the recursion. Otherwise cuda will complain maybe because it can not easily start several virtual machines in one process.
