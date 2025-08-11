@@ -10,7 +10,7 @@ project(arraytest VERSION 1.1.1)
 
 #mpicc compiler flags.
 SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector -fno-math-errno -fno-trapping-math -O3  -Wall")
 
 
 #Clang compiler flags
@@ -39,19 +39,11 @@ add_executable(arraytest ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_omp.cpp)
 add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
 
 
-
 #Set this to True if you want to use unified_shared_memory support
 
 target_compile_definitions(arraytest PRIVATE Unified_Shared_Memory=False)
 
 target_compile_definitions(arraytest_mpi PRIVATE Unified_Shared_Memory=False)
-
-
-
-
-
-
-
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
@@ -83,4 +75,3 @@ endif()
 #    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
 #    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi )
 #endif()
-
