@@ -12,28 +12,31 @@ The library contains functions for matrix multiplication on accelerators, as wel
 
 The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms for Cholesky, LU and QR decomposition, can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
 
-Initial support for the message passing interface was added (Broadcast, Send and Recieve. Unfortunately, MPI has not much support for tensors with multiple strides (only matrices seem to work fine with custom MPI vector types). 
+Initial support for the message passing interface was added (Send and Recieve.)
 
-Unfortunately, the Strassen algorithm and the Winograd algorithm currently break when they are used with the Message Passing interface. 
-At least on OpenMP they work fine, as well as they can upload smaller problems to the gpu.
 
 A cmakelists.txt file is supplied. 
 
 Version History:
 
 Todo:
-1) Fix the Strassen and Winograd Algorithms when they should work with the Message Passing Interface
-2) Expand the use of the Message Passing Interface to other algorithms. Unfortunately, MPI seems not to have much support for tensors with multiple different strides.
-3) Implementation of the Strassen algorithm with device pointers and cuda aware message passing interface for tensors purely on device.
-4) Then use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
+1) Let the Strassen and Winograd algorithms work with device pointers for data which is purely located on gpu and then use this in the Cholesky/LU/QR transform
+2) Expand the use of the Message Passing Interface to other algorithms.
+3) Then use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
 
 Once this is finished:
 
-5) Refractoring: 
+4) Refractoring: 
 Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
 
-6) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+5) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+
+By 11.08.2025:
+A bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms. This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. I also tested them, in addition to OpenMP, with the Message Passing Interface.
+
+The Strassen and Winograd algorithms now work correctly with the Message Passing interface.
+They can distribute the problem on many nodes, and then, if it is small enough, upload on gpu. So ideally, one sets up one node per unit consisting of a processor with a gpu. More algorithms for the message passing interface may be added in the future.
 
 
 By 07.08.2025, 
