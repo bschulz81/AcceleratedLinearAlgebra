@@ -5,9 +5,13 @@ This is a first submission for a simple linear algebra library. It is somewhat a
 While mdspan works with compile time set extents, this library uses c++ concepts, so that stl vectors on the heap can be used for extents.
 It has support for rowmajor and column mayor data (but that is not suffciently tested) and rank sizes larger than 2 (but that was not tested very much).
 
-Currently, the library uses open-mp. An older version that contains openmp code for the host and open-acc code for the gpu offload is in the archive folder.
+Currently, the library uses open-mp and the message passing interface.
 
-The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
+An older version that contains openmp code for the host and open-acc code for the gpu offload is in the archive folder.
+
+The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. 
+
+By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
 
 
 The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms for Cholesky, LU and QR decomposition, can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
@@ -27,7 +31,7 @@ Version History:
 Todo:
 1) Let the Strassen and Winograd algorithms work with device pointers for data which is purely located on gpu and then use this in the Cholesky/LU/QR transform
 2) Expand the use of the Message Passing Interface to other algorithms.
-3) Then use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
+3) Use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
 
 Once this is finished:
 
@@ -38,10 +42,12 @@ Let the mdspan class just have constructors and data management functions, while
 
 
 By 11.08.2025:
-A bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms. This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. I also tested them, in addition to OpenMP, with the Message Passing Interface.
+A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms. This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. I also tested them, in addition to OpenMP, with the Message Passing Interface.
 
-The Strassen and Winograd algorithms now work correctly with the Message Passing interface.
-They can distribute the problem on many nodes, and then, if it is small enough, upload on gpu. So ideally, one sets up one node per unit consisting of a processor with a gpu. More algorithms for the message passing interface may be added in the future.
+The Strassen and Winograd algorithms now work correctly with the Message Passing interface. 
+
+They can distribute the problem on many nodes, and then, if it is small enough, upload on gpu.
+So ideally, one sets up one node per unit consisting of a processor with a gpu. More algorithms for the message passing interface may be added in the future.
 
 
 By 07.08.2025, 
