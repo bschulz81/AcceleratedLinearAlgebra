@@ -22,7 +22,12 @@ If set up such that one node has a processor and gpu, the algorithms can distrib
 
 This approach may be useful for problems that are too large for a single gpu. A test application may be run with mpirun -np 12 ./arraytest_mpi Be sure to use more or equal nodes than are needed by the recursion. Otherwise cuda will complain maybe because it can not easily start several virtual machines in one process.
 
+The library currently compiles without warnings with gcc-15.2 and the test applications run on all optimization levels. 
+A short tutorial how to configure gcc for gpu-offload is here for the gentoo linux distribution: https://forums.gentoo.org/viewtopic-p-8848457.html?sid=7f023fe73bf270b0617ea00bcc1a4ea1
 
+With clang 20.1.8, the library currently fails even to link due to this problem: https://github.com/llvm/llvm-project/issues/152955 Earlier versions of the library linked, but then clang failed to generate cuda code for most loops.
+
+In contrast, with gcc 15.2, the library works on accelerator devices and on distributed systems.
 
 A cmakelists.txt file is supplied. 
 
