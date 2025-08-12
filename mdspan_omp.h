@@ -2535,10 +2535,6 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
         L.dpdata[i]=0;
     }
 
-    const size_t strtA0=tempA.dpstrides[0];
-    const size_t strtA1=tempA.dpstrides[1];
-    const size_t strl0=L.dpstrides[0];
-    const size_t strl1=L.dpstrides[1];
 
     for (size_t c = 0; c < n; ++c)
     {
