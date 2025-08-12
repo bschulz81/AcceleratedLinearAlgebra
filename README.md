@@ -50,7 +50,10 @@ Let the mdspan class just have constructors and data management functions, while
 5) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 By 12.08.2025:
-Unfortunately, I the blas functions for execution within a gpu kernel additionally needed to be fixed for the new operators in which the strides do not occur. Did this now and prepared the header a bit for refractoring tomorrow, to give the library a clearer structure, which is also needed for testing separate components. 
+In addition to the linear algebra functions for mdspan, the blas functions for execution within a gpu kernel additionally needed to be fixed for the new operators in which the strides do not occur. 
+I overlooked this over the weekend since there was no warning from gcc, as these functions were not called in the test application.
+I fixed them now and prepared the header a bit for refractoring tomorrow.
+A refractoring with inheritance and several classes in different files will give the library a clearer structure, which is also needed for thorough separate testing of the components. 
 
 
 
