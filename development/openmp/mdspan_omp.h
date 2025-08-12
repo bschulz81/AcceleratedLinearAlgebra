@@ -29,7 +29,6 @@
 
 
 #include <omp.h>
-
 #include <iostream>
 #include <thread>
 #include <mpi.h>
@@ -221,15 +220,15 @@ inline size_t compute_data_length_s(const size_t*__restrict  extents, const size
 template <typename T>
 struct datastruct
 {
-    T*   pdata = nullptr;
-    size_t*  pextents = nullptr;
-    size_t*   pstrides = nullptr;
-    size_t pdatalength = 0;
-    size_t prank = 0;
-    bool prowmajor = true;
-    bool pdata_is_devptr=false;
-    bool pstrides_is_devptr=false;
-    bool pextents_is_devptr=false;
+    T*   dpdata = nullptr;
+    size_t*  dpextents = nullptr;
+    size_t*   dpstrides = nullptr;
+    size_t dpdatalength = 0;
+    size_t dprank = 0;
+    bool dprowmajor = true;
+    bool dpdata_is_devptr=false;
+    bool dpstrides_is_devptr=false;
+    bool dpextents_is_devptr=false;
 
     datastruct() {}
 
@@ -306,38 +305,38 @@ struct datastruct
     // Operator overloads
     T& operator()(const size_t* __restrict indices)
     {
-        return pdata[compute_offset_s(indices, pstrides, prank)];
+        return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
 
     T operator()(const size_t* __restrict indices) const
     {
-        return pdata[compute_offset_s(indices, pstrides, prank)];
+        return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
 
     T& operator()(const size_t row, const size_t col)
     {
-        const size_t strides0=pstrides[0];
-        const size_t strides1=pstrides[1];
-        return pdata[row * strides0 + col *strides1];
+        const size_t strides0=dpstrides[0];
+        const size_t strides1=dpstrides[1];
+        return dpdata[row * strides0 + col *strides1];
     };
 
     T operator()(const size_t row, const size_t col) const
     {
-        const size_t strides0=pstrides[0];
-        const size_t strides1=pstrides[1];
-        return pdata[row * strides0 + col *strides1];
+        const size_t strides0=dpstrides[0];
+        const size_t strides1=dpstrides[1];
+        return dpdata[row * strides0 + col *strides1];
     };
 
     T& operator()(const size_t i)
     {
-        const size_t stride=pstrides[0];
-        return pdata[i * stride];
+        const size_t stride=dpstrides[0];
+        return dpdata[i * stride];
     };
 
     T operator()(const size_t i) const
     {
-        const size_t stride=pstrides[0];
-        return pdata[i * stride];
+        const size_t stride=dpstrides[0];
+        return dpdata[i * stride];
     };
 
 
@@ -366,12 +365,12 @@ struct datastruct
 #pragma omp begin declare target
 template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t* __restrict newextents, size_t *newstrides)
 {
-    newextents[0]=pextents[1];
-    newextents[1]=pextents[0];
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
 
-    newstrides[0]=pstrides[1];
-    newstrides[1]=pstrides[0];
-    return datastruct(pdata,pdatalength,prowmajor,2,newextents,newstrides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+    return datastruct(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 
 }
 #pragma omp end declare target
@@ -417,23 +416,23 @@ template<typename T> datastruct<T>::datastruct(
     bool data_is_devptr,
     bool strides_is_devptr,
     bool extents_is_devptr
-) : pdata(data),
-    pextents(extents),
-    pstrides(strides),
-    pdatalength(datalength),
-    prank(rank),
-    prowmajor(rowm),
-    pdata_is_devptr(data_is_devptr),
-    pstrides_is_devptr(strides_is_devptr),
-    pextents_is_devptr(extents_is_devptr)
+) : dpdata(data),
+    dpextents(extents),
+    dpstrides(strides),
+    dpdatalength(datalength),
+    dprank(rank),
+    dprowmajor(rowm),
+    dpdata_is_devptr(data_is_devptr),
+    dpstrides_is_devptr(strides_is_devptr),
+    dpextents_is_devptr(extents_is_devptr)
 {
-    if(compute_strides_from_extents==true && pextents!=nullptr && pstrides!=nullptr && rank !=0)
+    if(compute_strides_from_extents==true && extents!=nullptr && strides!=nullptr && rank !=0)
     {
-        fill_strides(pextents,pstrides,rank,rowm);
+        fill_strides(dpextents,dpstrides,rank,rowm);
     }
-    if(compute_datalength==true && pextents!=nullptr && pstrides!=nullptr && rank !=0)
+    if(compute_datalength==true && extents!=nullptr && strides!=nullptr && rank !=0)
     {
-        pdatalength=compute_data_length_s(pextents,pstrides,rank);
+        dpdatalength=compute_data_length_s(extents,strides,rank);
     }
 
 }
@@ -453,14 +452,15 @@ template<typename T> datastruct<T>::datastruct(
     bool data_is_devptr,
     bool strides_is_devptr,
     bool extents_is_devptr
-) : pdata(data),pextents(extents),
-    pstrides(strides),
-    pdatalength(datalength),
-    prank(rank),
-    prowmajor(rowm),
-    pdata_is_devptr(data_is_devptr),
-    pstrides_is_devptr(strides_is_devptr),
-    pextents_is_devptr(extents_is_devptr)
+) : dpdata(data),
+    dpextents(extents),
+    dpstrides(strides),
+    dpdatalength(datalength),
+    dprank(rank),
+    dprowmajor(rowm),
+    dpdata_is_devptr(data_is_devptr),
+    dpstrides_is_devptr(strides_is_devptr),
+    dpextents_is_devptr(extents_is_devptr)
 {}
 #pragma omp end declare target
 
@@ -482,29 +482,29 @@ template<typename T> datastruct<T>::datastruct(
     bool data_is_devptr,
     bool strides_is_devptr,
     bool extents_is_devptr
-) : pdata(data),
-    pextents(extents),
-    pstrides(strides),
-    pdatalength(datalength),
-    prank(2),
-    prowmajor(rowm),
-    pdata_is_devptr(data_is_devptr),
-    pstrides_is_devptr(strides_is_devptr),
-    pextents_is_devptr(extents_is_devptr)
+) : dpdata(data),
+    dpextents(extents),
+    dpstrides(strides),
+    dpdatalength(datalength),
+    dprank(2),
+    dprowmajor(rowm),
+    dpdata_is_devptr(data_is_devptr),
+    dpstrides_is_devptr(strides_is_devptr),
+    dpextents_is_devptr(extents_is_devptr)
 {
     if(extents!=nullptr)
     {
-        pextents[0]=(rowm==true)?rows:cols;
-        pextents[1]=(rowm==true)?cols:rows;
+        dpextents[0]=(rowm==true)?rows:cols;
+        dpextents[1]=(rowm==true)?cols:rows;
     }
-    if(pstrides!=nullptr && compute_strides_from_extents)
+    if(strides!=nullptr && compute_strides_from_extents)
     {
-        pstrides[0]=(rowm==true)? cols:1;
-        pstrides[1]=(rowm==true)?1: rows;
+        dpstrides[0]=(rowm==true)? cols:1;
+        dpstrides[1]=(rowm==true)?1: rows;
     }
     if(compute_datalength==true && extents!=nullptr && strides!=nullptr)
     {
-        pdatalength=(rows-1) * strides[0]+(cols-1)*strides[1]+1;
+        dpdatalength=(rows-1) * strides[0]+(cols-1)*strides[1]+1;
     }
 
 }
@@ -524,30 +524,30 @@ template<typename T> datastruct<T>::datastruct(
     bool data_is_devptr,
     bool strides_is_devptr,
     bool extents_is_devptr
-) : pdata(data),
-    pextents(extents),
-    pstrides(strides),
-    pdatalength(datalength),
-    prank(1),
-    prowmajor(true),
-    pdata_is_devptr(data_is_devptr),
-    pstrides_is_devptr(strides_is_devptr),
-    pextents_is_devptr(extents_is_devptr)
+) : dpdata(data),
+    dpextents(extents),
+    dpstrides(strides),
+    dpdatalength(datalength),
+    dprank(1),
+    dprowmajor(true),
+    dpdata_is_devptr(data_is_devptr),
+    dpstrides_is_devptr(strides_is_devptr),
+    dpextents_is_devptr(extents_is_devptr)
 {
     if(extents!=nullptr)
     {
-        pextents[0]=noelements;
+        dpextents[0]=noelements;
     }
-    if(pstrides!=nullptr && compute_strides_from_extents)
+    if(dpstrides!=nullptr && compute_strides_from_extents)
     {
         if(rowvector)
-            pstrides[0]=(rowm==true)? 1:noelements;
+            dpstrides[0]=(rowm==true)? 1:noelements;
         else
-            pstrides[0]=(rowm==true)? noelements:1;
+            dpstrides[0]=(rowm==true)? noelements:1;
     }
     if(compute_datalength==true && strides!=nullptr)
     {
-        pdatalength=(noelements-1) * strides[0]+1;
+        dpdatalength=(noelements-1) * strides[0]+1;
     }
 
 }
@@ -560,15 +560,15 @@ template<typename T>
 datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides)
 {
     size_t offset_index = 0;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     #pragma omp parallel for simd reduction( + : offset_index )
     for (size_t i = 0; i < r; ++i)
     {
-        offset_index += poffsets[i] * pstrides[i];
-        psub_strides[i]=pstrides[i];
+        offset_index += poffsets[i] * dpstrides[i];
+        psub_strides[i]=dpstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(dpdata + offset_index,pl,dprowmajor,r, psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -579,15 +579,15 @@ template<typename T>
 datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides)
 {
     size_t offset_index = 0;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     #pragma omp simd reduction( + : offset_index )
     for (size_t i = 0; i < r; ++i)
     {
-        offset_index += poffsets[i] * pstrides[i];
-        psub_strides[i]=pstrides[i];
+        offset_index += poffsets[i] * dpstrides[i];
+        psub_strides[i]=dpstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(dpdata + offset_index,pl,dprowmajor,r, psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -598,14 +598,14 @@ template<typename T>
 datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t* __restrict psub_strides)
 {
     size_t offset_index = 0;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     for (size_t i = 0; i < r; ++i)
     {
-        offset_index += poffsets[i] * pstrides[i];
-        psub_strides[i]=pstrides[i];
+        offset_index += poffsets[i] * dpstrides[i];
+        psub_strides[i]=dpstrides[i];
     }
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(dpdata + offset_index,pl,dprowmajor,r, psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 
 }
 #pragma omp end  declare target
@@ -619,16 +619,16 @@ template<typename T>
 datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const size_t *__restrict psub_extents, size_t*__restrict psub_strides, T*__restrict sub_data)
 {
     size_t offset_index = 0;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     if(sub_data==nullptr)
     {
         for (size_t i = 0; i < r; ++i)
         {
-            offset_index += poffsets[i] * pstrides[i];
-            psub_strides[i]=pstrides[i];
+            offset_index += poffsets[i] * dpstrides[i];
+            psub_strides[i]=dpstrides[i];
         }
         size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-        return datastruct(pdata + offset_index,pl,this->prowmajor,r, psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+        return datastruct(dpdata + offset_index,pl,dprowmajor,r, psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
     }
     else
     {
@@ -647,7 +647,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
 
         size_t largest_buffer_index=0;
         // Fill the supplied buffer with subspan data
-        fill_strides(psub_extents,psub_strides,r,prowmajor);
+        fill_strides(psub_extents,psub_strides,r,dprowmajor);
         while (true)
         {
             // Compute the current global indices
@@ -657,11 +657,11 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset_s(global_indices, pstrides, prowmajor);
-            size_t buffer_index = compute_offset_s(indices,psub_strides, prowmajor);
+            size_t original_index = compute_offset_s(global_indices, dpstrides, dprowmajor);
+            size_t buffer_index = compute_offset_s(indices,psub_strides, dprowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
-            sub_data[buffer_index] = pdata[original_index];
+            sub_data[buffer_index] = dpdata[original_index];
 
             if(buffer_index>largest_buffer_index)
                 largest_buffer_index=buffer_index;
@@ -689,7 +689,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t * __restrict poffsets,const
         delete[] global_indices;
         delete[] indices;
 
-        return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+        return datastruct (sub_data,pl,dprowmajor,psub_extents, psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 
     }
 
@@ -704,7 +704,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
     // Compute the new strides for the subspan
     size_t * __restrict indices;
     size_t *__restrict global_indices;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     indices=new size_t[r];
     global_indices= new size_t[r];
 
@@ -716,7 +716,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
 
     size_t largest_buffer_index=0;
     // Fill the supplied buffer with subspan data
-    fill_strides(psub_extents,psub_strides,r,prowmajor);
+    fill_strides(psub_extents,psub_strides,r,dprowmajor);
     while (true)
     {
         // Compute the current global indices
@@ -727,11 +727,11 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
         }
 
         // Compute the offsets for the original data and the new buffer
-        size_t original_index = compute_offset_w(global_indices, pstrides, prowmajor);
-        size_t buffer_index = compute_offset_w(indices,psub_strides, prowmajor);
+        size_t original_index = compute_offset_w(global_indices, dpstrides, dprowmajor);
+        size_t buffer_index = compute_offset_w(indices,psub_strides, dprowmajor);
 
         // Copy the data from the original tensor to the sub-buffer
-        sub_data[buffer_index] = pdata[original_index];
+        sub_data[buffer_index] = dpdata[original_index];
 
         if(buffer_index>largest_buffer_index)
             largest_buffer_index=buffer_index;
@@ -759,7 +759,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t * __restrict poffsets,const
     delete[] indices;
 
     size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-    return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct (sub_data,pl,dprowmajor,psub_extents, psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -771,7 +771,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
     // Compute the new strides for the subspan
     size_t * __restrict indices;
     size_t *__restrict global_indices;
-    const size_t r=this->prank;
+    const size_t r=dprank;
     indices=new size_t[r];
     global_indices= new size_t[r];
 
@@ -783,7 +783,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
 
     size_t largest_buffer_index=0;
     // Fill the supplied buffer with subspan data
-    fill_strides(psub_extents,psub_strides,r,prowmajor);
+    fill_strides(psub_extents,psub_strides,r,dprowmajor);
     while (true)
     {
         // Compute the current global indices
@@ -794,11 +794,11 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
         }
 
         // Compute the offsets for the original data and the new buffer
-        size_t original_index = compute_offset_w(global_indices, pstrides, prowmajor);
-        size_t buffer_index = compute_offset_w(indices,psub_strides, prowmajor);
+        size_t original_index = compute_offset_w(global_indices, dpstrides, dprowmajor);
+        size_t buffer_index = compute_offset_w(indices,psub_strides, dprowmajor);
 
         // Copy the data from the original tensor to the sub-buffer
-        sub_data[buffer_index] = pdata[original_index];
+        sub_data[buffer_index] = dpdata[original_index];
 
         if(buffer_index>largest_buffer_index)
             largest_buffer_index=buffer_index;
@@ -827,7 +827,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
     delete[] global_indices;
     delete[] indices;
 
-    return datastruct (sub_data,pl,prowmajor,psub_extents, psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct (sub_data,pl,dprowmajor,psub_extents, psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -838,13 +838,13 @@ datastruct<T>datastruct<T>::substruct_w(const size_t * __restrict poffsets,const
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides)
 {
-    psub_strides[0]=pstrides[0];
-    psub_strides[1]=pstrides[1];
-    psub_extents[0]=(prowmajor==true)?tile_rows:tile_cols;
-    psub_extents[1]=(prowmajor==true)?tile_cols:tile_rows;
+    psub_strides[0]=dpstrides[0];
+    psub_strides[1]=dpstrides[1];
+    psub_extents[0]=(dprowmajor==true)?tile_rows:tile_cols;
+    psub_extents[1]=(dprowmajor==true)?tile_cols:tile_rows;
     size_t pl=(psub_extents[0]-1) * psub_strides[0]+ (psub_extents[1]-1) * psub_strides[1]+1;
-    size_t offset=+row * pstrides[0]+col * pstrides[1];
-    return datastruct(pdata+offset,pl,prowmajor,2,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    size_t offset=+row * dpstrides[0]+col * dpstrides[1];
+    return datastruct(dpdata+offset,pl,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -854,11 +854,11 @@ datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
 {
-    if (prowmajor)
+    if (dprowmajor)
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         #pragma omp parallel for simd collapse(2) shared(sub_data,pd,tile_rows,tile_cols,row,col,s0,s1)
         for (size_t i = 0; i < tile_rows; ++i)
         {
@@ -870,9 +870,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
     }
     else
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         #pragma omp parallel for simd collapse(2) shared(sub_data,pd,tile_rows,tile_cols,row,col,s0,s1)
         for (size_t j = 0; j < tile_cols; ++j)
         {
@@ -882,9 +882,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
             }
         }
     }
-    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
+    fill_strides(psub_extents,psub_strides,2,dprowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -893,11 +893,11 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
 {
-    if (prowmajor)
+    if (dprowmajor)
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         #pragma omp simd collapse(2)
         for (size_t i = 0; i < tile_rows; ++i)
         {
@@ -909,9 +909,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
     }
     else
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         #pragma omp simd collapse(2)
         for (size_t j = 0; j < tile_cols; ++j)
         {
@@ -921,9 +921,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
             }
         }
     }
-    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
+    fill_strides(psub_extents,psub_strides,2,dprowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -934,11 +934,11 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t * __restrict psub_extents,  size_t *__restrict psub_strides, T* __restrict sub_data)
 {
-    if (prowmajor)
+    if (dprowmajor)
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         // Row-major layout: fill row by row
 
         for (size_t i = 0; i < tile_rows; ++i)
@@ -951,9 +951,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
     }
     else
     {
-        const size_t s0=pstrides[0];
-        const size_t s1=pstrides[1];
-        const T* __restrict pd=this->pdata;
+        const size_t s0=dpstrides[0];
+        const size_t s1=dpstrides[1];
+        const T* __restrict pd=dpdata;
         // Column-major layout: fill column by column
 
         for (size_t j = 0; j < tile_cols; ++j)
@@ -964,9 +964,9 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
             }
         }
     }
-    fill_strides(psub_extents,psub_strides,2,this->prowmajor);
+    fill_strides(psub_extents,psub_strides,2,dprowmajor);
     size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,prowmajor,tile_rows, tile_cols,psub_extents,psub_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -976,21 +976,21 @@ template<typename T>
 inline void update_device(datastruct<T>& dL,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dL.pdatalength;
-    size_t r=dL.prank;
+    size_t l=dL.dpdatalength;
+    size_t r=dL.dprank;
 
     #pragma omp target update to (dL) device(devicenum)
-    if(!dL.pdata_is_devptr)
+    if(!dL.dpdata_is_devptr)
     {
-        #pragma omp target update to (dL.pdata[0:l])device(devicenum)
+        #pragma omp target update to (dL.dpdata[0:l])device(devicenum)
     }
-    if(!dL.pextents_is_devptr)
+    if(!dL.dpextents_is_devptr)
     {
-        #pragma omp target update to (dL.pextents[0:r])device(devicenum)
+        #pragma omp target update to (dL.dpextents[0:r])device(devicenum)
     }
-    if(!dL.pstrides_is_devptr)
+    if(!dL.dpstrides_is_devptr)
     {
-        #pragma omp target update to (dL.pstrides[0:r])device(devicenum)
+        #pragma omp target update to (dL.dpstrides[0:r])device(devicenum)
     }
 #endif
 }
@@ -999,20 +999,20 @@ template<typename T>
 inline void update_host(datastruct<T>& dL,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dL.pdatalength;
-    size_t r=dL.prank;
+    size_t l=dL.dpdatalength;
+    size_t r=dL.dprank;
     #pragma omp target update from (dL) device(devicenum)
-    if(!dL.pdata_is_devptr)
+    if(!dL.dpdata_is_devptr)
     {
-        #pragma omp target update from (dL.pdata[0:l])device(devicenum)
+        #pragma omp target update from (dL.dpdata[0:l])device(devicenum)
     }
-    if(!dL.pextents_is_devptr)
+    if(!dL.dpextents_is_devptr)
     {
-        #pragma omp target update from (dL.pextents[0:r])device(devicenum)
+        #pragma omp target update from (dL.dpextents[0:r])device(devicenum)
     }
-    if(!dL.pstrides_is_devptr)
+    if(!dL.dpstrides_is_devptr)
     {
-        #pragma omp target update from (dL.pstrides[0:r])device(devicenum)
+        #pragma omp target update from (dL.dpstrides[0:r])device(devicenum)
     }
 #endif
 }
@@ -1021,20 +1021,20 @@ template<typename T>
 void inline create_out_struct(datastruct<T>& dA,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dA.pdatalength;
-    size_t r=dA.prank;
+    size_t l=dA.dpdatalength;
+    size_t r=dA.dprank;
     #pragma omp target enter data map(to: dA) device(devicenum)
-    if(!dA.pdata_is_devptr)
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target enter data map(alloc: dA.pdata[0:l])device(devicenum)
+        #pragma omp target enter data map(alloc: dA.dpdata[0:l])device(devicenum)
     }
-    if(!dA.pextents_is_devptr)
+    if(!dA.dpextents_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.pextents[0:r])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
     }
-    if(!dA.pstrides_is_devptr)
+    if(!dA.dpstrides_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.pstrides[0:r])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
     }
 
 #endif
@@ -1046,20 +1046,20 @@ template<typename T>
 void inline create_in_struct(datastruct<T>& dA,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dA.pdatalength;
-    size_t r=dA.prank;
+    size_t l=dA.dpdatalength;
+    size_t r=dA.dprank;
     #pragma omp target enter data map(to: dA)device(devicenum)
-    if(!dA.pdata_is_devptr)
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.pdata[0:l])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpdata[0:l])device(devicenum)
     }
-    if(!dA.pstrides_is_devptr)
+    if(!dA.dpstrides_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.pextents[0:r])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
     }
-    if(!dA.pextents_is_devptr)
+    if(!dA.dpextents_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.pstrides[0:r])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
     }
 #endif
 }
@@ -1067,20 +1067,20 @@ template<typename T>
 inline void exit_struct(datastruct<T> &dA,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dA.pdatalength;
-    size_t r=dA.prank;
-    if(!dA.pdata_is_devptr)
+    size_t l=dA.dpdatalength;
+    size_t r=dA.dprank;
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target exit data map(delete:dA.pdata[0:l])device(devicenum)
+        #pragma omp target exit data map(delete:dA.dpdata[0:l])device(devicenum)
     }
-    if(!dA.pstrides_is_devptr)
+    if(!dA.dpstrides_is_devptr)
     {
-        #pragma omp target exit data map(delete: dA.pstrides[0:r])device(devicenum)
+        #pragma omp target exit data map(delete: dA.dpstrides[0:r])device(devicenum)
     }
 
-    if(!dA.pextents_is_devptr)
+    if(!dA.dpextents_is_devptr)
     {
-        #pragma omp target exit data map(delete:dA.pextents[0:r])device(devicenum)
+        #pragma omp target exit data map(delete:dA.dpextents[0:r])device(devicenum)
     }
     #pragma omp target exit data map(delete:dA)device(devicenum)
 
@@ -1092,20 +1092,20 @@ template<typename T>
 inline void release_struct(datastruct<T> &dA,int devicenum)
 {
 #if (Unified_Shared_Memory==false)
-    size_t l=dA.pdatalength;
-    size_t r=dA.prank;
-    if(!dA.pdata_is_devptr)
+    size_t l=dA.dpdatalength;
+    size_t r=dA.dprank;
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target exit data map(release:dA.pdata[0:l])device(devicenum)
+        #pragma omp target exit data map(release:dA.dpdata[0:l])device(devicenum)
     }
-    if(!dA.pstrides_is_devptr)
+    if(!dA.dpstrides_is_devptr)
     {
-        #pragma omp target exit data map(release: dA.pstrides[0:r])device(devicenum)
+        #pragma omp target exit data map(release: dA.dpstrides[0:r])device(devicenum)
     }
 
-    if(!dA.pextents_is_devptr)
+    if(!dA.dpextents_is_devptr)
     {
-        #pragma omp target exit data map(release:dA.pextents[0:r])device(devicenum)
+        #pragma omp target exit data map(release:dA.dpextents[0:r])device(devicenum)
     }
     #pragma omp target exit data map(release:dA)device(devicenum)
 
@@ -1122,11 +1122,11 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t* __restrict exte
 {
 
     // Offset the data pointer to the start of the row
-    T* __restrict row_data = pdata + row_index * pstrides[0];
+    T* __restrict row_data = dpdata + row_index * dpstrides[0];
     // Fill the extents array with the appropriate values for the row
-    extents[0] = pextents[1]; // Extent for a row is the number of columns
-    new_strides[0]=pstrides[0];
-    return datastruct<T>(row_data,  pstrides[1] * extents[0],prowmajor,   1, &extents[0],    new_strides, pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr);
+    extents[0] = dpextents[1]; // Extent for a row is the number of columns
+    new_strides[0]=dpstrides[0];
+    return datastruct<T>(row_data,  dpstrides[1] * extents[0],dprowmajor,   1, &extents[0],    new_strides, dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1139,11 +1139,11 @@ template <typename T>
 datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  extents,size_t *__restrict new_strides)
 {
     // Offset the data pointer to the start of the column
-    T* __restrict col_data = pdata + col_index * pstrides[1];
+    T* __restrict col_data = dpdata + col_index * dpstrides[1];
     // Fill the extents array with the appropriate values for the column
-    extents[0] = pextents[0]; // Extent for a column is the number of rows
-    new_strides[0]=pstrides[0];
-    return datastruct(col_data, pstrides[0] * extents[0],prowmajor,  1, &extents[0],   new_strides,pdata_is_devptr,pstrides_is_devptr,pextents_is_devptr );
+    extents[0] = dpextents[0]; // Extent for a column is the number of rows
+    new_strides[0]=dpstrides[0];
+    return datastruct(col_data, dpstrides[0] * extents[0],dprowmajor,  1, &extents[0],   new_strides,dpdata_is_devptr,dpstrides_is_devptr,dpextents_is_devptr );
 }
 #pragma omp end declare target
 
@@ -1151,8 +1151,8 @@ datastruct<T> datastruct<T>::column(const size_t col_index, size_t*__restrict  e
 template <typename T>
 void printmatrix(const datastruct<T>&span)
 {
-    const size_t rows= span.pextents[0];
-    const size_t cols=span.pextents[1];
+    const size_t rows= span.dpextents[0];
+    const size_t cols=span.dpextents[1];
     for (size_t i = 0; i <rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
@@ -1309,24 +1309,24 @@ public:
     {
         const size_t stride0=pstrides[0];
         const size_t stride1=pstrides[1];
-        return pdatastruct.pdata[row * stride0 + col * stride1];
+        return pdatastruct.dpdata[row * stride0 + col * stride1];
     };
     inline T operator()(const size_t row, const size_t col)const
     {
         const size_t stride0=pstrides[0];
         const size_t stride1=pstrides[1];
-        return pdatastruct.pdata[row * stride0 + col * stride1];
+        return pdatastruct.dpdata[row * stride0 + col * stride1];
     };
 
     inline T operator()(const size_t i)const
     {
         const size_t stride=pstrides[0];
-        return pdatastruct.pdata[i * stride];
+        return pdatastruct.dpdata[i * stride];
     };
     inline T& operator()(const size_t i)
     {
         const size_t stride=pstrides[0];
-        return pdatastruct.pdata[i * stride];
+        return pdatastruct.dpdata[i * stride];
     };
     // Subspan methods
     mdspan<T, Container> subspan(const Container& offsets, const Container& sub_extents, T* __restrict sub_data=nullptr) const;
@@ -1360,11 +1360,11 @@ public:
     // Other utility methods
     size_t extent(const size_t dim) const
     {
-        return pdatastruct.pextents[dim];
+        return pdatastruct.dpextents[dim];
     };
     size_t rank() const
     {
-        return pdatastruct.prank;
+        return pdatastruct.dprank;
     };
     size_t stride(const size_t dim) const
     {
@@ -1383,7 +1383,7 @@ public:
 
     size_t datalength() const
     {
-        return pdatastruct.pdatalength;
+        return pdatastruct.dpdatalength;
     };
 
 
@@ -1443,10 +1443,10 @@ inline T& mdspan<T, Container>::operator()(const Container& indices)
     #pragma omp simd reduction( + : offset)
     for (size_t i = 0; i < indices.size(); ++i)
     {
-        offset += indices[i] * pdatastruct.pstrides[i];
+        offset += indices[i] * pdatastruct.dpstrides[i];
     }
 
-    return pdatastruct.pdata[offset];
+    return pdatastruct.dpdata[offset];
 }
 
 
@@ -1459,10 +1459,10 @@ T mdspan<T, Container>::operator()(const Container& indices)const
     #pragma omp simd reduction( + : offset)
     for (size_t i = 0; i < indices.size(); ++i)
     {
-        offset += indices[i] * pdatastruct.pstrides[i];
+        offset += indices[i] * pdatastruct.dpstrides[i];
     }
 
-    return pdatastruct.pdata[offset];
+    return pdatastruct.dpdata[offset];
 }
 
 
@@ -1524,8 +1524,8 @@ void mdspan<T, Container>::initialize_extents_and_strides(const Container& exten
         pstrides[i] = strides[i];
     }
     // Assign to datastruct
-    pdatastruct.pextents = pextents.data();
-    pdatastruct.pstrides = pstrides.data();
+    pdatastruct.dpextents = pextents.data();
+    pdatastruct.dpstrides = pstrides.data();
 }
 template <typename T, typename Container>
 void mdspan<T, Container>::initialize_extents(const Container& extents)
@@ -1548,7 +1548,7 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
         pextents[i] = extents[i];
     }
     // Assign to datastruct
-    pdatastruct.pextents = pextents.data();
+    pdatastruct.dpextents = pextents.data();
 }
 
 
@@ -1572,7 +1572,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
       // Initialize pdatastruct with placeholders
 {
     initialize_extents_and_strides(extents,strides);
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
 
 }
 
@@ -1586,8 +1586,8 @@ mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
-    pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.dpstrides = pstrides.data();
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
 }
 
 
@@ -1619,9 +1619,9 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     pextents[1]=(rowm==true)?cols:rows;
     compute_strides(pextents,pstrides,rowm);
 
-    pdatastruct.pextents = pextents.data();
-    pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
+    pdatastruct.dpextents = pextents.data();
+    pdatastruct.dpstrides = pstrides.data();
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
 }
 
 
@@ -1633,7 +1633,7 @@ mdspan<T, Container>::mdspan( const size_t datalength,  const bool rowm,const bo
     :pdatastruct(nullptr, datalength,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false)
 {
     initialize_extents_and_strides(extents,strides,rowm);
-    allocate_data(memmap,pdatastruct.pdatalength);
+    allocate_data(memmap,pdatastruct.dpdatalength);
 }
 
 
@@ -1643,8 +1643,8 @@ mdspan<T, Container>::mdspan( const bool rowm,const bool memmap, const Container
     : pdatastruct(nullptr, 0,rowm,extents.size(),nullptr,nullptr,false,false,false,false,false)
 {
     initialize_extents_and_strides(extents,strides,rowm);
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
-    allocate_data(memmap,pdatastruct.pdatalength);
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
+    allocate_data(memmap,pdatastruct.dpdatalength);
 }
 
 
@@ -1655,10 +1655,10 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap,const  Container&
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
-    pdatastruct.pextents = pextents.data();
-    pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
-    allocate_data(memmap,pdatastruct.pdatalength);
+    pdatastruct.dpextents = pextents.data();
+    pdatastruct.dpstrides = pstrides.data();
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
+    allocate_data(memmap,pdatastruct.dpdatalength);
 }
 
 
@@ -1683,10 +1683,10 @@ mdspan<T, Container>::mdspan(const bool rowm,const bool memmap, const size_t row
     pextents[1]=(rowm==true)?cols:rows;
     compute_strides(pextents,pstrides,rowm);
 
-    pdatastruct.pextents = pextents.data();
-    pdatastruct.pstrides = pstrides.data();
-    pdatastruct.pdatalength=compute_data_length_w(pdatastruct.pextents,pdatastruct.pstrides,pdatastruct.prank);
-    allocate_data(memmap,pdatastruct.pdatalength);
+    pdatastruct.dpextents = pextents.data();
+    pdatastruct.dpstrides = pstrides.data();
+    pdatastruct.dpdatalength=compute_data_length_w(pdatastruct.dpextents,pdatastruct.dpstrides,pdatastruct.dprank);
+    allocate_data(memmap,pdatastruct.dpdatalength);
 
 }
 
@@ -1700,17 +1700,17 @@ void mdspan<T, Container>::allocate_data(bool memmap, size_t dl)
     pownsdata = true;
     if (memmap)
     {
-        pdatastruct.pdata = create_temp_mmap<T>(dl);
+        pdatastruct.dpdata = create_temp_mmap<T>(dl);
         pwith_memmap = true;
     }
 
     else
     {
-        pdatastruct.pdata = new T[dl];
+        pdatastruct.dpdata = new T[dl];
         pwith_memmap = false;
     }
 
-    p_refctr=shared_ptr<T>(pdatastruct.pdata,[this](T* p)
+    p_refctr=shared_ptr<T>(pdatastruct.dpdata,[this](T* p)
     {
         for(auto& p : pis_offloaded)
             if(p.second==true)
@@ -1720,7 +1720,7 @@ void mdspan<T, Container>::allocate_data(bool memmap, size_t dl)
         if(pownsdata==true)
         {
             if (pwith_memmap==true)
-                munmap(p,sizeof(T)*pdatastruct.pdatalength);
+                munmap(p,sizeof(T)*pdatastruct.dpdatalength);
             else
                 delete[] p;
         }
@@ -1742,7 +1742,7 @@ void mdspan<T, Container>::addrefcounter(const mdspan<T, Container> *other)
 template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, const Container &sub_extents, T* __restrict sub_data)const
 {
-    const size_t r=pdatastruct.prank;
+    const size_t r=pdatastruct.dprank;
 
     if (sub_data==nullptr)
     {
@@ -1752,11 +1752,11 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
         #pragma omp simd reduction( + : offset_index )
         for (size_t i = 0; i < r; ++i)
         {
-            offset_index += offsets[i] * pdatastruct.pstrides[i];
+            offset_index += offsets[i] * pdatastruct.dpstrides[i];
         }
 
         // Create a new mdspan_dynamic with the updated pointer, extents, and the same strides
-        mdspan md= mdspan(pdatastruct.pdata + offset_index,pdatastruct.prowmajor, sub_extents, pstrides);
+        mdspan md= mdspan(pdatastruct.dpdata + offset_index,pdatastruct.dprowmajor, sub_extents, pstrides);
         md.addrefcounter(this);
         return md;
 
@@ -1765,7 +1765,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
     {
         // Compute the new strides for the subspan
         Container sub_strides;
-        compute_strides(sub_extents, sub_strides, pdatastruct.prowmajor);
+        compute_strides(sub_extents, sub_strides, pdatastruct.dprowmajor);
         vector<size_t> indices(r,0);
         vector<size_t> global_indices(r,0);
         while (true)
@@ -1778,11 +1778,11 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
             }
 
             // Compute the offsets for the original data and the new buffer
-            size_t original_index = compute_offset_v(global_indices.data(), pdatastruct.pstrides,global_indices.size(), pdatastruct.prowmajor);
-            size_t buffer_index = compute_offset_v(indices.data(),sub_strides.data(),indices.size(), pdatastruct.prowmajor);
+            size_t original_index = compute_offset_v(global_indices.data(), pdatastruct.dpstrides,global_indices.size(), pdatastruct.dprowmajor);
+            size_t buffer_index = compute_offset_v(indices.data(),sub_strides.data(),indices.size(), pdatastruct.dprowmajor);
 
             // Copy the data from the original tensor to the sub-buffer
-            sub_data[buffer_index] = pdatastruct.pdata[original_index];
+            sub_data[buffer_index] = pdatastruct.dpdata[original_index];
 
             // Increment the indices for the Cartesian product
             size_t dim = r;
@@ -1803,7 +1803,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets, cons
         }
 
         // Create and return a new mdspan with the updated pointer, extents, and strides
-        return mdspan(sub_data, pdatastruct.prowmajor, sub_extents, sub_strides );
+        return mdspan(sub_data, pdatastruct.dprowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1814,20 +1814,20 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
     if(sub_data==nullptr)
     {
 
-        const size_t offset=row * pdatastruct.pstrides[0]+col * pdatastruct.pstrides[1];
+        const size_t offset=row * pdatastruct.dpstrides[0]+col * pdatastruct.dpstrides[1];
         const Container ext= {tile_rows,tile_cols};
-        mdspan md=mdspan(pdatastruct.pdata +offset,pdatastruct.prowmajor,ext,pstrides);
+        mdspan md=mdspan(pdatastruct.dpdata +offset,pdatastruct.dprowmajor,ext,pstrides);
         md.addrefcounter(this);
         return md;
     }
     else
     {
-        if (pdatastruct.prowmajor)
+        if (pdatastruct.dprowmajor)
         {
             // Row-major layout: fill row by row
-            const size_t str0= pdatastruct.pstrides[0];
-            const size_t str1=pdatastruct.pstrides[1];
-            T *pd=pdatastruct.pdata;
+            const size_t str0= pdatastruct.dpstrides[0];
+            const size_t str1=pdatastruct.dpstrides[1];
+            T *pd=pdatastruct.dpdata;
             #pragma omp parallel for simd collapse (2) shared(sub_data,pd,tile_cols,row,col,str0,str1)
             for (size_t i = 0; i < tile_rows; ++i)
             {
@@ -1839,9 +1839,9 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
         }
         else
         {
-            const size_t str0= pdatastruct.pstrides[0];
-            const size_t str1=pdatastruct.pstrides[1];
-            T *pd=pdatastruct.pdata;
+            const size_t str0= pdatastruct.dpstrides[0];
+            const size_t str1=pdatastruct.dpstrides[1];
+            T *pd=pdatastruct.dpdata;
             #pragma omp parallel for simd collapse (2) shared(sub_data,pd,tile_rows,tile_cols,row,col,str0,str1)
             for (size_t j = 0; j < tile_cols; ++j)
             {
@@ -1853,10 +1853,10 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix( const size_t row, cons
         }
         const Container sub_extents = {tile_rows, tile_cols};
 
-        const Container sub_strides = (pdatastruct.prowmajor==true)? Container{tile_cols, 1} :
+        const Container sub_strides = (pdatastruct.dprowmajor==true)? Container{tile_cols, 1} :
                                       Container{1,tile_rows};
 
-        return mdspan(sub_data,pdatastruct.prowmajor, sub_extents, sub_strides );
+        return mdspan(sub_data,pdatastruct.dprowmajor, sub_extents, sub_strides );
     }
 }
 
@@ -1899,22 +1899,22 @@ template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::column(const size_t col_index)
 {
 
-    const size_t num_rows = pdatastruct.pextents[0];
+    const size_t num_rows = pdatastruct.dpextents[0];
     const Container column_extents = {num_rows};
-    const Container column_strides = {pdatastruct.pstrides[0]};
+    const Container column_strides = {pdatastruct.dpstrides[0]};
 
-    return mdspan<T, Container>( pdatastruct.pdata + col_index * pdatastruct.pstrides[1], pdatastruct.prowmajor, column_extents, column_strides );
+    return mdspan<T, Container>( pdatastruct.dpdata + col_index * pdatastruct.dpstrides[1], pdatastruct.dprowmajor, column_extents, column_strides );
 }
 
 template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::row(const size_t row_index)
 {
 
-    const size_t num_cols = pdatastruct.pextents[1];
+    const size_t num_cols = pdatastruct.dpextents[1];
     const Container row_extents = {num_cols};
-    const Container row_strides = {pdatastruct.pstrides[1]};
+    const Container row_strides = {pdatastruct.dpstrides[1]};
 
-    return mdspan<T, Container>( pdatastruct.pdata + row_index * pdatastruct.pstrides[0], pdatastruct.prowmajor, row_extents, row_strides );
+    return mdspan<T, Container>( pdatastruct.dpdata + row_index * pdatastruct.dpstrides[0], pdatastruct.dprowmajor, row_extents, row_strides );
 }
 
 template <typename T, typename Container>inline
@@ -2014,27 +2014,27 @@ bool mdspan<T, Container>:: device_update(bool default_device,int devicenum)
 template <typename T, typename Container>
 void mdspan<T, Container>:: MPI_Send_mdspan(int dest, int tag, MPI_Comm pcomm)
 {
-    MPI_Send(&pdatastruct.pdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&pdatastruct.prank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&pdatastruct.prowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&pdatastruct.pdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&pdatastruct.pextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&pdatastruct.pstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(pdatastruct.pextents, pdatastruct.prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(pdatastruct.pstrides,pdatastruct.prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(pdatastruct.pdata,sizeof(T)* pdatastruct.pdatalength, MPI_BYTE, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dpdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dprank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dprowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dpdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dpextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dpstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(pdatastruct.dpextents, pdatastruct.dprank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(pdatastruct.dpstrides,pdatastruct.dprank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(pdatastruct.dpdata,sizeof(T)* pdatastruct.dpdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 
 template <typename T, typename Container>
 void mdspan<T, Container>::MPI_Isend_mdspan_pdata( int dest,  int tag, MPI_Comm pcomm, MPI_Request &request)
 {
-    MPI_Isend(&pdatastruct.pdata[0],sizeof(T)* pdatastruct.pdatalength, MPI_BYTE, dest, tag, pcomm,&request);
+    MPI_Isend(&pdatastruct.dpdata[0],sizeof(T)* pdatastruct.dpdatalength, MPI_BYTE, dest, tag, pcomm,&request);
 }
 template <typename T, typename Container>
 void mdspan<T, Container>::MPI_Send_mdspan_pdata( int dest,  int tag,MPI_Comm pcomm)
 {
-    MPI_Send(&pdatastruct.pdata[0],sizeof(T)* pdatastruct.pdatalength, MPI_BYTE, dest, tag, pcomm);
+    MPI_Send(&pdatastruct.dpdata[0],sizeof(T)* pdatastruct.dpdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 
@@ -2042,7 +2042,7 @@ void mdspan<T, Container>::MPI_Send_mdspan_pdata( int dest,  int tag,MPI_Comm pc
 template <typename T, typename Container>
 void mdspan<T, Container>::MPI_Irecv_mdspan_pdata( int source, int tag, MPI_Comm pcomm, MPI_Request& request)
 {
-    MPI_Irecv(&pdatastruct.pdata[0],sizeof(T)* pdatastruct.pdatalength, MPI_BYTE, source, tag, pcomm,&request);
+    MPI_Irecv(&pdatastruct.dpdata[0],sizeof(T)* pdatastruct.dpdatalength, MPI_BYTE, source, tag, pcomm,&request);
 }
 template <typename T, typename Container>
 
@@ -2050,7 +2050,7 @@ template <typename T, typename Container>
 void mdspan<T, Container>::MPI_Recv_mdspan_pdata( int source,  int tag, MPI_Comm pcomm)
 {
     MPI_Status status;
-    MPI_Recv(&pdatastruct.pdata[0],sizeof(T)* pdatastruct.pdatalength, MPI_BYTE, source, tag, pcomm,&status);
+    MPI_Recv(&pdatastruct.dpdata[0],sizeof(T)* pdatastruct.dpdatalength, MPI_BYTE, source, tag, pcomm,&status);
 }
 
 
@@ -2075,11 +2075,11 @@ mdspan<T, Container>::mdspan(const bool memmap,  int source, int tag,  MPI_Comm 
     pextents.resize(pr);
     pstrides.resize(pr);
 
-    pdatastruct.pextents=pextents.data();
-    pdatastruct.pstrides=pstrides.data();
-    pdatastruct.prowmajor=prm;
-    pdatastruct.pdatalength=pl;
-    pdatastruct.prank=pr;
+    pdatastruct.dpextents=pextents.data();
+    pdatastruct.dpstrides=pstrides.data();
+    pdatastruct.dprowmajor=prm;
+    pdatastruct.dpdatalength=pl;
+    pdatastruct.dprank=pr;
 
 //    if (pextentsisdevptr)
 //    {
@@ -2101,7 +2101,7 @@ mdspan<T, Container>::mdspan(const bool memmap,  int source, int tag,  MPI_Comm 
     MPI_Recv(&pstrides[0],pr, MPI_UNSIGNED_LONG, source, tag, pcomm, &status);
 //    }
 
-    allocate_data(memmap,pdatastruct.pdatalength);
+    allocate_data(memmap,pdatastruct.dpdatalength);
 
 //    if(pdataisdevptr)
 //    {
@@ -2110,7 +2110,7 @@ mdspan<T, Container>::mdspan(const bool memmap,  int source, int tag,  MPI_Comm 
 //    }
 //    else
 //    {
-    MPI_Recv(&pdatastruct.pdata[0],sizeof(size_t)*pl, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Recv(&pdatastruct.dpdata[0],sizeof(size_t)*pl, MPI_BYTE, source, tag, pcomm, &status);
 //    }
 }
 
@@ -2121,27 +2121,27 @@ mdspan<T, Container>::mdspan(const bool memmap,  int source, int tag,  MPI_Comm 
 template <typename T>
 void MPI_send_datastruct(datastruct<T> &m, int dest, int tag, MPI_Comm pcomm)
 {
-    MPI_Send(&m.pdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&m.prank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&m.prowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&m.pdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&m.pextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&m.pstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
-    MPI_Send(&m.pextents[0], m.prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&m.pstrides[0], m.prank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
-    MPI_Send(&m.pdata[0],sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm);
+    MPI_Send(&m.dpdatalength, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.dprank, 1, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.dprowmajor, 1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.dpdata_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.dpextents_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.dpstrides_is_devptr,1, MPI_C_BOOL, dest, tag, pcomm);
+    MPI_Send(&m.dpextents[0], m.dprank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.dpstrides[0], m.dprank, MPI_UNSIGNED_LONG, dest, tag, pcomm);
+    MPI_Send(&m.dpdata[0],sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 template <typename T>
 void MPI_Isend_datastruct_pdata(datastruct<T> &m,const int dest,const  int tag,const MPI_Comm pcomm)
 {
     MPI_Request request;
-    MPI_Isend(&m.pdata[0],sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm,&request);
+    MPI_Isend(&m.dpdata[0],sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm,&request);
 }
 template <typename T>
 void MPI_send_datastruct_pdata(datastruct<T> &m,const int dest,const int tag,const MPI_Comm pcomm)
 {
-    MPI_Send(&m.pdata[0],sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm);
+    MPI_Send(&m.dpdata[0],sizeof(T)* m.pdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 
@@ -2237,29 +2237,29 @@ void datastruct_free(datastruct<T> &m,bool created_with_memmap, bool on_device, 
     if (defaultdevice)
         devicenum=omp_get_default_device();
 
-    if (m.pextents_is_devptr)
+    if (m.dpextents_is_devptr)
 #if (Unified_Shared_Memory==True)
-        free(m.pextents);
+        free(m.dpextents);
 #else
-        omp_target_free(m.pextents, devicenum);
+        omp_target_free(m.dpextents, devicenum);
 #endif
     else
-        free(m.pextents);
+        free(m.dpextents);
 
-    if (m.pstrides_is_devptr)
+    if (m.dpstrides_is_devptr)
 #if (Unified_Shared_Memory==True)
-        free(m.pstrides);
+        free(m.dpstrides);
 #else
-        omp_target_free(m.pstrides, devicenum);
+        omp_target_free(m.dpstrides, devicenum);
 #endif
 
 
     else
-        free(m.pstrides);
+        free(m.dpstrides);
 
-    if (m.pdata_is_devptr)
+    if (m.dpdata_is_devptr)
 #if (Unified_Shared_Memory==True)
-        free(m.pdata);
+        free(m.dpdata);
 #else
         omp_target_free(m.pdata, devicenum);
 #endif
@@ -2267,9 +2267,9 @@ void datastruct_free(datastruct<T> &m,bool created_with_memmap, bool on_device, 
     else
     {
         if (created_with_memmap)
-            delete_temp_mmap<T>(m.pdata,m.pdatalength);
+            delete_temp_mmap<T>(m.dpdata,m.dpdatalength);
         else
-            free(m.pdata);
+            free(m.dpdata);
     }
 }
 
@@ -2384,7 +2384,7 @@ template <typename T>
 void MPI_Irecv_datastruct_pdata(datastruct<T> &mds, const int source, const int tag,const  MPI_Comm pcomm)
 {
     MPI_Request request;
-    MPI_Irecv(mds.pdata,sizeof(T)* mds.pdatalength, MPI_BYTE, source, tag, pcomm, &request);
+    MPI_Irecv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, &request);
 }
 
 
@@ -2392,7 +2392,7 @@ template <typename T>
 void MPI_recv_datastruct_pdata(datastruct<T>& mds,const int source, const int tag,const  MPI_Comm pcomm)
 {
     MPI_Status status;
-    MPI_Recv(mds.pdata,sizeof(T)* mds.pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Recv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, &status);
 }
 
 
@@ -2431,8 +2431,8 @@ void MPI_recursive_multiplication_helper(matrix_multiplication_parameters &par)
 
             mdspan<T, vector<size_t>> B1(true,status.MPI_SOURCE, 2, par.comm);
 
-            size_t rowsC=A1.get_datastruct().pextents[0],
-                   colsC=B1.get_datastruct().pextents[1];
+            size_t rowsC=A1.get_datastruct().dpextents[0],
+                   colsC=B1.get_datastruct().dpextents[1];
 
             mdspan<T, std::vector<size_t>> C1(true,par.memmapped_files, rowsC, colsC);
 
@@ -2444,8 +2444,8 @@ void MPI_recursive_multiplication_helper(matrix_multiplication_parameters &par)
         {
             mdspan<T, vector<size_t>> A(true,status.MPI_SOURCE, 1, par.comm);
             mdspan<T, vector<size_t>> B(true,status.MPI_SOURCE, 2, par.comm);
-            size_t rowsC=A.get_datastruct().pextents[0],
-                   colsC=B.get_datastruct().pextents[1];
+            size_t rowsC=A.get_datastruct().dpextents[0],
+                   colsC=B.get_datastruct().dpextents[1];
 
             mdspan<T, std::vector<size_t>> C1(true,par.memmapped_files, rowsC, colsC);
             winograd_multiply(A,B,C1,par);
@@ -2476,22 +2476,22 @@ endloop:
 template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::transpose(T* __restrict pdata)
 {
-    Container transposed_extents = {pdatastruct.pextents[1], pdatastruct.pextents[0]};
-    Container transposed_strides = {pdatastruct.pstrides[1], pdatastruct.pstrides[0]};
+    Container transposed_extents = {pdatastruct.dpextents[1], pdatastruct.dpextents[0]};
+    Container transposed_strides = {pdatastruct.dpstrides[1], pdatastruct.dpstrides[0]};
     if (pdata==nullptr)
     {
-        mdspan md=mdspan(pdatastruct.pdata,pdatastruct.pdatalength, pdatastruct.prowmajor,  transposed_extents,   transposed_strides);
+        mdspan md=mdspan(pdatastruct.dpdata,pdatastruct.dpdatalength, pdatastruct.dprowmajor,  transposed_extents,   transposed_strides);
         md.addrefcounter(this);
         return md;
     }
     else
     {
-        size_t s=pdatastruct.pextents[1]* pdatastruct.pextents[0];
+        size_t s=pdatastruct.dpextents[1]* pdatastruct.dpextents[0];
         for (size_t i=0; i<s; i++)
         {
-            pdata[i]=pdatastruct.pdata[i];
+            pdata[i]=pdatastruct.dpdata[i];
         }
-        return mdspan(pdata,pdatastruct.pdatalength, pdatastruct.prowmajor,  transposed_extents,   transposed_strides);
+        return mdspan(pdata,pdatastruct.dpdatalength, pdatastruct.dprowmajor,  transposed_extents,   transposed_strides);
     }
 
 }
@@ -2500,7 +2500,7 @@ mdspan<T, Container> mdspan<T, Container>::transpose(T* __restrict pdata)
 template <typename T>
 void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* __restrict buffer=nullptr, size_t step_size=0)
 {
-    const size_t n = A.pextents[0];
+    const size_t n = A.dpextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
 
     step_size=(size_t)pow(n,0.8385);
@@ -2527,18 +2527,18 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
         adata=buffer+tempsize;
     }
 
-    datastruct<T> tempA(adata, 0,A.prowmajor,n, n,pext3, pstrides3,true,true);
+    datastruct<T> tempA(adata, 0,A.dprowmajor,n, n,pext3, pstrides3,true,true);
     #pragma omp parallel for simd shared(adata,A,L)
     for (size_t i=0; i<nn; i++)
     {
-        adata[i]=A.pdata[i];
-        L.pdata[i]=0;
+        adata[i]=A.dpdata[i];
+        L.dpdata[i]=0;
     }
 
-    const size_t strtA0=tempA.pstrides[0];
-    const size_t strtA1=tempA.pstrides[1];
-    const size_t strl0=L.pstrides[0];
-    const size_t strl1=L.pstrides[1];
+    const size_t strtA0=tempA.dpstrides[0];
+    const size_t strtA1=tempA.dpstrides[1];
+    const size_t strl0=L.dpstrides[0];
+    const size_t strl1=L.dpstrides[1];
 
     for (size_t c = 0; c < n; ++c)
     {
@@ -2555,25 +2555,15 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
 
             datastruct<T> R =L.subspanmatrix(c, z, u, v,pRext,pRstr);
 
-            datastruct<T> S(sdata, 0, A.prowmajor,u, u, pSext, pSstrides,true,true);
+            datastruct<T> S(sdata, 0, A.dprowmajor,u, u, pSext, pSstrides,true,true);
 
-            const size_t strs0=S.pstrides[0];
-            const size_t strs1=S.pstrides[1];
+            const size_t rows=R.dpextents[0];
+            const size_t cols=R.dpextents[0];
+            const size_t inner_dim=R.dpextents[1];
 
-            const size_t rows=R.pextents[0];
-            const size_t cols=R.pextents[0];
-            const size_t inner_dim=R.pextents[1];
 
-            const size_t strA0=R.pstrides[0];
-            const size_t strA1=R.pstrides[1];
 
-            const size_t strB0=R.pstrides[1];
-            const size_t strB1=R.pstrides[0];
-
-            const size_t strC0=S.pstrides[0];
-            const size_t strC1=S.pstrides[1];
-
-            #pragma omp parallel for collapse(2) shared(R,S,rows,cols,inner_dim,strA0,strA1,strB0,strB1)
+            #pragma omp parallel for collapse(2) shared(R,S,rows,cols,inner_dim)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -2582,44 +2572,44 @@ void gpu_cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, T* _
                     #pragma omp simd reduction(+:sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
-                        sum += R(i,k,strA0,strA1) *R(k,j,strB0,strB1);
+                        sum += R(i,k) *R(k,j);
                     }
-                    S(i,j,strC0,strC1)= sum;
+                    S(i,j)= sum;
                 }
             }
 
-            #pragma omp parallel for collapse(2) shared(c,tempA,strtA0,strtA1,S,strs0,strs1)
+            #pragma omp parallel for collapse(2) shared(c,tempA)
             for (size_t i = c; i < n; ++i)
             {
                 for (size_t j = c; j < n; ++j)
                 {
-                    tempA(i,j,strtA0,strtA1) -=S(i-c,j-c,strs0,strs1);
+                    tempA(i,j) -=S(i-c,j-c);
                 }
             }
 
             z = c;
         }
 
-        T tmp=tempA(c, c,strtA0,strtA1);
-        #pragma omp parallel for simd reduction(-:tmp) shared(L,strl0,strl1,c,z)
+        T tmp=tempA(c, c);
+        #pragma omp parallel for simd reduction(-:tmp) shared(L,c,z)
         for (size_t k = z; k < c; ++k)
         {
-            const T tmp3=L(c,k,strl0,strl1);
+            const T tmp3=L(c,k);
             tmp-= tmp3 * tmp3;
         }
-        L(c, c,strl0,strl1) =sqrt(tmp);
+        L(c, c) =sqrt(tmp);
 
-        T tmp4=L(c, c,strl0,strl1);
-        #pragma omp parallel for shared(tempA,L,strl0,strl1,c,z,tmp4)
+        T tmp4=L(c, c);
+        #pragma omp parallel for shared(tempA,L,c,z,tmp4)
         for (size_t i = c + 1; i < n; ++i)
         {
-            T tmp2 = tempA(i, c,strtA0,strtA1);
+            T tmp2 = tempA(i, c);
             #pragma omp simd reduction(-:tmp2)
             for (size_t k = z; k < c; ++k)
             {
-                tmp2 -= L(i, k,strl0,strl1) * L(c, k,strl0,strl1);
+                tmp2 -= L(i, k) * L(c, k);
             }
-            L(i, c,strl0,strl1)=tmp2/tmp4;
+            L(i, c)=tmp2/tmp4;
         }
     }
 
@@ -2640,7 +2630,7 @@ template <typename T>
 inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU, T* __restrict buffer=nullptr, size_t step_size=0)
 {
 
-    const size_t n = dA.pextents[0];
+    const size_t n = dA.dpextents[0];
     size_t z = 0; // Zero-based indexing, starts at the first column
 
     if(step_size==0)
@@ -2665,24 +2655,15 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
         sdata=buffer;
         adata=buffer+tempsize;
     }
-    datastruct<T> tempA(adata,  0, dA.prowmajor,n, n,pext3, pstrides3,true,true);
+    datastruct<T> tempA(adata,  0, dA.dprowmajor,n, n,pext3, pstrides3,true,true);
 
     #pragma omp parallel for simd shared(adata,dA,dL,dU)
     for (size_t i=0; i<nn; i++)
     {
-        adata[i]=dA.pdata[i];
-        dL.pdata[i]=0;
-        dU.pdata[i]=0;
+        adata[i]=dA.dpdata[i];
+        dL.dpdata[i]=0;
+        dU.dpdata[i]=0;
     }
-
-
-    const size_t strtA0=tempA.pstrides[0];
-    const size_t strtA1=tempA.pstrides[1];
-
-    const size_t strU0=dU.pstrides[0];
-    const size_t strU1=dU.pstrides[1];
-    const size_t strL0=dL.pstrides[0];
-    const size_t strL1=dL.pstrides[1];
 
     for (size_t c = 0; c < n; ++c)
     {
@@ -2699,22 +2680,15 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
             datastruct<T> RL = dL.subspanmatrix(c, z, u, v,pRLext,pRLstr);
             datastruct<T> RU = dU.subspanmatrix(z, c, v, u,pRUext,pRUstr);
 
-            datastruct<T> S(sdata,  0, dA.prowmajor,u, u,pSext, pSstrides,true,true);
+            datastruct<T> S(sdata,  0, dA.dprowmajor,u, u,pSext, pSstrides,true,true);
 
-            const size_t rows=RL.pextents[0];
-            const size_t cols=RU.pextents[1];
-            const size_t inner_dim=RL.pextents[1];
+            const size_t rows=RL.dpextents[0];
+            const size_t cols=RU.dpextents[1];
+            const size_t inner_dim=RL.dpextents[1];
 
-            const size_t strA0=RL.pstrides[0];
-            const size_t strA1=RL.pstrides[1];
 
-            const size_t strB0=RU.pstrides[0];
-            const size_t strB1=RU.pstrides[1];
 
-            const size_t strC0=S.pstrides[0];
-            const size_t strC1=S.pstrides[1];
-
-            #pragma omp parallel for  collapse(2) shared(RL,RU,S,rows,cols,inner_dim, strA0,strA1,strB0,strB1)
+            #pragma omp parallel for  collapse(2) shared(RL,RU,S,rows,cols,inner_dim)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -2723,49 +2697,46 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
                     #pragma omp simd reduction(+: sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
-                        sum += RL(i,k,strA0,strA1) *RU(k,j,strB0,strB1);
+                        sum += RL(i,k) *RU(k,j);
                     }
-                    S(i,j,strC0,strC1)= sum;
+                    S(i,j)= sum;
                 }
             }
-
-            const size_t strS0=S.pstrides[0];
-            const size_t strS1=S.pstrides[1];
             const size_t h=c;
-            #pragma omp parallel for simd collapse(2) shared(h,S,tempA,strtA0,strtA1,strS0,strS1)
+            #pragma omp parallel for simd collapse(2) shared(h,S,tempA)
             for (size_t i = c; i < n; ++i)
             {
                 for (size_t j = c; j < n; ++j)
                 {
-                    tempA(i,j,strtA0,strtA1) -= S(i - h, j - h,strS0,strS1);
+                    tempA(i,j) -= S(i - h, j - h);
                 }
             }
             z = c;
         }
 
-        #pragma omp parallel for shared(c,z,dU,dL,tempA,strtA0,strtA1,strU0,strU1,strL0,strL1)
+        #pragma omp parallel for shared(c,z,dU,dL,tempA)
         for (size_t i = c; i < n; ++i)
         {
-            T temp=tempA(c,i,strtA0,strtA1);
+            T temp=tempA(c,i);
             #pragma omp simd reduction(-:temp)
             for (size_t k = z; k < c; ++k)
             {
-                temp-= dU( k,i,strU0,strU1) * dL( c,k,strL0,strL1);
+                temp-= dU( k,i) * dL( c,k);
             }
-            dU(c,i,strU0,strU1)=temp;
+            dU(c,i)=temp;
         }
-        const T temp4=dU(c,c,strU0,strU1);
+        const T temp4=dU(c,c);
 
-        #pragma omp parallel for shared(c,z,dU,dL,tempA,strtA0,strtA1,strU0,strU1,strL0,strL1,temp4)
+        #pragma omp parallel for shared(c,z,dU,dL,tempA,temp4)
         for (size_t i = c; i < n; ++i)
         {
-            T temp= tempA(i,c,strtA0,strtA1);
+            T temp= tempA(i,c);
             #pragma omp simd reduction (-:temp)
             for (size_t k = z; k < c; ++k)
             {
-                temp -= dU(k,c,strU0,strU1) * dL( i,k,strL0,strL1);
+                temp -= dU(k,c) * dL( i,k);
             }
-            dL(i,c,strL0,strL1)=temp/temp4;
+            dL(i,c)=temp/temp4;
         }
     }
 
@@ -2788,11 +2759,11 @@ inline  void gpu_lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL,
 template <typename T >
 inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R, T* __restrict buffer=nullptr, size_t step_size=0)
 {
-    const size_t n = A.pextents[0];
-    const size_t m = A.pextents[1];
+    const size_t n = A.dpextents[0];
+    const size_t m = A.dpextents[1];
 
     if(step_size==0)
-        step_size=(size_t)pow(A.pextents[0],0.8385);
+        step_size=(size_t)pow(n,0.8385);
 
     const size_t nm=n*m;
     T* __restrict tempC;
@@ -2813,42 +2784,38 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
     }
 
     size_t Mext[2];
-    Mext[0]= A.pextents[1];
-    Mext[1]=A.pextents[0];
+    Mext[0]= A.dpextents[1];
+    Mext[1]=A.dpextents[0];
     size_t Mstrides[2];
-    Mstrides[0]= A.pstrides[0];
-    Mstrides[1]=A.pstrides[1];
+    Mstrides[0]= A.dpstrides[0];
+    Mstrides[1]=A.dpstrides[1];
 
 
 
     #pragma omp parallel for simd shared(A,tempM)
     for (size_t i=0; i<nm; i++)
     {
-        tempM[i]=A.pdata[i];
+        tempM[i]=A.dpdata[i];
     }
 
 
     #pragma omp parallel for simd shared(Q)
-    for (size_t i=0; i<Q.pdatalength; i++)
+    for (size_t i=0; i<Q.dpdatalength; i++)
     {
-        Q.pdata[i]=0;
+        Q.dpdata[i]=0;
     }
 
     #pragma omp parallel for simd shared(R)
-    for (size_t i=0; i<R.pdatalength; i++)
+    for (size_t i=0; i<R.dpdatalength; i++)
     {
-        R.pdata[i]=0;
+        R.dpdata[i]=0;
     }
 
 
-    datastruct<T> M(tempM,A.pdatalength,A.prowmajor,A.prank,Mext,Mstrides,false,false); //Copy of A
+    datastruct<T> M(tempM,A.dpdatalength,A.dprowmajor,A.dprank,Mext,Mstrides,false,false); //Copy of A
     size_t z = 0;
 
 
-    const size_t mstr0=Mstrides[0];
-    const size_t mstr1=Mstrides[1];
-    const size_t qstr0=Q.pstrides[0];
-    const size_t qstr1=Q.pstrides[1];
 
     for (size_t c = 0; c < m; ++c)
     {
@@ -2858,8 +2825,6 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             size_t cz=c-z;
             size_t mc=m-c;
 
-            size_t exts[2];
-            size_t strs[2];
             size_t extbq[2];
             size_t extbm[2];
             size_t strbq[2];
@@ -2868,7 +2833,8 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             size_t strc[2];
             size_t extbqt[2];
             size_t strbqt[2];
-
+            size_t exts[2];
+            size_t strs[2];
             datastruct<T> BQ = Q.subspanmatrix(0, z, n, cz,extbq,strbq);
             datastruct<T> BM = M.subspanmatrix(0, c, n, mc,extbm,strbm);
 
@@ -2878,20 +2844,11 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             datastruct<T> BQT=BQ.transpose(extbqt,strbqt);
 
 
-            const size_t rows=BQT.pextents[0];
-            const size_t cols=BM.pextents[1];
-            const size_t inner_dim=BQT.pextents[1];
+            const size_t rows=BQT.dpextents[0];
+            const size_t cols=BM.dpextents[1];
+            const size_t inner_dim=BQT.dpextents[1];
 
-            const size_t strA0=BQT.pstrides[0];
-            const size_t strA1=BQT.pstrides[1];
-
-            const size_t strB0=BM.pstrides[0];
-            const size_t strB1=BM.pstrides[1];
-
-            const size_t strC0=C.pstrides[0];
-            const size_t strC1=C.pstrides[1];
-
-            #pragma omp parallel for collapse(2) shared(BQT,BM,C,strA0,strA1,strB0,strB1,rows,cols,inner_dim)
+            #pragma omp parallel for collapse(2) shared(BQT,BM,C,rows,cols,inner_dim)
             for (size_t i = 0; i < rows; ++i)
             {
                 for (size_t j = 0; j < cols; ++j)
@@ -2900,28 +2857,21 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
                     #pragma omp simd reduction(+:sum)
                     for (size_t k = 0; k < inner_dim; ++k)
                     {
-                        sum += BQT(i,k,strA0,strA1) *BM(k,j,strB0,strB1);
+                        sum += BQT(i,k) *BM(k,j);
                     }
-                    C(i,j,strC0,strC1)= sum;
+                    C(i,j)= sum;
                 }
             }
             // Compute S = BQ * C
             datastruct<T>S(tempS, 0,BQ.prowmajor,n, mc,exts,strs,true,true);
 
-            const size_t rows2=BQ.pextents[0];
-            const size_t cols2=C.pextents[1];
-            const size_t inner_dim2=BQ.pextents[1];
+            const size_t rows2=BQ.dpextents[0];
+            const size_t cols2=C.dpextents[1];
+            const size_t inner_dim2=BQ.dpextents[1];
 
-            const size_t strA02=BQ.pstrides[0];
-            const size_t strA12=BQ.pstrides[1];
 
-            const size_t strB02=C.pstrides[0];
-            const size_t strB12=C.pstrides[1];
 
-            const size_t strC02=S.pstrides[0];
-            const size_t strC12=S.pstrides[1];
-
-            #pragma omp parallel for collapse(2) shared(BQ,C,S,strA02,strA12,strB02,strB12,rows2,cols2,inner_dim2)
+            #pragma omp parallel for collapse(2) shared(BQ,C,S,rows2,cols2,inner_dim2)
             for (size_t i = 0; i < rows2; ++i)
             {
                 for (size_t j = 0; j < cols2; ++j)
@@ -2930,24 +2880,22 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
                     #pragma omp simd reduction(+:sum)
                     for (size_t k = 0; k < inner_dim2; ++k)
                     {
-                        sum += BQ(i,k,strA02,strA12) *C(k,j,strB02,strB12);
+                        sum += BQ(i,k) *C(k,j);
                     }
-                    S(i,j,strC02,strC12)= sum;
+                    S(i,j)= sum;
                 }
             }
 
 
-            const size_t strs0=strs[0];
-            const size_t strs1=strs[1];
             // Update M: M[:, c:] -= S
             const size_t h=c;
-            #pragma omp parallel for shared(M,S,mstr0,mstr1,strs0,strs1,h)
+            #pragma omp parallel for shared(M,S,h)
             for (size_t i = 0; i < n; ++i)
             {
                 #pragma omp simd
                 for (size_t j = h; j <n; ++j)
                 {
-                    M(i,  j, mstr0, mstr1) -= S(i, j-h,strs0,strs1);
+                    M(i,  j) -= S(i, j-h);
                 }
             }
             z = c;
@@ -2956,7 +2904,6 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
         size_t pextv[1];
         size_t pstrv[1];
         datastruct<T>  v = M.column(c,pextv,pstrv);
-        const size_t pstrv0=pstrv[0];
         const size_t pext0=pextv[0];
 
         for (size_t j = z; j < c; ++j)
@@ -2964,45 +2911,44 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
             size_t pextu[1];
             size_t pstru[1];
             const datastruct<T> u = Q.column(j,pextu,pstru);
-            const size_t pstru0=u.pstrides[0];
             T dot_pr=0;
 
-            #pragma omp parallel for simd shared(u,v,pstru0,pstrv0) reduction(+:dot_pr)
+            #pragma omp parallel for simd shared(u,v) reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
-                dot_pr += u(i,pstru0) * v(i,pstrv0);
+                dot_pr += u(i) * v(i);
             }
 
             const T cdot_pr=dot_pr;
-            #pragma omp parallel for simd shared(v,pstrv0,u,cdot_pr,pstru0)
+            #pragma omp parallel for simd shared(v,u,cdot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
-                v(i,pstrv0) -= cdot_pr * u(i,pstru0);
+                v(i) -= cdot_pr * u(i);
             }
         }
         // Normalize v
         T norm=0;
-        #pragma omp parallel for simd shared(v,pstrv0) reduction(+: norm)
+        #pragma omp parallel for simd shared(v) reduction(+: norm)
         for (size_t i = 0; i < pext0; ++i)
         {
-            norm += v(i,pstrv0) * v(i,pstrv0);
+            norm += v(i) * v(i);
         }
 
         const T normc= sqrt(norm);
 
         //  const T normc=norm;
-        #pragma omp parallel for simd shared(v,pstrv0,normc)
+        #pragma omp parallel for simd shared(v,normc)
         for (size_t i = 0; i < pext0; ++i)
         {
-            v(i,pstrv0)= v(i,pstrv0)/normc;
+            v(i)= v(i)/normc;
         }
 
         // Set column c of Q
 
-        #pragma omp parallel for simd shared(Q,v,c,pstrv0,qstr0,qstr1)
+        #pragma omp parallel for simd shared(Q,v,c)
         for (size_t i = 0; i < pext0; ++i)
         {
-            Q(i,c,qstr0,qstr1) = v(i,pstrv0);
+            Q(i,c) = v(i);
         }
     }
 
@@ -3032,12 +2978,9 @@ inline void gpu_qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, data
 template <typename T>
 inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& vec2, datastruct<T>& res)
 {
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    res(0,strres) = vec1(1,strv1) * vec2(2,strv2) - vec1(2,strv1) * vec2(1,strv2);
-    res(1,strres) = vec1(2,strv1) * vec2(0,strv2) - vec1(0,strv1) * vec2(2,strv2);
-    res(2,strres) = vec1(0,strv1) * vec2(1,strv2) - vec1(1,strv1) * vec2(0,strv2);
+    res(0) = vec1(1) * vec2(2) - vec1(2) * vec2(1);
+    res(1) = vec1(2) * vec2(0) - vec1(0) * vec2(2);
+    res(2) = vec1(0) * vec2(1) - vec1(1) * vec2(0);
 
 }
 #pragma omp end declare target
@@ -3052,19 +2995,13 @@ inline void gpu_cross_product( const datastruct<T>& vec1, const  datastruct<T>& 
 template <typename T>
 inline void matrix_multiply_dot_g(  datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C,bool on_gpu=true, int devnum=0)
 {
-    const size_t rows=A.pextents[0];
-    const size_t cols=B.pextents[1];
-    const size_t inner_dim=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
     if(on_gpu)
     {
 
-        #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C,strA0,strA1,strB0,strB1,strC0,strC1,rows,cols,inner_dim) device(devnum)
+        #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C,rows,cols,inner_dim) device(devnum)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
@@ -3073,15 +3010,15 @@ inline void matrix_multiply_dot_g(  datastruct<T>& A,  datastruct<T>& B, datastr
                 #pragma omp simd
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
-                    sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
+                    sum += A(i,k) *B(k,j);
                 }
-                C(i,j,strC0,strC1)= sum;
+                C(i,j)= sum;
             }
         }
     }
     else
     {
-        #pragma omp parallel for collapse(2) shared(A,B,C,strA0,strA1,strB0,strB1,strC0,strC1,rows,cols,inner_dim)
+        #pragma omp parallel for collapse(2) shared(A,B,C,rows,cols,inner_dim)
         for (size_t i = 0; i < rows; ++i)
         {
             for (size_t j = 0; j < cols; ++j)
@@ -3090,9 +3027,9 @@ inline void matrix_multiply_dot_g(  datastruct<T>& A,  datastruct<T>& B, datastr
                 #pragma omp simd
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
-                    sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
+                    sum += A(i,k) *B(k,j);
                 }
-                C(i,j,strC0,strC1)= sum;
+                C(i,j)= sum;
             }
         }
     }
@@ -3103,17 +3040,12 @@ inline void matrix_multiply_dot_g(  datastruct<T>& A,  datastruct<T>& B, datastr
 template <typename T>
 inline void gpu_matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t rows=A.pextents[0];
-    const size_t cols=B.pextents[1];
-    const size_t inner_dim=A.pextents[1];
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
 
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for collapse(2) shared(A,B,C,strA0,strA1,strB0,strB1,strC0,strC1,rows,cols,inner_dim)
+
+    #pragma omp parallel for collapse(2) shared(A,B,C,rows,cols,inner_dim)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
@@ -3122,9 +3054,9 @@ inline void gpu_matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct
             #pragma omp simd
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
+                sum += A(i,k) *B(k,j);
             }
-            C(i,j,strC0,strC1)= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -3136,16 +3068,10 @@ inline void gpu_matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct
 template <typename T>
 inline void gpu_matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t rows=A.pextents[0];
-    const size_t cols=B.pextents[1];
-    const size_t inner_dim=A.pextents[1];
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
 
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
 
     for (size_t i = 0; i < rows; ++i)
     {
@@ -3155,9 +3081,9 @@ inline void gpu_matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct
             #pragma omp simd
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
+                sum += A(i,k) *B(k,j);
             }
-            C(i,j,strC0,strC1)= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -3169,16 +3095,10 @@ inline void gpu_matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct
 template <typename T>
 inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t rows=A.pextents[0];
-    const size_t cols=B.pextents[1];
-    const size_t inner_dim=A.pextents[1];
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
 
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
 
     for (size_t i = 0; i < rows; ++i)
     {
@@ -3187,9 +3107,9 @@ inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct
             T sum = 0;
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A(i,k,strA0,strA1) *B(k,j,strB0,strB1);
+                sum += A(i,k) *B(k,j);
             }
-            C(i,j,strC0,strC1)= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -3198,20 +3118,14 @@ inline void gpu_matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct
 template <typename T>
 inline void gpu_matrix_add_g(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C,int devnum)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,A,B,strA0,strA1,strB0,strB1,strC0,strC1,n,m)device(devnum)
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,A,B,n,m)device(devnum)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)+B(i,j);
         }
     }
 }
@@ -3222,20 +3136,14 @@ inline void gpu_matrix_add_g(const datastruct<T>& A,const datastruct<T>& B, data
 template <typename T>
 inline void gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for simd collapse(2) shared(C,A,B,strA0,strA1,strB0,strB1,strC0,strC1,n,m)
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp parallel for simd collapse(2) shared(C,A,B,n,m)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)+B(i,j);
         }
     }
 }
@@ -3246,20 +3154,14 @@ inline void gpu_matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, data
 template <typename T>
 inline void gpu_matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
     #pragma omp simd collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)+B(i,j);
         }
     }
 
@@ -3272,19 +3174,13 @@ inline void gpu_matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, data
 template <typename T>
 inline void gpu_matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)+B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)+B(i,j);
         }
     }
 
@@ -3295,20 +3191,14 @@ inline void gpu_matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, data
 template <typename T>
 inline void gpu_matrix_subtract_g(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C,int devnum)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp target teams distribute parallel for simd collapse(2) shared(A,B,C,strA0,strA1,strB0,strB1,strC0,strC1,n,m)device(devnum)
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(A,B,C,n,m)device(devnum)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)-B(i,j);
         }
     }
 
@@ -3318,20 +3208,14 @@ inline void gpu_matrix_subtract_g(const datastruct<T>& A,const  datastruct<T>& B
 template <typename T>
 inline void gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for simd collapse(2) shared(C,A,B,strA0,strA1,strB0,strB1,strC0,strC1,n,m)
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp parallel for simd collapse(2) shared(C,A,B,n,m)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)-B(i,j);
         }
     }
 
@@ -3343,20 +3227,14 @@ inline void gpu_matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B
 template <typename T>
 inline void gpu_matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
     #pragma omp simd collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)-B(i,j);
         }
     }
 
@@ -3368,19 +3246,13 @@ inline void gpu_matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B
 template <typename T>
 inline void gpu_matrix_subtract_s(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
 {
-    const size_t n=A.pextents[0];
-    const size_t m=A.pextents[1];
-    const size_t strA0=A.pstrides[0];
-    const size_t strA1=A.pstrides[1];
-    const size_t strB0=B.pstrides[0];
-    const size_t strB1=B.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j < m; ++j)
         {
-            C(i,j,strC0,strC1) =A(i,j,strA0,strA1)-B(i,j,strB0,strB1);
+            C(i,j) =A(i,j)-B(i,j);
         }
     }
 
@@ -3393,20 +3265,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_g( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C, int devnum)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,V,m,n,strM0,strM1,strV0)device(devnum)
+
+    const size_t n= M.dpextents[0];
+    const size_t m=V.dpextents[0];
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,V,m,n)device(devnum)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V(j);
         }
     }
 
@@ -3418,21 +3285,16 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for shared(C,M,V,strM0,strM1,strV0,strC0,strC1,n,m)
+
+    const size_t n= M.dpextents[0];
+    const size_t m=V.dpextents[0];
+    #pragma omp parallel for shared(C,M,V,n,m)
     for (size_t i = 0; i <n; ++i)
     {
         #pragma omp simd
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V(j);
         }
     }
 
@@ -3444,20 +3306,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_v( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n= M.dpextents[0];
+    const size_t m=V.dpextents[0];
     #pragma omp simd collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V(j);
         }
     }
 
@@ -3471,19 +3328,14 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_s( const datastruct<T>&M,const  datastruct<T> V, datastruct<T> C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=V.pextents[0];
-    const size_t strV0=V.pstrides[0];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n= M.dpextents[0];
+    const size_t m=V.dpextents[0];
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V(j,strV0);  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V(j);
         }
     }
 
@@ -3495,18 +3347,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_s( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n= M.dpextents[0];
+    const size_t m=M.dpextents[1];
+
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V[i];
         }
     }
 }
@@ -3517,19 +3366,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_v( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n= M.dpextents[0];
+    const size_t m=M.dpextents[1];
     #pragma omp simd collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V[i];
         }
     }
 }
@@ -3540,19 +3385,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_w( const datastruct<T>M, const T*V, datastruct<T> & C)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for simd collapse(2) shared(C,M,V,strM0,strM1,strC0,strC1,n,m)
+
+    const size_t n= M.dpextents[0];
+    const size_t m=M.dpextents[1];
+    #pragma omp parallel for simd collapse(2) shared(C,M,V,n,m)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V[i];
         }
     }
 }
@@ -3563,19 +3404,15 @@ template <typename T>
 inline void gpu_matrix_multiply_vector_g( const datastruct<T>M, const T*V, datastruct<T> & C, int devnum)
 {
 
-    // Perform matrix multiplication: C = A * B
-    const size_t n= M.pextents[0];
-    const size_t m=M.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp target teams distribute parallel for simd collapse(2)shared(C,M,V,strM0,strM1,strC0,strC1,n,m)device(devnum)
+
+    const size_t n= M.dpextents[0];
+    const size_t m=M.dpextents[1];
+    #pragma omp target teams distribute parallel for simd collapse(2)shared(C,M,V,n,m)device(devnum)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V[i];  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V[i];
         }
     }
 }
@@ -3587,19 +3424,16 @@ inline void gpu_matrix_multiply_vector_g( const datastruct<T>M, const T*V, datas
 template <typename T>
 inline void gpu_matrix_multiply_scalar_s(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
-    // Perform matrix multiplication: C = A * B
 
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n=C.dpextents[0];
+    const size_t m= C.dpextents[1];
+
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V;
         }
     }
 
@@ -3612,20 +3446,17 @@ inline void gpu_matrix_multiply_scalar_s(  const datastruct<T>& M, const T V, da
 template <typename T>
 inline void gpu_matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
-    // Perform matrix multiplication: C = A * B
 
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
+
+    const size_t n=C.dpextents[0];
+    const size_t m= C.dpextents[1];
+
     #pragma omp simd collapse(2)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V;
         }
     }
 
@@ -3636,20 +3467,15 @@ inline void gpu_matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, da
 template <typename T>
 inline void gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, datastruct<T>& C)
 {
-    // Perform matrix multiplication: C = A * B
 
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp parallel for simd collapse(2) shared(C,M,V,strM0,strM1,strC0,strC1,n,m)
+    const size_t n=C.dpextents[0];
+    const size_t m= C.dpextents[1];
+    #pragma omp parallel for simd collapse(2) shared(C,M,V,n,m)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V;
         }
     }
 
@@ -3659,20 +3485,15 @@ inline void gpu_matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, da
 template <typename T>
 inline void gpu_matrix_multiply_scalar_g(  const datastruct<T>& M, const T V, datastruct<T>& C, int devnum)
 {
-    // Perform matrix multiplication: C = A * B
 
-    const size_t n=C.pextents[0];
-    const size_t m= C.pextents[1];
-    const size_t strM0=M.pstrides[0];
-    const size_t strM1=M.pstrides[1];
-    const size_t strC0=C.pstrides[0];
-    const size_t strC1=C.pstrides[1];
-    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,V,strM0,strM1,strC0,strC1,n,m) device(devnum)
+    const size_t n=C.dpextents[0];
+    const size_t m= C.dpextents[1];
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M,V,n,m) device(devnum)
     for (size_t i = 0; i <n; ++i)
     {
         for (size_t j = 0; j <  m; ++j)
         {
-            C(i,j,strC0,strC1)= M(i, j,strM0,strM1) * V;  // This works because i, k, j are row/col indices
+            C(i,j)= M(i, j) * V;
         }
     }
 
@@ -3682,11 +3503,10 @@ inline void gpu_matrix_multiply_scalar_g(  const datastruct<T>& M, const T V, da
 template <typename T>
 inline void gpu_vector_scalar_multiply_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
+    const size_t n=vec.dpextents[0];
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i) = vec(i)*scalar;
     }
 }
 
@@ -3696,12 +3516,11 @@ inline void gpu_vector_scalar_multiply_s( const datastruct<T>& vec,const T scala
 template <typename T>
 inline void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
+    const size_t n=vec.dpextents[0];
     #pragma omp simd
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i) = vec(i)*scalar;
     }
 }
 
@@ -3711,12 +3530,11 @@ inline void gpu_vector_scalar_multiply_v( const datastruct<T>& vec,const T scala
 template <typename T>
 inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
-    #pragma omp parallel for simd shared(res,vec,n,resstr,scalar)
+    const size_t n=vec.dpextents[0];
+    #pragma omp parallel for simd shared(res,vec,n,scalar)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i) = vec(i)*scalar;
     }
 }
 
@@ -3725,12 +3543,11 @@ inline void gpu_vector_scalar_multiply_w( const datastruct<T>& vec,const T scala
 template <typename T>
 inline void gpu_vector_scalar_multiply_g( const datastruct<T>& vec,const T scalar,datastruct<T>& res, int devnum)
 {
-    const size_t n=vec.pextents[0];
-    const size_t resstr=res.pstrides[0];
-    #pragma omp target teams distribute parallel for simd shared(res,vec,n,resstr,scalar)device(devnum)
+    const size_t n=vec.dpextents[0];
+    #pragma omp target teams distribute parallel for simd shared(res,vec,n,scalar)device(devnum)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i,resstr)*scalar;
+        res(i) = vec(i)*scalar;
     }
 }
 
@@ -3741,13 +3558,10 @@ inline void gpu_vector_scalar_multiply_g( const datastruct<T>& vec,const T scala
 template <typename T>
 inline void gpu_vector_add_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
+        res(i) = vec1(i)+vec2(i);
     }
 
 }
@@ -3757,14 +3571,11 @@ inline void gpu_vector_add_s( const datastruct<T>& vec1,const  datastruct<T>& ve
 template <typename T>
 inline void gpu_vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     #pragma omp simd
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
+        res(i) = vec1(i)+vec2(i);
     }
 
 }
@@ -3775,14 +3586,11 @@ inline void gpu_vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& ve
 template <typename T>
 inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp parallel for simd shared(res,vec1,strres,strv1,strv2,n)
+    const size_t n=vec1.dpextents[0];
+    #pragma omp parallel for simd shared(res,vec1,n)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
+        res(i) = vec1(i)+vec2(i);
     }
 
 }
@@ -3792,14 +3600,11 @@ inline void gpu_vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& ve
 template <typename T>
 inline void gpu_vector_add_g( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res, int devnum)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp target teams distribute parallel for simd shared(res,vec1,vec2,strres,strv1,strv2,n)device(devnum)
+    const size_t n=vec1.dpextents[0];
+    #pragma omp target teams distribute parallel for simd shared(res,vec1,vec2,n)device(devnum)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)+vec2(i,strv2);
+        res(i) = vec1(i)+vec2(i);
     }
 }
 
@@ -3807,14 +3612,11 @@ inline void gpu_vector_add_g( const datastruct<T>& vec1,const  datastruct<T>& ve
 template <typename T>
 inline void gpu_vector_subtract_g( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res, int devnum)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     #pragma omp target teams distribute parallel for simd device(devnum)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
+        res(i) = vec1(i)-vec2(i);
     }
 
 }
@@ -3823,14 +3625,11 @@ inline void gpu_vector_subtract_g( const datastruct<T>& vec1,const  datastruct<T
 template <typename T>
 inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
-    #pragma omp parallel for simd shared(res,vec1,vec2,strres,strv1,strv2,n)
+    const size_t n=vec1.dpextents[0];
+    #pragma omp parallel for simd shared(res,vec1,vec2,n)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
+        res(i) = vec1(i)-vec2(i);
     }
 
 }
@@ -3841,14 +3640,11 @@ inline void gpu_vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T
 template <typename T>
 inline void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     #pragma omp simd
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
+        res(i) = vec1(i)-vec2(i);
     }
 
 }
@@ -3858,13 +3654,10 @@ inline void gpu_vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T
 template <typename T>
 inline void gpu_vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
-    const size_t strres=res.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     for (size_t i = 0; i < n; ++i)
     {
-        res(i,strres) = vec1(i,strv1)-vec2(i,strv2);
+        res(i) = vec1(i)-vec2(i);
     }
 
 }
@@ -3875,14 +3668,12 @@ inline void gpu_vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T
 template <typename T>
 inline T gpu_dot_product_s(const  datastruct<T> &vec1, const datastruct<T> &vec2)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     T result=0;
 
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i,strv1) * vec2(i,strv2);
+        result += vec1(i) * vec2(i);
     }
     return result;
 }
@@ -3893,14 +3684,13 @@ inline T gpu_dot_product_s(const  datastruct<T> &vec1, const datastruct<T> &vec2
 template <typename T>
 inline T gpu_dot_product_v(const  datastruct<T> &vec1, const datastruct<T> &vec2)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
+    const size_t n=vec1.dpextents[0];
+
     T result=0;
     #pragma omp simd reduction(+: result)
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i,strv1) * vec2(i,strv2);
+        result += vec1(i) * vec2(i);
     }
     return result;
 }
@@ -3910,14 +3700,12 @@ inline T gpu_dot_product_v(const  datastruct<T> &vec1, const datastruct<T> &vec2
 template <typename T>
 inline T gpu_dot_product_w(const  datastruct<T> &vec1, const datastruct<T> &vec2)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     T result=0;
-    #pragma omp parallel for simd shared(vec1,vec2,n,strv1,strv2) reduction(+:result)
+    #pragma omp parallel for simd shared(vec1,vec2,n) reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i,strv1) * vec2(i,strv2);
+        result += vec1(i) * vec2(i);
     }
     return result;
 }
@@ -3926,14 +3714,12 @@ inline T gpu_dot_product_w(const  datastruct<T> &vec1, const datastruct<T> &vec2
 template <typename T>
 inline T gpu_dot_product_g(const  datastruct<T> &vec1, const datastruct<T> &vec2, int devnum)
 {
-    const size_t n=vec1.pextents[0];
-    const size_t strv1=vec1.pstrides[0];
-    const size_t strv2=vec2.pstrides[0];
+    const size_t n=vec1.dpextents[0];
     T result=0;
-    #pragma omp target parallel for simd shared(vec1,vec2,n,strv1,strv2) reduction(+:result)device(devnum)
+    #pragma omp target parallel for simd shared(vec1,vec2,n) reduction(+:result)device(devnum)
     for (size_t i = 0; i < n; ++i)
     {
-        result += vec1(i,strv1) * vec2(i,strv2);
+        result += vec1(i) * vec2(i);
     }
     return result;
 }
@@ -4633,7 +4419,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         datastruct<T> dA=A.get_datastruct();
         datastruct<T> dL=L.get_datastruct();
 
-        const size_t n = dA.pextents[0];
+        const size_t n = dA.dpextents[0];
 
         const size_t nn=n*n;
 
@@ -4643,7 +4429,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
         #pragma omp target teams distribute parallel for simd device(devicenum)
         for (size_t i=0; i<nn; i++)
         {
-            dL.pdata[i]=0;
+            dL.dpdata[i]=0;
         }
 
 
@@ -4721,12 +4507,12 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
 
         for (size_t i=0; i<nn; i++)
         {
-            adata[i]=dA.pdata[i];
-            dL.pdata[i]=0;
+            adata[i]=dA.dpdata[i];
+            dL.dpdata[i]=0;
         }
 
 
-        mdspan<T, CA> tempA(adata,dA.prowmajor, n,n);
+        mdspan<T, CA> tempA(adata,dA.dprowmajor, n,n);
 
 
         size_t z=0;
@@ -4740,7 +4526,7 @@ void cholesky_decomposition(const mdspan<T, CA>& A, mdspan<T, CA>& L, matrix_mul
                 auto R = L.subspanmatrix(c, z,u, c - z);
 
                 // Compute S = RR^T using a fast matrix multiplication algorithm
-                mdspan<T, CA> S(sdata,R.get_datastruct().prowmajor, u,u);
+                mdspan<T, CA> S(sdata,R.get_datastruct().dprowmajor, u,u);
                 mdspan<T, CA> RT=R.transpose();
 
                 switch (algorithm.algorithm_version)
@@ -4841,14 +4627,14 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
         create_in_struct(dA,devicenum);
         create_out_struct(dL,devicenum);
         create_out_struct(dU,devicenum);
-        size_t n = dA.pextents[0];
+        size_t n = dA.dpextents[0];
         size_t nn=n*n;
 
         #pragma omp target teams distribute parallel for simd device(devicenum)
         for (size_t i=0; i<nn; i++)
         {
-            dL.pdata[i]=0;
-            dU.pdata[i]=0;
+            dL.dpdata[i]=0;
+            dU.dpdata[i]=0;
         }
 
 
@@ -4860,7 +4646,6 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
             #pragma omp target teams distribute shared(dA,c,dL,dU)device(devicenum)
             for (size_t i = c; i < n; ++i)
             {
-
                 T temp=dA(c,i);
                 #pragma omp parallel for simd reduction(-:temp) shared(c,dL,dU)
                 for (size_t k = z; k < c; ++k)
@@ -4922,11 +4707,11 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
 #endif
         for (size_t i=0; i<nn; i++)
         {
-            adata[i]=dA.pdata[i];
-            dL.pdata[i]=0;
-            dU.pdata[i]=0;
+            adata[i]=dA.dpdata[i];
+            dL.dpdata[i]=0;
+            dU.dpdata[i]=0;
         }
-        mdspan<T, CA> tempA(adata,nn,dA.prowmajor, {dA.pextents[0],dA.pextents[1]}, {dA.pstrides[0], dA.pstrides[1]});
+        mdspan<T, CA> tempA(adata,nn,dA.dprowmajor, {dA.dpextents[0],dA.dpextents[1]}, {dA.dpstrides[0], dA.dpstrides[1]});
 
         size_t z=0;
         #pragma omp ordered
@@ -4938,7 +4723,7 @@ void lu_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& L, mdspan<T, CA>& U, matr
                 size_t v=c-z;
                 auto RL = L.subspanmatrix(c, z, u,v);
                 auto RU = U.subspanmatrix(z, c, v, u);
-                mdspan<T, CA> S(sdata,RU.get_datastruct().prowmajor, u,u);
+                mdspan<T, CA> S(sdata,RU.get_datastruct().dprowmajor, u,u);
                 switch (algorithm.algorithm_version)
                 {
                 case Matrix_Multiplication_Algorithm::Naive:
@@ -5039,18 +4824,18 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         datastruct<T> dQ=Q.get_datastruct();
         datastruct<T> dR=R.get_datastruct();
 
-        const size_t m = dA.pextents[1];
+        const size_t m = dA.dpextents[1];
 
 
-        size_t extm[2]= {dA.pextents[0],dA.pextents[1]};
-        size_t strm[2]= {dA.pstrides[0],dA.pstrides[1]};
+        size_t extm[2]= {dA.dpextents[0],dA.dpextents[1]};
+        size_t strm[2]= {dA.dpstrides[0],dA.dpstrides[1]};
 
 #if (Unified_Shared_Memory==True)
-        T* Md=(T*) malloc(sizeof(T)*dA.pdatalength);
-        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm,false,false,false);
+        T* Md=(T*) malloc(sizeof(T)*dA.dpdatalength);
+        datastruct<T> dM(Md,dA.dpdatalength,dA.dprowmajor,2,extm,strm,false,false,false);
 #else
-        T* Md=(T*) omp_target_alloc(sizeof(T)*dA.pdatalength,devicenum);
-        datastruct<T> dM(Md,dA.pdatalength,dA.prowmajor,2,extm,strm,true,false,false);
+        T* Md=(T*) omp_target_alloc(sizeof(T)*dA.dpdatalength,devicenum);
+        datastruct<T> dM(Md,dA.spdatalength,dA.sprowmajor,2,extm,strm,true,false,false);
 #endif
 
 
@@ -5063,19 +4848,19 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         create_out_struct(dM,devicenum);
 
         #pragma omp target teams distribute parallel for simd shared(dQ) device(devicenum)
-        for (size_t i=0; i<dQ.pdatalength; i++)
+        for (size_t i=0; i<dQ.dpdatalength; i++)
         {
-            dQ.pdata[i]=0;
+            dQ.dpdata[i]=0;
         }
         #pragma omp target teams distribute parallel for simd shared(dR) device(devicenum)
-        for (size_t i=0; i<dR.pdatalength; i++)
+        for (size_t i=0; i<dR.dpdatalength; i++)
         {
-            dR.pdata[i]=0;
+            dR.dpdata[i]=0;
         }
         #pragma omp target teams distribute parallel for simd shared(dM) device(devicenum)
-        for (size_t i=0; i<dA.pdatalength; i++)
+        for (size_t i=0; i<dA.dpdatalength; i++)
         {
-            dM.pdata[i]=dA.pdata[i];
+            dM.dpdata[i]=dA.dpdata[i];
         }
 
         size_t z = 0;
@@ -5085,7 +4870,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
         {
             size_t pextv[1];
             size_t pstrv[1];
-            size_t pext0=dM.pextents[0];
+            size_t pext0=dM.dpextents[0];
 
 
             for (size_t j = z; j < c; ++j)
@@ -5138,9 +4923,9 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 
 
 
-        const size_t rows = dQ.pextents[0]; // Number of rows in A and C
-        const size_t cols = dA.pextents[1]; // Number of columns in B and C
-        const  size_t inner_dim = dQ.pextents[1]; // Number of columns in A and rows in B
+        const size_t rows = dQ.dpextents[0]; // Number of rows in A and C
+        const size_t cols = dA.dpextents[1]; // Number of columns in B and C
+        const  size_t inner_dim = dQ.dpextents[1]; // Number of columns in A and rows in B
 
 
 
@@ -5217,7 +5002,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 #endif
         for (size_t i=0; i<nm; i++)
         {
-            tempM[i]=dA.pdata[i];
+            tempM[i]=dA.dpdata[i];
         }
 
         datastruct<T> dQ=Q.get_datastruct();
@@ -5226,9 +5011,9 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 #else
         #pragma omp parallel for simd  shared(Q)
 #endif
-        for (size_t i=0; i<dQ.pdatalength; i++)
+        for (size_t i=0; i<dQ.dpdatalength; i++)
         {
-            dQ.pdata[i]=0;
+            dQ.dpdata[i]=0;
         }
         datastruct<T> dR=R.get_datastruct();
 
@@ -5237,11 +5022,11 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 #else
         #pragma omp parallel for simd  shared(R)
 #endif
-        for (size_t i=0; i<dR.pdatalength; i++)
+        for (size_t i=0; i<dR.dpdatalength; i++)
         {
-            dR.pdata[i]=0;
+            dR.dpdata[i]=0;
         }
-        mdspan<T, CA> M(tempM,A.get_datastruct().pdatalength,A.get_datastruct().prowmajor, {A.get_datastruct().pextents[0],A.get_datastruct().pextents[1]}, {A.get_datastruct().pstrides[0],A.get_datastruct().pstrides[1]}); // Copy of A
+        mdspan<T, CA> M(tempM,A.get_datastruct().dpdatalength,A.get_datastruct().dprowmajor, {A.get_datastruct().dpextents[0],A.get_datastruct().dpextents[1]}, {A.get_datastruct().dpstrides[0],A.get_datastruct().dpstrides[1]}); // Copy of A
 
         size_t z = 0;
         #pragma omp ordered
@@ -5257,7 +5042,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
                 auto BM = M.subspanmatrix(0, c, n,mc);
 
                 // Compute C = BQ^T * BM
-                auto C = mdspan<T, CA>(tempC, BM.get_datastruct().prowmajor,cz, mc);
+                auto C = mdspan<T, CA>(tempC, BM.get_datastruct().dprowmajor,cz, mc);
 
                 auto BQT=BQ.transpose();
                 switch (algorithm.algorithm_version)
@@ -5274,7 +5059,7 @@ void qr_decomposition(mdspan<T, CA>& A, mdspan<T, CA>& Q, mdspan<T, CA>& R,   ma
 
 
                 // Compute S = BQ * C
-                auto S = mdspan<T, CA>(tempS, BQ.get_datastruct().prowmajor, n, mc);
+                auto S = mdspan<T, CA>(tempS, BQ.get_datastruct().dprowmajor, n, mc);
 
                 switch (algorithm.algorithm_version)
                 {
@@ -5409,9 +5194,9 @@ bool matrix_multiply_dot( mdspan<T, CA>& A,   mdspan<T, CB>& B, mdspan<T, CC>& C
             create_out_struct(dC,devicenum);
         }
 
-        const size_t rows = dA.pextents[0];
-        const size_t cols = dB.pextents[1];
-        const  size_t inner_dim = dA.pextents[1];
+        const size_t rows = dA.dpextents[0];
+        const size_t cols = dB.dpextents[1];
+        const  size_t inner_dim = dA.dpextents[1];
 
         #pragma omp target teams distribute parallel for collapse(2) shared(dA,dB,dC,inner_dim, rows, cols)device(devicenum)
         for (size_t i = 0; i < rows; ++i)
@@ -5444,9 +5229,9 @@ bool matrix_multiply_dot( mdspan<T, CA>& A,   mdspan<T, CB>& B, mdspan<T, CC>& C
         datastruct<T> dB=B.get_datastruct();
         datastruct<T> dC=C.get_datastruct();
 
-        const size_t rows = dA.pextents[0];
-        const size_t cols = dB.pextents[1];
-        const  size_t inner_dim = dA.pextents[1];
+        const size_t rows = dA.dpextents[0];
+        const size_t cols = dB.dpextents[1];
+        const  size_t inner_dim = dA.dpextents[1];
 
 
         #pragma omp parallel for collapse(2) shared(dC,dA,dB,rows,cols,inner_dim)
@@ -5513,8 +5298,8 @@ inline  bool matrix_add( const mdspan<T, CA>& A,const   mdspan<T, CB>& B, mdspan
     datastruct<T> dB=B.get_datastruct();
     datastruct<T> dC=C.get_datastruct();
 
-    const size_t rows = dC.pextents[0];
-    const size_t cols = dC.pextents[1];
+    const size_t rows = dC.dpextents[0];
+    const size_t cols = dC.dpextents[1];
 
 
 
@@ -5584,8 +5369,8 @@ inline  bool matrix_subtract( const mdspan<T, CA>& A,  const mdspan<T, CB>& B, m
     datastruct<T> dB=B.get_datastruct();
     datastruct<T> dC=C.get_datastruct();
 
-    const size_t rows = dC.pextents[0];
-    const size_t cols = dC.pextents[1];
+    const size_t rows = dC.dpextents[0];
+    const size_t cols = dC.dpextents[1];
 
 
 
@@ -5785,7 +5570,7 @@ inline  T dot_product(const  mdspan<T, Container>& vec1,const   mdspan<T, Contai
 {
     datastruct<T> dvec1=vec1.get_datastruct();
     datastruct<T> dvec2=vec2.get_datastruct();
-    const size_t n = dvec1.pextents[0];
+    const size_t n = dvec1.dpextents[0];
     T result = 0;
     if (on_gpu==true)
     {
@@ -6005,8 +5790,8 @@ inline  bool vector_subtract_v( const mdspan<T, Container>& vec1, const mdspan<T
 template <typename T, typename Container>
 void printmatrix(const mdspan<T, Container>& span)
 {
-    const size_t rows= span.get_datastruct().pextents[0];
-    const size_t cols= span.get_datastruct().pextents[1];
+    const size_t rows= span.get_datastruct().dpextents[0];
+    const size_t cols= span.get_datastruct().dpextents[1];
     for (size_t i = 0; i <rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
