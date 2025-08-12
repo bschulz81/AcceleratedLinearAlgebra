@@ -49,6 +49,10 @@ Let the mdspan class just have constructors and data management functions, while
 
 5) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+By 12.08.2025:
+Unfortunately, I the blas functions for execution within a gpu kernel additionally needed to be fixed for the new operators in which the strides do not occur. Did this now and prepared the header a bit for refractoring tomorrow, to give the library a clearer structure, which is also needed for testing separate components. 
+
+
 
 By 11.08.2025:
 A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms. This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. I also tested them, in addition to OpenMP, with the Message Passing Interface.
