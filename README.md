@@ -41,16 +41,18 @@ fixed a bug in the matrix*vector multiply function.
 rewrote the library into several classes in different files, which are easily testable. 
 
 Now the project consists of one basic datastruct class, on which mathematical function can operate and which can be offloaded to gpu, one mdspan child class which can host strides and extents, 
-another childclass clalled mdspan_data, which hosts the data as well. Additionally a policy model for the mathematical algorithms was added. This policy model is able to autoconfigure options and 
-can decide automatically, whether the function should offload to gpu, or whether the message passing interface is used in the Strassen algorithm. 
+another childclass called mdspan_data, which hosts the data as well with a shared pointer. Additionally a policy model for the mathematical algorithms was added. This policy model is able to autoconfigure options and 
+can decide automatically, whether the function should offload to gpu, or whether the message passing interface is used in the Strassen algorithm. This makes the library slower than numpy, which does not need to check whether the data can be offloaded to a device or whether the message passing interface comm world size is large enough. 
 
-Separated the mathematical functions into classes for gpu and openmp, such that they could be easily replaced by fortran functions for improved speed.
+The mathematical functions were separated into classes for gpu and openmp, such that they could be easily replaced by Fortran functions for improved speed.
 
-The Strassen algorithm, as well as the advanced algorithms for Cholesky, Lu and Qr decomposition now work entirely on GPU, unfortunately only in unified shared memory mode, due to the recursive nature.
+The Strassen algorithm, as well as the more advanced algorithms for Cholesky, Lu and Qr decomposition now are able to work entirely on GPU, but unfortunately only in unified shared memory mode, due to the recursive nature.
 I was not able to run complex algorithms with recursion, subdata and temporary data in offload kernels when compiling with gcc. It always would then claim that there are illegal accesses, or synchronization problems.
-This  may have been a problem with the gpu or the driver.
+This may have been a problem with the gpu or the driver. 
 
-Added more message passing interface support. But most of that is untested until now.
+For GPUs which do not have unified shared memory, simpler algorithms for Cholesky, LU and Qr decomposition that the library offers, work on GPU, using all parallelization levels.
+
+I Added more message passing interface support. But most of that is untested until now.
 
 
 
