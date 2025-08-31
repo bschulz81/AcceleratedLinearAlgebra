@@ -36,9 +36,9 @@ Todo:
 
 By 31.08, the changes were as follows:
 
-fixed a bug in the matrix*vector multiply function. 
+I fixed a bug in the matrix*vector multiply function. 
 
-rewrote the library into several classes in different files, which are easily testable. 
+I rewrote the library into several classes in different files, which are easily testable. 
 
 Now the project consists of one basic datastruct class, on which mathematical function can operate and which can be offloaded to gpu, one mdspan child class which can host strides and extents, 
 another childclass called mdspan_data, which hosts the data as well with a shared pointer. Additionally a policy model for the mathematical algorithms was added. This policy model is able to autoconfigure options and 
