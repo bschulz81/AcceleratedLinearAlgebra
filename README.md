@@ -3,51 +3,54 @@ A library with some linear algebra functions that works with OpenMP and Open-MPI
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
 While mdspan works with compile time set extents, this library uses c++ concepts, so that stl vectors on the heap can be used for extents.
-It has support for rowmajor and column mayor data (but that is not suffciently tested) and rank sizes larger than 2 (but that was not tested very much).
+It has support for rowmajor and column mayor data (but that is not tested) and rank sizes larger than 2 (but that was not tested very much).
 
-Currently, the library uses open-mp and the message passing interface.
+Currently, the library uses open-mp on cpu and gpu and the message passing interface.
 
 An older version that contains openmp code for the host and open-acc code for the gpu offload is in the archive folder.
 
 The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. 
 
-By default, Strassen's algorithm as well as the Winograd variant use memmapped files for temporary data.
+For simple problems, the Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU, or on GPU. These variants will then use all three parallelization levels of the GPU. 
+For problems that are larger than the memory of the GPU, advanced algorithms are available, which can use the Strassen algorithm or its Winograd variant, to separate the problem into smaller sub-problems, which can then 
+be computed on gpu. The algorithms can be configured when to offload, or they choose this automatically. For systems with unified shared memory, the advanced algorithms can  execute every loop on the GPU, otherwise, they would just offload matrices for multiplication if they reached sufficient size.
 
-
-The Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU and use the gpu only for Matrix multiplication, or they can use Strassen's or Winograds's algorithm for the multiplications. However, the algorithms for Cholesky, LU and QR decomposition, can also work entirely on GPU, using all three parallelization levels that are usually available in these devices (if they are supported by the compiler).
-
-Initial support for the message passing interface was added. The Strassen Algorithm and its Winograd variant can use the Message Passing interface. 
-
-If set up such that one node has a processor and gpu, the algorithms can distribute the multiplication into these submatrices which resist on these nodes. Then, the problem can be offloaded to the gpu. 
-
-This approach may be useful for problems that are too large for a single gpu. A test application may be run with 
+The provided cmakelists.txt compiles two test applications. One demonstrates the gpu offload and the parameters for various algorithms.
+The other demonstrates the message passing interface use of the library and can be run with 
 
 mpirun -np 12 ./arraytest_mpi 
 
-Be sure to use more or equal nodes than are needed by the recursion. Otherwise cuda will complain maybe because it can not easily start several virtual machines in one process.
+Be sure to use more or equal nodes than are needed by the recursion. The Strassen algorithm and its Winograd variant, as well as the advanced algorithms for Cholesky, Lu, and Qr decomposition can now auto-configure itself with the help of policy classes to decide whether they should work on gpu or adapt themselves for the message passing interface and gpu offload. If unified-shared-memory is used, these algorithms can do their loops entirely on GPU.
+
+
 
 The library currently compiles without warnings with gcc-15.2 and the test applications run on all optimization levels. 
 A short tutorial how to configure gcc for gpu-offload is here for the gentoo linux distribution: https://forums.gentoo.org/viewtopic-p-8848457.html?sid=7f023fe73bf270b0617ea00bcc1a4ea1
 
-With clang 20.1.8, the library currently fails even to link due to this problem: https://github.com/llvm/llvm-project/issues/152955 Earlier versions of the library linked, but then clang failed to generate cuda code for most loops.
-
-In contrast, with gcc 15.2, the library works on accelerator devices with correctly performing cuda kernels and it works on distributed systems with the MPI.
-
-A cmakelists.txt file which compiles two test applications that aim to document how the library is used, is supplied. 
-
 Version History:
 
 Todo:
-1) Let the Strassen and Winograd algorithms work with device pointers for data which is purely located on gpu and then use this in the Cholesky/LU/QR transform
-2) Expand the use of the Message Passing Interface to other algorithms.
-3) Use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
+1) Test the new expanded support for the message passing interface support more intensely and refine them for usage.
+2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu then for local work.
+3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
-Once this is finished:
+By 31.08, the changes were as follows:
 
-4) Refractoring: 
-Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
+fixed a bug in the matrix*vector multiply function. 
 
-5) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+rewrote the library into several classes in different files, which are easily testable. 
+
+Now the project consists of one basic datastruct class, on which mathematical function can operate and which can be offloaded to gpu, one mdspan child class which can host strides and extents, 
+another childclass clalled mdspan_data, which hosts the data as well. Additionally a policy model for the mathematical algorithms was added. This policy model is able to autoconfigure options and 
+can decide automatically, whether the function should offload to gpu, or whether the message passing interface is used in the Strassen algorithm. 
+
+Separated the mathematical functions into classes for gpu and openmp, such that they could be easily replaced by fortran functions for improved speed.
+
+The Strassen algorithm, as well as the advanced algorithms for Cholesky, Lu and Qr decomposition now work entirely on GPU, unfortunately only in unified shared memory mode, due to the recursive nature.
+I was not able to run complex algorithms with recursion, subdata and temporary data in offload kernels when compiling with gcc. It always would then claim that there are illegal accesses, or synchronization problems.
+This  may have been a problem with the gpu or the driver.
+
+Added more message passing interface support. But most of that is untested until now.
 
 
 
