@@ -2,16 +2,21 @@ Todo:
 Version History:
 
 Todo:
+1) Test the message passing interface support
+2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
+3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
-1) Let the Strassen and Winograd algorithms work with device pointers for data which is purely located on gpu and then use this in the Cholesky/LU/QR transform
-2) Expand the use of the Message Passing Interface to other algorithms.
-3) Use this gpu Strassen algorithm and modify the LU, Cholesky, QR decomposition which already work on gpu to use this form of matrix Multiplication on the accellerator instead of the naive version...
-Once this is finished:
+By 31.08, the changes were as follows:
+fixed a bug in the matrix*vector multiply function. 
+broke the library down into several classes in different files, which are easily testable. 
+one basic datastruct class, on which mathematical function can operate and which can be offloaded to gpu, one mdspan child class which can host strides and extents, 
+another childclass clalled mdspan_data, which hosts the data as well. Additionally a policy model for the mathematical algorithms. This policy model is able to autoconfigure options and 
+can decide automatically, whether the function should offload to gpu, or whether the message passing interface is used in the Strassen algorithm
 
-4) Refractoring: Let the mdspan class just have constructors and data management functions, while the datastruct struct has free functions for data management. Put the blas functions as static
-functions into a friend class of mdspan, so that they can access internal data of mdspan if necessary
+separated the mathematical funcitons such that they could be easily replaced by fortran functions for improved speed.
+The strassen algorithm, as well as the advanced algorithms for cholesky, lu and qr decomposition now work on GPU, unfortunately only in unified shared memory mode, due to the recursive nature.
+added more message passing interface support. But most of that is untested until now.
 
-5) Then add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 By 11.08.2025: A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. 
 This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms.
