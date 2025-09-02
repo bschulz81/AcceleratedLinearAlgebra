@@ -39,9 +39,10 @@ After the Strassen and Winograd algorithms work on gpu, this should be easily fe
 
 By 03.09,
 
- Abug in the memory functions for gpu was fixed that confused offloading. Issues in the gpu versions of the Strassen algorithm and its Winograd version are resolved.
- The Strassen and Winograd algorithms can now work on device, with devicepointers for the data. 
- The Winograd version of the Strassen algorithm was optimized for more performance.
+ A bug in the memory functions for gpu was fixed that confused offloading in recursive and repeated cases.
+ As a consequence, Issues in the gpu versions of the Strassen algorithm and its Winograd version are resolved.
+ The Strassen and Winograd algorithms can now work on device, with devicepointers for the data supplied. 
+ The Winograd version of the Strassen algorithm was optimized for more performance and less memory consumption.
 
 
 By 31.08, 
