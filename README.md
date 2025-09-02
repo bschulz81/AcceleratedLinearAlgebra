@@ -34,6 +34,10 @@ Todo:
 2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+
+By 03.09, the a bug in the memory functions for gpu was fixed that confused offloading. Issues in the Strassen and Winograd algorithms were removed. The Strassen and Winograd Algorithms can now work on device, with devicepointers for the data. The Winograd algorithm was optimized for more performance.
+
+
 By 31.08, the changes were as follows:
 
 I fixed a bug in the matrix*vector multiply function. 
