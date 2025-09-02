@@ -13,7 +13,7 @@ public:
     {
     protected:
         bool pupdate_host;
-        datastruct<T> pdL;
+        datastruct<T> &pdL;
         int pdevicenum;
     public:
         inline OffloadHelper(datastruct<T>& dL, int devicenum, bool just_alloc, bool update_host_on_exit)
@@ -30,6 +30,7 @@ public:
         inline  ~OffloadHelper()
         {
 #if !defined(Unified_Shared_Memory)
+
             if (pupdate_host)
             {
                 Datastruct_GPU_Memory_Functions::update_host(pdL, pdevicenum);
@@ -254,7 +255,7 @@ template<typename T>
     size_t r=dL.dprank;
 
     #pragma omp target update from (dL) device(devicenum)
-    #pragma omp target update from (dL.dpdata[0:r])device(devicenum)
+    #pragma omp target update from (dL.dpstrides[0:r])device(devicenum)
     #pragma omp target update from (dL.dpextents[0:r])device(devicenum)
     if(!dL.dpdata_is_devptr)
     {
@@ -281,7 +282,6 @@ template<typename T>
     {
         #pragma omp target enter data map(alloc: dA.dpdata[0:l])device(devicenum)
     }
-
     #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
     #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
 

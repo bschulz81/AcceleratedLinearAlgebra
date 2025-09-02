@@ -127,7 +127,7 @@ int main()
 
     Math_MPI_RecursiveMultiplication_Policy p6(Math_Functions_Policy::GPU_ONLY,false,false);
     p6.size_to_stop_recursion=16;
-    Math_Functions_MPI<double>::strassen_multiply(A, B, C,&p6);
+    Math_Functions_MPI<double>::winograd_multiply(A, B, C,&p6);
 
     C.printmatrix();
 
@@ -263,7 +263,7 @@ cout<<"With the advanced algorithms on CPU"<<std::endl;
         Math_Functions_Policy::CPU_ONLY,
         false,
         false,
-        Math_MPI_Decomposition_Policy::Strassen);
+        Math_MPI_Decomposition_Policy::Naive);
 
     p9b.size_to_stop_recursion=16;
 

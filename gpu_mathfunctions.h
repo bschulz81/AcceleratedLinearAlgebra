@@ -5,7 +5,6 @@
 #include "datastruct_host_memory_functions.h"
 #include "datastruct_gpu_memory_functions.h"
 
-
 template <typename T>
 class GPU_Math_Functions
 {
