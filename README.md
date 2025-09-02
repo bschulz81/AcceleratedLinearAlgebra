@@ -30,6 +30,8 @@ A short tutorial how to configure gcc for gpu-offload is here for the gentoo lin
 Version History:
 
 Todo:
+0) convert the advanced algorithms for cholesky, lu,qr decomposition which use the mpi also entirely to the gpu, not just the simple algorithms for this. 
+After the Strassen and Winograd algorithms work on gpu, this should be easily feasible.
 1) Test the new expanded support for the message passing interface support more intensely and refine them for usage.
 2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
