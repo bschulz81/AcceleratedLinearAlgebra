@@ -343,28 +343,32 @@ template <typename T>
 void Math_Functions_MPI<T>::strassen_multiply( datastruct<T> & A,  datastruct<T> & B, datastruct<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
 {
 
+
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
     bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,7);
-
+ bool separate_device_memory=false;
     if(ongpu)
     {
-        bool separate_device_memory;
 
-#if defined(Unified_Shared_Memory)
-        separate_device_memory=false;
-#else
+#if !defined(Unified_Shared_Memory)
         separate_device_memory=true;
 #endif
+    }
 
+if(separate_device_memory)
+{
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
         datastruct<T> tA=A,tB=B,tC=C;
 
-        tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-        tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
-        tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
+        if(!tA.dpdata_is_devptr)
+            tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
+        if(!tB.dpdata_is_devptr)
+            tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
+        if(!tC.dpdata_is_devptr)
+            tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
 
         tA.dpdata_is_devptr=true;
         tB.dpdata_is_devptr=true;
@@ -374,8 +378,9 @@ void Math_Functions_MPI<T>::strassen_multiply( datastruct<T> & A,  datastruct<T>
     }
     else
     {
-        strassen_multiply_h(A,B,C,false,false,policy);
+        strassen_multiply_h(A,B,C,ongpu, false,policy);
     }
+
 }
 
 template <typename T>
@@ -882,25 +887,29 @@ void Math_Functions_MPI<T>::winograd_multiply(datastruct<T>& A, datastruct<T> &B
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
     bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,7);
-
+        bool separate_device_memory=false;
     if(ongpu)
     {
-        bool separate_device_memory;
 
-#if defined(Unified_Shared_Memory)
-        separate_device_memory=false;
-#else
+
+#if !defined(Unified_Shared_Memory)
         separate_device_memory=true;
 #endif
+    }
 
+if(separate_device_memory)
+{
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
         datastruct<T> tA=A,tB=B,tC=C;
 
-        tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-        tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
-        tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
+        if(!tA.dpdata_is_devptr)
+            tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
+        if(!tB.dpdata_is_devptr)
+            tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
+        if(!tC.dpdata_is_devptr)
+            tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
 
         tA.dpdata_is_devptr=true;
         tB.dpdata_is_devptr=true;
@@ -910,7 +919,7 @@ void Math_Functions_MPI<T>::winograd_multiply(datastruct<T>& A, datastruct<T> &B
     }
     else
     {
-        winograd_multiply_h(A,B,C,false,false,policy);
+        winograd_multiply_h(A,B,C,ongpu,false,policy);
     }
 
 }
