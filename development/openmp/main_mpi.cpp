@@ -47,13 +47,12 @@ int main(int argc, char** argv)
 ////
 //
 
-    Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::AUTO,true,true);
+    Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::CPU_ONLY,true,true);
     p.update_host=true;
     if(process_Rank == 0)
     {
 
-    cout<<"matrix multiplication with the Strassen algorithm over message passing interface. For GPU only, the variable Unified_Shared_Memory should be defined"<<std::endl;
-    cout<<"Note: if GPU_ONLY is set, and Unified_Shared_Memory is not defined, then ordinary matrix multiplication on gpu will be called."<<std::endl;
+    cout<<"matrix multiplication with the Strassen algorithm over message passing interface"<<std::endl;
     cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
     cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
     cout <<" default_cubic_treshold = 256;"<< "The default number of elements at which matrices are auto offloaded in multiplication"<< std::endl;

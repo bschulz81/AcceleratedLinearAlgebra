@@ -115,7 +115,6 @@ int main()
     cout<<"We can also use the Strassen algorithm or its Winograd variant for the multiplication."<<std::endl;
     cout<<"It may offload on gpu. With the Message Passing Interface enabled, it can do so in parallel. "<<std::endl;
     cout<<"otherwise it offloads sequentially. The algorithm can also work entirely on device"<<std::endl;
-    cout<< "but only if omp_shared_memory is enabled by defining the Unified_Shared_Memory variable. Hybrid mode is set with AUTO, sole GPU with GPU_ONLY"<<std::endl;
 
     cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
     cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
@@ -127,7 +126,8 @@ int main()
 
     Math_MPI_RecursiveMultiplication_Policy p6(Math_Functions_Policy::GPU_ONLY,false,false);
     p6.size_to_stop_recursion=16;
-    Math_Functions_MPI<double>::strassen_multiply(A, B, C,&p6);
+
+    Math_Functions_MPI<double>::winograd_multiply(A, B, C,&p6);
 
     C.printmatrix();
 
@@ -263,7 +263,7 @@ cout<<"With the advanced algorithms on CPU"<<std::endl;
         Math_Functions_Policy::CPU_ONLY,
         false,
         false,
-        Math_MPI_Decomposition_Policy::Strassen);
+        Math_MPI_Decomposition_Policy::Naive);
 
     p9b.size_to_stop_recursion=16;
 
