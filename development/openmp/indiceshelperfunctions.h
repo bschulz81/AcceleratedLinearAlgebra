@@ -21,7 +21,7 @@ inline size_t compute_offset(const size_t row, const size_t col, const size_t ma
 #pragma omp end declare target
 
 #pragma omp begin declare target
-inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
 {
     size_t offset = 0;
     // Row-major layout: iterate outermost to innermost
@@ -36,7 +36,7 @@ inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* 
 #pragma omp end declare target
 
 #pragma omp begin declare target
-inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
 {
     size_t offset = 0;
     // Row-major layout: iterate outermost to innermost
@@ -53,7 +53,7 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
 
 
 #pragma omp begin declare target
-inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r, bool rowmajor=true)
+inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
 {
     size_t offset = 0;
 

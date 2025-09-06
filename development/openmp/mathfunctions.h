@@ -11,6 +11,37 @@
 #include "gpu_mathfunctions.h"
 #include "inkernel_mathfunctions.h"
 
+struct DeviceInfo {
+    int dev_id;
+    int num_teams;
+    int threads_per_team;
+};
+
+// Query function
+inline void query_device_team_thread_counts(int dev, DeviceInfo &info) {
+    info.dev_id = dev;
+    info.num_teams = 0;
+    info.threads_per_team = 0;
+
+    #pragma omp target map(from: info) device(dev)
+    {
+        #pragma omp teams
+        {
+            if (omp_get_team_num() == 0) {
+                info.num_teams = omp_get_num_teams();
+            }
+            #pragma omp parallel
+            {
+                if (omp_get_thread_num() == 0) {
+                    info.threads_per_team = omp_get_num_threads();
+                }
+            }
+        }
+    }
+}
+
+
+
 
 
 
@@ -20,7 +51,7 @@ struct Math_Functions_Policy
     bool update_host = true;
     bool memmapped_files = false;
     bool initialize_output_to_zeros = true;
-
+    size_t precision=1;
     int devicenum = omp_get_default_device();
     int num_gpus = 0;
 
@@ -138,6 +169,7 @@ class Math_Functions
 {
 public:
     inline static void matrix_multiply_dot(  datastruct<T>& A,  datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_dot_kahan(  datastruct<T>& A,  datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
     inline static void matrix_add( datastruct<T>& A, datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
     inline static void matrix_subtract( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
 
@@ -150,7 +182,6 @@ public:
     inline static void vector_subtract(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res,  const Math_Functions_Policy* policy=nullptr);
 
     inline static T dot_product(  datastruct<T> &vec1,  datastruct<T> &vec2, const Math_Functions_Policy* policy=nullptr);
-
     inline static void cholesky_decomposition(datastruct<T>& A, datastruct<T> & L, const Math_Functions_Policy* policy=nullptr);
     inline static void lu_decomposition(datastruct<T> &A, datastruct<T> & L,datastruct<T> & U, const Math_Functions_Policy* policy=nullptr);
     inline static void qr_decomposition(datastruct<T> &A,datastruct<T>& Q, datastruct<T> & R,  const Math_Functions_Policy* policy=nullptr);

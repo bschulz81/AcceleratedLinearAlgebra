@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 ////
 //
 
-    Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::CPU_ONLY,true,true);
+    Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,true,true);
     p.update_host=true;
     if(process_Rank == 0)
     {
