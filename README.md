@@ -46,22 +46,23 @@ By 06.09.25,
 
 1) The advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work if they are given gpu data pointers.
 
-the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. But these are inherent in the algorithms
-from that paper. I have included some measures to increase stability. The instability arises because the advanced algorithms use the Strassen algorithm twice for one
-matrix multiplication after another and then a Grahm Schmidt orthonormalization procedure.
+Unfortunately, the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors, which are inherent in the
+mathematics of the algorithms from the paper. I have included some measures to increase numerical stability. The instability arises because the advanced algorithms use
+the Strassen algorithm twice for one matrix multiplication after another and then a Grahm Schmidt orthonormalization procedure.
 The Strassen algorithm replaces multiplications by faster additions, which are, however, numerically unstable.
 
 The Grahm Schmidt, and any other (even an improved ) orthonormalization procedure uses dot products that involve large sums over columns of matrices. These are also numerically unstable.
-So the algorithm employs three numerically unstable methods in a chain.
+So the algorithm from https://arxiv.org/pdf/1812.02056  employs three numerically unstable methods in a chain, where the instability increases with the size of the matrices.
 
 For my test data, I found that it could be stabilized a bit by replacing one Strassen multiplication
-by an ordinary one. 
+by an ordinary one. So I set this to the ordinary multiplication in general. For the other multiplications, the option to use the naive multiplication can be set by the user if he 
+wants to improve stability.
 
-However, given that the error becomes larger with larger sums, i.e. larger matrices, I need to test stability with a larger matrix. 
+However, given that the error of any dot product between columns of a matrix increases with matrix size, I need to test stability even more for larger data.
+In order to increase precision, I have began to add methods for Kahan sums for products.
 
 Of course the library is also able to use the simple algorithms for the QR decomposition on gpu, which is not affected by stability problems from Strassen multiplication, but any QR decomposition
 (even those with improved Grahm Schmidt orthogonalization) need dot products of vectors and is affected by numerical instability of large sums. 
-In order to increase precision, I have began to add methods for Kahan sums for products.
 
 
 
