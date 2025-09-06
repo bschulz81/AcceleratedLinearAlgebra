@@ -1479,7 +1479,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
     if (step_size% 2 !=0 &&step_size>=1)
         step_size=step_size-1;
 
-    size_t tempsize=(n)*(n);
+    size_t tempsize=(n-step_size)*(n-step_size);
 
 
 
@@ -1663,7 +1663,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         {
             if(policy.memmapped_files)
             {
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(sdata,n);
+                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
                 Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
             }
             else
