@@ -79,9 +79,7 @@ miscompiling advanced algorithm for the cholesky decomposition is disabled and s
 
 For a version where you can observe the miscompilation with gcc-15.2 and Cuda 13, go to the development folder, consult the readme there and find the source-code where you can test the problem.
 
-3) on Clang, the program currently fails to compile due to this compiler bug https://github.com/llvm/llvm-project/issues/157286
-assertion failure at kmp_csupport.cpp(539): this_thr->th.th_set_nproc >= 1.
-OMP: Error #13: Assertion failure at kmp_csupport.cpp(539).
+
 
 
 By 03.09,
