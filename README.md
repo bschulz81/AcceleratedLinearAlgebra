@@ -75,9 +75,9 @@ Unfortunately, it turned out that there seem to be compilation errors for the GP
 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 which leads to increased numerical instabilities.
 
 The rest of the algorithms seems to work for my test data. In this version, the 
-miscimpiling advanced algorithm for the cholesky decomposition is disabled and switches to a naive algorithm.
+miscompiling advanced algorithm for the cholesky decomposition is disabled and switches to a naive algorithm.
 
-For a version where you can observe the miscompilation with gcc-15.2 and Cuda 13, go to the development folder and consult the readme there.
+For a version where you can observe the miscompilation with gcc-15.2 and Cuda 13, go to the development folder, consult the readme there and find the source-code where you can test the problem.
 
 
 
