@@ -13,7 +13,7 @@ The library contains functions for matrix multiplication on accelerators, as wel
 
 For simple problems, the Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU, or on GPU. These variants will then use all three parallelization levels of the GPU. 
 For problems that are larger than the memory of the GPU, advanced algorithms are available, which can use the Strassen algorithm or its Winograd variant, to separate the problem into smaller sub-problems, which can then 
-be computed on gpu. The algorithms can be configured when to offload, or they choose this automatically. For systems with unified shared memory, the advanced algorithms can  execute every loop on the GPU, otherwise, they would just offload matrices for multiplication if they reached sufficient size.
+be computed on gpu. The algorithms can be configured when to offload, or they choose this automatically.
 
 The provided cmakelists.txt compiles two test applications. One demonstrates the gpu offload and the parameters for various algorithms.
 The other demonstrates the message passing interface use of the library and can be run with 
@@ -30,12 +30,15 @@ A short tutorial how to configure gcc for gpu-offload is here for the gentoo lin
 Version History:
 
 
+
 Todo:
 
 0) Test the numerical stability and correct compilation of the algorithms even more with larger data. 
 1) Test the new expanded support for the message passing interface support more intensely and refine them for usage.
 2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+
+
 
 
 
