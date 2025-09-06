@@ -51,7 +51,9 @@ By 06.09.25,
 
 0) The test applications now verify the correctness of the algorithms with matrices that are a bit larger than before.
 
-1) The advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work if they are given gpu data pointers.
+1) The advanced algorithms for LU/ Cholesky and QR decomposition as well as the Strassen and Winograd algorithms can now work if they are given gpu data pointers.
+2) However, extents and strides should be host pointers, because, due to speed, the algorithms create submatrices, which just need changed offsets, strides and extents (2 element arrays) that can be easily offloaded, on the host.
+
 
 Unfortunately, the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors, which are inherent in the
 mathematics of the algorithms from the paper. I have included some measures to increase numerical stability. The instability arises because the advanced algorithms use
