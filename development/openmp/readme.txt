@@ -7,13 +7,47 @@ Todo:
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 By 06.09.25,
-the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers. 
+1) the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers.
+
 Unfortunately, it turned out that there seem to be compilation errors for the GPU version of the advanced algorithm for the Cholesky decomposition.
-https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 the rest of the algorithms seems to work for my test data. However, the advanced algorithm for the QR decomposition 
-from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. This is because it uses the Strassen algorithm twice for one matrix multiplication after 
-another and then a Grahm Schmidt orthonormalization procedure. The Strassen algorithm replaces multiplications by faster additions, which are, however, numerically unstable.
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 the rest of the algorithms seems to work for my test data. In this development version, the 
+defective advanced algorithm for the cholesky decomposition is enabled. This allows compiler engineers and people who can fix cuda internals may have a look at it.
+
+The problems seems to be the lines 1616 in mathfunctions_mpi.h 
+            T tmp=0,temp4=0;
+            #pragma omp target map(tofrom:tmp)map(to:c) device(policy.devicenum)
+            {
+            tmp=tempA(c,c);
+            }
+
+            #pragma omp target data map(tofrom:tmp)map(to:c) device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd shared(tL,tmp)  device(policy.devicenum)
+            for (size_t k = 0; k < c; ++k)
+            {
+                 T tmp3=tL(c,k);
+                #pragma omp atomic
+                tmp-= tmp3 * tmp3;
+            }
+            temp4=sqrt(tmp);
+            #pragma omp target map(tofrom:temp4) map(to:c)device(policy.devicenum)
+            {
+                tL(c,c)=temp4;
+            }
+
+here i have not used a reduction but a shared variable with an atomic update. This is because using reduction(+:tmp) here would introduce nans in the lower right corner of the matrix.
+The atomic instead yields to numerical errors all over the place. In my view, replacing a reduction with a shared variable and an atomic update should yield the same numbers.
+If not, it indicates a compiler problem. The compiler used was gcc 15.2
+
+
+2) the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. But these are inherent in the algorithms
+from that paper. I have included some measures to increase stability. The instability arises because the advanced algorithms use the Strassen algorithm twice for one
+matrix multiplication after another and then a Grahm Schmidt orthonormalization procedure.
+The Strassen algorithm replaces multiplications by faster additions, which are, however, numerically unstable.
 The Grahm Schmidt, and any other orthonormalization procedure uses dot products that involve large sums over columns of matrices. These are also numerically unstable.
-So the algorithm employs three numerically unstable methods in a chain. For my test data, I found that it could be stabilized a bit by replacing one Strassen multiplication
+
+So the algorithm employs three numerically unstable methods in a chain.
+
+For my test data, I found that it could be stabilized a bit by replacing one Strassen multiplication
 by an ordinary one. However, given that the error becomes larger with larger sums, i.e. larger matrices, I need to test stability with a larger matrix. 
 Of course the library is also able to use the simple algorithms on gpu, which are not affected by stability problems from Strassen multiplication, but any QR decomposition
 needs dot products of vectors and is affected by numerical instability of large sums. In order to increase precision, I have began to add methods for Kahan sums for products.
