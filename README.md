@@ -38,9 +38,9 @@ After the Strassen and Winograd algorithms work on gpu, this should be easily fe
 
 By 06.09.25,
 
-The test applications now work with larger matrices and verify the correctness of the algorithms.
+0) The test applications now work with larger matrices and verify the correctness of the algorithms.
 
-1) the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers.
+1) The advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work if they are given gpu data pointers.
 
 the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. But these are inherent in the algorithms
 from that paper. I have included some measures to increase stability. The instability arises because the advanced algorithms use the Strassen algorithm twice for one
