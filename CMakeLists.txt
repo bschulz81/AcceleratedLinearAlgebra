@@ -3,10 +3,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23 )
 
 project(arraytest VERSION 1.1.1)
+find_package(OpenMP REQUIRED)
 
 #GCC compiler flags.
 SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -g -fno-stack-protector -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector  -Wall")
 
 #mpicc compiler flags.
 #SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
@@ -15,7 +16,7 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -g -fno-s
 
 #Clang compiler flags
 #SET (CMAKE_CXX_COMPILER clang++  CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda  --libomptarget-nvptx-bc-path=/usr/lib64/nvptx64-nvidia-cuda/   -Wall")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda   -Wall")
 
 
 #Nvidia's nvc++ compiler. Path should be set manually.
@@ -49,24 +50,24 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Configuring for Clang compiler")
-    target_link_libraries(arraytest PRIVATE rt m c stdc++ omp mpi)
+    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
 endif()
 
 #if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
 #link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
 #    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
-    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi )
+#    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi )
 #endif()
 
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
-    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi)
+    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Configuring for Clang compiler")
-    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ omp mpi)
+    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
 endif()
 
 
