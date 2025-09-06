@@ -20,7 +20,7 @@ The other demonstrates the message passing interface use of the library and can 
 
 mpirun -np 12 ./arraytest_mpi 
 
-Be sure to use more or equal nodes than are needed by the recursion. The Strassen algorithm and its Winograd variant, as well as the advanced algorithms for Cholesky, Lu, and Qr decomposition can now auto-configure itself with the help of policy classes to decide whether they should work on gpu or adapt themselves for the message passing interface and gpu offload. If unified-shared-memory is used, these algorithms can do their loops entirely on GPU.
+Be sure to use more or equal nodes than are needed by the recursion. The Strassen algorithm and its Winograd variant, as well as the advanced algorithms for Cholesky, Lu, and Qr decomposition can now auto-configure itself with the help of policy classes to decide whether they should work on gpu or adapt themselves for the message passing interface and gpu offload. 
 
 
 
