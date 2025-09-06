@@ -6,38 +6,14 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+By 06.09.25
+Fixed a bug in the GPU version of the advanced algorithm for Cholesky decomposition.
+All the decomposition algorithms from  https://arxiv.org/pdf/1812.02056 as well as the Strassen algorithm and its Winograd Variant now work on device https://arxiv.org/abs/1410.1599
+
+
+
 By 06.09.25,
 1) the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers.
-
-Unfortunately, it turned out that there seem to be compilation errors for the GPU version of the advanced algorithm for the Cholesky decomposition.
-https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 the rest of the algorithms seems to work for my test data. In this development version, the 
-defective advanced algorithm for the cholesky decomposition is enabled. This allows compiler engineers and people who can fix cuda internals may have a look at it.
-
-The problems seems to be the lines 1616 in mathfunctions_mpi.h 
-            T tmp=0,temp4=0;
-            #pragma omp target map(tofrom:tmp)map(to:c) device(policy.devicenum)
-            {
-            tmp=tempA(c,c);
-            }
-
-            #pragma omp target data map(tofrom:tmp)map(to:c) device(policy.devicenum)
-            #pragma omp target teams distribute parallel for simd shared(tL,tmp)  device(policy.devicenum)
-            for (size_t k = 0; k < c; ++k)
-            {
-                 T tmp3=tL(c,k);
-                #pragma omp atomic
-                tmp-= tmp3 * tmp3;
-            }
-            temp4=sqrt(tmp);
-            #pragma omp target map(tofrom:temp4) map(to:c)device(policy.devicenum)
-            {
-                tL(c,c)=temp4;
-            }
-
-here i have not used a reduction but a shared variable with an atomic update. This is because using reduction(+:tmp) here would introduce nans in the lower right corner of the matrix.
-The atomic instead yields to numerical errors all over the place. In my view, replacing a reduction with a shared variable and an atomic update should yield the same numbers.
-If not, it indicates a compiler problem. The compiler used was gcc 15.2
-
 
 2) the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. But these are inherent in the algorithms
 from that paper. I have included some measures to increase stability. The instability arises because the advanced algorithms use the Strassen algorithm twice for one
