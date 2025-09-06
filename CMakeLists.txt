@@ -5,17 +5,17 @@ set(CMAKE_CXX_STANDARD 23 )
 project(arraytest VERSION 1.1.1)
 
 #GCC compiler flags.
-#SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -O3 -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -g -fno-stack-protector -Wall")
 
 #mpicc compiler flags.
-SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector -fno-math-errno -fno-trapping-math  -Wall")
+#SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
+#ET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp  -foffload=nvptx-none -fno-stack-protector  -g -Wall")
 
 
 #Clang compiler flags
 #SET (CMAKE_CXX_COMPILER clang++  CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -fopenmp-cuda-mode --libomptarget-nvptx-bc-path=/usr/lib64/nvptx64-nvidia-cuda/   -Wall")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda  --libomptarget-nvptx-bc-path=/usr/lib64/nvptx64-nvidia-cuda/   -Wall")
 
 
 #Nvidia's nvc++ compiler. Path should be set manually.
@@ -39,16 +39,8 @@ add_executable(arraytest ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_omp.cpp)
 add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
 
 
-
 #Set this to if you want to use unified_shared_memory support
 #add_compile_definitions(Unified_Shared_Memory)
-
-
-
-
-
-
-
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")

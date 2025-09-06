@@ -1,7 +1,7 @@
 #ifndef INKERNELMATHFUNCTIONS
 #define INKERNELMATHFUNCTIONS
 
-
+#include "cmath"
 #include "datastruct.h"
 
 
@@ -21,6 +21,7 @@ public:
     inline static void cross_product( const datastruct<T>& vec1,const   datastruct<T>& vec2, datastruct<T>& res);
 
     inline static void matrix_multiply_dot_w( const datastruct<T>& A,  const datastruct<T>& B, datastruct<T>& C);
+    inline static void matrix_multiply_dot_w_kahan( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
     inline static void matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
     inline static void matrix_multiply_dot_s(const  datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
 
@@ -51,6 +52,7 @@ public:
     inline static T dot_product_s( const datastruct<T> &vec1,const  datastruct<T> &vec2);
     inline static T dot_product_v( const datastruct<T> &vec1, const datastruct<T> &vec2);
     inline static T dot_product_w( const datastruct<T> &vec1,const  datastruct<T> &vec2);
+    inline static T dot_product_w_kahan(const  datastruct<T> &vec1, const datastruct<T> &vec2);
 
     inline static void matrix_multiply_scalar_s( const  datastruct<T>& M, const T V, datastruct<T>& C);
     inline static void matrix_multiply_scalar_v( const  datastruct<T>& M,const  T V, datastruct<T>& C);
@@ -59,6 +61,9 @@ public:
     inline static void vector_multiply_scalar_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
     inline static void vector_multiply_scalar_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
     inline static void vector_multiply_scalar_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
+
+    inline static T  kahan_sum(const T *arr,size_t n);
+    inline static T  neumaier_sum(const T*arr,size_t n);
 };
 #pragma omp end declare target
 
@@ -71,7 +76,7 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const datastruct<T>& A
 
     if(initialize_to_zero)
     {
-        #pragma omp parallel for simd collapse(2) shared(L,n)
+        #pragma omp parallel for simd collapse(2)
         for (size_t i = 0; i < n; ++i)
             for (size_t j = 0; j <n; ++j)
             {
@@ -81,19 +86,19 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const datastruct<T>& A
 
     for (size_t c = 0; c < n; ++c)
     {
-        T tmp=A(c, c);
+        T tmp=0;
 
-        #pragma omp parallel for simd reduction(-:tmp) shared(L,c)
+        #pragma omp parallel for simd reduction(-:tmp)
         for (size_t k = 0; k < c; ++k)
         {
             const T tmp3=L(c,k);
-            tmp-= tmp3 * tmp3;
+            tmp+= tmp3 * tmp3;
         }
-
+        tmp=A(c, c)-tmp;
         const T tmp4=sqrt(tmp);
         L(c, c) =tmp4;
 
-        #pragma omp parallel for shared(A,L,c,tmp4)
+        #pragma omp parallel for
         for (size_t i = c + 1; i < n; ++i)
         {
             T tmp2 = A(i, c);
@@ -123,7 +128,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  datastruct<T>& A, dat
 
     if(initialize_to_zero)
     {
-        #pragma omp parallel for simd collapse(2) shared(L,U,n)
+        #pragma omp parallel for simd collapse(2)
         for (size_t i = 0; i < n; ++i)
             for (size_t j = 0; j <n; ++j)
             {
@@ -134,7 +139,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  datastruct<T>& A, dat
 
     for (size_t c = 0; c < n; ++c)
     {
-        #pragma omp parallel for shared(A,c,L,U)
+        #pragma omp parallel for
         for (size_t i = c; i < n; ++i)
         {
             T temp=A(c,i);
@@ -147,7 +152,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  datastruct<T>& A, dat
         }
 
         const T temp4=U(c,c);
-        #pragma omp parallel for shared(A,c,L,U)
+        #pragma omp parallel for
         for (size_t i = c; i < n; ++i)
         {
             T temp = A(i,c);
@@ -177,13 +182,12 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     const size_t m = A.dpextents[1];
 
 
-    const size_t nm=n*m;
     T* __restrict tempM;
 
     if(with_memmaps)
-        tempM=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(nm);
+        tempM=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
     else
-        tempM=(T*)malloc(sizeof(T)*nm);
+        tempM=(T*)malloc(sizeof(T)*A.dpdatalength);
 
     size_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
     size_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
@@ -193,7 +197,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
 
     if(initialize_to_zero)
     {
-        #pragma omp parallel for shared(Q,M,A,R,n,m)
+        #pragma omp parallel for
         for (size_t i = 0; i < n; ++i)
         {
             #pragma omp simd
@@ -209,7 +213,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     }
     else
     {
-        #pragma omp parallel for shared(M,n,m,A)
+        #pragma omp parallel for
         for (size_t i = 0; i < n; ++i)
         {
             #pragma omp simd
@@ -224,58 +228,47 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
 
     for (size_t c = 0; c < m; ++c)
     {
-
-
+        size_t pextv[1];
+        size_t pstrv[1];
+        datastruct<T> v = M.column(c,pextv,pstrv);
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1];
             size_t pstru[1];
-            size_t pextv[1];
-            size_t pstrv[1];
+
             T dot_pr=0;
-            #pragma omp parallel for simd shared(Q,M,pextu,pstru,pextv,pstrv,pext0) reduction(+:dot_pr)
+            datastruct<T> u = Q.column(j,pextu,pstru);
+            #pragma omp parallel for simd  reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
-                datastruct<T> u = Q.column(j,pextu,pstru);
-                datastruct<T> v = M.column(c,pextv,pstrv);
                 dot_pr += u(i) * v(i);
             }
 
             const T cdot_pr=dot_pr;
-            #pragma omp  parallel for simd shared(Q,M,pextu,pstru,pextv,pstrv, pext0,cdot_pr)
+            #pragma omp  parallel for simd
             for (size_t i = 0; i < pext0; ++i)
             {
-                datastruct<T> u = Q.column(j,pextu,pstru);
-                datastruct<T>  v = M.column(c,pextv,pstrv);
                 v(i) -= cdot_pr * u(i);
             }
         }
         // Normalize v
         T norm=0;
-        size_t pextv[1];
-        size_t pstrv[1];
-        #pragma omp parallel for simd shared(M,pextv,pstrv,pext0)reduction(+: norm)
+        #pragma omp parallel for simd reduction(+: norm)
         for (size_t i = 0; i < pext0; ++i)
         {
-            datastruct<T>  v = M.column(c,pextv,pstrv);
             norm += v(i) * v(i);
         }
 
         const T normc= sqrt(norm);
-        size_t pextv1[1];
-        size_t pstrv1[1];
-        #pragma omp parallel for simd shared(M,pextv1,pstrv1,pext0,normc)
+        #pragma omp parallel for simd
         for (size_t i = 0; i < pext0; ++i)
         {
-            datastruct<T>  v = M.column(c,pextv1,pstrv1);
+
             v(i)= v(i)/normc;
         }
-        size_t pextv2[1];
-        size_t pstrv2[1];
-        #pragma omp parallel for simd shared(M,pext0,pextv2,pstrv2)
+        #pragma omp parallel for simd
         for (size_t i = 0; i < pext0; ++i)
         {
-            datastruct<T>  v = M.column(c,pextv2,pstrv2);
             Q(i,c) = v(i);
         }
     }
@@ -284,7 +277,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     const size_t cols = A.dpextents[1]; // Number of columns in B and C
     const size_t inner_dim = Q.dpextents[1]; // Number of columns in A and rows in B
 
-    #pragma omp parallel for shared(Q,A,R,rows,cols, inner_dim)
+    #pragma omp parallel for
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
@@ -300,7 +293,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     }
 
     if(with_memmaps)
-        Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempM,nm);
+        Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
     else
         free(tempM);
 }
@@ -329,7 +322,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const datastruct<T>& A, 
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    #pragma omp parallel for collapse(2) shared(A,B,C,rows,cols,inner_dim)
+    #pragma omp parallel for collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
@@ -339,6 +332,37 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const datastruct<T>& A, 
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A(i,k) *B(k,j);
+            }
+            C(i,j)= sum;
+        }
+    }
+}
+#pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w_kahan( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    #pragma omp parallel for collapse(2)
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum = 0;
+            T c=0;
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                T y =  A(i,k) *B(k,j) - c;
+                volatile T t = sum + y;
+                volatile T z = t - sum;
+                c = z - y;
+                sum = t;
             }
             C(i,j)= sum;
         }
@@ -407,7 +431,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_w(const datastruct<T>& A,const datas
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for  shared(C,A,B,n,m)
+    #pragma omp parallel for
     for (size_t i = 0; i < n; ++i)
     {
         #pragma omp simd
@@ -465,7 +489,7 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const datastruct<T>& A,const 
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for shared(C,A,B,n,m)
+    #pragma omp parallel for
     for (size_t i = 0; i <n; ++i)
     {
         #pragma omp simd
@@ -525,7 +549,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M
 
     const size_t n= M.dpextents[0];
     const size_t m=M.dpextents[1];
-    #pragma omp parallel for shared(m,n,M,V)
+    #pragma omp parallel for
     for (size_t i = 0; i <n; ++i)
     {
         T sum=0;
@@ -635,7 +659,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M
 
     const size_t n= M.dpextents[0];
     const size_t m=M.dpextents[1];
-    #pragma omp parallel for shared(C,M,V,n,m)
+    #pragma omp parallel for
     for (size_t i = 0; i <n; ++i)
     {
         T sum=0;
@@ -685,7 +709,7 @@ template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.dpextents[0];
-    #pragma omp parallel for simd shared(res,vec1,n)
+    #pragma omp parallel for simd
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec1(i)+vec2(i);
@@ -699,7 +723,7 @@ template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
 {
     const size_t n=vec1.dpextents[0];
-    #pragma omp parallel for simd shared(res,vec1,vec2,n)
+    #pragma omp parallel for simd
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec1(i)-vec2(i);
@@ -775,7 +799,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_w(const  datastruct<T> &vec1, const da
 {
     const size_t n=vec1.dpextents[0];
     T result=0;
-    #pragma omp parallel for simd shared(vec1,vec2,n) reduction(+:result)
+    #pragma omp parallel for simd reduction(+:result)
     for (size_t i = 0; i < n; ++i)
     {
         result += vec1(i) * vec2(i);
@@ -784,6 +808,83 @@ T In_Kernel_Mathfunctions<T>::dot_product_w(const  datastruct<T> &vec1, const da
 }
 #pragma omp end declare target
 
+
+
+#pragma omp begin declare target
+template <typename T>
+T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  datastruct<T> &vec1, const datastruct<T> &vec2)
+{
+
+    const size_t n=vec1.dpextents[0];
+
+    int total_threads =   omp_get_max_threads();
+
+    if(n < (size_t)total_threads)
+    {
+        T result = 0.0;
+        T c_final = 0.0;
+        for (int i = 0; i < n; ++i)
+        {
+            T y = vec1(i) * vec2(i)- c_final;
+            volatile T t = result + y;
+            volatile T z = t - result;
+            c_final=z-y;
+            result = t;
+        }
+        return result;
+    }
+    else
+    {
+
+
+        // Each thread gets its own local sum/compensation
+        T* thread_sums = new T[total_threads];
+        T* thread_cs   = new T[total_threads];
+
+        #pragma omp parallel for simd
+        for (int idx = 0; idx < total_threads; ++idx)
+        {
+            thread_sums[idx] = 0.0;
+            thread_cs[idx] = 0.0;
+        }
+
+        #pragma omp parallel for
+        for (int tid = 0; tid < total_threads; ++tid)
+        {
+            T local_sum = 0.0;
+            T c = 0.0;
+
+            for (size_t i = tid; i < n; i += total_threads)
+            {
+                T y = vec1(i) * vec2(i);
+                volatile T t = local_sum + y;
+                volatile T z = t - local_sum;
+                c = z - y;
+                local_sum = t;
+            }
+
+            thread_sums[tid] = local_sum;
+            thread_cs[tid]   = c;
+        }
+
+        T result = 0.0;
+        T c_final = 0.0;
+
+        for (int tid = 0; tid < total_threads; ++tid)
+        {
+            T y = thread_sums[tid] - c_final;
+            volatile T t = result + y;
+            volatile T z = t - result;
+            c_final=z-y;
+            result = t;
+        }
+        delete[] thread_sums;
+        delete[] thread_cs;
+
+        return result;
+    }
+}
+#pragma omp end declare target
 
 
 
@@ -837,7 +938,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const datastruct<T>&
 
     const size_t n=C.dpextents[0];
     const size_t m= C.dpextents[1];
-    #pragma omp parallel for shared(C,M,V,n,m)
+    #pragma omp parallel for
     for (size_t i = 0; i <n; ++i)
     {
         #pragma omp simd
@@ -883,7 +984,7 @@ template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
 {
     const size_t n=vec.dpextents[0];
-    #pragma omp parallel for simd shared(res,vec,n,scalar)
+    #pragma omp parallel for simd
     for (size_t i = 0; i < n; ++i)
     {
         res(i) = vec(i)*scalar;
@@ -892,6 +993,53 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const datastruct<T>& 
 
 #pragma omp end declare target
 
+#pragma omp begin declare target
+template <typename T>
+T  In_Kernel_Mathfunctions<T>::kahan_sum(const T *arr, size_t n)
+{
+    double sum = 0.0;
+    double c = 0.0; // compensation
 
+    for (size_t i = 0; i < n; ++i)
+    {
+        double y = (double)arr[i] - c;
+        volatile double t = sum + y;
+        volatile double z=t-sum;
+        c = z - y;
+        sum = t;
+    }
+    return (T)sum;
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+T In_Kernel_Mathfunctions<T>::neumaier_sum(const T* arr, size_t n)
+{
+    double sum = 0.0;
+    double comp = 0.0;
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        double x = (double)arr[i];
+        volatile double t = sum + x;  // volatile prevents reassociation
+
+        if (std::fabs(sum) >= std::fabs(x))
+        {
+            volatile double z = (sum - t) + x; // volatile shields compensation term
+            comp += z;
+        }
+        else
+        {
+            volatile double z = (x - t) + sum;
+            comp += z;
+        }
+
+        sum = t;
+    }
+    return (T)(sum + comp);
+}
+#pragma omp end declare target
 
 #endif

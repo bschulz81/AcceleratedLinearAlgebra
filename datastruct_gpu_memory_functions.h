@@ -30,8 +30,7 @@ public:
         inline  ~OffloadHelper()
         {
 #if !defined(Unified_Shared_Memory)
-
-            if (pupdate_host)
+            if (pupdate_host && !pdL.dpdata_is_devptr)
             {
                 Datastruct_GPU_Memory_Functions::update_host(pdL, pdevicenum);
             }

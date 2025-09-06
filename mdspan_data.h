@@ -34,7 +34,6 @@ public:
     mdspan_data<T, Container>transpose_view();
     mdspan_data<T, Container>transpose_copy( bool with_memmap);
 
-
     inline mdspan_data<T, Container>&operator=(const datastruct<T> & other);
 
 protected:
