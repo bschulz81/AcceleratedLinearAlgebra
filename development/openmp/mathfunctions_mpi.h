@@ -1462,12 +1462,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
     }
 
 
-    //temporary fix for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818
-//    if(ongpu)
-//        {
-//            GPU_Math_Functions<T>::cholesky_decomposition_g(A,L,policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
-//            return;
-//        }
 
     const size_t n = A.dpextents[0];
 
@@ -1480,7 +1474,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         step_size=step_size-1;
 
     size_t tempsize=(n-step_size)*(n-step_size);
-
 
 
     if(ongpu)
@@ -1615,19 +1608,14 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
             omp_target_memcpy(&tmp,&tempA.dpdata[0],sizeof(T),0,sizeof(T)*(tempA.dpstrides[0]*c+tempA.dpstrides[1]*c),omp_get_initial_device(),policy.devicenum);
 
             #pragma omp target parallel for simd reduction(-:tmp) shared(tL)  device(policy.devicenum)
-            for (size_t k = 0; k < c; ++k)
+            for (size_t k = z; k < c; ++k)
             {
                 T tmp3=tL(c,k);
                 tmp-= tmp3 * tmp3;
             }
-
             T temp4=sqrt(tmp);
 
             omp_target_memcpy(&tL.dpdata[0],&temp4,sizeof(T),sizeof(T)*(tL.dpstrides[0]*c+tL.dpstrides[1]*c),0,policy.devicenum,omp_get_initial_device());
-
-
-
-
 
             #pragma omp target  data map(to:temp4)device(policy.devicenum)
             #pragma omp target teams distribute parallel for shared(tempA,tL) device(policy.devicenum)
@@ -1635,7 +1623,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
             {
                 T tmp2 = tempA(i, c);
                 #pragma omp simd reduction(-:tmp2)
-                for (size_t k = 0; k < c; ++k)
+                for (size_t k = z; k < c; ++k)
                 {
                     tmp2 -= tL(i, k) * tL(c, k);
                 }
@@ -1759,7 +1747,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                 const T tmp3=L(c,k);
                 tmp-= tmp3 * tmp3;
             }
-
 
             T tmp4=sqrt(tmp);
             L(c, c)=tmp4;
