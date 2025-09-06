@@ -57,9 +57,9 @@ The Strassen algorithm replaces multiplications by faster additions, which are, 
 The Grahm Schmidt, and any other (even an improved ) orthonormalization procedure uses dot products that involve large sums over columns of matrices. These are also numerically unstable.
 So the algorithm from https://arxiv.org/pdf/1812.02056  employs three numerically unstable methods in a chain, where the instability increases with the size of the matrices.
 
-For my test data, I found that it could be stabilized a bit by replacing one Strassen multiplication
-by an ordinary one. So I set this to the ordinary multiplication in general. For the other multiplications, the option to use the naive multiplication can be set by the user if he 
-wants to improve stability.
+For my test data, I found that it could be stabilized a bit by replacing the first Strassen multiplication
+by an ordinary one. So I now have set this to the ordinary multiplication in general. For the other multiplications, the option to use the naive multiplication instead of the Strassen can be set by the user if he 
+wants to improve stability. In fact, the naive method is used by the policy as default.
 
 However, given that the error of any dot product between columns of a matrix increases with matrix size, I need to test stability even more for larger data.
 In order to increase precision, I have began to add methods for Kahan sums for products.
