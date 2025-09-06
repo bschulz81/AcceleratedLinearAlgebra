@@ -42,7 +42,7 @@ Todo:
 Version history
 By 06.09.25,
 
-0) The test applications now work with larger matrices and verify the correctness of the algorithms.
+0) The test applications now verify the correctness of the algorithms with matrices that are a bit larger than before.
 
 1) The advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work if they are given gpu data pointers.
 
