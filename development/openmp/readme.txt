@@ -6,6 +6,19 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+By 06.09.25,
+the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers. 
+Unfortunately, it turned out that there seem to be compilation errors for the GPU version of the advanced algorithm for the Cholesky decomposition.
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 the rest of the algorithms seems to work for my test data. However, the advanced algorithm for the QR decomposition 
+from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. This is because it uses the Strassen algorithm twice for one matrix multiplication after 
+another and then a Grahm Schmidt orthonormalization procedure. The Strassen algorithm replaces multiplications by faster additions, which are, however, numerically unstable.
+The Grahm Schmidt, and any other orthonormalization procedure uses dot products that involve large sums over columns of matrices. These are also numerically unstable.
+So the algorithm employs three numerically unstable methods in a chain. For my test data, I found that it could be stabilized a bit by replacing one Strassen multiplication
+by an ordinary one. However, given that the error becomes larger with larger sums, i.e. larger matrices, I need to test stability with a larger matrix. 
+Of course the library is also able to use the simple algorithms on gpu, which are not affected by stability problems from Strassen multiplication, but any QR decomposition
+needs dot products of vectors and is affected by numerical instability of large sums. In order to increase precision, I have began to add methods for Kahan sums for products.
+
+
 By 31.08, the changes were as follows:
 fixed a bug in the matrix*vector multiply function. 
 broke the library down into several classes in different files, which are easily testable. 
