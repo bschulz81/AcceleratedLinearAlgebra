@@ -43,6 +43,10 @@ Todo:
 
 
 Version history
+By 06.09.25
+
+Fixed a bug in the gpu version of the advandet algorithms for the Cholesky decomposition. All the Algorithms from https://arxiv.org/pdf/1812.02056 as well as the Strassen Algorithm and Its Winograd variant https://arxiv.org/abs/1410.1599 now work on device.
+
 By 06.09.25,
 
 0) The test applications now verify the correctness of the algorithms with matrices that are a bit larger than before.
@@ -66,20 +70,6 @@ In order to increase precision, I have began to add methods for Kahan sums for p
 
 Of course the library is also able to use the simple algorithms for the QR decomposition on gpu, which is not affected by stability problems from Strassen multiplication, but any QR decomposition
 (even those with improved Grahm Schmidt orthogonalization) need dot products of vectors and is affected by numerical instability of large sums. 
-
-
-
-2)
-Unfortunately, it turned out that there seem to be compilation errors for the GPU version of the advanced algorithm for the Cholesky decomposition.
-
-https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121818 which leads to increased numerical instabilities.
-
-The rest of the algorithms seems to work for my test data. In this version, the 
-miscompiling advanced algorithm for the cholesky decomposition is disabled and switches to a naive algorithm.
-
-For a version where you can observe the miscompilation with gcc-15.2 and Cuda 13, go to the development folder, consult the readme there and find the source-code where you can test the problem.
-
-
 
 
 By 03.09,
