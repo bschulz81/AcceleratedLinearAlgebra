@@ -11,7 +11,7 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stac
 
 #mpicc compiler flags.
 #SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
-#ET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp  -foffload=nvptx-none -fno-stack-protector  -g -Wall")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp  -foffload=nvptx-none -fno-stack-protector  -g -Wall")
 
 
 #Clang compiler flags
