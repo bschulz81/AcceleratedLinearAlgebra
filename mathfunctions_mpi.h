@@ -1591,7 +1591,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                     break;
                 }
 
-                #pragma omp target teams distribute parallel for simd collapse(2)  device(policy.devicenum)
+                #pragma omp target teams distribute parallel for simd collapse(2) shared(tempA,S) device(policy.devicenum)
                 for (size_t i = c; i < n; ++i)
                 {
                     for (size_t j = c; j < n; ++j)
@@ -1617,7 +1617,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
 
             omp_target_memcpy(&tL.dpdata[0],&temp4,sizeof(T),sizeof(T)*(tL.dpstrides[0]*c+tL.dpstrides[1]*c),0,policy.devicenum,omp_get_initial_device());
 
-            #pragma omp target  data map(to:temp4)device(policy.devicenum)
             #pragma omp target teams distribute parallel for shared(tempA,tL) device(policy.devicenum)
             for (size_t i = c + 1; i < n; ++i)
             {
@@ -1637,7 +1636,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                 Datastruct_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
             Datastruct_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
             Datastruct_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
-
+//
             Datastruct_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
             Datastruct_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
 
@@ -2043,7 +2042,7 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
                 }
             }
         }
-//
+
         size_t z=0;
         #pragma omp ordered
         for (size_t c = 0; c < n; ++c)
