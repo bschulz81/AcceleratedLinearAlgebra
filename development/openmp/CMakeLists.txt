@@ -7,7 +7,7 @@ find_package(OpenMP REQUIRED)
 
 #GCC compiler flags.
 SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector  -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector   -Wall")
 
 #mpicc compiler flags.
 #SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
@@ -45,7 +45,7 @@ add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
-    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi)
+    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
