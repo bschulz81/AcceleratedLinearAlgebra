@@ -6,6 +6,9 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+By 09.09.25
+Fixed the class in datastruct.h to accomodate for column major matrices in addition to the rowmajor case which was used in the algorithms earlier. I added test cases for column major data
+
 By 06.09.25
 Fixed a bug in the GPU version of the advanced algorithm for Cholesky decomposition.
 All the decomposition algorithms from  https://arxiv.org/pdf/1812.02056 as well as the Strassen algorithm and its Winograd Variant now work on device https://arxiv.org/abs/1410.1599
