@@ -487,6 +487,8 @@ void GPU_Math_Functions<T>::lu_decomposition_g(datastruct<T>& A, datastruct<T> &
             }
     }
 
+    T* udata=(T*)omp_get_mapped_ptr(U.dpdata,dev);
+
     size_t z=0;
     for (size_t c = 0; c < n; ++c)
     {
@@ -501,11 +503,12 @@ void GPU_Math_Functions<T>::lu_decomposition_g(datastruct<T>& A, datastruct<T> &
             }
             U(c,i)=temp;
         }
+        T temp4=0;
+        omp_target_memcpy(&temp4,udata,sizeof(T),0,sizeof(T)*(U.dpstrides[0]*c+U.dpstrides[1]*c),omp_get_initial_device(),dev);
 
         #pragma omp target teams distribute shared(U,A,L) device(dev)
         for (size_t i = c; i < n; ++i)
         {
-            const T temp4=U(c,c);
             T temp = A(i,c);
             #pragma omp parallel for simd reduction (-:temp)shared(U,L)
             for (size_t k = z; k < c; ++k)
