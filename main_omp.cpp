@@ -21,7 +21,7 @@ using namespace std;
 int main()
 {
 
-//
+
     {
 
 
@@ -63,6 +63,8 @@ int main()
 
         cout<< "On termination, the shared ptr variable with dummy ref counter should call a deleter that removes the created memory (on device, on the memmapped file, or on heap)"<<endl;
     }
+
+
     {
 
         vector<double>A_data(12*12,0);
@@ -146,16 +148,161 @@ int main()
 
         C.printmatrix();
 
+}
+
+    {
+
+        cout<< "Now some tests whether the library accepts row and column major data and can extract rows and columns with the same code. "<<endl;
+        cout<<" Note that this tests only the datastruct class, which can be offloaded to gpu. it is non owning, "<<endl;
+        cout<<" compared to the mdspan clas which owns strides and extents and mdspan_data, which owns the data as well"<<endl<<endl;
+        {
+
+            vector<double>A_data(3*7,0);
+            A_data = {1,2,3,4,5,6,7,
+                      8,9,10,11,12,13,14,
+                      15,16,17,18,19,20,21
+                     };
+
+            size_t rows=3,cols=7;
+            mdspan<double, std::vector<size_t>> A(A_data.data(), true, rows, cols);
+            cout<<"A"<<endl;
+            A.printmatrix();
+            size_t extaa[2]= {3,7};
+            size_t straa[2];
+            datastruct<double>Aaa(A_data.data(),0, true,2,extaa,straa,true,true,false);
+            cout<<"A"<<Aaa.datalength()<<endl;
+            Aaa.printmatrix();
+
+            size_t extaaa[2];
+            size_t straaa[2];
+            datastruct<double>Aaaa(A_data.data(),0, true,3,7,extaaa,straaa,true,true,false);
+            cout<<"A"<<Aaaa.datalength()<<endl;
+            Aaaa.printmatrix();
+
+//    datastruct(T*  data,size_t datalength,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
+//               bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr);
+
+            cout<<"column"<<endl;
+            size_t exta[1];
+            size_t stra[1];
+            datastruct<double>Aa=A.column(1,exta,stra);
+            cout <<"C"<<endl;
+            Aa.printvector();
+//
+            size_t exta2[2],stra2[2];
+            datastruct<double>Ab= A.subspanmatrix(1,1,2,4,exta2,stra2);
+            cout<<"subspanmatrixA"<<endl;
+            Ab.printmatrix();
+//
+//
+            size_t exta3[1],stra3[1];
+            double newda3[7];
+            cout<<"column 1 of A with data c"<<endl;
+            datastruct<double>Ac=A.column_s(1, exta3,stra3,newda3);
+            Ac.printvector();
+//
+//
+            size_t exta4[2],stra4[2];
+            double newda4[8];
+            datastruct<double>Ad= A.subspanmatrix_s(1,1,2,4,exta4,stra4,newda4);
+            cout<<"subspanmatrixA with data copy"<<endl;
+            Ad.printmatrix();
+
+            size_t exta5[2],stra5[2];
+            datastruct<double>Ae= A.transpose(exta5,stra5);
+            cout<<"transpose"<<endl;
+            Ae.printmatrix();
+
+            size_t exta6[2],stra6[2];
+            double dataa6[21];
+            datastruct<double>Af= A.transpose_s(exta6,stra6,dataa6);
+            cout<<"transpose with data copy"<<endl;
+            Af.printmatrix();
+
+
+
+
+
+            vector<double> B_data_colmajor =
+            {
+                1, 8, 15,
+                2, 9, 16,
+                3, 10, 17,
+                4, 11, 18,
+                5, 12, 19,
+                6, 13, 20,
+                7, 14, 21
+            };
+
+
+
+            mdspan<double, std::vector<size_t>> B(B_data_colmajor.data(), false, rows, cols);
+            cout<<"B"<<endl;
+            B.printmatrix();
+
+
+            size_t extbb[2]= {3,7};
+            size_t strbb[2];
+            datastruct<double>Bbb(B_data_colmajor.data(),21, false,2,extbb,strbb,true,true,false);
+            cout<<"B"<< Bbb.datalength()<<endl<<endl;
+            Bbb.printmatrix();
+            cout<<"B"<< Bbb.datalength()<<endl<<endl;
+            size_t extbbb[2];
+            size_t strbbb[2];
+            datastruct<double>Bbbb(B_data_colmajor.data(),0, false,3,7,extbbb,strbbb,true,true,false);
+            Bbbb.printmatrix();
+
+            cout<<"column"<<endl;
+
+            size_t extb[1],strb[1];
+            datastruct<double>Ba= B.column(1,extb,strb);
+            Ba.printvector();
+            size_t extb2[2],strb2[2];
+
+
+            cout<<"subspanmatrx B"<<endl;
+            datastruct<double>Bb= B.subspanmatrix(1,1,2,4,extb2,strb2);
+            Bb.printmatrix();
+
+            size_t extb3[1],strb3[1];
+            double newdb3[7];
+            cout<< "column1  of B with data copy"<<endl;
+
+            datastruct<double> Bc=B.column_s(1, extb3,strb3,  newdb3);
+            Bc.printvector();
+
+            size_t extb4[2],strb4[2];
+            double newdb4[8];
+            datastruct<double>Bd= B.subspanmatrix_s(1,1,2,4,extb4,strb4,newdb4);
+            cout<<"subspanmatrixB with data copy"<<endl;
+            Bd.printmatrix();
+
+            size_t extb5[2],strb5[2];
+            datastruct<double>Be= B.transpose(extb5,strb5);
+            cout<<"transpose"<<endl;
+            Be.printmatrix();
+
+            size_t extb6[2],strb6[2];
+            double datab6[21];
+            datastruct<double>Bf= B.transpose_s(extb6,strb6,datab6);
+            cout<<"transpose with data copy"<<endl;
+            Bf.printmatrix();
+
+
+
+
+
+        }
     }
 
 
-    {
+   {
 
         vector<double>A_data= {210, -92, 68, -33, -34, -4, 118, -6, -92, 318, -100, 130, -153, -64, 160, 33, 68, -100, 204, -96, 41, -69, -16, -26, -33, 130, -96, 338, -152, -51, 12, 22, -34, -153, 41, -152, 346, 11, -30, -25, -4, -64, -69, -51, 11, 175, -79, 5, 118, 160, -16, 12, -30, -79, 320, 7, -6, 33, -26, 22, -25, 5, 7, 239};
 
         size_t rows2 = 8, cols2 = 8;
 
-
+        cout<<endl<<endl<<endl<<endl;
         {
 
             cout<<"Now a cholesky decomposition on CPU"<<std::endl;

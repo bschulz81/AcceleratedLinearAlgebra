@@ -27,12 +27,12 @@ public:
 
     mdspan_data<T, Container> subspan_view(const Container& offsets, const Container& sub_extents) ;
     mdspan_data<T, Container> subspan_view(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols);
-    mdspan_data<T, Container>column_view(const size_t col_index);
-    mdspan_data<T, Container>row_view(const size_t row_index);
-    mdspan_data<T, Container>column_copy(const size_t col_index,bool with_memmap);
-    mdspan_data<T, Container>row_copy(const size_t row_index, bool with_memmap );
-    mdspan_data<T, Container>transpose_view();
-    mdspan_data<T, Container>transpose_copy( bool with_memmap);
+    mdspan_data<T, Container> column_view(const size_t col_index);
+    mdspan_data<T, Container> row_view(const size_t row_index);
+    mdspan_data<T, Container> column_copy(const size_t col_index,bool with_memmap);
+    mdspan_data<T, Container> row_copy(const size_t row_index, bool with_memmap );
+    mdspan_data<T, Container> transpose_view();
+    mdspan_data<T, Container> transpose_copy( bool with_memmap);
 
     inline mdspan_data<T, Container>&operator=(const datastruct<T> & other);
 

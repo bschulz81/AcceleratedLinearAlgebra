@@ -53,52 +53,94 @@ public:
     datastruct() {};
 
     // Constructors
-    datastruct(T*  data, size_t datalength, bool rowm, size_t rank ,size_t*   extents, size_t*   strides,
-          bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr );
-
-    datastruct(T*  data, size_t datalength,  bool rowm, size_t*  extents,  size_t*   strides,
-        bool compute_datalength, bool compute_strides_from_extents, bool data_is_devptr );
+    datastruct(T*  data, size_t datalength, bool rowm, size_t rank,size_t*   extents, size_t*   strides,
+               bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr );
 
     datastruct(T*  data,size_t datalength,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
-        bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr);
-
-    datastruct(T*  data,  size_t datalength,  bool rowm,  bool rowvector,  size_t rank,  size_t*  extents,  size_t*  strides,
-        bool compute_datalength, bool compute_strides_from_extents, bool data_is_devptr);
+               bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr);
 
     datastruct(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr );
 
-    inline size_t datalength() const { return dpdatalength; }
+    inline size_t datalength() const
+    {
+        return dpdatalength;
+    }
 
-    inline size_t rank() const{ return dprank;  }
+    inline size_t rank() const
+    {
+        return dprank;
+    }
 
-    inline bool rowmajor() const  {  return dprowmajor; }
+    inline bool rowmajor() const
+    {
+        return dprowmajor;
+    }
 
-    inline bool data_is_devptr() const  {  return dpdata_is_devptr;  }
+    inline bool data_is_devptr() const
+    {
+        return dpdata_is_devptr;
+    }
 
-    inline T& data(size_t i)  {  return dpdata[i];  }
+    inline T& data(size_t i)
+    {
+        return dpdata[i];
+    }
 
-    inline const T& data(size_t i) const  {  return dpdata[i];  }
+    inline const T& data(size_t i) const
+    {
+        return dpdata[i];
+    }
 
-    inline size_t& extent(size_t i) {  return dpextents[i];  }
+    inline size_t& extent(size_t i)
+    {
+        return dpextents[i];
+    }
 
-    inline const size_t& extent(size_t i) const  {  return dpextents[i];  }
+    inline const size_t& extent(size_t i) const
+    {
+        return dpextents[i];
+    }
 
-    inline size_t& stride(size_t i)  {   return dpstrides[i];  }
+    inline size_t& stride(size_t i)
+    {
+        return dpstrides[i];
+    }
 
-    inline const size_t& stride(size_t i) const  {  return dpstrides[i];  }
+    inline const size_t& stride(size_t i) const
+    {
+        return dpstrides[i];
+    }
 
 
-    inline T* data()  { return dpdata;    }
+    inline T* data()
+    {
+        return dpdata;
+    }
 
-    inline const T* data() const  {  return dpdata;  }
+    inline const T* data() const
+    {
+        return dpdata;
+    }
 
-    inline size_t* extents()  {  return dpextents;  }
+    inline size_t* extents()
+    {
+        return dpextents;
+    }
 
-    inline const size_t* extents() const  {  return dpextents;  }
+    inline const size_t* extents() const
+    {
+        return dpextents;
+    }
 
-    inline size_t* strides()  {  return dpstrides;  }
+    inline size_t* strides()
+    {
+        return dpstrides;
+    }
 
-    inline const size_t* strides() const {   return dpstrides;  }
+    inline const size_t* strides() const
+    {
+        return dpstrides;
+    }
 
 
 
@@ -136,20 +178,19 @@ public:
         return dpdata[i*dpstrides[0]];
     };
 
-    inline datastruct<T>substruct_w(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides);
-    inline datastruct<T>substruct_v(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides);
-    inline datastruct<T>substruct_s(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides);
+    inline datastruct<T>substruct_w( size_t *    poffsets, size_t *   psub_extents, size_t*    psub_strides);
+    inline datastruct<T>substruct_v( size_t *    poffsets, size_t *   psub_extents, size_t*    psub_strides);
+    inline datastruct<T>substruct_s( size_t *    poffsets, size_t *   psub_extents, size_t*    psub_strides);
 
-    inline datastruct<T>substruct_w(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*    sub_data);
-    inline datastruct<T>substruct_v(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*    sub_data);
-    inline datastruct<T>substruct_s(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*   sub_data);
+    inline datastruct<T>substruct_w( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*    sub_data);
+    inline datastruct<T>substruct_v( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*    sub_data);
+    inline datastruct<T>substruct_s( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*   sub_data);
 
     inline datastruct<T>subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides);
 
     inline datastruct<T>subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data);
     inline datastruct<T>subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data);
     inline datastruct<T>subspanmatrix_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data);
-
 
     inline datastruct<T> transpose(size_t*    newextents, size_t*    newstrides);
 
@@ -196,6 +237,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose(size_t*    new
     newextents[1]=dpextents[0];
     newstrides[0]=dpstrides[1];
     newstrides[1]=dpstrides[0];
+
     return datastruct(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
 
 }
@@ -212,7 +254,7 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose_w(size_t*    n
     newstrides[0]=dpstrides[0];
     newstrides[1]=dpstrides[1];
     T* pd=this->dpdata;
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for simd collapse(2)
     for (size_t i=0; i<dpextents[0]; i++)
         for (size_t j=0; j<dpextents[1]; j++)
             newdata[compute_offset(j, i, newstrides[0], newstrides[1])] = pd[compute_offset(i, j, newstrides[0], newstrides[1])];
@@ -232,13 +274,10 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose_v(size_t*    n
     newstrides[0]=dpstrides[0];
     newstrides[1]=dpstrides[1];
     T* pd=this->dpdata;
-
     #pragma omp simd collapse(2)
     for (size_t i=0; i<dpextents[0]; i++)
         for (size_t j=0; j<dpextents[1]; j++)
-        {
             newdata[compute_offset(j, i, newstrides[0], newstrides[1])] = pd[compute_offset(i, j, newstrides[0], newstrides[1])];
-        }
 
     return datastruct(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
 
@@ -269,7 +308,8 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose_s(size_t*    n
 template<typename T>
 bool datastruct<T>::is_contiguous() const
 {
-    if (dprank == 0) {
+    if (dprank == 0)
+    {
         return dpdatalength == 1;
     }
 
@@ -393,11 +433,11 @@ template<typename T> datastruct<T>::datastruct(
     dpdatalength(datalength),
     dprank(rank),
     dprowmajor(rowm),
-    #if !defined(Unified_Shared_Memory)
-    dpdata_is_devptr(data_is_devptr)
-    #else
+#if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
-    #endif
+#else
+    dpdata_is_devptr(data_is_devptr)
+#endif
 
 {
     if(compute_strides_from_extents==true && extents!=nullptr && strides!=nullptr && rank !=0)
@@ -430,11 +470,11 @@ template<typename T> datastruct<T>::datastruct(
     dpdatalength(datalength),
     dprank(rank),
     dprowmajor(rowm),
-    #if !defined(Unified_Shared_Memory)
-    dpdata_is_devptr(data_is_devptr)
-    #else
+#if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
-    #endif
+#else
+    dpdata_is_devptr(data_is_devptr)
+#endif
 {}
 #pragma omp end declare target
 
@@ -460,16 +500,16 @@ template<typename T> datastruct<T>::datastruct(
     dpdatalength(datalength),
     dprank(2),
     dprowmajor(rowm),
-    #if !defined(Unified_Shared_Memory)
-    dpdata_is_devptr(data_is_devptr)
-    #else
+#if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
-    #endif
+#else
+    dpdata_is_devptr(data_is_devptr)
+#endif
 {
     if(extents!=nullptr)
     {
-        dpextents[0]=(rowm==true)?rows:cols;
-        dpextents[1]=(rowm==true)?cols:rows;
+        dpextents[0]=rows;
+        dpextents[1]=cols;
     }
     if(strides!=nullptr && compute_strides_from_extents)
     {
@@ -484,55 +524,12 @@ template<typename T> datastruct<T>::datastruct(
 }
 #pragma omp end declare target
 
-#pragma omp begin declare target
-template<typename T> datastruct<T>::datastruct(
-    T*    data,
-    size_t datalength,
-    bool rowm,
-    bool rowvector,
-    size_t noelements,
-    size_t*    extents,
-    size_t*    strides,
-    bool compute_datalength,
-    bool compute_strides_from_extents,
-    bool data_is_devptr
-) : dpdata(data),
-    dpextents(extents),
-    dpstrides(strides),
-    dpdatalength(datalength),
-    dprank(1),
-    dprowmajor(true),
-    #if !defined(Unified_Shared_Memory)
-    dpdata_is_devptr(data_is_devptr)
-    #else
-    dpdata_is_devptr(false)
-    #endif
-{
-    if(extents!=nullptr)
-    {
-        dpextents[0]=noelements;
-    }
-    if(dpstrides!=nullptr && compute_strides_from_extents)
-    {
-        if(rowvector)
-            dpstrides[0]=(rowm==true)? 1:noelements;
-        else
-            dpstrides[0]=(rowm==true)? noelements:1;
-    }
-    if(compute_datalength==true && strides!=nullptr)
-    {
-        dpdatalength=(noelements-1) * strides[0]+1;
-    }
-
-}
-#pragma omp end declare target
-
 
 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_w(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides)
+datastruct<T>datastruct<T>::substruct_w( size_t *    poffsets, size_t *   psub_extents, size_t*    psub_strides)
 {
     size_t offset_index = 0;
     const size_t r=dprank;
@@ -551,7 +548,7 @@ datastruct<T>datastruct<T>::substruct_w(const size_t *    poffsets,const size_t 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_v(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides)
+datastruct<T>datastruct<T>::substruct_v( size_t *    poffsets, size_t *   psub_extents, size_t*    psub_strides)
 {
     size_t offset_index = 0;
     const size_t r=dprank;
@@ -570,7 +567,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t *    poffsets,const size_t 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_s(const size_t *    poffsets,const size_t *   psub_extents, size_t*    psub_strides)
+datastruct<T>datastruct<T>::substruct_s( size_t * poffsets, size_t * psub_extents, size_t*    psub_strides)
 {
     size_t offset_index = 0;
     const size_t r=dprank;
@@ -591,22 +588,11 @@ datastruct<T>datastruct<T>::substruct_s(const size_t *    poffsets,const size_t 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_s(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*   sub_data)
+datastruct<T>datastruct<T>::substruct_s( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*   sub_data)
 {
-    size_t offset_index = 0;
+
     const size_t r=dprank;
-    if(sub_data==nullptr)
-    {
-        for (size_t i = 0; i < r; ++i)
-        {
-            offset_index += poffsets[i] * dpstrides[i];
-            psub_strides[i]=dpstrides[i];
-        }
-        size_t pl=compute_data_length_w(psub_extents,psub_strides,r);
-        return datastruct(dpdata + offset_index,pl,dprowmajor,r, psub_extents,psub_strides,dpdata_is_devptr);
-    }
-    else
-    {
+
         // Compute the new strides for the subspan
         size_t *    indices;
         size_t *   global_indices;
@@ -664,9 +650,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t *    poffsets,const size_t 
         delete[] global_indices;
         delete[] indices;
 
-        return datastruct (sub_data,pl,dprowmajor,psub_extents, psub_strides,dpdata_is_devptr);
-
-    }
+        return datastruct (sub_data,pl,dprowmajor,r,psub_extents, psub_strides,dpdata_is_devptr);
 
 }
 #pragma omp end declare target
@@ -674,7 +658,7 @@ datastruct<T>datastruct<T>::substruct_s(const size_t *    poffsets,const size_t 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_v(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*    sub_data)
+datastruct<T>datastruct<T>::substruct_v( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*    sub_data)
 {
     // Compute the new strides for the subspan
     size_t *    indices;
@@ -734,7 +718,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t *    poffsets,const size_t 
     delete[] indices;
 
     size_t pl=compute_data_length_v(psub_extents,psub_strides,r);
-    return datastruct (sub_data,pl,dprowmajor,psub_extents, psub_strides,dpdata_is_devptr);
+    return datastruct (sub_data,pl,dprowmajor,r,psub_extents, psub_strides,dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -746,7 +730,7 @@ datastruct<T>datastruct<T>::substruct_v(const size_t *    poffsets,const size_t 
 
 #pragma omp begin declare target
 template<typename T>
-datastruct<T>datastruct<T>::substruct_w(const size_t *    poffsets,const size_t *   psub_extents, size_t*   psub_strides, T*    sub_data)
+datastruct<T>datastruct<T>::substruct_w( size_t *    poffsets, size_t *   psub_extents, size_t*   psub_strides, T*    sub_data)
 {
     // Compute the new strides for the subspan
     size_t *    indices;
@@ -820,8 +804,8 @@ datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,
 {
     psub_strides[0]=dpstrides[0];
     psub_strides[1]=dpstrides[1];
-    psub_extents[0]=(dprowmajor==true)?tile_rows:tile_cols;
-    psub_extents[1]=(dprowmajor==true)?tile_cols:tile_rows;
+    psub_extents[0]=tile_rows;
+    psub_extents[1]=tile_cols;
     size_t pl=(psub_extents[0]-1) * psub_strides[0]+ (psub_extents[1]-1) * psub_strides[1]+1;
     size_t offset=+row * dpstrides[0]+col * dpstrides[1];
     return datastruct(dpdata+offset,pl,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
@@ -835,37 +819,23 @@ datastruct<T>  datastruct<T>::subspanmatrix( const size_t row, const size_t col,
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)
 {
-    if (dprowmajor)
+
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    T*    pd=dpdata;
+    psub_strides[0]=(dprowmajor==true)? tile_cols:1;
+    psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+    psub_extents[0]=tile_rows;
+    psub_extents[1]=tile_cols;
+    #pragma omp parallel for simd collapse(2)
+    for (size_t i = 0; i < tile_rows; ++i)
     {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd collapse(2) shared(sub_data,pd,tile_rows,tile_cols,row,col,s0,s1)
-        for (size_t i = 0; i < tile_rows; ++i)
-        {
-            for (size_t j = 0; j < tile_cols; ++j)
-            {
-                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
-        }
-    }
-    else
-    {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd collapse(2) shared(sub_data,pd,tile_rows,tile_cols,row,col,s0,s1)
         for (size_t j = 0; j < tile_cols; ++j)
         {
-            for (size_t i = 0; i < tile_rows; ++i)
-            {
-                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
+            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[compute_offset(row + i, col + j, s0, s1)];
         }
     }
-    fill_strides(psub_extents,psub_strides,2,dprowmajor);
-    size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr);
+    return datastruct(sub_data,tile_rows*tile_cols,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -880,37 +850,26 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)
 {
-    if (dprowmajor)
+
+
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    T*    pd=dpdata;
+    psub_strides[0]=(dprowmajor==true)? tile_cols:1;
+    psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+    psub_extents[0]=tile_rows;
+    psub_extents[1]=tile_cols;
+
+    #pragma omp simd collapse(2)
+    for (size_t i = 0; i < tile_rows; ++i)
     {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd collapse(2)
-        for (size_t i = 0; i < tile_rows; ++i)
-        {
-            for (size_t j = 0; j < tile_cols; ++j)
-            {
-                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
-        }
-    }
-    else
-    {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd collapse(2)
         for (size_t j = 0; j < tile_cols; ++j)
         {
-            for (size_t i = 0; i < tile_rows; ++i)
-            {
-                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
+            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[compute_offset(row + i, col + j, s0, s1)];
         }
     }
-    fill_strides(psub_extents,psub_strides,2,dprowmajor);
-    size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr);
+
+    return datastruct(sub_data,tile_rows*tile_cols,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -921,39 +880,24 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
 template<typename T>
 datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)
 {
-    if (dprowmajor)
-    {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        // Row-major layout: fill row by row
 
-        for (size_t i = 0; i < tile_rows; ++i)
-        {
-            for (size_t j = 0; j < tile_cols; ++j)
-            {
-                sub_data[i * tile_cols + j] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
-        }
-    }
-    else
-    {
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        // Column-major layout: fill column by column
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    T*    pd=dpdata;
+    psub_strides[0]=(dprowmajor==true)? tile_cols:1;
+    psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+    psub_extents[0]=tile_rows;
+    psub_extents[1]=tile_cols;
 
+    for (size_t i = 0; i < tile_rows; ++i)
+    {
         for (size_t j = 0; j < tile_cols; ++j)
         {
-            for (size_t i = 0; i < tile_rows; ++i)
-            {
-                sub_data[j * tile_rows + i] = pd[compute_offset(row + i, col + j, s0, s1)];
-            }
+            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[compute_offset(row + i, col + j, s0, s1)];
         }
     }
-    fill_strides(psub_extents,psub_strides,2,dprowmajor);
-    size_t pl=(tile_rows-1) * psub_strides[0]+(tile_cols-1)*psub_strides[1]+1;
-    return datastruct(sub_data,pl,dprowmajor,tile_rows, tile_cols,psub_extents,psub_strides,dpdata_is_devptr);
+
+    return datastruct(sub_data,tile_rows*tile_cols,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -966,24 +910,10 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
 template <typename T>
 datastruct<T> datastruct<T>::row(const size_t row_index, size_t*    extents,size_t *    new_strides)
 {
-    T*    row_data;
-    size_t pl;
+    extents[0] = dpextents[1];
+    new_strides[0]=dpstrides[1];
 
-    if (dprowmajor)
-    {
-        row_data = dpdata + row_index * dpstrides[0];
-        extents[0] = dpextents[1];
-        new_strides[0]=dpstrides[0];
-        pl=dpstrides[1] * extents[0];
-    }
-    else
-    {
-        row_data = dpdata + row_index * dpstrides[1];
-        extents[0] = dpextents[0];
-        new_strides[0]=dpstrides[0];
-        pl=dpstrides[0] * extents[0];
-    }
-    return datastruct<T>(row_data,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return datastruct<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -993,34 +923,20 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t*    extents,size
 template <typename T>
 datastruct<T> datastruct<T>::row_w(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
-    size_t pl;
-    if (dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd
-        for (size_t j = 0; j < pl; ++j)
-            newdata[j] = pd[compute_offset(row_index, j, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd
-        for (size_t j = 0; j < pl; ++j)
-            newdata[j] = pd[compute_offset(j,row_index, s0, s1)];
-    }
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    size_t pl;
+    pl=dpextents[1];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    #pragma omp parallel for simd
+    for (size_t j = 0; j < pl; ++j)
+        newdata[j] = pd[compute_offset(row_index, j, s0, s1)];
+
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1029,34 +945,18 @@ datastruct<T> datastruct<T>::row_w(const size_t row_index, size_t*    extents,si
 template <typename T>
 datastruct<T> datastruct<T>::row_v(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
     size_t pl;
-    if (dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(row_index, i, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(i,row_index, s0, s1)];
-    }
+    pl=dpextents[1];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    #pragma omp simd
+    for (size_t i = 0; i < pl; ++i)
+        newdata[i] = pd[compute_offset(row_index, i, s0, s1)];
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1065,32 +965,17 @@ datastruct<T> datastruct<T>::row_v(const size_t row_index, size_t*    extents,si
 template <typename T>
 datastruct<T> datastruct<T>::row_s(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
     size_t pl;
-    if (dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(row_index, i, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(i,row_index, s0, s1)];
-    }
+    pl=dpextents[1];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    for (size_t i = 0; i < pl; ++i)
+        newdata[i] = pd[compute_offset(row_index, i, s0, s1)];
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1101,34 +986,20 @@ datastruct<T> datastruct<T>::row_s(const size_t row_index, size_t*    extents,si
 template <typename T>
 datastruct<T> datastruct<T>::column_v(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
-    size_t pl;
-    if (!dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(col_index, i, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp simd
-        for (size_t i= 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(i,col_index, s0, s1)];
-    }
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    size_t pl;
+    pl=dpextents[0];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    #pragma omp simd
+    for (size_t i = 0; i < pl; ++i)
+        newdata[i] = pd[compute_offset( i,col_index, s0, s1)];
+
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1138,32 +1009,18 @@ datastruct<T> datastruct<T>::column_v(const size_t col_index, size_t*    extents
 template <typename T>
 datastruct<T> datastruct<T>::column_s(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
-    size_t pl;
-    if (!dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(col_index, i, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        for (size_t i= 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(i,col_index,  s0, s1)];
-    }
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    size_t pl;
+    pl=dpextents[0];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    for (size_t i = 0; i < pl; ++i)
+        newdata[i] = pd[compute_offset( i,col_index, s0, s1)];
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1172,34 +1029,20 @@ datastruct<T> datastruct<T>::column_s(const size_t col_index, size_t*    extents
 template <typename T>
 datastruct<T> datastruct<T>::column_w(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)
 {
-    T*    row_data;
-    size_t pl;
-    if (!dprowmajor)
-    {
-        pl=dpextents[1];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(col_index, i, s0, s1)];
-    }
-    else
-    {
-        pl=dpextents[0];
-        extents[0] = pl;
-        new_strides[0]=1;
-        const size_t s0=dpstrides[0];
-        const size_t s1=dpstrides[1];
-        const T*    pd=dpdata;
-        #pragma omp parallel for simd
-        for (size_t i = 0; i < pl; ++i)
-            newdata[i] = pd[compute_offset(i,col_index, s0, s1)];
-    }
 
-    datastruct<T>m(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    size_t pl;
+    pl=dpextents[0];
+    extents[0] = pl;
+    new_strides[0]=1;
+    const size_t s0=dpstrides[0];
+    const size_t s1=dpstrides[1];
+    const T*    pd=dpdata;
+    #pragma omp parallel for simd
+    for (size_t i = 0; i < pl; ++i)
+        newdata[i] = pd[compute_offset( i,col_index, s0, s1)];
+
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1213,23 +1056,9 @@ datastruct<T> datastruct<T>::column_w(const size_t col_index, size_t*    extents
 template <typename T>
 datastruct<T> datastruct<T>::column(const size_t col_index, size_t*    extents,size_t *   new_strides)
 {
-    T*    col_data;
-    size_t pl;
-    if (dprowmajor)
-    {
-        col_data = dpdata + col_index * dpstrides[1];
-        extents[0] = dpextents[0];
-        new_strides[0]=dpstrides[0];
-        pl=dpstrides[0] * extents[0];
-    }
-    else
-    {
-        col_data = dpdata + col_index * dpstrides[0];
-        extents[0] = dpextents[1];
-        new_strides[0]=dpstrides[0];
-        pl=dpstrides[1] * extents[0];
-    }
-    return datastruct(col_data, pl,dprowmajor,  1, extents,   new_strides,dpdata_is_devptr );
+    extents[0] = dpextents[0];
+    new_strides[0]=dpstrides[0];
+    return datastruct(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  1, extents,   new_strides,dpdata_is_devptr );
 }
 #pragma omp end declare target
 

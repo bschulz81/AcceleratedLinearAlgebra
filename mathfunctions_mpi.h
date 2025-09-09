@@ -1887,7 +1887,6 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
 
         size_t z=0;
 
-        #pragma omp ordered
         for (size_t c = 0; c < n; ++c)
         {
             if (c == z + step_size)
@@ -1957,12 +1956,13 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
                 tU(c,i)=temp;
             }
 
+        T temp4=0;
+        omp_target_memcpy(&temp4,&tU.dpdata[0],sizeof(T),0,sizeof(T)*(tU.dpstrides[0]*c+tU.dpstrides[1]*c),omp_get_initial_device(),policy.devicenum);
 
 
             #pragma omp target teams distribute shared(tU,tempA,tL) device(policy.devicenum)
             for (size_t i = c; i < n; ++i)
             {
-                const T temp4=tU(c,c);
                 T temp = tempA(i,c);
                 #pragma omp parallel for simd reduction(-:temp)
                 for (size_t k = z; k < c; ++k)
@@ -2044,7 +2044,6 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
         }
 
         size_t z=0;
-        #pragma omp ordered
         for (size_t c = 0; c < n; ++c)
         {
             if (c == z + step_size)

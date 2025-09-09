@@ -411,9 +411,8 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     }
     // Resize and copy extents from container
 
-
-    pextents[0]=(rowm==true)?rows:cols;
-    pextents[1]=(rowm==true)?cols:rows;
+    pextents[0]=rows;
+    pextents[1]=cols;
     compute_strides(pextents,pstrides,rowm);
 
     this->dpextents = pextents.data();
