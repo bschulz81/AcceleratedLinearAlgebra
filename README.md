@@ -43,6 +43,9 @@ Todo:
 
 
 Version history
+By 09.09.25
+Fixed the class in datastruct.h to accomodate for column major matrices in addition to the rowmajor case which was used in the algorithms earlier. I added test cases for column major data
+
 By 06.09.25
 
 Fixed a bug in the gpu version of the advandet algorithms for the Cholesky decomposition. All the Algorithms from https://arxiv.org/pdf/1812.02056 as well as the Strassen Algorithm and Its Winograd variant https://arxiv.org/abs/1410.1599 now work on device.
