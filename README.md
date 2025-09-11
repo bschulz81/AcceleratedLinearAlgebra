@@ -43,6 +43,17 @@ Todo:
 
 
 Version history
+By 11.09.25:
+
+Added test cases for simple matrix, vector and tensor operations with row and column major data.
+Reworked the datastruct class to ensure the matrix and tensor functions work for higher than rank 2,
+updated the mdspan class, which does not own the data, but strides and extents, to clean up the memory consistently.
+
+Next is a rework of the mdspan_data class. Then, I will revisit the message passing interface functions and test them extensively and add matrix and tensor functions where necessary to full mpi support. 
+After that one can then finally do numerical mathematics and add function optimizers and support for differential equations and statistics.
+
+
+
 By 09.09.25
 Fixed the class in datastruct.h to accomodate for column major matrices in addition to the rowmajor case which was used in the algorithms earlier. I added test cases for column major data
 
