@@ -92,12 +92,12 @@ public:
     mdspan<T,Container>& operator=(const mdspan<T,Container> & other);
     mdspan<T, Container>&operator=(const datastruct<T> & other);
 
-    mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides);
-    mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides);
-    mdspan(T* __restrict data, const bool rowm, const Container& extents);
-    mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols);
-    mdspan(size_t r);
-    mdspan(size_t rank,Container ext);
+    mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides, bool p_is_devicedata_owner=true);
+    mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides,bool p_is_devicedata_owner=true);
+    mdspan(T* __restrict data, const bool rowm, const Container& extents,bool p_is_devicedata_owner=true);
+    mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols,bool p_is_devicedata_owner=true);
+    mdspan(size_t r,bool p_is_devicedata_owner=true);
+    mdspan(size_t rank,Container ext,bool p_is_devicedata_owner=true);
     ~mdspan();
     // Access operators
     using datastruct<T>::operator();
@@ -505,49 +505,49 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm, const Container& extents, const Container& strides)
+mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm, const Container& extents, const Container& strides,bool pis_device_data_owner)
     :datastruct<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,false)
 {
     initialize_extents_and_strides(extents,strides);
-    is_device_data_owner = true;
+    is_device_data_owner = pis_device_data_owner;
 }
 
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, const Container& strides )
+mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, const Container& strides,bool pis_device_data_owner )
     : datastruct<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,false)
       // Initialize pdatastruct with placeholders
 {
     initialize_extents_and_strides(extents,strides);
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
-    is_device_data_owner = true;
+    is_device_data_owner = pis_device_data_owner;
 }
 
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
+mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents,bool pis_device_data_owner)
     :  datastruct<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,false)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
     this->dpstrides = pstrides.data();
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
-    is_device_data_owner = true;
+    is_device_data_owner = pis_device_data_owner;
 }
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(size_t rank)
+mdspan<T, Container>::mdspan(size_t rank,bool pis_device_owner)
     :  datastruct<T>(nullptr,0,false,rank,nullptr,nullptr,false,false,false)
 {
     allocate_extents_and_strides(rank);
-    is_device_data_owner=false;
+    is_device_data_owner=pis_device_owner;
 }
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(size_t rank,Container ext)
+mdspan<T, Container>::mdspan(size_t rank,Container ext,bool pis_device_owner)
     :  datastruct<T>(nullptr,0,false,rank,nullptr,nullptr,false,false,false)
 {
     allocate_extents_and_strides(rank);
@@ -556,7 +556,7 @@ mdspan<T, Container>::mdspan(size_t rank,Container ext)
     {
         pextents[i]=ext[i];
     }
-    is_device_data_owner=false;
+    is_device_data_owner=pis_device_owner;
 }
 
 
@@ -564,7 +564,7 @@ mdspan<T, Container>::mdspan(size_t rank,Container ext)
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const size_t cols)
+mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const size_t cols,bool pis_device_data_owner)
     :  datastruct<T>(data,0,rowm,2,nullptr,nullptr,false,false,false)
 {
     const size_t r=2;
@@ -586,7 +586,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
-    is_device_data_owner = true;
+    is_device_data_owner =  pis_device_data_owner;
 }
 
 
@@ -701,7 +701,7 @@ void mdspan<T, Container>::adopt_subdatastruct_helper(const datastruct<T>& sub)
     this->dprowmajor = sub.dprowmajor;
     this->dprank = sub.dprank;
     this->dpdata_is_devptr = sub.dpdata_is_devptr;
-    this->is_device_data_owner=false;
+
     this->dpdatalength=sub.dpdatalength;
 }
 
@@ -729,7 +729,7 @@ template <typename T, typename Container>
 mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
 {
     size_t num_dims = this->count_noncollapsed_dims();
-    mdspan<T, std::vector<size_t>> result(num_dims);
+    mdspan<T, std::vector<size_t>> result(num_dims,false);
     datastruct<T> sub=this->collapsed_view(num_dims,result.dpextents, result.dpstrides);
     result.dpdata =      sub.dpdata;
     result.dprowmajor = sub.dprowmajor;
@@ -744,7 +744,7 @@ mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
 template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents)const
 {
-    mdspan<T,Container> result(this->dprank,sub_extents);
+    mdspan<T,Container> result(this->dprank,sub_extents,false);
 
     datastruct<T> sub = this->subspan_v(offsets.data(),result.dpextents, result.dpstrides);
     result.adopt_subdatastruct_helper(sub);
@@ -755,7 +755,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Con
 template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents,T* __restrict sub_data )const
 {
-    mdspan<T,Container> result(this->dprank,sub_extents);
+    mdspan<T,Container> result(this->dprank,sub_extents,true);
     datastruct<T> sub = this->subspan_v(offsets.data(),result.dpextents, result.dpstrides, sub_data);
     result.adopt_subdatastruct_helper(sub);
     return result;
@@ -767,7 +767,7 @@ mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Con
 template <typename T, typename Container>inline
 mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols )const
 {
-    mdspan<T,Container> result(this->dprank);
+    mdspan<T,Container> result(this->dprank,false);
     datastruct<T> sub = this->subspanmatrix(row,col,tile_rows,tile_cols, result.dpextents, result.dpstrides);
     result.adopt_subdatastruct_helper(sub);
     return result;
@@ -776,7 +776,7 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const
 template <typename T, typename Container>inline
 mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*__restrict  sub_data)const
 {
-    mdspan<T,Container> result(this->dprank);
+    mdspan<T,Container> result(this->dprank,true);
     datastruct<T> sub = this->subspanmatrix_v(row,col,tile_rows,tile_cols,result.dpextents, result.dpstrides,sub_data);
     result.adopt_subdatastruct_helper(sub);
     return  result;
@@ -788,7 +788,7 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const
 template <typename T, typename Container>
 mdspan<T,std::vector<size_t>> mdspan<T, Container>::column(const size_t col_index)
 {
-    mdspan<T,std::vector<size_t>> result(1);
+    mdspan<T,std::vector<size_t>> result(1,false);
     datastruct<T> sub = column(col_index,result.pextents.data(), result.pstrides.data());
     result.dpdata =      sub.dpdata;
     result.dprowmajor = sub.dprowmajor;
@@ -802,7 +802,7 @@ template <typename T, typename Container>
 
 mdspan<T,std::vector<size_t>> mdspan<T, Container>:: row(const size_t row_index)
 {
-    mdspan<T,std::vector<size_t>> result(1);
+    mdspan<T,std::vector<size_t>> result(1,false);
     datastruct<T> sub = row(row_index,result.dpextents, result.dpstrides);
     result.dpdata =      sub.dpdata;
     result.dprowmajor = sub.dprowmajor;
@@ -817,7 +817,7 @@ template <typename T, typename Container>
 mdspan<T,std::vector<size_t>>  mdspan<T, Container>::column(const size_t col_index, T*__restrict ptr)
 {
 
-    mdspan<T,std::vector<size_t>> result(1);
+    mdspan<T,std::vector<size_t>> result(1,true);
     datastruct<T> sub = this->column_v(col_index,result.dpextents, result.dpstrides,ptr);
     result.dpdata =      sub.dpdata;
     result.dprowmajor = sub.dprowmajor;
@@ -830,7 +830,7 @@ mdspan<T,std::vector<size_t>>  mdspan<T, Container>::column(const size_t col_ind
 template <typename T, typename Container>
 mdspan<T,std::vector<size_t>> mdspan<T, Container>:: row(const size_t row_index, T* __restrict ptr)
 {
-    mdspan<T,std::vector<size_t>> result(1);
+    mdspan<T,std::vector<size_t>> result(1,true);
     datastruct<T> sub = row_v(row_index,result.dpextents, result.dpstrides,ptr);
     result.dpdata =      sub.dpdata;
     result.dprowmajor = sub.dprowmajor;
@@ -843,7 +843,7 @@ mdspan<T,std::vector<size_t>> mdspan<T, Container>:: row(const size_t row_index,
 template <typename T, typename Container>
 mdspan<T, Container>mdspan<T, Container>::transpose()
 {
-    mdspan<T,Container> result(this->dprank);
+    mdspan<T,Container> result(this->dprank,false);
     datastruct<T> sub = transpose(result.dpextents, result.dpstrides);
     result.adopt_subdatastruct_helper(sub);
     return result;
@@ -852,7 +852,7 @@ mdspan<T, Container>mdspan<T, Container>::transpose()
 template <typename T, typename Container>
 mdspan<T, Container>mdspan<T, Container>:: transpose(T* __restrict pdata)
 {
-    mdspan<T,Container> result(this->dprank);
+    mdspan<T,Container> result(this->dprank,true);
     datastruct<T> sub = this->transpose_v(result.dpextents, result.dpstrides,pdata);
     result.adopt_subdatastruct_helper(sub);
     return result;

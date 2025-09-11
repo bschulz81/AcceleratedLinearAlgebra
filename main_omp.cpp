@@ -414,9 +414,7 @@ int main()
             A.printtensor();
 
             cout<<"row 1"<<endl;
-
             mdspan<double, std::vector<size_t>> Aa=A.row(1);
-            cout <<"C"<<endl;
             Aa.printtensor();
 //
 
