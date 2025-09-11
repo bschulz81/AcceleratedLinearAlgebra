@@ -10,9 +10,13 @@
 #include <numbers>
 #include <memory>
 
+#include <cassert>
 
 #include "datastruct.h"
 
+#include <array>
+#include <vector>
+#include <cstddef>
 
 
 
@@ -75,41 +79,59 @@ template <typename T, typename Container>
 class mdspan:public datastruct<T>
 {
 public:
+
     friend class Datastruct_Functions<T>;
     friend class Datastruct_MPI_Functions<T>;
+    mdspan() {};
+    mdspan(const datastruct<T>& ds, Container&& ext, Container&& str);
 
-    mdspan(){};
+    mdspan(const mdspan& other);
+
+    mdspan(mdspan&& other) noexcept ;
+    mdspan<T, Container>& operator=(mdspan<T, Container>&& other) noexcept;
+    mdspan<T,Container>& operator=(const mdspan<T,Container> & other);
+    mdspan<T, Container>&operator=(const datastruct<T> & other);
+
     mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides);
     mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides);
     mdspan(T* __restrict data, const bool rowm, const Container& extents);
     mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols);
+    mdspan(size_t r);
+    mdspan(size_t rank,Container ext);
     ~mdspan();
     // Access operators
     using datastruct<T>::operator();
-
     inline T& operator()(const Container& extents);
     inline T operator()(const Container& extents)const;
 
 
-    inline mdspan<T, Container>&operator=(const datastruct<T> & other);
+
 
     // Subspan methods
-    mdspan<T, Container> subspan_view(const Container& offsets, const Container& sub_extents) const;
-    mdspan<T, Container> subspan_view(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-    mdspan<T, Container> subspan_copy(const Container& offsets, const Container& sub_extents, T* __restrict sub_data) const;
-    mdspan<T, Container> subspan_copy(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T* __restrict sub_data)const;
-    mdspan<T, Container> copy(T*__restrict  data,int destdevice,int srcdevice);
+    mdspan<T, Container> subspan(const Container& offsets,  Container& sub_extents) const;
+    mdspan<T, Container> subspan(const Container& offsets,  Container& sub_extents, T* __restrict sub_data) const;
 
-    mdspan<T, Container>column_view(const size_t col_index);
-    mdspan<T, Container>row_view(const size_t row_index);
-    mdspan<T, Container>column_copy(const size_t col_index,T* __restrict ptr);
-    mdspan<T, Container>row_copy(const size_t row_index,T* __restrict ptr);
-    mdspan<T, Container>transpose_view();
-    mdspan<T, Container>transpose_copy(T* __restrict ptr);
+    using datastruct<T>::subspanmatrix;
+    mdspan<T, Container> subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
+    mdspan<T, Container> subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T* __restrict sub_data)const;
 
-    void glue_matrices(mdspan<T, Container> target, const vector<mdspan<T, Container>>& spans,  const vector<pair<size_t, size_t>>& offsets);
-    void printvector();
-    void printmatrix();
+    mdspan<T, Container> copy(T*__restrict  data);
+
+
+    using datastruct<T>::column;
+    using datastruct<T>::row;
+    using datastruct<T>::transpose;
+
+    mdspan<T, std::vector<size_t>>column(const size_t col_index);
+    mdspan<T, std::vector<size_t>>column(const size_t col_index,T* __restrict ptr);
+    mdspan<T, std::vector<size_t>>row(const size_t row_index);
+    mdspan<T, std::vector<size_t>>row(const size_t row_index,T* __restrict ptr);
+
+    mdspan<T, Container>transpose();
+    mdspan<T, Container>transpose(T* __restrict ptr);
+    using datastruct<T>::collapsed_view;
+
+    mdspan<T, std::vector<size_t>> collapsed_view();
 
     bool device_update(bool default_device=true, int devicenum=0);
     bool device_update_async(bool default_device=true, int devicenum=0);
@@ -120,8 +142,11 @@ public:
     bool device_alloc(bool default_device=true,int devicenum=0);
     bool device_release(bool default_device=true,int devicenum=0);
     bool device_delete(bool default_device=true,int devicenum=0);
-    void release_all_devices();
+    void release_all_owned_devices();
+    void become_device_dataowner();
+
     // Other utility methods
+
     size_t extent(const size_t dim) const
     {
         return this->dpextents[dim];
@@ -136,11 +161,11 @@ public:
     };
 
     // Member function declarations
-    Container& extents()const
+    const Container& extents()const
     {
         return pextents;
     };
-    Container& strides()const
+    const Container& strides()const
     {
         return pstrides;
     };
@@ -152,20 +177,19 @@ public:
 
 protected:
     // Private member variables
-    unordered_map<int,bool> pis_offloaded;
 
     void initialize_extents_and_strides(const Container&extents,const Container & strides);
     void initialize_extents(const Container&extents);
-    void transfer_extents_and_strides(datastruct<T> &other);
-
+    void allocate_extents_and_strides(size_t r);
+    void adopt_subdatastruct_helper(const datastruct<T>& sub);
 
     Container pextents;  // Use the ExtentContainer type
     Container pstrides;  // Use the StrideContainer type
+    unordered_map<int,bool> pis_offloaded;
+private:
+    bool is_device_data_owner = false;
 };
 
-#include <array>
-#include <vector>
-#include <cstddef>
 
 struct dynamic_tag {};
 
@@ -195,51 +219,153 @@ template<typename T, typename Tag>
 using mdspan_t = mdspan<T, typename container_for_tag<Tag>::type>;
 
 
+
 template <typename T, typename Container>
-inline void mdspan<T, Container>::transfer_extents_and_strides(datastruct<T> &other)
+mdspan<T, Container>::
+mdspan(const mdspan& other) :
+    datastruct<T>(other)
 {
-    if (this->pextents.data()!=other.dpextents)
-    {
-        if (other.dprank!=this->dprank)
-        {
-            if constexpr (DynamicContainer<Container>)
-            {
-                this->pextents.resize(other.dprank);
-            }
-        }
-        this->pextents.data()=other.dpextents;
-    }
-    if (this->pstrides.data()!=other.dpstrides)
-    {
-        if (other.pdrank!=this->dprank)
-        {
-            if constexpr (DynamicContainer<Container>)
-            {
-                this->pstrides.resize(other.dprank);
-            }
-            this->pextents.data()=other.dpstrides;
-        }
-    }
+    pextents = other.pextents;
+    pstrides = other.pstrides;
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+    is_device_data_owner = false;
+    pis_offloaded.clear();
 }
 
 
 template <typename T, typename Container>
-inline void mdspan<T, Container>::release_all_devices()
+mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> & other)
 {
-    for(auto& p : this->pis_offloaded)
+    if(is_device_data_owner)
+        this->release_all_owned_devices();
+
+    pextents = other.pextents;
+    pstrides = other.pstrides;
+
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
+    is_device_data_owner = false;
+    pis_offloaded    = other.pis_offloaded;
+
+
+    this->dpdata           = other.dpdata;
+    this->dprowmajor       = other.dprowmajor;
+    this->dprank           = other.dprank;
+    this->dpdata_is_devptr = other.dpdata_is_devptr;
+    this->dpdatalength=other.dpdatalength;
+
+    return *this;
+}
+
+template <typename T, typename Container>
+mdspan<T, Container>&mdspan<T, Container>::operator=(const datastruct<T> & other)
+{
+
+    if(this->dpdata!=other.dpdata)
+        this->release_all_owned_devices();
+
+    pextents = other.pextents;
+    pstrides = other.pstrides;
+
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
+    this->dpdata           = other.dpdata;
+    this->dprowmajor       = other.dprowmajor;
+    this->dprank           = other.dprank;
+    this->dpdata_is_devptr = other.dpdata_is_devptr;
+    this->dpdatalength=other.dpdatalength;
+
+    return *this;
+}
+
+
+template<typename T, typename Container>
+mdspan<T, Container>& mdspan<T, Container>::operator=(mdspan<T, Container>&& other) noexcept
+{
+    if (is_device_data_owner)
     {
-        if(p.second==true)
+        release_all_owned_devices();
+    }
+
+    // Move host containers
+    pextents  = std::move(other.pextents);
+    pstrides  = std::move(other.pstrides);
+
+    // Update raw pointers
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
+    // Move other raw pointers and flags
+    this->dpdata           = other.dpdata;
+    this->dprowmajor       = other.dprowmajor;
+    this->dprank           = other.dprank;
+    this->dpdata_is_devptr = other.dpdata_is_devptr;
+    this->dpdatalength=other.dpdatalength;
+
+    pis_offloaded    = std::move(other.pis_offloaded);
+
+    // Transfer ownership
+    is_device_data_owner       = other.is_device_data_owner;
+    other.is_device_data_owner = false;
+    other.dpdata               = nullptr;
+
+    return *this;
+}
+template <typename T, typename Container>
+mdspan<T, Container>::mdspan(mdspan<T, Container>&& other) noexcept{
+    // Move host containers
+    pextents = std::move(other.pextents);
+    pstrides = std::move(other.pstrides);
+
+    // Update raw pointers
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
+    // Move data pointers and flags
+    this->dpdata           = other.dpdata;
+    this->dprowmajor       = other.dprowmajor;
+    this->dprank           = other.dprank;
+    this->dpdata_is_devptr = other.dpdata_is_devptr;
+    this->dpdatalength=other.dpdatalength;
+    pis_offloaded    = std::move(other.pis_offloaded);
+
+    // Transfer ownership
+    is_device_data_owner       = other.is_device_data_owner;
+    other.is_device_data_owner = false;
+
+    // Reset "other" so it can be destroyed safely
+    other.dpdata     = nullptr;
+    other.dpextents  = nullptr;
+    other.dpstrides  = nullptr;
+}
+
+template <typename T, typename Container>
+inline void mdspan<T, Container>::release_all_owned_devices()
+{
+    if(is_device_data_owner)
+    {
+
+
+        for(auto& p : this->pis_offloaded)
         {
-            Datastruct_GPU_Memory_Functions<T>::exit_struct(*this,p.first);
-            p.second=false;
+            if(p.second==true)
+            {
+                Datastruct_GPU_Memory_Functions<T>::exit_struct(*this,p.first);
+                p.second=false;
+            }
         }
+        is_device_data_owner=false;
     }
 }
 
 template <typename T, typename Container>
 mdspan<T, Container>::~mdspan()
 {
-   mdspan<T, Container>::release_all_devices();
+    if(is_device_data_owner)
+        this->release_all_owned_devices();
 }
 
 
@@ -279,7 +405,7 @@ template <typename Container>
 void compute_strides(const Container& extents, Container& strides,const bool rowmajor)
 {
     const size_t n = extents.size();
-
+    if (n == 0) return;
     if constexpr (StaticContainer<Container>)
     {
         strides = {}; // Default-initialize static container
@@ -294,6 +420,7 @@ void compute_strides(const Container& extents, Container& strides,const bool row
     {
         // Row-major layout: last dimension has stride 1
         strides[n - 1] = 1;
+        #pragma omp unroll
         for (int i = n - 2; i >= 0; --i)
         {
             strides[i] = strides[i + 1] * extents[i + 1];
@@ -303,6 +430,7 @@ void compute_strides(const Container& extents, Container& strides,const bool row
     {
         // Column-major layout: first dimension has stride 1
         strides[0] = 1;
+        #pragma omp unroll
         for (size_t i = 1; i < n; ++i)
         {
             strides[i] = strides[i - 1] * extents[i - 1];
@@ -314,6 +442,24 @@ template <typename T, typename Container>
 void mdspan<T, Container>::initialize_extents_and_strides(const Container& extents, const Container& strides)
 {
     const size_t r = extents.size();
+    allocate_extents_and_strides(r);
+
+    #pragma omp simd
+    for (size_t i = 0; i < r; ++i)
+    {
+        pextents[i] = extents[i];
+        pstrides[i] = strides[i];
+    }
+    // Assign to datastruct
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
+}
+
+
+template <typename T, typename Container>
+void mdspan<T, Container>::allocate_extents_and_strides(size_t r)
+{
 
     if constexpr (StaticContainer<Container>)
     {
@@ -326,16 +472,13 @@ void mdspan<T, Container>::initialize_extents_and_strides(const Container& exten
         pextents.resize(r);
         pstrides.resize(r);
     }
-    #pragma omp simd
-    for (size_t i = 0; i < r; ++i)
-    {
-        pextents[i] = extents[i];
-        pstrides[i] = strides[i];
-    }
-    // Assign to datastruct
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
+    this->dpstrides=pstrides.data();
+    this->dpextents=pextents.data();
+
 }
+
+
+
 template <typename T, typename Container>
 void mdspan<T, Container>::initialize_extents(const Container& extents)
 {
@@ -366,7 +509,7 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm,
     :datastruct<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,false)
 {
     initialize_extents_and_strides(extents,strides);
-
+    is_device_data_owner = true;
 }
 
 
@@ -378,7 +521,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
 {
     initialize_extents_and_strides(extents,strides);
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
-
+    is_device_data_owner = true;
 }
 
 
@@ -391,7 +534,32 @@ mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents)
     compute_strides(pextents,pstrides,rowm);
     this->dpstrides = pstrides.data();
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+    is_device_data_owner = true;
 }
+
+
+template <typename T, typename Container>
+mdspan<T, Container>::mdspan(size_t rank)
+    :  datastruct<T>(nullptr,0,false,rank,nullptr,nullptr,false,false,false)
+{
+    allocate_extents_and_strides(rank);
+    is_device_data_owner=false;
+}
+
+template <typename T, typename Container>
+mdspan<T, Container>::mdspan(size_t rank,Container ext)
+    :  datastruct<T>(nullptr,0,false,rank,nullptr,nullptr,false,false,false)
+{
+    allocate_extents_and_strides(rank);
+    #pragma omp simd
+    for (size_t i=0; i<rank; i++)
+    {
+        pextents[i]=ext[i];
+    }
+    is_device_data_owner=false;
+}
+
+
 
 
 
@@ -418,31 +586,31 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+    is_device_data_owner = true;
 }
 
-template <typename T, typename Container>
-mdspan<T, Container>&mdspan<T, Container>::operator=(const datastruct<T> & other)
+
+
+
+template<typename T, typename Container>
+void mdspan<T, Container>::become_device_dataowner()
 {
-    transfer_extents_and_strides(other);
-    if(this->pdata!=other.pdata)
-    {
-        Datastruct_Functions<T>::release_all_devices();
-    }
-    datastruct<T>::operator=(other);
-
-    return *this;
+    is_device_data_owner = true;
 }
+
+
+
 
 template <typename T, typename Container>inline
 bool mdspan<T, Container>:: device_upload(bool default_device,int devicenum)
 {
     if (default_device)
         devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices()) return false;
+    if(devicenum>=omp_get_num_devices()) return false;
 
     this->pis_offloaded.try_emplace(devicenum, true);
 
-    Datastruct_Functions<T>::create_in_struct(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::create_in_struct(*this,devicenum);
     return true;
 }
 
@@ -453,9 +621,9 @@ bool mdspan<T, Container>:: device_alloc(bool default_device,int devicenum)
     if (default_device)
         devicenum=omp_get_default_device();
 
-    if(devicenum>omp_get_num_devices()) return false;
+    if(devicenum>=omp_get_num_devices()) return false;
     this->pis_offloaded.try_emplace(devicenum, true);
-    Datastruct_Functions<T>::create_out_struct(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::create_out_struct(*this,devicenum);
     return true;
 }
 
@@ -467,11 +635,11 @@ bool mdspan<T, Container>:: device_download_release(bool default_device,int devi
 {
 
     if (default_device) devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices())   return false;
+    if(devicenum>=omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    Datastruct_Functions<T>::update_host(this,devicenum);
-    Datastruct_Functions<T>::release_struct(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::update_host(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::release_struct(this,devicenum);
     this->pis_offloaded.at(devicenum)=false;
     return true;
 }
@@ -482,10 +650,10 @@ bool mdspan<T, Container>:: device_delete(bool default_device,int devicenum)
 {
 
     if (default_device) devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices())   return false;
+    if(devicenum>=omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    Datastruct_Functions<T>::exit_struct(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::exit_struct(*this,devicenum);
     this->pis_offloaded.at(devicenum)=false;
     return true;
 }
@@ -494,10 +662,10 @@ bool mdspan<T, Container>:: device_release(bool default_device,int devicenum)
 {
 
     if (default_device) devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices())   return false;
+    if(devicenum>=omp_get_num_devices())   return false;
     if(this->pis_offloaded.contains(devicenum)==false)  return false;
 
-    Datastruct_Functions<T>::release_struct(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::release_struct(*this,devicenum);
     this->pis_offloaded.at(devicenum)=false;
     return true;
 }
@@ -506,9 +674,9 @@ template <typename T, typename Container>inline
 bool mdspan<T, Container>:: host_update(bool default_device,int devicenum)
 {
     if (default_device)  devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices()) return false;
+    if(devicenum>=omp_get_num_devices()) return false;
     if(this->pis_offloaded.contains(devicenum)==false) return false;
-    Datastruct_Functions<T>::update_host(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::update_host(*this,devicenum);
     return true;
 
 }
@@ -517,105 +685,31 @@ bool mdspan<T, Container>:: device_update(bool default_device,int devicenum)
 {
 
     if (default_device)  devicenum=omp_get_default_device();
-    if(devicenum>omp_get_num_devices()) return false;
+    if(devicenum>=omp_get_num_devices()) return false;
     if(this->pis_offloaded.contains(devicenum)==false) return false;
 
-    Datastruct_Functions<T>::update_device(this,devicenum);
+    Datastruct_GPU_Memory_Functions<T>::update_device(*this,devicenum);
     return true;
 
 }
 
 
-template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::subspan_view(const Container&offsets, const Container &sub_extents)const
+template<typename T, typename Container>
+void mdspan<T, Container>::adopt_subdatastruct_helper(const datastruct<T>& sub)
 {
-    const size_t r=this->dprank;
-
-    // Compute the offset to the starting point
-    size_t offset_index = 0;
-
-    #pragma omp simd reduction( + : offset_index )
-    for (size_t i = 0; i < r; ++i)
-    {
-        offset_index += offsets[i] * this->dpstrides[i];
-    }
-
-    // Create a new mdspan_dynamic with the updated pointer, extents, and the same strides
-    return mdspan(this->dpdata + offset_index,this->dprowmajor, sub_extents, pstrides);
-
-
+    this->dpdata =      sub.dpdata;
+    this->dprowmajor = sub.dprowmajor;
+    this->dprank = sub.dprank;
+    this->dpdata_is_devptr = sub.dpdata_is_devptr;
+    this->is_device_data_owner=false;
+    this->dpdatalength=sub.dpdatalength;
 }
 
 
 template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::subspan_copy(const Container&offsets, const Container &sub_extents,T* __restrict sub_data )const
+mdspan<T, Container> mdspan<T, Container>::copy(T*__restrict  data)
 {
-    const size_t r=this->dprank;
-
-    // Compute the new strides for the subspan
-    Container sub_strides;
-    compute_strides(sub_extents, sub_strides, this->dprowmajor);
-    vector<size_t> indices(r,0);
-    vector<size_t> global_indices(r,0);
-    while (true)
-    {
-        // Compute the current global indices
-        #pragma omp simd
-        for (size_t i = 0; i < r; ++i)
-        {
-            global_indices[i] = offsets[i] + indices[i];
-        }
-
-        // Compute the offsets for the original data and the new buffer
-        size_t original_index = compute_offset_v(global_indices.data(), this->dpstrides,global_indices.size(), this->dprowmajor);
-        size_t buffer_index = compute_offset_v(indices.data(),sub_strides.data(),indices.size(), this->dprowmajor);
-
-        // Copy the data from the original tensor to the sub-buffer
-        sub_data[buffer_index] = this->dpdata[original_index];
-
-        // Increment the indices for the Cartesian product
-        size_t dim = r;
-        while (dim-- > 0)
-        {
-            if (++indices[dim] < sub_extents[dim])
-            {
-                break; // If no overflow, stop carrying
-            }
-            indices[dim] = 0; // Reset the current dimension and carry to the next
-        }
-
-        // If all dimensions have overflowed, we're done
-        if (dim == size_t(-1))
-        {
-            break;
-        }
-    }
-    // Create and return a new mdspan with the updated pointer, extents, and strides
-    return mdspan(sub_data, this->dprowmajor, sub_extents, sub_strides );
-
-}
-
-
-template <typename T, typename Container>inline
-mdspan<T, Container> mdspan<T, Container>::subspan_view(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const
-{
-    const size_t offset=row * this->pdstrides[0]+col * this->pdstrides[1];
-    const Container ext= {tile_rows,tile_cols};
-    return mdspan(this->pdata +offset,this->pdrowmajor,ext,this->pdstrides);
-}
-
-
-
-template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::copy(T*__restrict  data,int destdevice,int srcdevice)
-{
-
-    if (this->pd_data_is_devptr)
-        omp_target_memcpy(data,this->dpdata,this->pdatalength,0,0,destdevice,srcdevice);
-    else
-        memcpy(data,this->dpdata,this->pdatalength);
-
-
+    memcpy(data, this->dpdata,sizeof(T)*this->pdatalength);
     mdspan<T, Container>  md= mdspan(data,this->pdrowmajor,this->pextents, this->pstrides );
     md.pis_offloaded=this->pis_offloaded;
     for(auto& p : this->pis_offloaded)
@@ -630,170 +724,140 @@ mdspan<T, Container> mdspan<T, Container>::copy(T*__restrict  data,int destdevic
 
 
 
+
+template <typename T, typename Container>
+mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
+{
+    size_t num_dims = this->count_noncollapsed_dims();
+    mdspan<T, std::vector<size_t>> result(num_dims);
+    datastruct<T> sub=this->collapsed_view(num_dims,result.dpextents, result.dpstrides);
+    result.dpdata =      sub.dpdata;
+    result.dprowmajor = sub.dprowmajor;
+    result.dprank = sub.dprank;
+    result.dpdata_is_devptr = sub.dpdata_is_devptr;
+    result.dpdatalength=sub.dpdatalength;
+    return result;
+
+}
+
+
+template <typename T, typename Container>
+mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents)const
+{
+    mdspan<T,Container> result(this->dprank,sub_extents);
+
+    datastruct<T> sub = this->subspan_v(offsets.data(),result.dpextents, result.dpstrides);
+    result.adopt_subdatastruct_helper(sub);
+    return result;
+}
+
+
+template <typename T, typename Container>
+mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents,T* __restrict sub_data )const
+{
+    mdspan<T,Container> result(this->dprank,sub_extents);
+    datastruct<T> sub = this->subspan_v(offsets.data(),result.dpextents, result.dpstrides, sub_data);
+    result.adopt_subdatastruct_helper(sub);
+    return result;
+}
+
+
+
+
 template <typename T, typename Container>inline
-mdspan<T, Container> mdspan<T, Container>::subspan_copy(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*__restrict  sub_data)const
+mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols )const
 {
-    const size_t str0=this->pdstrides[0];
-    const size_t str1=this->pdstrides[1];
-    T *pd=this->pdata;
-    #pragma omp parallel for simd collapse (2) shared(sub_data,pd,tile_cols,row,col,str0,str1)
-    for (size_t i = 0; i < tile_rows; ++i)
-    {
-        for (size_t j = 0; j < tile_cols; ++j)
-        {
-            sub_data[i * tile_cols + j] =pd[ compute_offset(row + i, col + j, str0,str1) ];
-        }
-    }
-
-    const Container sub_extents = {tile_rows, tile_cols};
-
-    const Container sub_strides = (this->pdrowmajor==true)? Container{tile_cols, 1} :
-                                  Container{1,tile_rows};
-
-    return mdspan(sub_data,this->pdrowmajor, sub_extents, sub_strides );
-
+    mdspan<T,Container> result(this->dprank);
+    datastruct<T> sub = this->subspanmatrix(row,col,tile_rows,tile_cols, result.dpextents, result.dpstrides);
+    result.adopt_subdatastruct_helper(sub);
+    return result;
 }
+
+template <typename T, typename Container>inline
+mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,T*__restrict  sub_data)const
+{
+    mdspan<T,Container> result(this->dprank);
+    datastruct<T> sub = this->subspanmatrix_v(row,col,tile_rows,tile_cols,result.dpextents, result.dpstrides,sub_data);
+    result.adopt_subdatastruct_helper(sub);
+    return  result;
+}
+
 
 
 
 template <typename T, typename Container>
-void  mdspan<T, Container>::printmatrix()
+mdspan<T,std::vector<size_t>> mdspan<T, Container>::column(const size_t col_index)
 {
-    const size_t rows= this->dpextents[0];
-    const size_t cols= this->dpextents[1];
-    for (size_t i = 0; i <rows; ++i)
-    {
-        for (size_t j = 0; j < cols; ++j)
-        {
-            std::cout << (*this)(i, j) << " ";
-        }
-        std::cout << "\n";
-    }
-    cout <<endl;
+    mdspan<T,std::vector<size_t>> result(1);
+    datastruct<T> sub = column(col_index,result.pextents.data(), result.pstrides.data());
+    result.dpdata =      sub.dpdata;
+    result.dprowmajor = sub.dprowmajor;
+    result.dprank = sub.dprank;
+    result.dpdata_is_devptr = sub.dpdata_is_devptr;
+    result.dpdatalength=sub.dpdatalength;
+    return result;
 }
 
 template <typename T, typename Container>
-void  mdspan<T, Container>::printvector()
+
+mdspan<T,std::vector<size_t>> mdspan<T, Container>:: row(const size_t row_index)
 {
-    const size_t rows=this->dpextents[0];
-    for (size_t i = 0; i <rows; ++i)
-    {
-        std::cout << (*this)(i) << " ";
-    }
-    cout <<endl;
-}
-
-
-
-template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::column_view(const size_t col_index)
-{
-    const size_t num_rows = this->pdextents[0];
-    const Container column_extents = {num_rows};
-    const Container column_strides = {this->pdstrides[0]};
-    return mdspan<T, Container>( this->pdata + col_index * this->dpstrides[1], this->pdrowmajor, column_extents, column_strides );
-}
-
-template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>:: row_view(const size_t row_index)
-{
-
-    const size_t num_cols = this->pdextents[1];
-    const Container row_extents = {num_cols};
-    const Container row_strides = {this->pdstrides[1]};
-    return mdspan<T, Container>(this->pdata + row_index * this->pdstrides[0], this->pdrowmajor, row_extents, row_strides );
+    mdspan<T,std::vector<size_t>> result(1);
+    datastruct<T> sub = row(row_index,result.dpextents, result.dpstrides);
+    result.dpdata =      sub.dpdata;
+    result.dprowmajor = sub.dprowmajor;
+    result.dprank = sub.dprank;
+    result.dpdata_is_devptr = sub.dpdata_is_devptr;
+    result.dpdatalength=sub.dpdatalength;
+    return result;
 }
 
 
 template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::column_copy(const size_t col_index, T*__restrict ptr)
+mdspan<T,std::vector<size_t>>  mdspan<T, Container>::column(const size_t col_index, T*__restrict ptr)
 {
-    const size_t num_rows = this->pdextents[0];
-    const size_t str0=this->pdstrides[0];
-    const size_t str1=this->pdstrides[1];
-    T *pd=this->pdata;
-    #pragma omp parallel for simd shared(ptr,pd,num_rows,col_index, str0,str1)
-    for (size_t i = 0; i < num_rows; ++i)
-    {
-        ptr[i] =pd[ compute_offset(i, col_index, str0,str1) ];
-    }
 
-    const Container sub_extents = {num_rows};
-
-    const Container sub_strides = Container{1};
-    return mdspan(ptr,this->pdrowmajor, sub_extents, sub_strides );
+    mdspan<T,std::vector<size_t>> result(1);
+    datastruct<T> sub = this->column_v(col_index,result.dpextents, result.dpstrides,ptr);
+    result.dpdata =      sub.dpdata;
+    result.dprowmajor = sub.dprowmajor;
+    result.dprank = sub.dprank;
+    result.dpdata_is_devptr = sub.dpdata_is_devptr;
+    result.dpdatalength=sub.dpdatalength;
+    return result;
 }
 
 template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>:: row_copy(const size_t row_index, T* __restrict ptr)
+mdspan<T,std::vector<size_t>> mdspan<T, Container>:: row(const size_t row_index, T* __restrict ptr)
 {
-
-    const size_t num_cols = this->pdextents[1];
-
-    const size_t str0=this->pdstrides[0];
-    const size_t str1=this->pdstrides[1];
-    T *pd=this->pdata;
-    #pragma omp parallel for simd shared(ptr,pd,row_index,num_cols,str0,str1)
-    for (size_t j = 0; j < num_cols; ++j)
-    {
-        ptr[j] =pd[ compute_offset(row_index, j, str0,str1) ];
-    }
-
-    const Container sub_extents = {num_cols};
-
-    const Container sub_strides = Container {1};
-
-    return mdspan(ptr,this->pdrowmajor, sub_extents, sub_strides );
+    mdspan<T,std::vector<size_t>> result(1);
+    datastruct<T> sub = row_v(row_index,result.dpextents, result.dpstrides,ptr);
+    result.dpdata =      sub.dpdata;
+    result.dprowmajor = sub.dprowmajor;
+    result.dprank = sub.dprank;
+    result.dpdata_is_devptr = sub.dpdata_is_devptr;
+    result.dpdatalength=sub.dpdatalength;
+    return result;
 }
 
 template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>::  transpose_view()
+mdspan<T, Container>mdspan<T, Container>::transpose()
 {
-    Container transposed_extents = {this->extent(1), this->extent(0)};
-    Container transposed_strides = {this->stride(1), this->stride(0)};
-    mdspan md=mdspan(this->data(),this->datalength(), this->prowmajor(),  transposed_extents,   transposed_strides);
-    return md;
+    mdspan<T,Container> result(this->dprank);
+    datastruct<T> sub = transpose(result.dpextents, result.dpstrides);
+    result.adopt_subdatastruct_helper(sub);
+    return result;
 }
 
 template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>:: transpose_copy(T* __restrict pdata)
+mdspan<T, Container>mdspan<T, Container>:: transpose(T* __restrict pdata)
 {
-    Container transposed_extents = {this->extent(1), this->extent(0)};
-    Container transposed_strides = {this->stride(1), this->stride(0)};
-    size_t s=this->extent(1)* this->extent(0);
-    for (size_t i=0; i<s; i++)
-    {
-        pdata[i]=this->pdata[i];
-    }
-    return mdspan(pdata,this->datalength(), this->rowmajor()(),  transposed_extents,   transposed_strides);
+    mdspan<T,Container> result(this->dprank);
+    datastruct<T> sub = this->transpose_v(result.dpextents, result.dpstrides,pdata);
+    result.adopt_subdatastruct_helper(sub);
+    return result;
+
 }
-
-
-template <typename T, typename Container>
-void mdspan<T, Container>::glue_matrices(mdspan<T, Container> target, const vector<mdspan<T, Container>>& spans,
-        const vector<pair<size_t, size_t>>& offsets)
-{
-
-    #pragma omp parallel for
-    for (size_t idx = 0; idx < spans.size(); ++idx)
-    {
-        const mdspan<T,Container>& span = spans[idx];
-        const size_t row_offset = offsets[idx].first;
-        const size_t col_offset = offsets[idx].second;
-        const size_t ext0=span.extent(0);
-        const size_t ext1=span.extent(1);
-        // Copy the current span into the target at the given offset
-        #pragma omp simd collapse(2)
-        for (size_t i = 0; i < ext0; ++i)    // Rows of the span
-        {
-            for (size_t j = 0; j < ext1; ++j)    // Columns of the span
-            {
-                target(row_offset + i, col_offset + j) = span(i, j);
-            }
-        }
-    }
-}
-
 
 
 

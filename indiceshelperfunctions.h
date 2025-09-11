@@ -72,6 +72,7 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
 #pragma omp begin declare target
 inline size_t compute_data_length_w(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
 {
+
     size_t offset=0;
     #pragma omp parallel for simd reduction(+:offset)
     for (size_t i = 0; i < rank; ++i)
