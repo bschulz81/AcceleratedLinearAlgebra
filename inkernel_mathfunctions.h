@@ -230,14 +230,14 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     {
         size_t pextv[1];
         size_t pstrv[1];
-        datastruct<T> v = M.column(c,pextv,pstrv);
+        datastruct<T> v = M.column_rr(c,pextv,pstrv);
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1];
             size_t pstru[1];
 
             T dot_pr=0;
-            datastruct<T> u = Q.column(j,pextu,pstru);
+            datastruct<T> u = Q.column_rr(j,pextu,pstru);
             #pragma omp parallel for simd  reduction(+:dot_pr)shared(u,v)
             for (size_t i = 0; i < pext0; ++i)
             {
