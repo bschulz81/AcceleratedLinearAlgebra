@@ -43,6 +43,23 @@ Todo:
 
 
 Version history
+By 16.09.25:
+Speed improvements in the datastruct class for the supspanmatrix, subspan, row and column extraction methods, and the matrix multiplication.
+
+The column and row methods have now rank reducing and rank preserving forms
+
+The printtensor method now works with device data too
+
+The mdspan class can now work with device pointers.
+
+The mdspan class has a mapping manager that is shared among instances and provides book keeping to prevent overlapping mappings, which are forbidden in the openmp standard.
+
+The mdspan data class can now create data purely on device. 
+
+The code of the mdspan and mdspan_data and datastruct classes was significantly polished, improved and tested for various parameters and circumstances.
+
+The test application demonstrates more basic matrix and tensor access on device and on host.
+
 By 11.09.25:
 
 Added test cases for simple matrix, vector and tensor operations with row and column major data.
