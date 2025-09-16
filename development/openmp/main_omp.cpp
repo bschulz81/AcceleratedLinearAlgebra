@@ -23,13 +23,11 @@ int main()
 
 
     {
-
-
         size_t rows = 4, cols = 4;
 
 
         cout<< "We create a 4x4 matrix that owns its own data buffer in a memapped file and then fill the buffer and print it"<<endl;
-        mdspan_data<double, std::vector<size_t>> O( true,true, {rows, cols});
+        mdspan_data<double, std::vector<size_t>> O( true,false, {rows, cols});
 
 
         for (size_t i=0; i<16; i++)
@@ -61,7 +59,7 @@ int main()
         O.printtensor();
         O2.printtensor();
 
-        cout<< "On termination, the shared ptr variable with dummy ref counter should call a deleter that removes the created memory (on device, on the memmapped file, or on heap)"<<endl;
+
     }
 
 
@@ -179,24 +177,41 @@ int main()
             cout<<"A"<<Aaaa.datalength()<<endl;
             Aaaa.printtensor();
 
+
             cout<<"column"<<endl;
-            size_t exta[1];
-            size_t stra[1];
-            datastruct<double>Aa=A.column(1,exta,stra);
+            size_t exta[2];
+            size_t stra[2];
+
+            datastruct<double>Aa=A.column_rp(1,exta,stra);
             cout <<"C"<<endl;
             Aa.printtensor();
+
+
+
+            size_t exta3[2],stra3[2];
+            double newda3[7];
+            cout<<"column 1 of A with data c"<<endl;
+            datastruct<double>Ac=A.column_s(1, exta3,stra3,newda3);
+            Ac.printtensor();
+
+            cout<<"row"<<endl;
+            size_t extar[2];
+            size_t strar[2];
+            datastruct<double>Aa1=A.row_rp(1,extar,strar);
+            cout <<"C"<<endl;
+            Aa1.printtensor();
+
+
+            size_t exta3r[2],stra3r[2];
+            double newda3r[7];
+            cout<<"row 1 of A with data c"<<endl;
+            datastruct<double>Ac2=A.row_s(1, exta3r,stra3r,newda3r);
+            Ac2.printtensor();
 
             size_t exta2[2],stra2[2];
             datastruct<double>Ab= A.subspanmatrix(1,1,2,4,exta2,stra2);
             cout<<"subspanmatrixA"<<endl;
             Ab.printtensor();
-
-
-            size_t exta3[1],stra3[1];
-            double newda3[7];
-            cout<<"column 1 of A with data c"<<endl;
-            datastruct<double>Ac=A.column_s(1, exta3,stra3,newda3);
-            Ac.printtensor();
 
 
             size_t exta4[2],stra4[2];
@@ -209,13 +224,13 @@ int main()
             datastruct<double>Ae= A.transpose(exta5,stra5);
             cout<<"transpose"<<endl;
             Ae.printtensor();
-//
+
             size_t exta6[2],stra6[2];
             double dataa6[21];
             datastruct<double>Af= A.transpose_s(exta6,stra6,dataa6);
             cout<<"transpose with data copy"<<endl;
             Af.printtensor();
-//
+////
 //
 
             std::vector<double> data_rowmajor =
@@ -288,7 +303,7 @@ int main()
             cout<<"B"<<endl;
             B.printtensor();
 
-//
+
             size_t extbb[2]= {3,7};
             size_t strbb[2];
             datastruct<double>Bbb(B_data_colmajor.data(),21, false,2,extbb,strbb,true,true,false);
@@ -300,24 +315,40 @@ int main()
             datastruct<double>Bbbb(B_data_colmajor.data(),0, false,3,7,extbbb,strbbb,true,true,false);
             Bbbb.printtensor();
 
-            cout<<"column"<<endl;
+            cout<<"column 1"<<endl;
 
-            size_t extb[1],strb[1];
-            datastruct<double>Ba= B.column(1,extb,strb);
+            size_t extb[2],strb[2];
+
+            datastruct<double>Ba= B.column_rp(1,extb,strb);
             Ba.printtensor();
             size_t extb2[2],strb2[2];
+
+
+            size_t extb3[2],strb3[2];
+            double newdb3[7];
+            cout<< "column1  of B with data copy"<<endl;
+
+            datastruct<double> Bc1=B.column_s(1, extb3,strb3,  newdb3);
+            Bc1.printtensor();
+
+            cout<<"row 1"<<endl;
+
+            size_t extb35[2],strb35[2];
+            datastruct<double>Ba2= B.row_rp(1,extb35,strb35);
+            Ba2.printtensor();
+
+
+            size_t extb34[2],strb34[2];
+            double newdb3a[7];
+            cout<< "row 1  of B with data copy"<<endl;
+
+            datastruct<double> Bc3=B.row_s(1, extb34,strb34,  newdb3a);
+            Bc3.printtensor();
 
 
             cout<<"subspanmatrx B"<<endl;
             datastruct<double>Bb= B.subspanmatrix(1,1,2,4,extb2,strb2);
             Bb.printtensor();
-
-            size_t extb3[1],strb3[1];
-            double newdb3[7];
-            cout<< "column1  of B with data copy"<<endl;
-
-            datastruct<double> Bc=B.column_s(1, extb3,strb3,  newdb3);
-            Bc.printtensor();
 
             size_t extb4[2],strb4[2];
             double newdb4[8];
@@ -377,8 +408,8 @@ int main()
             std::cout << "Subtensor view (col-major):\n";
             subC_view.printtensor();
 
-            double buffer[12];
-            datastruct<double> subC_view2 =T_col.subspan_v(offsetsC, sub_extentsC, sub_stridesC,buffer);
+            double buffer4[12];
+            datastruct<double> subC_view2 =T_col.subspan_v(offsetsC, sub_extentsC, sub_stridesC,buffer4);
             std::cout << "Subtensor view (col-major) with buffer:\n";
             subC_view2.printtensor();
 
@@ -397,7 +428,7 @@ int main()
 
 
         }
-
+//
         cout<< "Now some tests whether the library accepts row and column major data and can extract rows and columns with the same code. "<<endl;
         cout<<" Note that this tests only mdspan class. it owns strides and extents, the mdspan_data class owns the data as well"<<endl<<endl;
         {
@@ -414,53 +445,24 @@ int main()
             A.printtensor();
 
             cout<<"row 1"<<endl;
-
-            mdspan<double, std::vector<size_t>> Aa=A.row(1);
-            cout <<"C"<<endl;
+            mdspan<double, array<size_t,2>> Aa=A.row(1);
             Aa.printtensor();
+////
 //
-
             mdspan<double, std::array<size_t,2>> Ab= A.subspanmatrix(1,1,2,4);
             std::cout<<Ab.rank();
             cout<<"subspanmatrixA"<<endl;
-
-
-//
-//
-//
             Ab.printtensor();
-
-////
 //
-            double newda3[7];
-            cout<<"column 1 of A with data c"<<endl;
-            mdspan<double, std::vector<size_t>> Ac=A.column(1,newda3);
-            Ac.printtensor();
-
-
-
-////
-////
-//
-            double newda4[8];
-            mdspan<double, std::array<size_t,2>> Ad= A.subspanmatrix(1,1,2,4,newda4);
-            cout<<"subspanmatrixA with data copy"<<endl;
-            Ad.printtensor();
 //
 //
             mdspan<double, std::array<size_t,2>> Ae= A.transpose();
             cout<<"transpose"<<endl;
             Ae.printtensor();
+////
+////
 //
-//
-            double dataa6[21];
-            mdspan<double, std::array<size_t,2>> Af= A.transpose(dataa6);
-            cout<<"transpose with data copy"<<endl;
-            Af.printtensor();
-//
-//
-
-
+////
             std::vector<double> data_rowmajor =
             {
                 // block 0 (first 3x4 matrix)
@@ -472,42 +474,72 @@ int main()
                 17,18,19,20,
                 21,22,23,24
             };
-
+//
             vector<size_t> extents = {2,3,4};
 
 
             mdspan<double, std::vector<size_t>> T_row(data_rowmajor.data(),true, extents );
+            cout<<"A tensor"<<endl;
+            T_row.printtensor();
 
             vector<size_t> offsets   = {1,0,0};
             vector<size_t> sub_extents= {1,3,4};
             mdspan<double, std::vector<size_t>>  subT_view =T_row.subspan(offsets, sub_extents);
-
+//
             std::cout << "Subtensor view (row-major):\n";
             subT_view.printtensor();
 
-
-            double buffer1[12];
-            mdspan<double, std::vector<size_t>> subC_view2A =T_row.subspan(offsets, sub_extents,buffer1);
-
-            std::cout << "Subtensor view (row-major) with buffer:\n";
-            subC_view2A.printtensor();
-
-            size_t num_dims = subC_view2A.count_noncollapsed_dims();
+            size_t num_dims = subT_view.count_noncollapsed_dims();
             size_t* extentsA = new size_t[num_dims];
             size_t* stridesA = new size_t[num_dims];
 
-            datastruct<double> coll=subC_view2A.collapsed_view(num_dims,extentsA, stridesA);
+            datastruct<double> coll=subT_view.collapsed_view(num_dims,extentsA, stridesA);
             std::cout<<"with collapsed dims"<<endl;
             coll.printtensor();
 
             delete[]extentsA;
             delete[]stridesA;
 
+            cout<<"Upload the data"<<endl;
+            A.device_data_upload(true);
 
-
-
-            A.device_upload(true,0);
+            A.printtensor();
             mdspan<double, std::array<size_t,2>>ShallowCopyofA=A;
+            A.printtensor();
+            cout<<"print Shallow Copy on device"<<endl;
+            ShallowCopyofA.printtensor();
+            cout<<"change data on host and copy data of A to device"<<endl;
+            A_data[0]=42;
+            A.device_data_update();
+            cout<<"print shallow copy of A on device"<<endl;
+            ShallowCopyofA.printtensor();
+
+            cout<<"Verify A is on device"<<A.data_is_devptr()<<endl;
+            cout<<"remove A from device";
+            A.device_data_download_release();
+            cout<<"copy A to host and remove A from device"<<endl;
+            cout<<"Verify A is on device"<<A.data_is_devptr()<<endl;
+
+
+            mdspan<double, std::array<size_t,2>> subspan_of_A= A.subspanmatrix(1,1,2,2);
+            cout<<"this is a submatrix of A"<<endl;
+            subspan_of_A.printtensor();
+            cout<<"now we offload this submatrix"<<endl;
+            subspan_of_A.device_data_upload(true);
+
+            cout<<"now we try to offload the tensor A. this would habe an overlap with the submatrix, so should be stopped by the library"<<endl;
+            bool b=A.device_data_upload(true);
+            cout<<"verify if the entire tensor A is on device. Would forbidden by the openmp standard."<<endl;
+            cout<<"offload procedure returned"<< b<<"Verify A is on device"<<A.data_is_devptr()<<endl;
+
+            cout<< "now we download the submatrix of A and delete it on device"<<endl;
+            subspan_of_A.device_data_download_release();
+
+            cout<<"now we try to offload A again. this should now work"<<endl;
+            bool bb=A.device_data_upload(true);
+            cout<<"verify if the entire tensor A is on device. now this should work."<<endl;
+            cout<<"offload procedure returned"<< bb<<"Verify A is on device"<<A.data_is_devptr()<<endl;
+
 
 
             vector<double> B_data_colmajor =
@@ -536,27 +568,17 @@ int main()
             mdspan<double, std::vector<size_t>>Bb= B.subspanmatrix(1,1,2,4);
             Bb.printtensor();
 
-            double newdb3[7];
-            cout<< "column1  of B with data copy"<<endl;
-
-            mdspan<double, std::vector<size_t>> Bc=B.column(1, newdb3);
-            Bc.printtensor();
-
-            double newdb4[8];
-            mdspan<double, std::vector<size_t>>Bd= B.subspanmatrix(1,1,2,4,newdb4);
-            cout<<"subspanmatrixB with data copy"<<endl;
-            Bd.printtensor();
-
+//
+//
+//
+//
             mdspan<double, std::vector<size_t>>Be= B.transpose();
             cout<<"transpose"<<endl;
             Be.printtensor();
-
-            double datab6[12];
-            mdspan<double, std::vector<size_t>>Bf= B.transpose(datab6);
-            cout<<"transpose with data copy"<<endl;
-            Bf.printtensor();
-
-
+//
+//
+//
+//
             std::vector<double> data_colmajor =
             {
                 1,13,
@@ -585,303 +607,400 @@ int main()
             std::cout << "Subtensor view (col-major):\n";
             subC_view.printtensor();
 
-            double buffer[12];
-
-            mdspan<double, std::vector<size_t>> subC_view2 =T_col.subspan(offsetsC, sub_extentsC,buffer);
-            std::cout << "Subtensor view (col-major) with buffer:\n";
-            subC_view2.printtensor();
 
 
-            mdspan<double, std::vector<size_t>> collB=subC_view2.collapsed_view();
+//
+            mdspan<double, std::vector<size_t>> collB=subC_view.collapsed_view();
             std::cout<<"with collapsed dims"<<endl;
             collB.printtensor();
+//
+
+        }
+
+
+
+        cout<< "This tests some functions of the mdspan data class, which can, in contrast to mdspan, manage and own data."<<endl;
+        cout<<"mdpspan_data does not provied shallow copies, for this one has to use the base class of mdspan, to which mdspan_data provides an assignment operator "<<endl;
+
+
+        {
+
+
+
+            vector<double>A_data(3*7,0);
+            A_data = {1,2,3,4,5,6,7,
+                      8,9,10,11,12,13,14,
+                      15,16,17,18,19,20,21
+                     };
+
+            size_t rows=3,cols=7;
+            mdspan_data<double,array<size_t,2>> mdspan_data_matrix( true,false, rows, cols);
+            std::copy(begin(A_data),end(A_data),mdspan_data_matrix.data());
+            cout<<"mdspan_data matrix with the data of the Matrix A"<<endl;
+            mdspan_data_matrix.printtensor();
+            cout<<"mdspan_data row copy"<<endl;
+            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_data_matrix.row_copy(1);
+            rowcopy.printtensor();
+            cout<<"mdspan_data column copy"<<endl;
+            mdspan_data<double,array<size_t,2>>columncopy=mdspan_data_matrix.column_copy(1);
+            columncopy.printtensor();
+            cout<<"mdspan_data transpose copy on a memmap"<<endl;
+            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.transpose_copy(true);
+            transposecopy.printtensor();
+
+            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            mdspan_data<double,array<size_t,2>>subspanmatrixcopy=mdspan_data_matrix.subspanmatrix_copy(1,2,2,2,false);
+            subspanmatrixcopy.printtensor();
+
+            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            array<size_t,2>offs= {1,2};
+            array<size_t,2>sub_extents= {2,2};
+            mdspan_data<double,array<size_t,2>>subspan=mdspan_data_matrix.subspan_copy(offs,sub_extents,false);
+            subspan.printtensor();
+            cout<<"copy of mdspan on device";
+            mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
+
+            newcopy.printtensor();
+            cout<<"mdspan_data subspanmatrix copy on device"<<endl;
+
+            mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
+            newcopy_subspan.printtensor();
+            cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
+
+
+            cout<<"define a tensor"<<endl;
+            std::vector<double> data_rowmajor =
+            {
+                // block 0 (first 3x4 matrix)
+                1,2,3,4,
+                5,6,7,8,
+                9,10,11,12,
+                // block 1 (second 3x4 matrix)
+                13,14,15,16,
+                17,18,19,20,
+                21,22,23,24
+            };
+//
+            vector<size_t> extents2 = {2,3,4};
+
+
+            mdspan_data<double, std::vector<size_t>> Tensor(true,false, extents2,false );
+            std::copy(begin(data_rowmajor),end(data_rowmajor),Tensor.data());
+            cout<<"A tensor"<<endl;
+
+            Tensor.printtensor();
+            vector<size_t> offsets1   = {1,0,0};
+            vector<size_t> sub_extents1= {1,3,4};
+
+            cout<<"now an mdspan_data subtensor"<<endl;
+            mdspan_data<double, std::vector<size_t>>  subtensor =Tensor.subspan_copy(offsets1, sub_extents1);
+            subtensor.printtensor();
+            cout<<"copy with collapsed rows on device";
+            mdspan_data<double, std::vector<size_t>>collapsedvievcopy=subtensor.collapsed_view_copy(false,true,true,0);
+            collapsedvievcopy.printtensor();
+            cout<<"verify that the copy has data on device "<<collapsedvievcopy.is_dev_ptr()<<endl;
+
+            cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
+            mdspan<double, std::vector<size_t>>  subtensor2(Tensor.subspan(offsets1, sub_extents1));
+            subtensor2.printtensor();
+
+            cout<<"now we offload that subtensor to gpu"<<endl;
+            subtensor2.device_data_upload(true);
+
+            cout<<endl<<"verify that the copy has data on device: "<<subtensor2.is_dev_ptr()<<endl;
+
+            cout<<"now we try to offload the subtensor tensor to gpu, despite a subtensor (i.e. part of the data is alive, and offloaded. "<<endl;
+            cout<<"the entire tensor would overlap with the subtensor, so the program should turn out false and forbid the offload"<<endl;
+            bool cc=Tensor.device_data_upload(true);
+            cout<<endl<<"result of the procedure: "<< cc <<"verify that the Tensor has data on device: "<<Tensor.is_dev_ptr()<<endl;
+
+
 
 
         }
     }
 
 
-    {
 
-        vector<double>A_data= {210, -92, 68, -33, -34, -4, 118, -6, -92, 318, -100, 130, -153, -64, 160, 33, 68, -100, 204, -96, 41, -69, -16, -26, -33, 130, -96, 338, -152, -51, 12, 22, -34, -153, 41, -152, 346, 11, -30, -25, -4, -64, -69, -51, 11, 175, -79, 5, 118, 160, -16, 12, -30, -79, 320, 7, -6, 33, -26, 22, -25, 5, 7, 239};
-
-        size_t rows2 = 8, cols2 = 8;
-
-        cout<<endl<<endl<<endl<<endl;
         {
 
-            cout<<"Now a cholesky decomposition on CPU"<<std::endl;
-            vector<double>L_data(A_data.size(),0);
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
+            vector<double>A_data= {210, -92, 68, -33, -34, -4, 118, -6, -92, 318, -100, 130, -153, -64, 160, 33, 68, -100, 204, -96, 41, -69, -16, -26, -33, 130, -96, 338, -152, -51, 12, 22, -34, -153, 41, -152, 346, 11, -30, -25, -4, -64, -69, -51, 11, 175, -79, 5, 118, 160, -16, 12, -30, -79, 320, 7, -6, 33, -26, 22, -25, 5, 7, 239};
 
-            cout<<"with another dataset"<<endl;
+            size_t rows2 = 8, cols2 = 8;
 
-            A.printtensor();
-            Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
+            cout<<endl<<endl<<endl<<endl;
+            {
 
-            Math_Functions<double>::cholesky_decomposition(A,L,&p);
+                cout<<"Now a cholesky decomposition on CPU"<<std::endl;
+                vector<double>L_data(A_data.size(),0);
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
 
-            L.printtensor();
+                cout<<"with another dataset"<<endl;
 
-            cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            vector<double>verify_data(L_data.size(),0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+                A.printtensor();
+                Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
 
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            size_t newext[2],newstr[2];
+                Math_Functions<double>::cholesky_decomposition(A,L,&p);
 
-            datastruct<double>m=L.transpose(newext,newstr);
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+                L.printtensor();
+
+                cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
+                vector<double>verify_data(L_data.size(),0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                size_t newext[2],newstr[2];
+
+                datastruct<double>m=L.transpose(newext,newstr);
+                Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
+                verify.printtensor();
+            }
+
+
+            {
+
+                cout<<"Now the cholesky decomposition is entirely done on GPU"<<std::endl;
+                vector<double>L_data(A_data.size(),0);
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
+
+                Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
+
+                Math_Functions<double>::cholesky_decomposition(A,L,&p);
+
+                L.printtensor();
+
+                cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
+                vector<double>verify_data(L_data.size(),0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                size_t newext[2],newstr[2];
+
+                datastruct<double>m=L.transpose(newext,newstr);
+                Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
+                verify.printtensor();
+
+            }
+
+            {
+
+                cout<<"With the advanced algorithms on GPU"<<std::endl;
+
+                vector<double>L_data(A_data.size(),0);
+
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
+
+                A.printtensor();
+
+                Math_MPI_Decomposition_Policy p(
+                    Math_Functions_Policy::GPU_ONLY,
+                    false,
+                    false,
+                    Math_MPI_Decomposition_Policy::Naive);
+                p.size_to_stop_recursion=2;
+                Math_Functions_MPI<double>::cholesky_decomposition(A,L,&p);
+                L.printtensor();
+
+
+                cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
+                vector<double>verify_data(L_data.size(),0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                size_t newext[2],newstr[2];
+
+                datastruct<double>m=L.transpose(newext,newstr);
+                Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
+                verify.printtensor();
+
+            }
+
         }
 
 
         {
 
-            cout<<"Now the cholesky decomposition is entirely done on GPU"<<std::endl;
-            vector<double>L_data(A_data.size(),0);
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
+            cout<< "Now we do the same with the lu decomposition"<<std::endl;
+            vector<double>A_data= {-3,3,-3,5,2,7,4,2,-2,4,2,-10,-4,-2,-10,1,-3,0,8,6,-3,-8,-8,-10,-6,-1,-4,-2,-4,-2,-3,1,-9,-10,5,-6,-8,1,-3,-8,-10,-8,-6,4,3,-8,-10,-6,3,-4,-2,4,4,-1,2,8,-4,6,9,-7,-6,-4,2,4};
+            size_t rows3 = 8, cols3 = 8;
 
-            Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
+            {
+                vector<double>L_data(64,0);
+                vector<double>U_data(64,0);
 
-            Math_Functions<double>::cholesky_decomposition(A,L,&p);
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
 
-            L.printtensor();
+                Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
+                A.printtensor();
 
-            cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            vector<double>verify_data(L_data.size(),0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+                cout<<"on CPU"<<std::endl;
 
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            size_t newext[2],newstr[2];
+                Math_Functions<double>::lu_decomposition(A,L,U,&p);
+                L.printtensor();
+                U.printtensor();
 
-            datastruct<double>m=L.transpose(newext,newstr);
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+                cout<<"we can verify the lu decomposition by multiplication"<<endl;
+                vector<double>verify_data(64,0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
+                verify.printtensor();
 
+            }
+
+            {
+
+
+
+                vector<double>L_data(64,0);
+                vector<double>U_data(64,0);
+
+
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
+
+                cout<<"Entirely on gpu"<<std::endl;
+                Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
+                Math_Functions<double>::lu_decomposition(A,L,U,&p);
+                L.printtensor();
+                U.printtensor();
+
+                cout<<"we can verify the lu decomposition by multiplication"<<endl;
+                vector<double>verify_data(64,0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
+                verify.printtensor();
+            }
+
+            {
+                vector<double>L_data(64,0);
+                vector<double>U_data(64,0);
+
+
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
+                mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
+
+                cout<<"With the advanced algorithms on GPU"<<std::endl;
+
+                Math_MPI_Decomposition_Policy p(
+                    Math_Functions_Policy::GPU_ONLY,
+                    false,
+                    false,
+                    Math_MPI_Decomposition_Policy::Strassen);
+
+                p.size_to_stop_recursion=2;
+                Math_Functions_MPI<double>::lu_decomposition(A,L,U,&p);
+                L.printtensor();
+
+
+                cout<<"we can verify the lu decomposition by multiplication"<<endl;
+                vector<double>verify_data(64,0);
+                mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
+                verify.printtensor();
+
+            }
         }
-
         {
 
-            cout<<"With the advanced algorithms on GPU"<<std::endl;
+            cout<< "Now we do the same with the qr decomposition"<<std::endl;
+            vector<double>A_data= {-4, 9, 4, 0, -3, -4, 8, 0, 0, -7, -3, -8, -9, 1, -5, -9, -10, 1, 1, 6, -1, 5, 4, 4, 8, 1, 9, -8, -6, 8, -4, -2, -4, 7, -7, 3, 7, -2, -9, 9, 4, -4, 1, -3, 4, -8, 3, 6, -7, 7, -3, -7, -9, -5, -1, -7, 7, 1, -9, -1, -7, 3, 5, 4};
+            size_t rows4 = 8, cols4 = 8;
+            {
 
-            vector<double>L_data(A_data.size(),0);
+                vector<double>Q_data(64,0);
+                vector<double>R_data(64,0);
 
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows2, cols2});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows2, cols2});
-
-            A.printtensor();
-
-            Math_MPI_Decomposition_Policy p(
-                Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
-                Math_MPI_Decomposition_Policy::Naive);
-            p.size_to_stop_recursion=2;
-            Math_Functions_MPI<double>::cholesky_decomposition(A,L,&p);
-            L.printtensor();
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
 
 
-            cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            vector<double>verify_data(L_data.size(),0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows2, cols2});
+                Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
+                A.printtensor();
 
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            size_t newext[2],newstr[2];
+                cout<<"On cpu"<<std::endl;
+                Math_Functions<double>::qr_decomposition(A,Q,R,&p);
+                Q.printtensor();
+                R.printtensor();
 
-            datastruct<double>m=L.transpose(newext,newstr);
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+                vector<double>verifydata(64,0);
 
+                cout<<"we can verify the qr decomposition by multiplication"<<endl;
+                mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
+                verify.printtensor();
+            }
+
+
+            {
+
+                vector<double>Q_data(64,0);
+                vector<double>R_data(64,0);
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
+
+
+                cout<<"On gpu"<<std::endl;
+                Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
+
+                Math_Functions<double>::qr_decomposition(A,Q,R,&p);
+                Q.printtensor();
+                R.printtensor();
+
+                vector<double>verifydata(64,0);
+
+                cout<<"we can verify the qr decomposition by multiplication"<<endl;
+                mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
+                verify.printtensor();
+
+            }
+
+            {
+                cout<<"with the advanced algorithms on gpu "<<std::endl;
+                vector<double>Q_data(64,0);
+                vector<double>R_data(64,0);
+
+                mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
+                mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
+
+                Math_MPI_Decomposition_Policy p(
+                    Math_Functions_Policy::GPU_ONLY,
+                    false,
+                    false,
+                    Math_MPI_Decomposition_Policy::Naive);
+
+                p.size_to_stop_recursion=2;
+
+
+                Math_Functions_MPI<double>::qr_decomposition(A,Q,R,&p);
+                Q.printtensor();
+                R.printtensor();
+                vector<double>verifydata(64,0);
+
+                cout<<"we can verify the qr decomposition by multiplication"<<endl;
+                mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
+                Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
+                Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
+                verify.printtensor();
+
+            }
         }
-
-    }
-
-
-    {
-
-        cout<< "Now we do the same with the lu decomposition"<<std::endl;
-        vector<double>A_data= {-3,3,-3,5,2,7,4,2,-2,4,2,-10,-4,-2,-10,1,-3,0,8,6,-3,-8,-8,-10,-6,-1,-4,-2,-4,-2,-3,1,-9,-10,5,-6,-8,1,-3,-8,-10,-8,-6,4,3,-8,-10,-6,3,-4,-2,4,4,-1,2,8,-4,6,9,-7,-6,-4,2,4};
-        size_t rows3 = 8, cols3 = 8;
-
-        {
-            vector<double>L_data(64,0);
-            vector<double>U_data(64,0);
-
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
-
-            Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
-            A.printtensor();
-
-            cout<<"on CPU"<<std::endl;
-
-            Math_Functions<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
-            U.printtensor();
-
-            cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            vector<double>verify_data(64,0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
-
-        }
-
-        {
-
-
-
-            vector<double>L_data(64,0);
-            vector<double>U_data(64,0);
-
-
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
-
-            cout<<"Entirely on gpu"<<std::endl;
-            Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
-            Math_Functions<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
-            U.printtensor();
-
-            cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            vector<double>verify_data(64,0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
-        }
-
-        {
-            vector<double>L_data(64,0);
-            vector<double>U_data(64,0);
-
-
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> L(L_data.data(), true, {rows3, cols3});
-            mdspan<double, std::vector<size_t>> U(U_data.data(), true, {rows3, cols3});
-
-            cout<<"With the advanced algorithms on GPU"<<std::endl;
-
-            Math_MPI_Decomposition_Policy p(
-                Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
-                Math_MPI_Decomposition_Policy::Strassen);
-
-            p.size_to_stop_recursion=2;
-            Math_Functions_MPI<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
-
-
-            cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            vector<double>verify_data(64,0);
-            mdspan<double, std::vector<size_t>> verify(verify_data.data(), true, {rows3, cols3});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
-
-        }
-    }
-    {
-
-        cout<< "Now we do the same with the qr decomposition"<<std::endl;
-        vector<double>A_data= {-4, 9, 4, 0, -3, -4, 8, 0, 0, -7, -3, -8, -9, 1, -5, -9, -10, 1, 1, 6, -1, 5, 4, 4, 8, 1, 9, -8, -6, 8, -4, -2, -4, 7, -7, 3, 7, -2, -9, 9, 4, -4, 1, -3, 4, -8, 3, 6, -7, 7, -3, -7, -9, -5, -1, -7, 7, 1, -9, -1, -7, 3, 5, 4};
-        size_t rows4 = 8, cols4 = 8;
-        {
-
-            vector<double>Q_data(64,0);
-            vector<double>R_data(64,0);
-
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
-
-
-            Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
-            A.printtensor();
-
-            cout<<"On cpu"<<std::endl;
-            Math_Functions<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
-
-            vector<double>verifydata(64,0);
-
-            cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
-        }
-
-
-        {
-
-            vector<double>Q_data(64,0);
-            vector<double>R_data(64,0);
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
-
-
-            cout<<"On gpu"<<std::endl;
-            Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
-
-            Math_Functions<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
-
-            vector<double>verifydata(64,0);
-
-            cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
-
-        }
-
-        {
-            cout<<"with the advanced algorithms on gpu "<<std::endl;
-            vector<double>Q_data(64,0);
-            vector<double>R_data(64,0);
-
-            mdspan<double, std::vector<size_t>> A(A_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> Q(Q_data.data(), true, {rows4, cols4});
-            mdspan<double, std::vector<size_t>> R(R_data.data(), true, {rows4, cols4});
-
-            Math_MPI_Decomposition_Policy p(
-                Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
-                Math_MPI_Decomposition_Policy::Naive);
-
-            p.size_to_stop_recursion=2;
-
-
-            Math_Functions_MPI<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
-            vector<double>verifydata(64,0);
-
-            cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            mdspan<double, std::vector<size_t>> verify(verifydata.data(), true, {rows4, cols4});
-            Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
-
-        }
-    }
 }
-
-
 
 
 

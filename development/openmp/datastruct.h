@@ -36,8 +36,13 @@ class Math_Functions_MPI;
 
 template<typename T>
 class GPU_Math_Functions;
+
 template<typename U, typename Container>
 class mdspan;
+
+template<typename U, typename Container>
+class mdspan_data;
+
 
 #pragma omp begin declare target
 template <typename T>
@@ -52,19 +57,23 @@ public:
     friend class Math_Functions<T>;
     friend class Math_Functions_MPI<T>;
 
-    template<typename U, typename C>
+    template<typename U, typename Container>
     friend class ::mdspan;
+
+    template<typename U, typename Container>
+    friend class ::mdspan_data;
+
 
     datastruct() {};
 
     // Constructors
     datastruct(T*  data, size_t datalength, bool rowm, size_t rank,size_t*   extents, size_t*   strides,
-               bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr );
+               bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1 );
 
     datastruct(T*  data,size_t datalength,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
-               bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr);
+               bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
 
-    datastruct(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr );
+    datastruct(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr,int devicenum=-1 );
 
     inline size_t datalength() const
     {
@@ -80,6 +89,20 @@ public:
     {
         return dprowmajor;
     }
+    inline int devptr_num()const
+    {
+        return devptr_devicenum;
+    }
+    inline bool is_dev_ptr()const
+    {
+        return dpdata_is_devptr;
+    }
+    inline T* former_hostptr()const
+    {
+        return devptr_former_hostptr;
+    }
+
+
 
     inline bool data_is_devptr() const
     {
@@ -204,8 +227,11 @@ public:
     inline datastruct<T> transpose_s(size_t*    newextents, size_t*    newstrides,T* newdata)const;
 
 
-    inline datastruct<T> row(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
-    inline datastruct<T> column(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
+    inline datastruct<T> row_rr(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
+    inline datastruct<T> column_rr(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
+
+    inline datastruct<T> row_rp(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
+    inline datastruct<T> column_rp(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
 
     inline datastruct<T> column_w(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
     inline datastruct<T> column_v(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
@@ -221,16 +247,17 @@ public:
     inline void printtensor()const;
 
 protected:
-    void printtensor_recursive(size_t* indices, size_t depth) const;
+    void printtensor_recursive(size_t* indices, size_t depth,bool ondevice) const;
 
     T*          dpdata = nullptr;
-    size_t*  dpextents = nullptr;
-    size_t*  dpstrides = nullptr;
+    size_t*     dpextents = nullptr;
+    size_t*     dpstrides = nullptr;
     size_t      dpdatalength = 0;
     size_t      dprank = 0;
-    bool         dprowmajor = true;
-    bool    dpdata_is_devptr=false;
-
+    bool        dprowmajor = true;
+    int         devptr_devicenum=-1;
+    bool        dpdata_is_devptr=false;
+    T*          devptr_former_hostptr=nullptr;
 };
 #pragma omp end declare target
 
@@ -261,14 +288,36 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose_w(size_t*    n
     newstrides[0]=dpstrides[1];
     newstrides[1]=dpstrides[0];
     T* pd=this->dpdata;
-    #pragma omp parallel for simd collapse(2)
-    for (size_t i=0; i<dpextents[0]; i++)
-        for (size_t j=0; j<dpextents[1]; j++)
-        {
-            size_t dst_index = compute_offset(j, i, newstrides[0], newstrides[1]);
-            size_t src_index = compute_offset(i, j, dpstrides[0], dpstrides[1]);
-            newdata[dst_index] = pd[src_index];
-        }
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+
+        #pragma omp target parallel for simd collapse(2) device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp parallel for simd collapse(2)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
 
     return datastruct(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
 
@@ -284,15 +333,39 @@ template<typename T>inline datastruct<T> datastruct<T>::transpose_v(size_t*    n
 
     newstrides[0]=dpstrides[1];
     newstrides[1]=dpstrides[0];
+
     T* pd=this->dpdata;
-    #pragma omp simd collapse(2)
-    for (size_t i=0; i<dpextents[0]; i++)
-        for (size_t j=0; j<dpextents[1]; j++)
-        {
-            size_t dst_index = compute_offset(j, i, newstrides[0], newstrides[1]);
-            size_t src_index = compute_offset(i, j, dpstrides[0], dpstrides[1]);
-            newdata[dst_index] = pd[src_index];
-        }
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target simd collapse(2) device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp simd collapse(2)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
     return datastruct(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
 
 }
@@ -310,14 +383,38 @@ inline datastruct<T> datastruct<T>::transpose_s(size_t*    newextents, size_t *n
     newstrides[0]=dpstrides[1];
     newstrides[1]=dpstrides[0];
     T* pd=this->dpdata;
-    #pragma omp unroll
-    for (size_t i=0; i<dpextents[0]; i++)
-        for (size_t j=0; j<dpextents[1]; j++)
-        {
-            size_t dst_index = compute_offset(j, i, newstrides[0], newstrides[1]);
-            size_t src_index = compute_offset(i, j, dpstrides[0], dpstrides[1]);
-            newdata[dst_index] = pd[src_index];
-        }
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target  device(devptr_devicenum) is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp unroll
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+
+
 
     return datastruct(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
 
@@ -401,7 +498,8 @@ void datastruct<T>::printtensor() const
     for (size_t i = 0; i < dprank; ++i)
         indices[i] = 0;
 
-    printtensor_recursive(indices, 0);
+    bool ondevice=omp_is_initial_device()&&dpdata_is_devptr;
+    printtensor_recursive(indices, 0,ondevice);
     delete []indices;
 
     printf("\n");
@@ -411,11 +509,18 @@ void datastruct<T>::printtensor() const
 
 #pragma omp begin declare target
 template <typename T>
-void datastruct<T>::printtensor_recursive(size_t* indices, size_t depth) const
+void datastruct<T>::printtensor_recursive(size_t* indices, size_t depth,bool ondevice) const
 {
     if (depth == dprank)
     {
-        printf("%g", (*this)(indices)); // element access via operator()(size_t*)
+        size_t offset=compute_offset_s(indices, dpstrides, dprank);
+        T d;
+        if(ondevice)
+            omp_target_memcpy(&d,dpdata,sizeof(T),0,sizeof(T)*offset,omp_get_initial_device(),this->devptr_devicenum);
+        else
+            d= dpdata[offset];
+
+        printf("%g",d); // element access via operator()(size_t*)
         return;
     }
 
@@ -424,7 +529,7 @@ void datastruct<T>::printtensor_recursive(size_t* indices, size_t depth) const
     for (size_t i = 0; i < dpextents[depth]; ++i)
     {
         indices[depth] = i;
-        printtensor_recursive(indices, depth + 1);
+        printtensor_recursive(indices, depth + 1,ondevice);
 
         if (i + 1 < dpextents[depth])
         {
@@ -454,7 +559,8 @@ template<typename T> datastruct<T>::datastruct(
     size_t*    strides,
     bool compute_datalength,
     bool compute_strides_from_extents,
-    bool data_is_devptr
+    bool data_is_devptr,
+    int devicenum
 
 ) : dpdata(data),
     dpextents(extents),
@@ -462,6 +568,7 @@ template<typename T> datastruct<T>::datastruct(
     dpdatalength(datalength),
     dprank(rank),
     dprowmajor(rowm),
+    devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
 #else
@@ -492,13 +599,15 @@ template<typename T> datastruct<T>::datastruct(
     size_t rank,
     size_t*    extents,
     size_t*    strides,
-    bool data_is_devptr
+    bool data_is_devptr,
+    int devicenum
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
     dpdatalength(datalength),
     dprank(rank),
     dprowmajor(rowm),
+    devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
 #else
@@ -522,13 +631,15 @@ template<typename T> datastruct<T>::datastruct(
     size_t*    strides,
     bool compute_datalength,
     bool compute_strides_from_extents,
-    bool data_is_devptr
+    bool data_is_devptr,
+    int devicenum
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
     dpdatalength(datalength),
     dprank(2),
     dprowmajor(rowm),
+    devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
 #else
@@ -692,7 +803,7 @@ datastruct<T>datastruct<T>::subspan_s(const size_t * poffsets, size_t * psub_ext
 #pragma omp begin declare target
 template<typename T>
 datastruct<T> datastruct<T>::subspan_s(
-   const size_t* poffsets,
+    const size_t* poffsets,
     size_t* psub_extents,
     size_t* psub_strides,
     T* sub_data)const
@@ -710,7 +821,7 @@ datastruct<T> datastruct<T>::subspan_s(
 
     size_t* global_indices = new size_t[r];
 
-
+    bool tmcpy=omp_is_initial_device()&&dpdata_is_devptr;
     while (true)
     {
         for (size_t i = 0; i < r; ++i)
@@ -719,7 +830,10 @@ datastruct<T> datastruct<T>::subspan_s(
         size_t original_index = compute_offset_s(global_indices, dpstrides, r);
         size_t buffer_index   = compute_offset_s(indices, psub_strides, r);
 
-        sub_data[buffer_index] = dpdata[original_index];
+        if(tmcpy)
+            omp_target_memcpy(sub_data,dpdata,sizeof(T),sizeof(T)*buffer_index,sizeof(T)*original_index,devptr_devicenum,devptr_devicenum);
+        else
+            sub_data[buffer_index] = dpdata[original_index];
 
         // Increment multi-dimensional indices
         size_t dim = r;
@@ -766,7 +880,7 @@ datastruct<T> datastruct<T>::subspan_v(const size_t* poffsets,  size_t* psub_ext
         indices[i]=0;
 
     size_t* global_indices = new size_t[r];
-
+    bool tmcpy=omp_is_initial_device()&&dpdata_is_devptr;
 
     while (true)
     {
@@ -777,7 +891,10 @@ datastruct<T> datastruct<T>::subspan_v(const size_t* poffsets,  size_t* psub_ext
         size_t original_index = compute_offset_v(global_indices, dpstrides, r);
         size_t buffer_index   = compute_offset_v(indices, psub_strides, r);
 
-        sub_data[buffer_index] = dpdata[original_index];
+        if(tmcpy)
+            omp_target_memcpy(sub_data,dpdata,sizeof(T),sizeof(T)*buffer_index,sizeof(T)*original_index,devptr_devicenum,devptr_devicenum);
+        else
+            sub_data[buffer_index] = dpdata[original_index];
 
         // Increment multi-dimensional indices
         size_t dim = r;
@@ -809,8 +926,8 @@ datastruct<T> datastruct<T>::subspan_v(const size_t* poffsets,  size_t* psub_ext
 #pragma omp begin declare target
 template<typename T>
 datastruct<T> datastruct<T>::subspan_w(
-   const size_t* poffsets,
-     size_t* psub_extents,
+    const size_t* poffsets,
+    size_t* psub_extents,
     size_t* psub_strides,
     T* sub_data)const
 {
@@ -828,6 +945,7 @@ datastruct<T> datastruct<T>::subspan_w(
 
     size_t* global_indices = new size_t[r];
 
+    bool tmcpy=omp_is_initial_device()&&dpdata_is_devptr;
 
     while (true)
     {
@@ -838,7 +956,10 @@ datastruct<T> datastruct<T>::subspan_w(
         size_t original_index = compute_offset_w(global_indices, dpstrides, r);
         size_t buffer_index   = compute_offset_w(indices, psub_strides, r);
 
-        sub_data[buffer_index] = dpdata[original_index];
+        if(tmcpy)
+            omp_target_memcpy(sub_data,dpdata,sizeof(T),sizeof(T)*buffer_index,sizeof(T)*original_index,devptr_devicenum,devptr_devicenum);
+        else
+            sub_data[buffer_index] = dpdata[original_index];
 
         // Increment multi-dimensional indices
         size_t dim = r;
@@ -899,14 +1020,33 @@ datastruct<T>  datastruct<T>::subspanmatrix_w( const size_t row, const size_t co
     T*    pd=dpdata;
     psub_strides[0]=(dprowmajor==true)? tile_cols:1;
     psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+
+    const size_t sub_s0=psub_strides[0];
+    const size_t sub_s1=psub_strides[1];
+
     psub_extents[0]=tile_rows;
     psub_extents[1]=tile_cols;
-    #pragma omp parallel for simd collapse(2)
-    for (size_t i = 0; i < tile_rows; ++i)
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
     {
-        for (size_t j = 0; j < tile_cols; ++j)
+        #pragma omp target parallel for simd collapse(2) device(devptr_devicenum)is_device_ptr(sub_data) is_device_ptr(pd)
+        for (size_t i = 0; i < tile_rows; ++i)
         {
-            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[(row + i)*s0+( col + j)*s1];
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for simd collapse(2)
+        for (size_t i = 0; i < tile_rows; ++i)
+        {
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
         }
     }
     return datastruct(sub_data,tile_rows*tile_cols,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
@@ -928,18 +1068,35 @@ datastruct<T>  datastruct<T>::subspanmatrix_v( const size_t row, const size_t co
 
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
+
     T*    pd=dpdata;
     psub_strides[0]=(dprowmajor==true)? tile_cols:1;
     psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+    const size_t sub_s0=psub_strides[0];
+    const size_t sub_s1=psub_strides[1];
     psub_extents[0]=tile_rows;
     psub_extents[1]=tile_cols;
 
-    #pragma omp simd collapse(2)
-    for (size_t i = 0; i < tile_rows; ++i)
+    if(omp_is_initial_device()&&dpdata_is_devptr)
     {
-        for (size_t j = 0; j < tile_cols; ++j)
+        #pragma omp target simd collapse(2)  device(devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
+        for (size_t i = 0; i < tile_rows; ++i)
         {
-            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[(row + i)*s0+( col + j)*s1];
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
+        }
+    }
+    else
+    {
+        #pragma omp simd collapse(2)
+        for (size_t i = 0; i < tile_rows; ++i)
+        {
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
         }
     }
 
@@ -960,17 +1117,35 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
     T*    pd=dpdata;
     psub_strides[0]=(dprowmajor==true)? tile_cols:1;
     psub_strides[1]=(dprowmajor==true)?1: tile_rows;
+    const size_t sub_s0=psub_strides[0];
+    const size_t sub_s1=psub_strides[1];
     psub_extents[0]=tile_rows;
     psub_extents[1]=tile_cols;
 
-    #pragma omp unroll
-    for (size_t i = 0; i < tile_rows; ++i)
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
     {
-        for (size_t j = 0; j < tile_cols; ++j)
+        #pragma omp target  device(devptr_devicenum)is_device_ptr(sub_data) is_device_ptr(pd)
+        for (size_t i = 0; i < tile_rows; ++i)
         {
-            sub_data[i * psub_strides[0] + j*psub_strides[1]] = pd[(row + i)*s0+( col + j)*s1];
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
         }
     }
+    else
+    {
+        for (size_t i = 0; i < tile_rows; ++i)
+        {
+            #pragma omp unroll
+            for (size_t j = 0; j < tile_cols; ++j)
+            {
+                sub_data[i * sub_s0 + j*sub_s1] = pd[(row + i)*s0+( col + j)*s1];
+            }
+        }
+    }
+
 
     return datastruct(sub_data,tile_rows*tile_cols,dprowmajor,2,psub_extents,psub_strides,dpdata_is_devptr);
 }
@@ -983,7 +1158,7 @@ datastruct<T>  datastruct<T>::subspanmatrix_s( const size_t row, const size_t co
 
 #pragma omp begin declare target
 template <typename T>
-datastruct<T> datastruct<T>::row(const size_t row_index, size_t*    extents,size_t *    new_strides)const
+datastruct<T> datastruct<T>::row_rr(const size_t row_index, size_t*    extents,size_t *    new_strides)const
 {
     extents[0] = dpextents[1];
     new_strides[0]=dpstrides[1];
@@ -993,25 +1168,49 @@ datastruct<T> datastruct<T>::row(const size_t row_index, size_t*    extents,size
 #pragma omp end declare target
 
 
+#pragma omp begin declare target
+template <typename T>
+datastruct<T> datastruct<T>::row_rp(const size_t row_index, size_t*    extents,size_t *    new_strides)const
+{
+    extents[0] = dpextents[1];
+    extents[1] = 1;
+    new_strides[0]=dpstrides[1];
+    new_strides[1]=dpstrides[0];
+    return datastruct<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
+}
+#pragma omp end declare target
+
 
 #pragma omp begin declare target
 template <typename T>
 datastruct<T> datastruct<T>::row_w(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
-    size_t pl;
-    pl=dpextents[1];
+    const size_t pl=dpextents[1];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp parallel for simd
-    for (size_t j = 0; j < pl; ++j)
-        newdata[j] = pd[row_index*s0+j*s1];
 
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+        #pragma omp target parallel for simd device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
+    else
+    {
+        #pragma omp parallel for simd
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1020,18 +1219,30 @@ datastruct<T> datastruct<T>::row_w(const size_t row_index, size_t*    extents,si
 template <typename T>
 datastruct<T> datastruct<T>::row_v(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
-    size_t pl;
-    pl=dpextents[1];
+    const size_t pl=dpextents[1];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
+
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp simd
-    for (size_t i = 0; i < pl; ++i)
-        newdata[i] = pd[row_index*s0+i*s1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target simd device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
+    else
+    {
+        #pragma omp simd
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1040,18 +1251,30 @@ datastruct<T> datastruct<T>::row_v(const size_t row_index, size_t*    extents,si
 template <typename T>
 datastruct<T> datastruct<T>::row_s(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
-    size_t pl;
-    pl=dpextents[1];
+    const size_t pl=dpextents[1];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
+
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp unroll
-    for (size_t i = 0; i < pl; ++i)
-        newdata[i] = pd[row_index*s0+i*s1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target  device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
+    else
+    {
+        #pragma omp unroll
+        for (size_t j = 0; j < pl; ++j)
+            newdata[j] = pd[row_index*s0+j*s1];
+    }
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1063,18 +1286,31 @@ template <typename T>
 datastruct<T> datastruct<T>::column_v(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
-    size_t pl;
-    pl=dpextents[0];
+    const size_t pl=dpextents[0];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
+
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp simd
-    for (size_t i = 0; i < pl; ++i)
-        newdata[i] = pd[ i*s0+col_index*s1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target simd device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[ i*s0+col_index*s1];
+    }
+    else
+    {
+        #pragma omp simd
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[ i*s0+col_index*s1];
+    }
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1085,18 +1321,33 @@ template <typename T>
 datastruct<T> datastruct<T>::column_s(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
-    size_t pl;
-    pl=dpextents[0];
+    const size_t pl=dpextents[0];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+    extents[0] = pl;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
+
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp unroll
-    for (size_t i = 0; i < pl; ++i)
-        newdata[i] = pd[ i*s0+col_index*s1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[ i*s0+col_index*s1];
+    }
+    else
+    {
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+        #pragma omp unroll
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[ i*s0+col_index*s1];
+    }
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1106,18 +1357,31 @@ template <typename T>
 datastruct<T> datastruct<T>::column_w(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
-    size_t pl;
-    pl=dpextents[0];
+    const size_t pl=dpextents[0];
     extents[0] = pl;
-    new_strides[0]=1;
+    extents[1] = 1;
+
+    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[1] = dprowmajor ? dpstrides[0] : dpstrides[1];
+
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
-    #pragma omp parallel for simd
-    for (size_t i = 0; i < pl; ++i)
-        newdata[i] = pd[i*s0+col_index*s1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target parallel for simd device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[i*s0+col_index*s1];
+    }
+    else
+    {
+        #pragma omp parallel for simd
+        for (size_t i = 0; i < pl; ++i)
+            newdata[i] = pd[i*s0+col_index*s1];
+    }
 
-    return datastruct<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+
+    return datastruct<T>(newdata,  pl,dprowmajor,   2, extents,    new_strides, dpdata_is_devptr);
 }
 #pragma omp end declare target
 
@@ -1129,7 +1393,7 @@ datastruct<T> datastruct<T>::column_w(const size_t col_index, size_t*    extents
 
 #pragma omp begin declare target
 template <typename T>
-datastruct<T> datastruct<T>::column(const size_t col_index, size_t*    extents,size_t *   new_strides)const
+datastruct<T> datastruct<T>::column_rr(const size_t col_index, size_t*    extents,size_t *   new_strides)const
 {
     extents[0] = dpextents[0];
     new_strides[0]=dpstrides[0];
@@ -1137,6 +1401,20 @@ datastruct<T> datastruct<T>::column(const size_t col_index, size_t*    extents,s
 }
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+template <typename T>
+datastruct<T> datastruct<T>::column_rp(const size_t col_index, size_t*    extents,size_t *   new_strides)const
+{
+    extents[0] = dpextents[0];
+    extents[1]=1;
+
+    new_strides[0]=dpstrides[0];
+    new_strides[1]=dpstrides[1];
+
+    return datastruct(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  2, extents,   new_strides,dpdata_is_devptr );
+}
+#pragma omp end declare target
 
 
 #endif

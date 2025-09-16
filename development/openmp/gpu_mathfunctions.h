@@ -44,6 +44,12 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g(  datastruct<T>& A,  datastruc
     typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadB(B, dev, false, false);
     typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
+   const size_t Astr0=A.dpstrides[0];
+   const size_t Astr1=A.dpstrides[1];
+   const size_t Bstr0=B.dpstrides[0];
+   const size_t Bstr1=B.dpstrides[1];
+   const size_t Cstr0=C.dpstrides[0];
+   const size_t Cstr1=C.dpstrides[1];
     #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C) device(dev)
     for (size_t i = 0; i < rows; ++i)
         for (size_t j = 0; j < cols; ++j)
@@ -52,9 +58,9 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g(  datastruct<T>& A,  datastruc
             #pragma omp simd reduction(+:sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A(i,k) *B(k,j);
+                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
             }
-            C(i,j)= sum;
+            C.dpdata[i*Cstr0+j*Cstr1]= sum;
         }
 
 
@@ -579,7 +585,7 @@ void GPU_Math_Functions<T>::qr_decomposition_g(datastruct<T>& A, datastruct<T>& 
     {
         size_t pextv[1], pstrv[1];
 
-        datastruct<T> v = M.column(c, pextv, pstrv);  // current column, updated in place
+        datastruct<T> v = M.column_rr(c, pextv, pstrv);  // current column, updated in place
         typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperv(v,dev,false,false);
 
 
@@ -587,7 +593,7 @@ void GPU_Math_Functions<T>::qr_decomposition_g(datastruct<T>& A, datastruct<T>& 
         {
             size_t pextu[1], pstru[1];
 
-            datastruct<T> u = tQ.column(j, pextu, pstru);
+            datastruct<T> u = tQ.column_rr(j, pextu, pstru);
             typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperu(u,dev,false,false);
             T dot_pr = 0;
 
