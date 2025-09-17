@@ -43,6 +43,9 @@ Todo:
 
 
 Version history
+By 17.09.25:
+Updated the main_mpi.cpp file to use the new printtensor() function instead of the removed printmatrix function, 
+The printtensor function prints tensors residing on host as well as on device and can work with tensors of all ranks.
 By 16.09.25:
 Speed improvements in the datastruct class for the supspanmatrix, subspan, row and column extraction methods, and the matrix multiplication.
 
