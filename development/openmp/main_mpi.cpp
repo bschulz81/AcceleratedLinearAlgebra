@@ -26,7 +26,7 @@ int main(int argc, char** argv)
         mdspan<double, std::vector<size_t>> A2(A2_data.data(), true, {rows, cols});
         Datastruct_MPI_Functions<double>::MPI_Send_datastruct(A2,1,1,MPI_COMM_WORLD);
         cout<<"Message Sent:\n";
-        A2.printmatrix();
+        A2.printtensor();
     }
 //
     else if(process_Rank == 1)
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
         Datastruct_MPI_Functions<double>::MPI_Recv_datastruct(B,0,1,MPI_COMM_WORLD);
         cout<<"Message recieved";
-        B.printmatrix();
+        B.printtensor();
         B(1,1)=42;
 
 //
@@ -63,8 +63,8 @@ int main(int argc, char** argv)
         mdspan<double, std::vector<size_t>> B3(B3_data.data(), true, {rows, cols});
 
         cout<<"We define two matrices A and B:" <<endl;
-        A3.printmatrix();
-        B3.printmatrix();
+        A3.printtensor();
+        B3.printtensor();
 
         {
             vector<double>C3_data(rows*cols,1);
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
             vector<double>C_data(rows*cols,1);
             mdspan<double, std::vector<size_t>> C(C_data.data(), true, {rows, cols});
             Math_Functions<double>::matrix_multiply_dot(A3, B3, C3,&p1);
-            C3.printmatrix();
+            C3.printtensor();
 
         }
 
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
             cout <<" default_linear_treshold = 1000000;"<<"The default number of elements at which vectors are auto offloaded for addition"<<std::endl<<endl;
 
             Math_Functions_MPI<double>::strassen_multiply(A3, B3, C3,&p);
-            C3.printmatrix();
+            C3.printtensor();
             Math_Functions_MPI<double>::MPI_recursion_helper_end(p.comm);
         }
     }
