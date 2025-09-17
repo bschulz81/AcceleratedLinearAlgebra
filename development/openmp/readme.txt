@@ -6,6 +6,9 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+By 17.09.25;
+Updated the main_mpi.cpp file to use the new printtensor() function instead of the removed printmatrix function, 
+The printtensor function prints tensors residing on host as well as on device and can work with tensors of all ranks.
 By 16.09.25
 Speed improvements in the datastruct class for the supspanmatrix, subspan, row and column extraction methods, and the matrix multiplication.
 The column and row methods have now rank reducing and rank preserving forms
