@@ -44,6 +44,7 @@ Todo:
 
 Version history
 
+By 19.09.2025
 Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
 Added many test cases and demonstrations of the library.  
 
