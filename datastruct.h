@@ -249,9 +249,7 @@ public:
     inline bool is_contiguous()const;
     inline void printtensor()const;
 
-    datastruct& operator=(const datastruct<T>& other) {
-        return *this;
-    }
+
 
 
     template <typename Expr>
