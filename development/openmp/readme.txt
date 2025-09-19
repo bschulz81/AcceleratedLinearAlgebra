@@ -6,6 +6,28 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+
+
+By 19.09.2025
+Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
+Added many test cases and demonstrations of the library.  
+
+Added a nice syntax for expression manipulation. 
+Now, one can write expressions like C=A*B to  multiply matrices and matrices and vectors or matrices and scalars, or C=A+B, C=A-B to add or subtract matrices or vectors. These expresisions use a policy class by default, which decides whether to offload to GPU, which is a bit slow.
+Implementing the ability to write chains like D=A*(B+C..) would be a mere line. The problem is it would require the storage of intermediate objects. 
+
+While the library provides a class which can do this with ease, the problem is that if, say B in D=A*B+C is 1 GB large, the library would then automatically have to create large intermediate matrices on gpu or cpu or harddrive, and the user would give up the control to order every allocation explicitely. I am still thinking whether to implement something like this.
+
+Added some speed optimizations for the library with const arguments.
+
+Added constructors which make the declaration of vectors in datastruct and mdspan easier,
+
+Changed the order of arguments of the constructors in mdspan to make it more usable for humans.
+
+Changed the extraction of rows, columns and submatrices such that they collapse the rank automatically.
+
+
+
 By 17.09.25;
 Updated the main_mpi.cpp file to use the new printtensor() function instead of the removed printmatrix function, 
 The printtensor function prints tensors residing on host as well as on device and can work with tensors of all ranks.
@@ -18,6 +40,7 @@ The mdspan class has a mapping manager that is shared among instances and provid
 The mdspan data class can now create data purely on device. 
 The code of the mdspan and mdspan_data and datastruct classes was significantly polished, improved and tested for various parameters and circumstances.
 The test application demonstrates more basic matrix and tensor access on device and on host.
+
 
 
 By 09.09.25
