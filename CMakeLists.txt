@@ -21,7 +21,6 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stac
 
 #Nvidia's nvc++ compiler. Path should be set manually.
 #set (LANGUAGES "C;CXX")
-#find_package(OpenACC REQUIRED)
 #set (CMAKE_CXX_COMPILER "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/compilers/bin/nvc++" CACHE STRING "C++ compiler" )
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20  -mp=gpu -Msafeptr=all  -Minfo=all")
 
@@ -32,12 +31,16 @@ set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build/)
 #arraytest_mpi is an executable that tests functions with the message passing interface.
 #it is to be run with  mpirun -np 8 ./arraytest_mpi
 
-include_directories(arraytest ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(arraytest_mpi ${CMAKE_CURRENT_SOURCE_DIR})
 
+include_directories(datastructtests     ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(mdspantests         ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(mathdemonstrations  ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(arraytest_mpi       ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(arraytest ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_omp.cpp)
-add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
+add_executable(datastructtests      ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/datastructtests.cpp)
+add_executable(mdspantests          ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mdspantests.cpp)
+add_executable(mathdemonstrations   ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mathdemonstrations.cpp)
+add_executable(arraytest_mpi        ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
 
 
 #Set this to if you want to use unified_shared_memory support
@@ -45,34 +48,27 @@ add_executable(arraytest_mpi ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
-    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(datastructtests PRIVATE       rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Configuring for Clang compiler")
-    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(datastructtests PRIVATE       rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
 endif()
 
 #if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
 #link_directories(arraytest /opt/nvidia/hpc_sdk/Linux_x86_64/25.5/REDIST/compilers/lib/)
 #    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
-#    target_link_libraries(arraytest PRIVATE rt m c stdc++ mpi )
+#    target_link_libraries(datastructtests PRIVATE       rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+#    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+#    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+#    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 #endif()
 
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    message(STATUS "Configuring for GNU compiler (gcc)")
-    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-endif()
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    message(STATUS "Configuring for Clang compiler")
-    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-endif()
-
-
-#if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
-#    message(STATUS "Configuring for NVIDIA compiler (nvc++)")
-#    target_link_libraries(arraytest_mpi PRIVATE rt m c stdc++ mpi )
-#endif()
 

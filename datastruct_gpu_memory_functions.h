@@ -26,6 +26,16 @@ public:
                 Datastruct_GPU_Memory_Functions::create_in_struct(dL, devicenum);
 #endif
         }
+        inline OffloadHelper(const datastruct<T>& dL, int devicenum, bool just_alloc)
+            :pupdate_host(false), pdL(dL),pdevicenum(devicenum)
+        {
+#if !defined(Unified_Shared_Memory)
+            if (just_alloc)
+                Datastruct_GPU_Memory_Functions::create_out_struct(dL, devicenum);
+            else
+                Datastruct_GPU_Memory_Functions::create_in_struct(dL, devicenum);
+#endif
+        }
 
         inline  ~OffloadHelper()
         {
@@ -41,6 +51,34 @@ public:
         OffloadHelper(const OffloadHelper&) = delete;
         OffloadHelper& operator=(const OffloadHelper&) = delete;
     };
+class OffloadHelperConst
+    {
+    protected:
+        const datastruct<T> &pdL;
+        int pdevicenum;
+    public:
+        inline OffloadHelperConst(const datastruct<T>& dL, int devicenum, bool just_alloc)
+            :pdL(dL),pdevicenum(devicenum)
+        {
+#if !defined(Unified_Shared_Memory)
+            if (just_alloc)
+                Datastruct_GPU_Memory_Functions::create_out_struct(dL, devicenum);
+            else
+                Datastruct_GPU_Memory_Functions::create_in_struct(dL, devicenum);
+#endif
+        }
+
+        inline  ~OffloadHelperConst()
+        {
+#if !defined(Unified_Shared_Memory)
+            Datastruct_GPU_Memory_Functions::release_struct(pdL, pdevicenum);
+#endif
+        }
+
+        OffloadHelperConst(const OffloadHelperConst&) = delete;
+        OffloadHelperConst& operator=(const OffloadHelperConst&) = delete;
+    };
+
 
     inline static bool update_device(datastruct<T>& dL,int devicenum);
     inline static bool update_host(datastruct<T>& dL,int devicenum);
@@ -54,6 +92,12 @@ public:
     inline static void create_in_struct(datastruct<T>& dA,int devicenum);
     inline static void exit_struct(datastruct<T> &dA,int devicenum);
     inline static void release_struct(datastruct<T> &dA,int devicenum);
+
+    inline static void create_out_struct(const datastruct<T>& dA,int devicenum);
+    inline static void create_in_struct(const datastruct<T>& dA,int devicenum);
+    inline static void exit_struct(const datastruct<T> &dA,int devicenum);
+    inline static void release_struct(const datastruct<T> &dA,int devicenum);
+
 
     inline static void copy_data_to_device_set_devptr(datastruct<T>&dL,int devicenum);
     inline static void alloc_data_to_device_set_devptr(datastruct<T>&dL,int devicenum);
@@ -240,14 +284,14 @@ template<typename T>
 void Datastruct_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(datastruct<T>&dL,int devicenum)
 {
 #if !defined(Unified_Shared_Memory)
-        if(!dL.dpdata_is_devptr)
-        {
-            dL.devptr_former_hostptr=dL.dpdata;
-            dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
-            dL.devptr_devicenum=devicenum;
-            dL.dpdata_is_devptr=true;
-            omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)* dL.dpdatalength,0,0,dL.devptr_devicenum, omp_get_initial_device());
-        }
+    if(!dL.dpdata_is_devptr)
+    {
+        dL.devptr_former_hostptr=dL.dpdata;
+        dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
+        dL.devptr_devicenum=devicenum;
+        dL.dpdata_is_devptr=true;
+        omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)* dL.dpdatalength,0,0,dL.devptr_devicenum, omp_get_initial_device());
+    }
 #endif
 }
 
@@ -255,78 +299,78 @@ template<typename T>
 void Datastruct_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(datastruct<T>&dL, int devicenum)
 {
 #if !defined(Unified_Shared_Memory)
-        if(!dL.dpdata_is_devptr)
-        {
-            dL.former_host_ptr=dL.dpdata;
-            dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
-            dL.dpdata_is_devptr=true;
-            dL.devptr_devicenum=devicenum;
-        }
+    if(!dL.dpdata_is_devptr)
+    {
+        dL.former_host_ptr=dL.dpdata;
+        dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
+        dL.dpdata_is_devptr=true;
+        dL.devptr_devicenum=devicenum;
+    }
 #endif
 }
 
 
 template<typename T>
- void Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(datastruct<T>&dL)
+void Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(datastruct<T>&dL)
 {
 #if !defined(Unified_Shared_Memory)
-        if(dL.dpdata_is_devptr)
+    if(dL.dpdata_is_devptr)
 
-        {
-            omp_target_memcpy(dL.devptr_former_hostptr,dL.dpdata,sizeof(T)* dL.dpdatalength,0,0, omp_get_initial_device(),dL.devptr_devicenum);
-            free_device_ptr(dL.dpdata, dL.devptr_devicenum);
-            dL.dpdata=dL.devptr_former_hostptr;
-            dL.dpdata_is_devptr=false;
-            dL.devptr_devicenum=-1;
-            dL.devptr_former_hostptr=nullptr;
-        }
+    {
+        omp_target_memcpy(dL.devptr_former_hostptr,dL.dpdata,sizeof(T)* dL.dpdatalength,0,0, omp_get_initial_device(),dL.devptr_devicenum);
+        free_device_ptr(dL.dpdata, dL.devptr_devicenum);
+        dL.dpdata=dL.devptr_former_hostptr;
+        dL.dpdata_is_devptr=false;
+        dL.devptr_devicenum=-1;
+        dL.devptr_former_hostptr=nullptr;
+    }
 #endif
 }
 
 
 template<typename T>
- void Datastruct_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(datastruct<T>&dL)
+void Datastruct_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(datastruct<T>&dL)
 {
 #if !defined(Unified_Shared_Memory)
-        if(dL.dpdata_is_devptr)
-        {
-            omp_target_free(dL.dpdata,dL.devptr_devicenum);
-            dL.dpdata=dL.devptr_former_hostptr;
-            dL.dpdata_is_devptr=false;
-            dL.devptr_devicenum=-1;
-            dL.devptr_former_hostptr=nullptr;
-        }
+    if(dL.dpdata_is_devptr)
+    {
+        omp_target_free(dL.dpdata,dL.devptr_devicenum);
+        dL.dpdata=dL.devptr_former_hostptr;
+        dL.dpdata_is_devptr=false;
+        dL.devptr_devicenum=-1;
+        dL.devptr_former_hostptr=nullptr;
+    }
 #endif
 }
 
 template<typename T>
-  T* Datastruct_GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int devicenum)
-{
-    #if !defined(Unified_Shared_Memory)
-        return (T*)omp_target_alloc(sizeof(T)*length, devicenum);
-    #else
-        return (T*)malloc(sizeof(T)*length);
-    #endif
-
-}
-template<typename T>
-  void Datastruct_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int devicenum)
-{
-    #if !defined(Unified_Shared_Memory)
-        omp_target_free(deviceptr, devicenum);
-    #else
-        free(deviceptr);
-    #endif
-
-}
-
-
-template<typename T>
-  void Datastruct_GPU_Memory_Functions<T>::copy_data_to_device_ptr(datastruct<T>& dL)
+T* Datastruct_GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int devicenum)
 {
 #if !defined(Unified_Shared_Memory)
-  if(dL.dpdata!=dL.devptr_former_hostptr)
-    omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)*dL.dpdatalength,0,0,dL.devptr_devicenum,omp_get_initial_device());
+    return (T*)omp_target_alloc(sizeof(T)*length, devicenum);
+#else
+    return (T*)malloc(sizeof(T)*length);
+#endif
+
+}
+template<typename T>
+void Datastruct_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int devicenum)
+{
+#if !defined(Unified_Shared_Memory)
+    omp_target_free(deviceptr, devicenum);
+#else
+    free(deviceptr);
+#endif
+
+}
+
+
+template<typename T>
+void Datastruct_GPU_Memory_Functions<T>::copy_data_to_device_ptr(datastruct<T>& dL)
+{
+#if !defined(Unified_Shared_Memory)
+    if(dL.dpdata!=dL.devptr_former_hostptr)
+        omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)*dL.dpdatalength,0,0,dL.devptr_devicenum,omp_get_initial_device());
 #else
     if(dL.dpdata!=dL.devptr_former_hostptr)
         memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)* dL.dpdatalength);
@@ -335,7 +379,7 @@ template<typename T>
 }
 
 template<typename T>
-  void Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_ptr(datastruct<T>& dL)
+void Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_ptr(datastruct<T>& dL)
 {
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata!=dL.devptr_former_hostptr)
@@ -411,6 +455,28 @@ void  Datastruct_GPU_Memory_Functions<T>::create_out_struct(datastruct<T>& dA,in
 #endif
 }
 
+
+template<typename T>
+void  Datastruct_GPU_Memory_Functions<T>::create_out_struct(const datastruct<T>& dA,int devicenum)
+{
+#if !defined(Unified_Shared_Memory)
+    const size_t l=dA.dpdatalength;
+    const size_t r=dA.dprank;
+    #pragma omp target enter data map(to: dA) device(devicenum)
+    if(!dA.dpdata_is_devptr)
+    {
+        #pragma omp target enter data map(alloc: dA.dpdata[0:l])device(devicenum)
+    }
+    #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
+    #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
+
+
+#endif
+}
+
+
+
+
 template<typename T>
 void  Datastruct_GPU_Memory_Functions<T>::create_in_struct(datastruct<T>& dA,int devicenum)
 {
@@ -429,6 +495,29 @@ void  Datastruct_GPU_Memory_Functions<T>::create_in_struct(datastruct<T>& dA,int
 
 #endif
 }
+
+
+
+template<typename T>
+void  Datastruct_GPU_Memory_Functions<T>::create_in_struct(const datastruct<T>& dA,int devicenum)
+{
+#if !defined(Unified_Shared_Memory)
+    const size_t l=dA.dpdatalength;
+    const size_t r=dA.dprank;
+    #pragma omp target enter data map(to: dA)device(devicenum)
+    if(!dA.dpdata_is_devptr)
+    {
+        #pragma omp target enter data map(to: dA.dpdata[0:l])device(devicenum)
+    }
+
+    #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
+
+    #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
+
+#endif
+}
+
+
 template<typename T>
 void Datastruct_GPU_Memory_Functions<T>::exit_struct(datastruct<T> &dA,int devicenum)
 {
@@ -447,6 +536,27 @@ void Datastruct_GPU_Memory_Functions<T>::exit_struct(datastruct<T> &dA,int devic
 #endif
 }
 
+
+template<typename T>
+void Datastruct_GPU_Memory_Functions<T>::exit_struct(const datastruct<T> &dA,int devicenum)
+{
+#if !defined(Unified_Shared_Memory)
+    const size_t l=dA.dpdatalength;
+    const size_t r=dA.dprank;
+    if(!dA.dpdata_is_devptr)
+    {
+        #pragma omp target exit data map(delete:dA.dpdata[0:l])device(devicenum)
+    }
+
+    #pragma omp target exit data map(delete:dA.dpstrides[0:r])device(devicenum)
+    #pragma omp target exit data map(delete:dA.dpextents[0:r])device(devicenum)
+    #pragma omp target exit data map(delete:dA)device(devicenum)
+
+#endif
+}
+
+
+
 template<typename T>
 void Datastruct_GPU_Memory_Functions<T>::release_struct(datastruct<T> &dA,int devicenum)
 {
@@ -454,6 +564,26 @@ void Datastruct_GPU_Memory_Functions<T>::release_struct(datastruct<T> &dA,int de
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
+    if(!dA.dpdata_is_devptr)
+    {
+        #pragma omp target exit data map(release:dA.dpdata[0:l])device(devicenum)
+    }
+
+    #pragma omp target exit data map(release:dA.dpstrides[0:r])device(devicenum)
+    #pragma omp target exit data map(release:dA.dpextents[0:r])device(devicenum)
+    #pragma omp target exit data map(release:dA)device(devicenum)
+
+#endif
+}
+
+
+template<typename T>
+void Datastruct_GPU_Memory_Functions<T>::release_struct(const datastruct<T> &dA,int devicenum)
+{
+
+#if !defined(Unified_Shared_Memory)
+    const size_t l=dA.dpdatalength;
+    const size_t r=dA.dprank;
     if(!dA.dpdata_is_devptr)
     {
         #pragma omp target exit data map(release:dA.dpdata[0:l])device(devicenum)
