@@ -249,17 +249,17 @@ public:
     inline bool is_contiguous()const;
     inline void printtensor()const;
 
-
-    datastruct& operator=(const datastruct& other) {
+    datastruct& operator=(const datastruct<T>& other) {
         return *this;
     }
+
 
     template <typename Expr>
     requires requires(Expr e, datastruct<T>& self, const Math_Functions_Policy* pol) {
         e.assign_to(self, pol);
     }
     datastruct& operator=(const Expr& expr) {
-        expr.assign_to(*this, nullptr);  // default: nullptr policy
+        expr.assign_to(*this, nullptr);
         return *this;
     }
 
