@@ -249,13 +249,11 @@ public:
     inline bool is_contiguous()const;
     inline void printtensor()const;
 
-     // Assignment from another datastruct
+
     datastruct& operator=(const datastruct& other) {
-        // deep copy / copy view, whatever you already do
         return *this;
     }
 
-    // Assignment from an expression (AddExpr, MulExpr, ScaleExpr, etc.)
     template <typename Expr>
     requires requires(Expr e, datastruct<T>& self, const Math_Functions_Policy* pol) {
         e.assign_to(self, pol);
@@ -265,10 +263,6 @@ public:
         return *this;
     }
 
-
-
-
-    // optionally an overload:
     template <typename Expr>
     datastruct& assign(const Expr& expr, const Math_Functions_Policy* policy) {
         expr.assign_to(*this, policy);
