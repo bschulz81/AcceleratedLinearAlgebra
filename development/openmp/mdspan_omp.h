@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <set>
 
-
-
+#include "datastruct.h"
+#include "datastruct_gpu_memory_functions.h"
 
 using namespace std;
 
@@ -124,7 +124,7 @@ protected:
             auto it = device_intervals.find(device);
             if (it != device_intervals.end())
             {
-                 Interval iv{start, end};
+                Interval iv{start, end};
                 size_t erased = it->second.erase(iv);
 
                 if (erased == 0) return false;
@@ -173,25 +173,36 @@ public:
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
 
 
-    mdspan(T* __restrict data, const size_t datalength,const bool rowm, const Container& extents, const Container& strides,bool dpdata_is_devptr=false,int devnum=0);
-    mdspan(T* __restrict data, const bool rowm, const Container& extents, const Container& strides,bool dpdata_is_devptr=false,int devnum=0);
-    mdspan(T* __restrict data, const bool rowm, const Container& extents,bool dpdata_is_devptr=false,int devnum=0);
-    mdspan(T* __restrict data, const bool rowm,const size_t rows,const size_t cols,bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data, const size_t datalength, const Container& extents, const Container& strides,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
 
+
+    mdspan(T* data,  const Container& extents, const Container& strides,const bool rowm=true, bool dpdata_is_devptr=false,int devnum=0);
+
+
+    mdspan(T* data, const Container& extents, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
+
+
+    mdspan(T* data, const size_t rows,const size_t cols,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data,const size_t rows, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
     virtual ~mdspan();
 
     using datastruct<T>::operator();
     inline T& operator()(const Container& extents);
     inline T operator()(const Container& extents)const;
 
+    using datastruct<T>::operator=;
 
     // Subspan methods
+    using datastruct<T>::subspan;
     mdspan<T, Container> subspan(const Container& offsets,  Container& sub_extents) const;
     using datastruct<T>::subspanmatrix;
     mdspan<T, Container> subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-
+    using datastruct<T>::column;
     mdspan<T, Container>column(const size_t col_index);
+
+    using datastruct<T>::row;
     mdspan<T, Container>row(const size_t row_index);
+
     using datastruct<T>::transpose;
     mdspan<T, Container>transpose();
 
@@ -526,6 +537,7 @@ mdspan<T, Container>::mdspan(const datastruct<T>&other,const shared_ptr<mdspan<T
     if(pextents.data()!=other.dpstrides)
         copy(other.dpstrides,other.dpstrides+other.dprank,begin(pstrides));
 
+
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
 
@@ -598,6 +610,7 @@ void compute_strides(const Container& extents, Container& strides,const bool row
 {
     const size_t n = extents.size();
     if (n == 0) return;
+
     if constexpr (StaticContainer<Container>)
     {
         strides = {}; // Default-initialize static container
@@ -607,16 +620,23 @@ void compute_strides(const Container& extents, Container& strides,const bool row
     {
         strides.resize(n); // Resize dynamic container
     }
+    if(n==1)
+    {
+        strides[0]=1;
+        return;
+    }
 
     if (rowmajor)
     {
+
         // Row-major layout: last dimension has stride 1
         strides[n - 1] = 1;
         #pragma omp unroll
-        for (int i = n - 2; i >= 0; --i)
+        for (int i =(int) n - 2; i > 0; --i)
         {
             strides[i] = strides[i + 1] * extents[i + 1];
         }
+        strides[0] = strides[1] * extents[1];
     }
     else
     {
@@ -697,7 +717,7 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm, const Container& extents, const Container& strides,bool dpdata_is_devptr,int devnum)
+mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum)
     :datastruct<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
     initialize_extents_and_strides(extents,strides);
@@ -706,7 +726,7 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength,const  bool rowm,
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, const Container& strides,bool dpdata_is_devptr,int devnum)
+mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum)
     : datastruct<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 
 {
@@ -717,7 +737,7 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm, const Container& extents, 
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents,bool dpdata_is_devptr,int devnum)
+mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum)
     :  datastruct<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
     initialize_extents(extents);
@@ -733,9 +753,10 @@ mdspan<T, Container>::mdspan(T* data, const bool rowm,const  Container& extents,
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const size_t cols,bool dpdata_is_devptr,int devnum)
+mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum)
     :  datastruct<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
+
     const size_t r=2;
     if constexpr (StaticContainer<Container>)
     {
@@ -755,6 +776,33 @@ mdspan<T, Container>::mdspan(T* data,const bool rowm,  const size_t rows, const 
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
     this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+}
+
+
+
+template <typename T, typename Container>
+mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum)
+    :  datastruct<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+{
+    const size_t r=1;
+    if constexpr (StaticContainer<Container>)
+    {
+        pextents = {}; // Default-initialize static container
+    }
+
+    if constexpr (DynamicContainer<Container>)
+    {
+        pextents.resize(r); // Resize dynamic container
+    }
+    // Resize and copy extents from container
+
+    pextents[0]=rows;
+    pstrides[0]=1;
+
+
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+    this->dpdatalength=rows;
 }
 
 
@@ -862,7 +910,7 @@ mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
 {
     size_t num_dims = this->count_noncollapsed_dims();
     size_t *tempext=new size_t[num_dims],
-    *tempstr=new size_t[num_dims];
+           *tempstr=new size_t[num_dims];
     mdspan<T, std::vector<size_t>> result(this->collapsed_view(num_dims,tempext, tempstr),mapping_manager);
     delete []tempext;
     delete []tempstr;
@@ -875,8 +923,10 @@ template <typename T, typename Container>
 mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents)const
 {
     size_t *tempstr=new size_t[offsets.size()];
-    mdspan<T,Container> result( this->subspan_v(offsets.data(),sub_extents.data(), tempstr),mapping_manager);
+    size_t *tempext=new size_t[offsets.size()];
+    mdspan<T,Container> result( this->subspan(offsets.data(),sub_extents.data(),tempext, tempstr),mapping_manager);
     delete [] tempstr;
+    delete [] tempext;
     return result;
 }
 
@@ -891,16 +941,16 @@ mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const
 template <typename T, typename Container>
 mdspan<T,Container> mdspan<T, Container>:: row(const size_t row_index)
 {
-    size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(this->row_rp(row_index,tempext, tempstr),mapping_manager);
+    size_t tempext[1], tempstr[1];
+    mdspan<T,Container> result(this->row(row_index,tempext, tempstr),mapping_manager);
     return result;
 }
 
 template <typename T, typename Container>
 mdspan<T,Container> mdspan<T, Container>::column(const size_t column_index)
 {
-    size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(this->column_rp(column_index,tempext, tempstr),mapping_manager);
+    size_t tempext[1], tempstr[1];
+    mdspan<T,Container> result(this->column(column_index,tempext, tempstr),mapping_manager);
     return result;
 }
 

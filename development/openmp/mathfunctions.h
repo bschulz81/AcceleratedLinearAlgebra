@@ -168,23 +168,24 @@ template <typename T>
 class Math_Functions
 {
 public:
-    inline static void matrix_multiply_dot(  datastruct<T>& A,  datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
-    inline static void matrix_multiply_dot_kahan(  datastruct<T>& A,  datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
-    inline static void matrix_add( datastruct<T>& A, datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
-    inline static void matrix_subtract( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_dot(const  datastruct<T>& A,const  datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_dot_kahan( const datastruct<T>& A, const datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_add(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_subtract(const datastruct<T>& A, const datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy* policy=nullptr);
 
-    inline static void matrix_multiply_vector(  datastruct<T>&M,  datastruct<T> V, datastruct<T> C,const Math_Functions_Policy* policy=nullptr);
-    inline static void matrix_multiply_vector(  datastruct<T>&M, T*V, datastruct<T> & C, const Math_Functions_Policy* policy=nullptr);
-    inline static void matrix_multiply_scalar(   datastruct<T>& M, T V, datastruct<T>& C, const Math_Functions_Policy* policy=nullptr);
 
-    inline static void vector_multiply_scalar( datastruct<T>& vec,T scalar,datastruct<T>& res,const Math_Functions_Policy* policy=nullptr);
-    inline static void vector_add(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res,const Math_Functions_Policy* policy=nullptr);
-    inline static void vector_subtract(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res,  const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_vector(const  datastruct<T>&M,const  datastruct<T> V, datastruct<T> C,const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_vector(const  datastruct<T>&M,const T*V,  datastruct<T> & C, const Math_Functions_Policy* policy=nullptr);
+    inline static void matrix_multiply_scalar(const   datastruct<T>& M,const T V, datastruct<T>& C, const Math_Functions_Policy* policy=nullptr);
 
-    inline static T dot_product(  datastruct<T> &vec1,  datastruct<T> &vec2, const Math_Functions_Policy* policy=nullptr);
-    inline static void cholesky_decomposition(datastruct<T>& A, datastruct<T> & L, const Math_Functions_Policy* policy=nullptr);
-    inline static void lu_decomposition(datastruct<T> &A, datastruct<T> & L,datastruct<T> & U, const Math_Functions_Policy* policy=nullptr);
-    inline static void qr_decomposition(datastruct<T> &A,datastruct<T>& Q, datastruct<T> & R,  const Math_Functions_Policy* policy=nullptr);
+    inline static void vector_multiply_scalar( const datastruct<T>& vec,const T scalar,datastruct<T>& res,const Math_Functions_Policy* policy=nullptr);
+    inline static void vector_add( const datastruct<T>& vec1,  const datastruct<T>& vec2, datastruct<T> & res,const Math_Functions_Policy* policy=nullptr);
+    inline static void vector_subtract( const datastruct<T>& vec1, const datastruct<T>& vec2, datastruct<T> & res,  const Math_Functions_Policy* policy=nullptr);
+
+    inline static T dot_product( const datastruct<T> &vec1, const datastruct<T> &vec2, const Math_Functions_Policy* policy=nullptr);
+    inline static void cholesky_decomposition(const datastruct<T>& A, datastruct<T> & L, const Math_Functions_Policy* policy=nullptr);
+    inline static void lu_decomposition(const datastruct<T> &A, datastruct<T> & L,datastruct<T> & U, const Math_Functions_Policy* policy=nullptr);
+    inline static void qr_decomposition(const datastruct<T> &A,datastruct<T>& Q, datastruct<T> & R,  const Math_Functions_Policy* policy=nullptr);
 
     // optional default policy (initially empty = not constructed)
     inline static std::optional<Math_Functions_Policy> default_policy;
@@ -219,7 +220,7 @@ protected:
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_dot(  datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_multiply_dot( const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -233,7 +234,7 @@ void Math_Functions<T>::matrix_multiply_dot(  datastruct<T>& A,  datastruct<T>& 
 
 
 template <typename T>
-void Math_Functions<T>::matrix_add( datastruct<T>& A, datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_add( const datastruct<T>& A,const datastruct<T>& B,  datastruct<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
@@ -244,7 +245,7 @@ void Math_Functions<T>::matrix_add( datastruct<T>& A, datastruct<T>& B, datastru
 
 
 template <typename T>
-void Math_Functions<T>::matrix_subtract( datastruct<T>& A,  datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_subtract(const  datastruct<T>& A, const datastruct<T>& B, datastruct<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
@@ -256,7 +257,7 @@ void Math_Functions<T>::matrix_subtract( datastruct<T>& A,  datastruct<T>& B, da
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_vector(  datastruct<T>&M,  datastruct<T> V, datastruct<T> C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_multiply_vector( const datastruct<T>&M, const datastruct<T> V, datastruct<T> C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M, V, C, Math_Functions_Policy::default_square_treshold))
@@ -266,7 +267,7 @@ void Math_Functions<T>::matrix_multiply_vector(  datastruct<T>&M,  datastruct<T>
 }
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_vector(  datastruct<T>&M, T*V, datastruct<T> & C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_multiply_vector(  const datastruct<T>&M, const T*V, datastruct<T> & C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
@@ -279,7 +280,7 @@ void Math_Functions<T>::matrix_multiply_vector(  datastruct<T>&M, T*V, datastruc
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_scalar(   datastruct<T>& M, T V, datastruct<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions<T>::matrix_multiply_scalar( const  datastruct<T>& M, const T V, datastruct<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
@@ -291,7 +292,7 @@ void Math_Functions<T>::matrix_multiply_scalar(   datastruct<T>& M, T V, datastr
 
 
 template <typename T>
-void Math_Functions<T>::vector_multiply_scalar( datastruct<T>& vec,T scalar,datastruct<T>& res,const Math_Functions_Policy*pol)
+void Math_Functions<T>::vector_multiply_scalar( const datastruct<T>& vec,const T scalar,datastruct<T>& res,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec,res, Math_Functions_Policy::default_square_treshold))
@@ -304,7 +305,7 @@ void Math_Functions<T>::vector_multiply_scalar( datastruct<T>& vec,T scalar,data
 
 
 template <typename T>
-inline void Math_Functions<T>::vector_add(  datastruct<T>& vec1,  datastruct<T>& vec2, datastruct<T> & res,const Math_Functions_Policy*pol)
+inline void Math_Functions<T>::vector_add(  const datastruct<T>& vec1, const datastruct<T>& vec2, datastruct<T> & res,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
@@ -315,7 +316,7 @@ inline void Math_Functions<T>::vector_add(  datastruct<T>& vec1,  datastruct<T>&
 
 
 template <typename T>
-inline void Math_Functions<T>::vector_subtract( datastruct<T>& vec1, datastruct<T>& vec2, datastruct<T> & res, const Math_Functions_Policy*pol)
+inline void Math_Functions<T>::vector_subtract(const datastruct<T>& vec1,const datastruct<T>& vec2, datastruct<T> & res, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
@@ -326,7 +327,7 @@ inline void Math_Functions<T>::vector_subtract( datastruct<T>& vec1, datastruct<
 
 
 template <typename T>
-inline T Math_Functions<T>::dot_product(  datastruct<T> &vec1,  datastruct<T> &vec2, const Math_Functions_Policy*pol)
+inline T Math_Functions<T>::dot_product( const datastruct<T> &vec1, const datastruct<T> &vec2, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2, Math_Functions_Policy::default_square_treshold))
@@ -337,7 +338,7 @@ inline T Math_Functions<T>::dot_product(  datastruct<T> &vec1,  datastruct<T> &v
 
 
 template <typename T>
-void Math_Functions<T>::cholesky_decomposition(datastruct<T> & A,datastruct<T> & L, const Math_Functions_Policy*pol)
+void Math_Functions<T>::cholesky_decomposition(const datastruct<T> & A, datastruct<T> & L, const Math_Functions_Policy*pol)
 {
 
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
@@ -351,7 +352,7 @@ void Math_Functions<T>::cholesky_decomposition(datastruct<T> & A,datastruct<T> &
 }
 
 template <typename T>
-void Math_Functions<T>::lu_decomposition(datastruct<T>& A, datastruct<T> &L,datastruct<T>& U, const Math_Functions_Policy*pol)
+void Math_Functions<T>::lu_decomposition(const datastruct<T>& A, datastruct<T> &L,datastruct<T>& U, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
 
@@ -365,7 +366,7 @@ void Math_Functions<T>::lu_decomposition(datastruct<T>& A, datastruct<T> &L,data
 }
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T>
-void Math_Functions<T>::qr_decomposition(datastruct<T>& A, datastruct<T>& Q, datastruct<T>& R,   const Math_Functions_Policy*pol)
+void Math_Functions<T>::qr_decomposition(const datastruct<T>& A, datastruct<T>& Q, datastruct<T>& R,   const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A,Q,R, Math_Functions_Policy::default_cubic_treshold))

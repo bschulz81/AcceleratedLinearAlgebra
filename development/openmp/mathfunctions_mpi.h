@@ -2334,12 +2334,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             // Extract column c of M
 
             size_t vext[1],vstr[1];
-            datastruct<T> v = M.column_rr(c,vext,vstr);
+            datastruct<T> v = M.column(c,vext,vstr);
             typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadv(v,  policy.devicenum, false, false);
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                datastruct<T>  u = tQ.column_rr(j,uext,ustr);
+                datastruct<T>  u = tQ.column(j,uext,ustr);
                 typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadu(u,  policy.devicenum, false, false);
                 const T dot_pr =GPU_Math_Functions<T>::dot_product_g(u,v,policy.devicenum);
 
@@ -2534,12 +2534,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             }
 
             size_t vext[1],vstr[1];
-            datastruct<T> v = M.column_rr(c,vext,vstr);
+            datastruct<T> v = M.column(c,vext,vstr);
 
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                datastruct<T>  u = Q.column_rr(j,uext,ustr);
+                datastruct<T>  u = Q.column(j,uext,ustr);
                 const T dot_pr =Math_Functions<T>::dot_product(u,v,&policy);
                 #pragma omp parallel for simd shared(v,u)
                 for (size_t i = 0; i < n; ++i)
