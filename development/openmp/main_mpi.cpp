@@ -5,7 +5,7 @@
 
 #include "mdspan_data.h"
 #include "mathfunctions.h"
-#include "datastruct_mpifunctions.h"
+#include "datablock_mpifunctions.h"
 #include "mathfunctions_mpi.h"
 
 
@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 
             vector<double>A2_data(16,4);
             mdspan<double, std::vector<size_t>> A2(A2_data.data(),  {rows, cols},true);
-            Datastruct_MPI_Functions<double>::MPI_Send_datastruct(A2,1,1,MPI_COMM_WORLD);
+            DataBlock_MPI_Functions<double>::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
             cout<<"Message Sent:\n";
             A2.printtensor();
         }
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
             cout<<" It can do so on a memory map, on host working memory, or on device memory, which is then accesible only with a device kernel"<<endl;
             mdspan_data<double, std::vector<size_t>> B( {rows, cols},true);
 
-            Datastruct_MPI_Functions<double>::MPI_Recv_datastruct(B,0,1,MPI_COMM_WORLD);
+            DataBlock_MPI_Functions<double>::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
             cout<<"Message recieved"<<endl;
             B.printtensor();
             B(1,1)=42;

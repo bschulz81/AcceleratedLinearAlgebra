@@ -80,7 +80,7 @@ int main()
             size_t* extentsA = new size_t[num_dims];
             size_t* stridesA = new size_t[num_dims];
 
-            datastruct<double> coll=subT_view.collapsed_view(num_dims,extentsA, stridesA);
+            DataBlock<double> coll=subT_view.collapsed_view(num_dims,extentsA, stridesA);
             std::cout<<"with collapsed dims"<<endl;
             coll.printtensor();
 

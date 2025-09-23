@@ -5,7 +5,7 @@
 #include <type_traits>
 #include "mathfunctions.h"
 #include "mdspan_omp.h"
-#include "datastruct.h"
+#include "datablock.h"
 
 namespace expr
 {
@@ -33,16 +33,16 @@ concept HasObjectType = requires(const std::remove_cvref_t<U>& x)
 };
 
 template<typename U>
-concept HasAssignTo = requires(const std::remove_cvref_t<U>& x, datastruct<double>& C)
+concept HasAssignTo = requires(const std::remove_cvref_t<U>& x, DataBlock<double>& C)
 {
     { x.assign_to(C) };
 };
 
 template<typename U>
-concept ExprOrDatastruct = HasObjectType<U> || HasAssignTo<U>;
+concept ExprOrDataBlock = HasObjectType<U> || HasAssignTo<U>;
 
 template<typename Expr>
-concept Expression = requires(const Expr& e, datastruct<double>& C)
+concept Expression = requires(const Expr& e, DataBlock<double>& C)
 {
     { e.assign_to(C) };
 } || requires(const Expr& e)
@@ -59,13 +59,13 @@ struct AddExpr
     const Math_Functions_Policy* policy = nullptr;
 
     template<typename T>
-    void assign_to(datastruct<T>& C, const Math_Functions_Policy* override = nullptr) const
+    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
         auto pol = override ? override : policy;  // pick override if given
 
-        if (lhs.ObjectType() == datastruct<T>::Matrix)
+        if (lhs.ObjectType() == DataBlock<T>::Matrix)
             Math_Functions<T>::matrix_add(lhs, rhs, C, pol);
-        else if (lhs.ObjectType() == datastruct<T>::Vector)
+        else if (lhs.ObjectType() == DataBlock<T>::Vector)
             Math_Functions<T>::vector_add(lhs, rhs, C, pol);
         else
             throw std::runtime_error("Unsupported type for addition");
@@ -80,13 +80,13 @@ struct SubtrExpr
     const Math_Functions_Policy* policy = nullptr;
 
     template<typename T>
-    void assign_to(datastruct<T>& C, const Math_Functions_Policy* override = nullptr) const
+    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
         auto pol = override ? override : policy;  // pick override if given
 
-        if (lhs.ObjectType() == datastruct<T>::Matrix)
+        if (lhs.ObjectType() == DataBlock<T>::Matrix)
             Math_Functions<T>::matrix_subtract(lhs, rhs, C, pol);
-        else if (lhs.ObjectType() == datastruct<T>::Vector)
+        else if (lhs.ObjectType() == DataBlock<T>::Vector)
             Math_Functions<T>::vector_subtract(lhs, rhs, C, pol);
         else
             throw std::runtime_error("Unsupported type for subtraction");
@@ -100,7 +100,7 @@ struct ScaleExpr
     const Scalar scalar;
     const Math_Functions_Policy* policy = nullptr;
     template<typename T>
-    void assign_to(datastruct<T>& C, const Math_Functions_Policy* override = nullptr) const
+    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
         auto pol = override ? override : policy;  // pick override if given
 
@@ -108,10 +108,10 @@ struct ScaleExpr
         {
             switch(lhs.ObjectType())
             {
-                case datastruct<T>::Vector:
+                case DataBlock<T>::Vector:
                     Math_Functions<T>::vector_multiply_scalar(lhs, scalar, C, pol);
                     break;
-                case datastruct<T>::Matrix:
+                case DataBlock<T>::Matrix:
                     Math_Functions<T>::matrix_multiply_scalar(lhs, scalar, C, pol);
                     break;
                 default:
@@ -120,7 +120,7 @@ struct ScaleExpr
         }
         else
         {
-            static_assert(std::is_same_v<LHS, void>, "ScaleExpr::assign_to: lhs must be datastruct-like");
+            static_assert(std::is_same_v<LHS, void>, "ScaleExpr::assign_to: lhs must be DataBlock-like");
         }
     }
 };
@@ -132,20 +132,20 @@ struct MulExpr
     const RHS& rhs;
     const Math_Functions_Policy* policy = nullptr;
     template<typename T>
-    void assign_to(datastruct<T>& C, const Math_Functions_Policy* override = nullptr) const
+    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
         auto pol = override ? override : policy;
 
-        if (lhs.ObjectType() == datastruct<T>::Matrix)
+        if (lhs.ObjectType() == DataBlock<T>::Matrix)
         {
-            if (rhs.ObjectType() == datastruct<T>::Matrix)
+            if (rhs.ObjectType() == DataBlock<T>::Matrix)
                 Math_Functions<T>::matrix_multiply_dot(lhs, rhs, C, pol);
-            else if (rhs.ObjectType() == datastruct<T>::Vector)
+            else if (rhs.ObjectType() == DataBlock<T>::Vector)
                 Math_Functions<T>::matrix_multiply_vector(lhs, rhs, C, pol);
             else
                 throw std::runtime_error("Unsupported RHS for matrix multiplication");
         }
-        else if (lhs.ObjectType() == datastruct<T>::Vector && rhs.ObjectType() == datastruct<T>::Vector)
+        else if (lhs.ObjectType() == DataBlock<T>::Vector && rhs.ObjectType() == DataBlock<T>::Vector)
         {
             throw std::runtime_error("Dot product is scalar, use dot() or eval_scalar()");
         }
@@ -166,7 +166,7 @@ struct DotExpr {
     T eval_scalar(const Math_Functions_Policy* override = nullptr) const
     {
         auto pol = override ? override : policy;
-        if (lhs.ObjectType() == datastruct<T>::Vector && rhs.ObjectType() == datastruct<T>::Vector)
+        if (lhs.ObjectType() == DataBlock<T>::Vector && rhs.ObjectType() == DataBlock<T>::Vector)
         {
             return Math_Functions<T>::dot_product(lhs, rhs, pol);
         }
@@ -179,40 +179,40 @@ struct DotExpr {
     }
 };
 
-template<ExprOrDatastruct LHS, typename Scalar>
+template<ExprOrDataBlock LHS, typename Scalar>
 requires std::is_arithmetic_v<std::remove_cvref_t<Scalar>>
 auto operator*(const LHS& lhs, Scalar scalar)
 {
     return ScaleExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<Scalar>> {lhs, scalar};
 }
 
-template<typename Scalar, ExprOrDatastruct RHS>
+template<typename Scalar, ExprOrDataBlock RHS>
 requires std::is_arithmetic_v<std::remove_cvref_t<Scalar>>
 auto operator*(Scalar scalar, const RHS& rhs)
 {
     return ScaleExpr<std::remove_cvref_t<RHS>, std::remove_cvref_t<Scalar>> {rhs, scalar};
 }
 
-template<ExprOrDatastruct LHS, ExprOrDatastruct RHS>
+template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
 auto operator*(const LHS& lhs, const RHS& rhs)
 {
     return MulExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<ExprOrDatastruct LHS, ExprOrDatastruct RHS>
+template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
 auto operator+(const LHS& lhs, const RHS& rhs)
 {
     return AddExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<ExprOrDatastruct LHS, ExprOrDatastruct RHS>
+template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
 auto operator-(const LHS& lhs, const RHS& rhs)
 {
     return SubtrExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
 
-template<ExprOrDatastruct LHS, ExprOrDatastruct RHS>
+template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
 auto dot(const LHS& lhs, const RHS& rhs)
 {
     return DotExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>>{lhs, rhs};
