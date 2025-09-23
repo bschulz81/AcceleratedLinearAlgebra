@@ -1,48 +1,48 @@
 #ifndef GPUMATHFUNCTIONS
 #define GPUMATHFUNCTIONS
 
-#include "datastruct.h"
-#include "datastruct_host_memory_functions.h"
-#include "datastruct_gpu_memory_functions.h"
+#include "datablock.h"
+#include "datablock_host_memory_functions.h"
+#include "datablock_gpu_memory_functions.h"
 
 template <typename T>
 class GPU_Math_Functions
 {
 public:
-    inline static void matrix_multiply_dot_g( const datastruct<T>& A,const  datastruct<T>& B,  datastruct<T>& C,int dev,bool update_host=true);
-    inline static void matrix_multiply_dot_g_kahan( const datastruct<T>& A,const  datastruct<T>& B,  datastruct<T>& C,int dev,bool update_host=true);
-    inline static void matrix_add_g(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C,int dev,bool update_host=true);
-    inline static void matrix_subtract_g( const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C,int dev,bool update_host=true);
+    inline static void matrix_multiply_dot_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_multiply_dot_g_kahan( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_add_g(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_subtract_g( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
 
-    inline static void matrix_multiply_vector_g(const  datastruct<T>&M, const datastruct<T> V, datastruct<T> C,int dev,bool update_host=true);
-    inline static void matrix_multiply_vector_g(const  datastruct<T>M,const T*V, datastruct<T> & C, int dev,bool update_host=true);
-    inline static void matrix_multiply_scalar_g( const  datastruct<T>& M, const T V, datastruct<T>& C, int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_g(const  DataBlock<T>M,const T*V, DataBlock<T> & C, int dev,bool update_host=true);
+    inline static void matrix_multiply_scalar_g( const  DataBlock<T>& M, const T V, DataBlock<T>& C, int dev,bool update_host=true);
 
-    inline static void vector_multiply_scalar_g(const datastruct<T>& vec, const T scalar,datastruct<T>& res,int dev,bool update_host=true);
-    inline static void vector_add_g(const  datastruct<T>& vec1, const datastruct<T>& vec2, datastruct<T> & res,int dev,bool update_host=true);
-    inline static void vector_subtract_g( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res,  int dev,bool update_host=true);
+    inline static void vector_multiply_scalar_g(const DataBlock<T>& vec, const T scalar,DataBlock<T>& res,int dev,bool update_host=true);
+    inline static void vector_add_g(const  DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host=true);
+    inline static void vector_subtract_g( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res,  int dev,bool update_host=true);
 
-    inline static T dot_product_g( const datastruct<T> &vec1,const  datastruct<T> &vec2, int dev);
-    inline static T dot_product_g_kahan( const datastruct<T> &vec1,const  datastruct<T> &vec2,int dev, int nteams, int nthreads_per_team );
+    inline static T dot_product_g( const DataBlock<T> &vec1,const  DataBlock<T> &vec2, int dev);
+    inline static T dot_product_g_kahan( const DataBlock<T> &vec1,const  DataBlock<T> &vec2,int dev, int nteams, int nthreads_per_team );
 
-    inline static void cholesky_decomposition_g(const datastruct<T>& A, datastruct<T> & L, int dev,bool update_host=true, bool initialize_output_to_zero=true);
-    inline static void lu_decomposition_g(const datastruct<T> &A,  datastruct<T> & L,datastruct<T> & U, int dev,bool update_host=true,bool initialize_output_to_zero=true);
-    inline static void qr_decomposition_g(const datastruct<T> &A,datastruct<T>& Q, datastruct<T> & R,  int dev,bool update_host=true,bool initialize_output_to_zero=true,bool memmaptempfiles=false);
+    inline static void cholesky_decomposition_g(const DataBlock<T>& A, DataBlock<T> & L, int dev,bool update_host=true, bool initialize_output_to_zero=true);
+    inline static void lu_decomposition_g(const DataBlock<T> &A,  DataBlock<T> & L,DataBlock<T> & U, int dev,bool update_host=true,bool initialize_output_to_zero=true);
+    inline static void qr_decomposition_g(const DataBlock<T> &A,DataBlock<T>& Q, DataBlock<T> & R,  int dev,bool update_host=true,bool initialize_output_to_zero=true,bool memmaptempfiles=false);
 
 };
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_dot_g( const datastruct<T>& A, const datastruct<T>& B, datastruct<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_dot_g( const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
    const size_t Astr0=A.dpstrides[0];
    const size_t Astr1=A.dpstrides[1];
@@ -69,16 +69,16 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g( const datastruct<T>& A, const
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_dot_g_kahan(const  datastruct<T>& A, const datastruct<T>& B, datastruct<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_dot_g_kahan(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
     #pragma omp target teams distribute parallel for simd collapse(2) shared(A,B,C) device(dev)
     for (size_t i = 0; i < rows; ++i)
@@ -101,16 +101,16 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g_kahan(const  datastruct<T>& A,
 }
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_add_g( const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_add_g( const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
 {
 
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for shared(C,A,B) device(dev)
     for (size_t i = 0; i < n; ++i)
@@ -127,16 +127,16 @@ void GPU_Math_Functions<T>::matrix_add_g( const datastruct<T>& A,const datastruc
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_subtract_g( const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_subtract_g( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for shared(C,A,B) device(dev)
     for (size_t i = 0; i <n; ++i)
@@ -153,7 +153,7 @@ void GPU_Math_Functions<T>::matrix_subtract_g( const datastruct<T>& A,const  dat
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>&M, const datastruct<T> V, datastruct<T> C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,int dev,bool update_host)
 {
 
 
@@ -163,9 +163,9 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>&M, con
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperV(V,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperV(V,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
@@ -183,7 +183,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>&M, con
 }
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>M, const T*V, datastruct<T> & C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>M, const T*V, DataBlock<T> & C,int dev,bool update_host)
 {
 
 
@@ -192,8 +192,8 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>M, cons
 
     #pragma omp target enter data map (to:V[0:n])device(dev)
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
@@ -215,7 +215,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const datastruct<T>M, cons
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_scalar_g( const  datastruct<T>& M,const  T V, datastruct<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_scalar_g( const  DataBlock<T>& M,const  T V, DataBlock<T>& C,int dev,bool update_host)
 {
 
     const size_t n=C.dpextents[0];
@@ -223,8 +223,8 @@ void GPU_Math_Functions<T>::matrix_multiply_scalar_g( const  datastruct<T>& M,co
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for shared(C,M) device(dev)
     for (size_t i = 0; i <n; ++i)
@@ -242,14 +242,14 @@ void GPU_Math_Functions<T>::matrix_multiply_scalar_g( const  datastruct<T>& M,co
 
 
 template <typename T>
-void GPU_Math_Functions<T>::vector_multiply_scalar_g( const datastruct<T>& vec,const T scalar,datastruct<T>& res,int dev,bool update_host)
+void GPU_Math_Functions<T>::vector_multiply_scalar_g( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res,int dev,bool update_host)
 {
     const size_t n=vec.dpextents[0];
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec(vec,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec(vec,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for simd shared(res,vec) device(dev)
     for (size_t i = 0; i < n; ++i)
@@ -264,15 +264,15 @@ void GPU_Math_Functions<T>::vector_multiply_scalar_g( const datastruct<T>& vec,c
 
 
 template <typename T>
-inline void GPU_Math_Functions<T>::vector_add_g(const   datastruct<T>& vec1, const datastruct<T>& vec2, datastruct<T> & res,int dev,bool update_host)
+inline void GPU_Math_Functions<T>::vector_add_g(const   DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host)
 {
     const size_t n=vec1.dpextents[0];
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for simd shared(res,vec1,vec2) device(dev)
     for (size_t i = 0; i < n; ++i)
@@ -284,15 +284,15 @@ inline void GPU_Math_Functions<T>::vector_add_g(const   datastruct<T>& vec1, con
 
 
 template <typename T>
-inline void GPU_Math_Functions<T>::vector_subtract_g( const datastruct<T>& vec1,const datastruct<T>& vec2, datastruct<T> & res,int dev,bool update_host)
+inline void GPU_Math_Functions<T>::vector_subtract_g( const DataBlock<T>& vec1,const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host)
 {
     const size_t n=vec1.dpextents[0];
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperres(res,dev,true,update_host);
 
     #pragma omp target teams distribute parallel for simd shared(vec1,vec2,res) device(dev)
     for (size_t i = 0; i < n; ++i)
@@ -306,7 +306,7 @@ inline void GPU_Math_Functions<T>::vector_subtract_g( const datastruct<T>& vec1,
 
 
 template <typename T>
-inline T GPU_Math_Functions<T>::dot_product_g(const  datastruct<T> &vec1, const datastruct<T> &vec2,int dev)
+inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const DataBlock<T> &vec2,int dev)
 {
     const size_t n=vec1.dpextents[0];
 
@@ -315,8 +315,8 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  datastruct<T> &vec1, const 
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
 
     #pragma omp target teams distribute parallel for simd reduction(+:result)shared(vec1,vec2) device(dev)
     for (size_t i = 0; i < n; ++i)
@@ -329,14 +329,14 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  datastruct<T> &vec1, const 
 
 
 template <typename T>
-inline T GPU_Math_Functions<T>::dot_product_g_kahan(const  datastruct<T> &vec1, const datastruct<T> &vec2,int dev, int nteams, int nthreads_per_team)
+inline T GPU_Math_Functions<T>::dot_product_g_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2,int dev, int nteams, int nthreads_per_team)
 {
     const size_t n=vec1.dpextents[0];
 
     int total_threads = nteams * nthreads_per_team;
 
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
 
     if(n < (size_t)total_threads)
     {
@@ -405,7 +405,7 @@ inline T GPU_Math_Functions<T>::dot_product_g_kahan(const  datastruct<T> &vec1, 
 
 
 template <typename T>
-void GPU_Math_Functions<T>::cholesky_decomposition_g(const datastruct<T> & A,datastruct<T> & L,int dev,bool update_host, bool initialize_output_to_zero)
+void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,DataBlock<T> & L,int dev,bool update_host, bool initialize_output_to_zero)
 {
 
 
@@ -414,8 +414,8 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const datastruct<T> & A,dat
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperL(L,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperL(L,dev,true,update_host);
 
     T* dataA=(T*)omp_get_mapped_ptr(A.dpdata,dev);
     T* dataL=(T*)omp_get_mapped_ptr(L.dpdata,dev);
@@ -469,14 +469,14 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const datastruct<T> & A,dat
 }
 
 template <typename T>
-void GPU_Math_Functions<T>::lu_decomposition_g(const datastruct<T>& A, datastruct<T> &L,datastruct<T>& U,int dev, bool update_host,bool initialize_output_to_zero)
+void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,int dev, bool update_host,bool initialize_output_to_zero)
 {
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperL(L,dev,true,update_host);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperU(U,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperL(L,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperU(U,dev,true,update_host);
 
     size_t n = A.dpextents[0];
 
@@ -529,27 +529,27 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const datastruct<T>& A, datastruc
 }
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T>
-void GPU_Math_Functions<T>::qr_decomposition_g(const datastruct<T>& A, datastruct<T>& Q, datastruct<T>& R,  int dev,bool update_host,bool initialize_output_to_zero, bool memmap_tempfiles)
+void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,  int dev,bool update_host,bool initialize_output_to_zero, bool memmap_tempfiles)
 {
     const size_t n = A.dpextents[0];
     const size_t m = A.dpextents[1];
 
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperQ(Q,dev,true,update_host);
-    typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperR(R,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperQ(Q,dev,true,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperR(R,dev,true,update_host);
 
 
-    datastruct<T> tQ=Q;
+    DataBlock<T> tQ=Q;
 
     if(!tQ.dpdata_is_devptr)
         tQ.dpdata=(T*) omp_get_mapped_ptr(Q.dpdata,dev);
     tQ.dpdata_is_devptr=true;
 
 
-    datastruct<T> M=Datastruct_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,
+    DataBlock<T> M=DataBlock_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,
                     memmap_tempfiles,dev);
 
-    Datastruct_GPU_Memory_Functions<T>::create_in_struct(M,dev);
+    DataBlock_GPU_Memory_Functions<T>::create_in_struct(M,dev);
 
     if(initialize_output_to_zero)
     {
@@ -585,16 +585,16 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const datastruct<T>& A, datastruc
     {
         size_t pextv[1], pstrv[1];
 
-        datastruct<T> v = M.column(c, pextv, pstrv);  // current column, updated in place
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperv(v,dev,false,false);
+        DataBlock<T> v = M.column(c, pextv, pstrv);  // current column, updated in place
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperv(v,dev,false,false);
 
 
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1], pstru[1];
 
-            datastruct<T> u = tQ.column(j, pextu, pstru);
-            typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadhelperu(u,dev,false,false);
+            DataBlock<T> u = tQ.column(j, pextu, pstru);
+            typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperu(u,dev,false,false);
             T dot_pr = 0;
 
             #pragma omp target teams distribute parallel for simd reduction(+:dot_pr)shared(u,v) device(dev)
@@ -642,8 +642,8 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const datastruct<T>& A, datastruc
             R(i,j)= sum;
         }
     }
-    Datastruct_GPU_Memory_Functions<T>::exit_struct(M,dev);
-    Datastruct_GPU_Memory_Functions<T>::free_copy_device(M,memmap_tempfiles,dev);
+    DataBlock_GPU_Memory_Functions<T>::exit_struct(M,dev);
+    DataBlock_GPU_Memory_Functions<T>::free_copy_device(M,memmap_tempfiles,dev);
 }
 
 

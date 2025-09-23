@@ -2,13 +2,13 @@
 #define MATHFUNCTIONS_MPI
 
 #include "mpi.h"
-#include "datastruct.h"
+#include "datablock.h"
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
 #include <math.h>
-#include "datastruct_host_memory_functions.h"
-#include "datastruct_gpu_memory_functions.h"
-#include "datastruct_mpifunctions.h"
+#include "datablock_host_memory_functions.h"
+#include "datablock_gpu_memory_functions.h"
+#include "datablock_mpifunctions.h"
 #include "inkernel_mathfunctions.h"
 
 
@@ -84,9 +84,9 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& A,
-                        const datastruct<T>& B,
-                        const  datastruct<T>& C,
+    bool should_use_gpu(const DataBlock<T>& A,
+                        const DataBlock<T>& B,
+                        const  DataBlock<T>& C,
                         const size_t threshold)const
     {
         const size_t problem_size = A.datalength();
@@ -98,9 +98,9 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-            const bool B_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-            const bool C_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
+            const bool B_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
+            const bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
             if(A_on_dev|| C_on_dev|| B_on_dev) return true;
             return this->should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
@@ -108,8 +108,8 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& v1,
-                        const datastruct<T>& v2,
+    bool should_use_gpu(const DataBlock<T>& v1,
+                        const DataBlock<T>& v2,
                         const size_t threshold)const
     {
         const size_t problem_size = v1.datalength();
@@ -121,8 +121,8 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-            const bool C_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            const bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
             if(A_on_dev||C_on_dev) return true;
 
             return this->should_use_gpu(problem_size, threshold, A_on_dev  || C_on_dev);
@@ -131,7 +131,7 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& v1,
+    bool should_use_gpu(const DataBlock<T>& v1,
                         const size_t threshold)const
     {
         const size_t problem_size = v1.datalength();
@@ -142,7 +142,7 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
             if(A_on_dev) return true;
             return this->should_use_gpu(problem_size, threshold, A_on_dev );
 
@@ -202,17 +202,17 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& A,
-                        const datastruct<T>& B,
-                        const datastruct<T>& C,
+    bool should_use_gpu(const DataBlock<T>& A,
+                        const DataBlock<T>& B,
+                        const DataBlock<T>& C,
                         const size_t threshold,
                         const size_t num_subcalls)const
     {
         size_t problem_size = A.datalength();
 
-        bool A_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-        bool B_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-        bool C_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+        bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
+        bool B_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
+        bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
 
         if(A_on_dev||B_on_dev||C_on_dev) return true;
 
@@ -220,15 +220,15 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& v1,
-                        const datastruct<T>& v2,
+    bool should_use_gpu(const DataBlock<T>& v1,
+                        const DataBlock<T>& v2,
                         const size_t threshold,
                         const size_t num_subcalls)const
     {
         const size_t problem_size = v1.datalength();
 
-        bool v1_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-        bool v2_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+        bool v1_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+        bool v2_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
         if(v1_on_dev||v1_on_dev) return true;
 
         return should_use_gpu(problem_size, threshold, v1_on_dev || v2_on_dev,num_subcalls);
@@ -236,12 +236,12 @@ public:
     }
 
     template <typename T>
-    bool should_use_gpu(const datastruct<T>& v1,
+    bool should_use_gpu(const DataBlock<T>& v1,
                         size_t threshold,size_t num_subcalls)
     {
         const size_t problem_size = v1.datalength();
 
-        const bool v1_on_dev = Datastruct_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+        const bool v1_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
         if(v1_on_dev) return true;
         return should_use_gpu(problem_size, threshold, v1_on_dev,num_subcalls);
 
@@ -293,28 +293,28 @@ class Math_Functions_MPI: public Math_Functions<T>
 public:
 
 
-    inline static void strassen_multiply( datastruct<T> &aA, datastruct<T> &aB,datastruct<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void strassen_multiply( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
 
-    inline static void winograd_multiply( datastruct<T> &aA, datastruct<T> &aB,datastruct<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void winograd_multiply( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
 
-    inline static void cholesky_decomposition(datastruct<T>& aA, datastruct<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void cholesky_decomposition(DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
 
-    inline static void lu_decomposition(datastruct<T> &aA, datastruct<T> & aL,datastruct<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void lu_decomposition(DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
 
-    inline static void qr_decomposition(datastruct<T> &aA,datastruct<T>& aQ, datastruct<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void qr_decomposition(DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
 
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
 protected:
-    inline static void strassen_multiply_h( datastruct<T> &aA, datastruct<T> &aB,datastruct<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
+    inline static void strassen_multiply_h( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
 
-    inline static void winograd_multiply_h( datastruct<T> &aA, datastruct<T> &aB,datastruct<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
+    inline static void winograd_multiply_h( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
 
-    inline static void cholesky_decomposition_h(datastruct<T>& aA, datastruct<T> & aL,  Math_MPI_Decomposition_Policy &par);
+    inline static void cholesky_decomposition_h(DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy &par);
 
-    inline static void lu_decomposition_h(datastruct<T> &aA, datastruct<T> & aL,datastruct<T> & aU, Math_MPI_Decomposition_Policy &par);
+    inline static void lu_decomposition_h(DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy &par);
 
-    inline static void qr_decomposition_h(datastruct<T> &aA,datastruct<T>& aQ, datastruct<T> & aR,    Math_MPI_Decomposition_Policy &par);
+    inline static void qr_decomposition_h(DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
 
 
     // optional default policy (initially empty = not constructed)
@@ -345,7 +345,7 @@ protected:
 
 
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply( datastruct<T> & A,  datastruct<T> & B, datastruct<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
+void Math_Functions_MPI<T>::strassen_multiply( DataBlock<T> & A,  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -360,10 +360,10 @@ void Math_Functions_MPI<T>::strassen_multiply( datastruct<T> & A,  datastruct<T>
 
     if(separate_device_memory)
     {
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
-        datastruct<T> tA=A,tB=B,tC=C;
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
+        DataBlock<T> tA=A,tB=B,tC=C;
 
         if(!tA.dpdata_is_devptr)
             tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -386,7 +386,7 @@ void Math_Functions_MPI<T>::strassen_multiply( datastruct<T> & A,  datastruct<T>
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<T> & B, datastruct<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
+void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T> & B, DataBlock<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
 {
 
 
@@ -494,25 +494,25 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
     {
         if(policy.memmapped_files)
         {
-            Ard1=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard2=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard3=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard4=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard5=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard1=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard2=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard3=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard4=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard5=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
 
-            Brd1=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd2=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd3=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd4=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd5=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd1=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd2=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd3=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd4=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd5=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
 
-            M1d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M2d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M3d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M4d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M5d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M6d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M7d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M1d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M2d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M3d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M4d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M5d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M6d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M7d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
         }
         else
         {
@@ -539,7 +539,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
     }
 
 
-    datastruct<T>
+    DataBlock<T>
     A_result1(Ard1,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
               A_result2(Ard2,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
               A_result3(Ard3,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
@@ -566,19 +566,19 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(A_result1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(A_result2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(A_result3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(A_result4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(A_result5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(B_result1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(B_result2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(B_result3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(B_result4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(B_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result5,policy.devicenum);
     }
 
-    datastruct<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
+    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
                    A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,psstr2),
                    A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,psstr3),
                    A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,psstr4);
@@ -588,7 +588,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
 
 // Submatrices of B
-    datastruct<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
+    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
                    B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,psstr6),
                    B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,psstr7),
                    B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,psstr8);
@@ -596,14 +596,14 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
     }
 
     if (ongpu)
@@ -661,13 +661,13 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
     }
     if (policy.should_use_mpi_for_recursion(7))
     {
@@ -684,9 +684,9 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+1,1, policy.comm);
 
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A_result1,childdest+1,2, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result1,childdest+1,2, policy.comm);
 
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B_result1,childdest+1,3, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result1,childdest+1,3, policy.comm);
 
 
 
@@ -694,52 +694,52 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
         MPI_Send(&message, 1, MPI_INT, childdest+2, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+2,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A_result2,childdest+2,2, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B11,childdest+2,3, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result2,childdest+2,2, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B11,childdest+2,3, policy.comm);
 
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+3, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+3,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A11,childdest+3,2, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B_result2,childdest+3,3, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A11,childdest+3,2, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result2,childdest+3,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+4, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+4,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A22,childdest+4,2, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B_result3,childdest+4,3, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A22,childdest+4,2, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result3,childdest+4,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+5, 0,    policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+5,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A_result3,childdest+5,2,   policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B22,childdest+5,3,   policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result3,childdest+5,2,   policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B22,childdest+5,3,   policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+6, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+6,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A_result4,childdest+6,2, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B_result4,childdest+6,3, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result4,childdest+6,2, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result4,childdest+6,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+7, 0, policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+7,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A_result5,childdest+7,2,   policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B_result5,childdest+7,3,   policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result5,childdest+7,2,   policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result5,childdest+7,3,   policy.comm);
 
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M1,childdest+1,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M2,childdest+2,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M3,childdest+3,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M4,childdest+4,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M5,childdest+5,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M6,childdest+6,4, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M7,childdest+7,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M1,childdest+1,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M2,childdest+2,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M3,childdest+3,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M4,childdest+4,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M5,childdest+5,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M6,childdest+6,4, policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M7,childdest+7,4, policy.comm);
 
     }
     else
@@ -760,7 +760,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
     size_t ext11a[2],str11a[2], ext12a[2],str12a[2], ext13a[2],str13a[2], ext14a[2],str14a[2];
 
 // Submatrices of C
-    datastruct<T>   C11 = C.subspanmatrix(0, 0, half_n, half_p,ext11a,str11a),
+    DataBlock<T>   C11 = C.subspanmatrix(0, 0, half_n, half_p,ext11a,str11a),
                     C12 = C.subspanmatrix(0, half_p, half_n, half_p,ext12a,str12a),
                     C21 = C.subspanmatrix(half_n, 0, half_n, half_p,ext13a,str13a),
                     C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,ext14a,str14a);
@@ -771,10 +771,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
     {
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(C11,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(C12,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(C21,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(C22,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C11,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C12,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C21,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C22,policy.devicenum);
         }
 
         #pragma omp target teams distribute parallel for simd collapse(2) shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22)      device(policy.devicenum)
@@ -811,39 +811,39 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A_result1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A_result2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A_result3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A_result4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A_result5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B_result1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B_result2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B_result3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B_result4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result5,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
 
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
@@ -870,25 +870,25 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
     {
         if(policy.memmapped_files)
         {
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
 
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Ard1,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Ard2,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Ard3,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Ard4,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Ard5,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Ard1,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Ard2,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Ard3,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Ard4,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Ard5,s2);
 
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Brd1,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Brd2,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Brd3,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Brd4,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(Brd5,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Brd1,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Brd2,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Brd3,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Brd4,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(Brd5,s3);
         }
         else
         {
@@ -915,7 +915,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h( datastruct<T> & A,  datastruct<
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply(datastruct<T>& A, datastruct<T> &B, datastruct<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
+void Math_Functions_MPI<T>::winograd_multiply(DataBlock<T>& A, DataBlock<T> &B, DataBlock<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -932,10 +932,10 @@ void Math_Functions_MPI<T>::winograd_multiply(datastruct<T>& A, datastruct<T> &B
 
     if(separate_device_memory)
     {
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
-        datastruct<T> tA=A,tB=B,tC=C;
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
+        DataBlock<T> tA=A,tB=B,tC=C;
 
         if(!tA.dpdata_is_devptr)
             tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -958,7 +958,7 @@ void Math_Functions_MPI<T>::winograd_multiply(datastruct<T>& A, datastruct<T> &B
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> &B, datastruct<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
+void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B, DataBlock<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
 {
     // Dimensions of input matrices
     size_t n = A.dpextents[0]; // Rows in A
@@ -1061,21 +1061,21 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
     {
         if(policy.memmapped_files)
         {
-            S1d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S2d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S3d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S4d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S5d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S6d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S7d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S8d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s3);
-            M1d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M2d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M3d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M4d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M5d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M6d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
-            M7d=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(s);
+            S1d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            S2d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            S3d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            S4d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s2);
+            S5d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            S6d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            S7d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            S8d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s3);
+            M1d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M2d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M3d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M4d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M5d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M6d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
+            M7d=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(s);
         }
         else
         {
@@ -1099,7 +1099,7 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
     }
 
 
-    datastruct<T>
+    DataBlock<T>
     S1(S1d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
     S2(S2d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
     S3(S3d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
@@ -1121,13 +1121,13 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
 
 
-    datastruct<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
+    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
                    A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,psstr2),
                    A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,psstr3),
                    A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,psstr4);
 
     // Submatrices of B
-    datastruct<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
+    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
                    B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,psstr6),
                    B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,psstr7),
                    B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,psstr8);
@@ -1135,23 +1135,23 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S7,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(S8,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S8,policy.devicenum);
     }
 
     if(ongpu)
@@ -1203,13 +1203,13 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
     }
 
 
@@ -1226,56 +1226,56 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
         MPI_Send(&message, 1, MPI_INT, childdest+1,0, policy.comm);
         size_t problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+1,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S2,childdest+1,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S6,childdest+1,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S2,childdest+1,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S6,childdest+1,3,policy.comm);
 
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+2,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+2,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A11,childdest+2,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B11,childdest+2,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A11,childdest+2,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B11,childdest+2,3,policy.comm);
 
 
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+3,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+3,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A12,childdest+3,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B21,childdest+3,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A12,childdest+3,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B21,childdest+3,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+4,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+4,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S3,childdest+4,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S7,childdest+4,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S3,childdest+4,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S7,childdest+4,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+5,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+5,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S1,childdest+5,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S5,childdest+5,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S1,childdest+5,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S5,childdest+5,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+6,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+6,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S4,childdest+6,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(B22,childdest+6,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S4,childdest+6,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B22,childdest+6,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+7,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+7,1, policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(A22,childdest+7,2,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Send_datastruct(S8,childdest+7,3,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A22,childdest+7,2,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S8,childdest+7,3,policy.comm);
 
 
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M1,childdest+1,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M2,childdest+2,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M3,childdest+3,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M4,childdest+4,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M5,childdest+5,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M6,childdest+6,4,policy.comm);
-        Datastruct_MPI_Functions<T>::MPI_Recv_datastruct_pdata(M7,childdest+7,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M1,childdest+1,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M2,childdest+2,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M3,childdest+3,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M4,childdest+4,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M5,childdest+5,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M6,childdest+6,4,policy.comm);
+        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M7,childdest+7,4,policy.comm);
 
     }
     else
@@ -1297,7 +1297,7 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
     size_t pext10a[2],pstr10a[2],pext11a[2],pstr11a[2],pext12a[2],pstr12a[2],pext13a[2],pstr13a[2];
 
-    datastruct<T>  C11 = C.subspanmatrix(0, 0, half_n, half_p,pext10a,pstr10a),
+    DataBlock<T>  C11 = C.subspanmatrix(0, 0, half_n, half_p,pext10a,pstr10a),
                    C12 = C.subspanmatrix(0, half_p, half_n, half_p,pext11a,pstr11a),
                    C21 = C.subspanmatrix(half_n, 0, half_n, half_p,pext12a,pstr12a),
                    C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,pext13a,pstr13a);
@@ -1305,10 +1305,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(C11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(C12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(C21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::create_out_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C22,policy.devicenum);
     }
 
 
@@ -1348,36 +1348,36 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
     if(separate_device_memory)
     {
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S1,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S2,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S3,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S4,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S5,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S6,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S7,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(S8,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(S8,policy.devicenum);
 
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
-        Datastruct_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
 
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
@@ -1403,21 +1403,21 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 
         if(policy.memmapped_files)
         {
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S1d,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S2d,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S3d,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S4d,s2);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S5d,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S6d,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S7d,s3);
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(S8d,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S1d,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S2d,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S3d,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S4d,s2);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S5d,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S6d,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S7d,s3);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(S8d,s3);
         }
         else
         {
@@ -1441,14 +1441,14 @@ void Math_Functions_MPI<T>::winograd_multiply_h(datastruct<T>& A, datastruct<T> 
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition(datastruct<T> & A,datastruct<T> & L, Math_MPI_Decomposition_Policy *pol)
+void Math_Functions_MPI<T>::cholesky_decomposition(DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy *pol)
 {
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
     Math_Functions_MPI<T>::cholesky_decomposition_h(A,L,policy);
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruct<T> & L, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy &policy)
 {
 
 
@@ -1490,8 +1490,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         {
             if(policy.memmapped_files)
             {
-                sdata=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(tempsize);
-                tempad=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                sdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(tempsize);
+                tempad=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
             }
             else
             {
@@ -1502,16 +1502,16 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
 
-        datastruct<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory);
+        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory);
 
-        datastruct<T> tA=A,tL=L;
+        DataBlock<T> tA=A,tL=L;
 
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -1524,8 +1524,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
             tA.dpdata_is_devptr=true;
             tL.dpdata_is_devptr=true;
             //does not map the deviceptr but just the field-..
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
         }
 
 
@@ -1560,22 +1560,22 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                datastruct<T> R = tL.subspanmatrix(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = tL.subspanmatrix(c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                datastruct<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,true);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,true);
 
                 size_t rtext[2],strtext[2];
 
-                datastruct<T> RT=R.transpose(rtext,strtext);
+                DataBlock<T> RT=R.transpose(rtext,strtext);
 
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadRL(R, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadRL(R, policy.devicenum, false, false);
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadRT(RT, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadRT(RT, policy.devicenum, false, false);
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
 
 
                 switch (policy.algorithm_version)
@@ -1633,14 +1633,14 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         if(separate_device_memory)
         {
             if(policy.update_host)
-                Datastruct_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
 //
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
 
@@ -1650,8 +1650,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
         {
             if(policy.memmapped_files)
             {
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
             }
             else
             {
@@ -1664,8 +1664,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
     else
     {
 
-        T * sdata= Datastruct_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
-        datastruct<T>  tempA=Datastruct_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
+        T * sdata= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
+        DataBlock<T>  tempA=DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
                              ,policy.memmapped_files);
 
         if (policy.initialize_output_to_zeros)
@@ -1698,15 +1698,15 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                datastruct<T> R = L.subspanmatrix(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = L.subspanmatrix(c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                datastruct<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
 
                 size_t rtext[2],strtext[2];
 
-                datastruct<T> RT=R.transpose(rtext,strtext);
+                DataBlock<T> RT=R.transpose(rtext,strtext);
 
 
                 switch (policy.algorithm_version)
@@ -1763,14 +1763,14 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(datastruct<T> & A,datastruc
                 L(i, c)=tmp2/tmp4;
             }
         }
-        Datastruct_Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
-        Datastruct_Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
     }
 }
 
 
 template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition(datastruct<T>& A, datastruct<T> &L,datastruct<T>& U,  Math_MPI_Decomposition_Policy* pol)
+void Math_Functions_MPI<T>::lu_decomposition(DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy* pol)
 {
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -1779,7 +1779,7 @@ void Math_Functions_MPI<T>::lu_decomposition(datastruct<T>& A, datastruct<T> &L,
 
 }
 template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &L,datastruct<T>& U,  Math_MPI_Decomposition_Policy& policy)
+void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy& policy)
 {
 
 
@@ -1821,8 +1821,8 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
         {
             if(policy.memmapped_files)
             {
-                sdata=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(tempsize);
-                tempad=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                sdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(tempsize);
+                tempad=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
             }
             else
             {
@@ -1833,17 +1833,17 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
 
         size_t taext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t tastr[2]= {A.dpstrides[0],A.dpstrides[1]};
-        datastruct<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,taext,tastr,false,false,separate_device_memory);
+        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,taext,tastr,false,false,separate_device_memory);
 
-        datastruct<T> tA=A,tL=L,tU=U;
+        DataBlock<T> tA=A,tL=L,tU=U;
 
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(U,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(U,policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -1856,9 +1856,9 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
             tL.dpdata_is_devptr=true;
             tU.dpdata_is_devptr=true;
 
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tU,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tU,policy.devicenum);
         }
 
 
@@ -1896,20 +1896,20 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                datastruct<T> RL = tL.subspanmatrix(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = tL.subspanmatrix(c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                datastruct<T> RU = tU.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = tU.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
 
 
-                datastruct<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,separate_device_memory);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,separate_device_memory);
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadRL(RL, policy.devicenum, false, false);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadRT(RL, policy.devicenum, false, false);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadRL(RL, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadRT(RL, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
 
                 switch (policy.algorithm_version)
                 {
@@ -1976,29 +1976,29 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
 
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
             if(policy.update_host)
             {
-                Datastruct_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
-                Datastruct_GPU_Memory_Functions<T>::update_host(U,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::update_host(U,policy.devicenum);
             }
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(U,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(U,policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tU,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tU,policy.devicenum);
         }
         else
         {
             if(policy.memmapped_files)
             {
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
             }
             else
             {
@@ -2011,9 +2011,9 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
     else
     {
 
-        T * sdata= Datastruct_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
+        T * sdata= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
 
-        datastruct<T>  tempA=Datastruct_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
+        DataBlock<T>  tempA=DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
                              ,policy.memmapped_files);
 
         if (policy.initialize_output_to_zeros)
@@ -2053,14 +2053,14 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                datastruct<T> RL = L.subspanmatrix(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = L.subspanmatrix(c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                datastruct<T> RU = U.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = U.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                datastruct<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
 
 
 
@@ -2129,14 +2129,14 @@ void Math_Functions_MPI<T>::lu_decomposition_h(datastruct<T>& A, datastruct<T> &
             }
         }
 
-        Datastruct_Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
-        Datastruct_Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
     }
 
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition(datastruct<T>& A, datastruct<T>& Q, datastruct<T>& R, Math_MPI_Decomposition_Policy *pol)
+void Math_Functions_MPI<T>::qr_decomposition(DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy *pol)
 {
 
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
@@ -2144,7 +2144,7 @@ void Math_Functions_MPI<T>::qr_decomposition(datastruct<T>& A, datastruct<T>& Q,
 
 }
 template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& Q, datastruct<T>& R, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy &policy)
 {
 
     bool ongpu=policy.should_use_gpu(A,Q,R,Math_Functions_Policy::default_cubic_treshold,1);
@@ -2184,9 +2184,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
         {
             if(policy.memmapped_files)
             {
-                tempS=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(nm);
-                tempC=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(mm);
-                tempM= Datastruct_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                tempS=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(nm);
+                tempC=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(mm);
+                tempM= DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
             }
             else
             {
@@ -2197,17 +2197,17 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
         }
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-        datastruct<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory);
+        DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory);
 
-        datastruct<T> tA=A,tQ=Q,tR=R;
+        DataBlock<T> tA=A,tQ=Q,tR=R;
 
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(Q,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(R,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(Q,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(R,policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(M,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(M,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -2219,9 +2219,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             tA.dpdata_is_devptr=true;
             tQ.dpdata_is_devptr=true;
             tR.dpdata_is_devptr=true;
-            Datastruct_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tQ,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::create_out_struct(tR,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tQ,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tR,policy.devicenum);
         }
 
 
@@ -2274,8 +2274,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
 
                 size_t extBM[2],strBM[2];
 
-                datastruct<T> BQ = tQ.subspanmatrix(0, z, n, cz,extBQ,strBQ);
-                datastruct<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = tQ.subspanmatrix(0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
 
 
 
@@ -2283,16 +2283,16 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
                 size_t tempCextt[2]= {cz,mc};
                 size_t tempCstrt[2]= {mc,1};
 
-                datastruct<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,false,false,separate_device_memory);
+                DataBlock<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,false,false,separate_device_memory);
 
 
                 size_t extBQT[2],strBQT[2];
-                datastruct<T> BQT=BQ.transpose(extBQT,strBQT);
+                DataBlock<T> BQT=BQ.transpose(extBQT,strBQT);
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadBQ(BQ, policy.devicenum, false, false);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadBQT(BQT, policy.devicenum, false, false);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadBM(BM, policy.devicenum, false, false);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadBQ(BQ, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadBQT(BQT, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadBM(BM, policy.devicenum, false, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, false);
 
 
                 GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
@@ -2301,10 +2301,10 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
 
                 size_t sextt[2]= {n,mc};
                 size_t sstrt[2]= {mc,1};
-                datastruct<T>  S(tempS,n*mc,true,2,sextt,sstrt,false,false,separate_device_memory);
+                DataBlock<T>  S(tempS,n*mc,true,2,sextt,sstrt,false,false,separate_device_memory);
 
 
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadS(S,  policy.devicenum, true, false);
 
 
                 switch (policy.algorithm_version)
@@ -2334,13 +2334,13 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             // Extract column c of M
 
             size_t vext[1],vstr[1];
-            datastruct<T> v = M.column(c,vext,vstr);
-            typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadv(v,  policy.devicenum, false, false);
+            DataBlock<T> v = M.column(c,vext,vstr);
+            typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadv(v,  policy.devicenum, false, false);
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                datastruct<T>  u = tQ.column(j,uext,ustr);
-                typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadu(u,  policy.devicenum, false, false);
+                DataBlock<T>  u = tQ.column(j,uext,ustr);
+                typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadu(u,  policy.devicenum, false, false);
                 const T dot_pr =GPU_Math_Functions<T>::dot_product_g(u,v,policy.devicenum);
 
                 #pragma omp target teams distribute parallel for simd shared(v,u) device(policy.devicenum)
@@ -2369,9 +2369,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
         // Compute R = Q^T * A
         size_t extQT[2],strQT[2];
 
-        datastruct<T> QT=tQ.transpose(extQT,strQT);
+        DataBlock<T> QT=tQ.transpose(extQT,strQT);
 
-        typename Datastruct_GPU_Memory_Functions<T>::OffloadHelper offloadQT(QT, policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadQT(QT, policy.devicenum, false, false);
 
         switch (policy.algorithm_version)
         {
@@ -2388,31 +2388,31 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
 
         if(separate_device_memory)
         {
-            Datastruct_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
             if(policy.update_host)
             {
-                Datastruct_GPU_Memory_Functions<T>::update_host(Q,policy.devicenum);
-                Datastruct_GPU_Memory_Functions<T>::update_host(R,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::update_host(Q,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::update_host(R,policy.devicenum);
             }
-            Datastruct_GPU_Memory_Functions<T>::release_struct(Q,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(R,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(M,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(Q,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(R,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(M,policy.devicenum);
 
             omp_target_free (tempS, policy.devicenum);
             omp_target_free(tempC, policy.devicenum);
             omp_target_free(tempM, policy.devicenum);
 
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tQ,policy.devicenum);
-            Datastruct_GPU_Memory_Functions<T>::release_struct(tR,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tQ,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release_struct(tR,policy.devicenum);
         }
         else
         {
             if(policy.memmapped_files)
             {
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempS,nm);
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempC,mm);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempS,nm);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempC,mm);
             }
             else
             {
@@ -2428,12 +2428,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
     {
 
 
-        datastruct<T> M= Datastruct_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor,
+        DataBlock<T> M= DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor,
                          A.dprank,A.dpextents,A.dpstrides,
                          policy.memmapped_files);
 
-        T * tempC= Datastruct_Host_Memory_Functions<T>::alloc_data_ptr(mm,policy.memmapped_files);
-        T * tempS= Datastruct_Host_Memory_Functions<T>::alloc_data_ptr(nm,policy.memmapped_files);
+        T * tempC= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(mm,policy.memmapped_files);
+        T * tempS= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(nm,policy.memmapped_files);
 
 
         if(policy.initialize_output_to_zeros)
@@ -2480,17 +2480,17 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
 
                 size_t extBM[2],strBM[2];
 
-                datastruct<T> BQ = Q.subspanmatrix(0, z, n, cz,extBQ,strBQ);
-                datastruct<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = Q.subspanmatrix(0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
 
                 size_t Cextt[2]= {cz,mc};
                 size_t Cstrt[2]= {mc,1};
 
-                datastruct<T>  C(tempC,cz*mc,true,2,Cextt,Cstrt,false,false,false);
+                DataBlock<T>  C(tempC,cz*mc,true,2,Cextt,Cstrt,false,false,false);
 
 
                 size_t extBQT[2],strBQT[2];
-                datastruct<T> BQT=BQ.transpose(extBQT,strBQT);
+                DataBlock<T> BQT=BQ.transpose(extBQT,strBQT);
 
 
                 if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
@@ -2501,7 +2501,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
                 size_t sexttt[2]= {n,mc};
                 size_t sstrtt[2]= {mc,1};
 
-                datastruct<T>  S(tempS,n*mc,true,2,sexttt,sstrtt,false,false,false);
+                DataBlock<T>  S(tempS,n*mc,true,2,sexttt,sstrtt,false,false,false);
 
 
                 switch (policy.algorithm_version)
@@ -2534,12 +2534,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             }
 
             size_t vext[1],vstr[1];
-            datastruct<T> v = M.column(c,vext,vstr);
+            DataBlock<T> v = M.column(c,vext,vstr);
 
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                datastruct<T>  u = Q.column(j,uext,ustr);
+                DataBlock<T>  u = Q.column(j,uext,ustr);
                 const T dot_pr =Math_Functions<T>::dot_product(u,v,&policy);
                 #pragma omp parallel for simd shared(v,u)
                 for (size_t i = 0; i < n; ++i)
@@ -2569,7 +2569,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
         // Compute R = Q^T * A
         size_t extQT[2],strQT[2];
 
-        datastruct<T> QT=Q.transpose(extQT,strQT);
+        DataBlock<T> QT=Q.transpose(extQT,strQT);
 
         switch (policy.algorithm_version)
         {
@@ -2583,9 +2583,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(datastruct<T>& A, datastruct<T>& 
             winograd_multiply_h(QT,A,R,false,false,policy);
         }
 
-        Datastruct_Host_Memory_Functions<T>::free_data_ptr(tempC,mm,policy.memmapped_files);
-        Datastruct_Host_Memory_Functions<T>::free_data_ptr(tempS,nm,policy.memmapped_files);
-        Datastruct_Host_Memory_Functions<T>::free_copy(M,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_data_ptr(tempC,mm,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_data_ptr(tempS,nm,policy.memmapped_files);
+        DataBlock_Host_Memory_Functions<T>::free_copy(M,policy.memmapped_files);
 
     }
 }
@@ -2617,7 +2617,7 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
         {
             size_t problemsize;
             MPI_Recv(&problemsize, 1, mpi_get_type<size_t>(), MPI_ANY_SOURCE, 1, policy.comm, &status);
-            datastruct<T> A,B;
+            DataBlock<T> A,B;
             bool ongpu=policy.should_use_gpu(problemsize,Math_Functions_Policy::default_cubic_treshold,false,7);
             bool separate_device_memory=false;
             if(ongpu)
@@ -2628,13 +2628,13 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             }
             if(separate_device_memory)
             {
-                A=Datastruct_MPI_Functions<T>::MPI_Recv_device_alloc_datastruct(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
-                B=Datastruct_MPI_Functions<T>::MPI_Recv_device_alloc_datastruct(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
+                A=DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
+                B=DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
             }
             else
             {
-                A=Datastruct_MPI_Functions<T>::MPI_Recv_alloc_datastruct(policy.memmapped_files,status.MPI_SOURCE, 2, policy.comm);
-                B=Datastruct_MPI_Functions<T>::MPI_Recv_alloc_datastruct(policy.memmapped_files,status.MPI_SOURCE, 3, policy.comm);
+                A=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,status.MPI_SOURCE, 2, policy.comm);
+                B=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,status.MPI_SOURCE, 3, policy.comm);
             }
 
             bool crowm=true;
@@ -2654,14 +2654,14 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             size_t length=rowsC*colsC;
             if(separate_device_memory)
             {
-                C_data=Datastruct_GPU_Memory_Functions<T>::alloc_data_device_ptr(length,policy.memmapped_files,policy.devicenum);
+                C_data=DataBlock_GPU_Memory_Functions<T>::alloc_data_device_ptr(length,policy.memmapped_files,policy.devicenum);
             }
             else
             {
-                C_data=Datastruct_Host_Memory_Functions<T>::alloc_data_ptr(length,policy.memmapped_files);
+                C_data=DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(length,policy.memmapped_files);
             }
 
-            datastruct<T> C(C_data,length,crowm,2,extC,strC,false,false,separate_device_memory);
+            DataBlock<T> C(C_data,length,crowm,2,extC,strC,false,false,separate_device_memory);
 
 
             if(policy.size_to_stop_recursion>=problemsize)
@@ -2681,19 +2681,19 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
                     winograd_multiply_h(A,B,C,ongpu,separate_device_memory,policy);
             }
 
-            Datastruct_MPI_Functions<T>::MPI_Send_datastruct_pdata(C,status.MPI_SOURCE,4,policy.comm);
+            DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
             if(separate_device_memory)
             {
-                Datastruct_MPI_Functions<T>::MPI_Free_device_datastruct(A,policy.devicenum);
-                Datastruct_MPI_Functions<T>::MPI_Free_device_datastruct(B,policy.devicenum);
-                Datastruct_GPU_Memory_Functions<T>::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
+                DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(A,policy.devicenum);
+                DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(B,policy.devicenum);
+                DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
             }
             else
             {
 
-                Datastruct_MPI_Functions<T>::MPI_Free_datastruct(A);
-                Datastruct_MPI_Functions<T>::MPI_Free_datastruct(B);
-                Datastruct_Host_Memory_Functions<T>::free_data_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files);
+                DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A);
+                DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B);
+                DataBlock_Host_Memory_Functions<T>::free_data_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files);
             }
 
 

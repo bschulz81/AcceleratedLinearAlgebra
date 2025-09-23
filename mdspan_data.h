@@ -40,9 +40,9 @@ public:
     mdspan<T,Container> &operator=(const mdspan_data<T,Container> & other);
     mdspan_data<T, Container>& operator=( mdspan_data<T, Container>&& other) noexcept;
 
-    using datastruct<T>::operator=;
+    using DataBlock<T>::operator=;
 //
-    using datastruct<T>::subspan_copy;
+    using DataBlock<T>::subspan_copy;
     mdspan_data<T, Container> subspan_copy(const Container& offsets, const Container& sub_extents, bool memmap=false ) ;
     mdspan_data<T, Container> subspanmatrix_copy( size_t row,  size_t col,  size_t tile_rows,  size_t tile_cols, bool memmap=false );
     mdspan_data<T, Container> transpose_copy(bool memmap=false );
@@ -68,7 +68,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
     {
 #if defined(Unified_Shared_Memory)
         if (memmap)
-            this->dpdata = Datastruct_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
 
@@ -78,7 +78,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
 #else
         if(default_device)
             devicenum=omp_get_default_device();
-        this->dpdata=Datastruct_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength,devicenum);
+        this->dpdata=DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength,devicenum);
         this->devptr_devicenum=devicenum;
         this->dpdata_is_devptr=true;
         this->devptr_former_hostptr=nullptr;
@@ -88,7 +88,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
     else
     {
         if (memmap)
-            this->dpdata = Datastruct_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
         pmemmap=memmap;
@@ -148,18 +148,18 @@ void mdspan_data<T, Container>::release_all_data()
     {
         this->device_data_release();
         if (pmemmap)
-            Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
         else
             delete[] this->dpdata;
     }
     else
     {
         if(this->dpdata_is_devptr)
-            Datastruct_GPU_Memory_Functions<T>::free_device_ptr(this->dpdata,this->devptr_devicenum);
+            DataBlock_GPU_Memory_Functions<T>::free_device_ptr(this->dpdata,this->devptr_devicenum);
         else
         {
             if (pmemmap)
-                Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
             else
                 delete[] this->dpdata;
         }
@@ -176,7 +176,7 @@ template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::subspan_copy(const Container& offsets, const Container& sub_extents,const bool memmap)
 {
     mdspan_data<T, Container>  result(  sub_extents,this->dprowmajor,memmap,this->dpdata_is_devptr,false,this->devptr_devicenum);
-    datastruct<T> temp= this->subspan_copy(offsets.data(),sub_extents.data(), result.pextents.data(),result.pstrides.data(), result.dpdata);
+    DataBlock<T> temp= this->subspan_copy(offsets.data(),sub_extents.data(), result.pextents.data(),result.pstrides.data(), result.dpdata);
     result.dprank=temp.dprank;
 
     return result;
@@ -334,14 +334,14 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
 
     if (other.dpdata_is_devptr)
     {
-        this->dpdata = Datastruct_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
+        this->dpdata = DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
         omp_target_memcpy(this->dpdata, other.dpdata, sizeof(T) * this->dpdatalength, 0, 0,
                           other.devptr_devicenum, other.devptr_devicenum);
     }
     else
     {
         if (other.pmemmap)
-            this->dpdata = Datastruct_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
 

@@ -2,7 +2,7 @@
 #define INKERNELMATHFUNCTIONS
 
 #include "cmath"
-#include "datastruct.h"
+#include "datablock.h"
 
 
 using namespace std;
@@ -14,53 +14,53 @@ template <typename T>
 class In_Kernel_Mathfunctions
 {
 public:
-    inline static void cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L,bool initialize_to_zero=true);
-    inline static void lu_decomposition_w(const  datastruct<T>& dA, datastruct<T>& dL, datastruct<T>& dU,bool initialize_to_zero=true);
-    inline static void qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R,bool initialize_to_zero=true,bool with_memmaps=false);
+    inline static void cholesky_decomposition_w(const DataBlock<T>& A, DataBlock<T>& L,bool initialize_to_zero=true);
+    inline static void lu_decomposition_w(const  DataBlock<T>& dA, DataBlock<T>& dL, DataBlock<T>& dU,bool initialize_to_zero=true);
+    inline static void qr_decomposition_w( const DataBlock<T>&A, DataBlock<T> Q, DataBlock<T> &R,bool initialize_to_zero=true,bool with_memmaps=false);
 
-    inline static void cross_product( const datastruct<T>& vec1,const   datastruct<T>& vec2, datastruct<T>& res);
+    inline static void cross_product( const DataBlock<T>& vec1,const   DataBlock<T>& vec2, DataBlock<T>& res);
 
-    inline static void matrix_multiply_dot_w( const datastruct<T>& A,  const datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_multiply_dot_w_kahan( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_multiply_dot_s(const  datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C);
+    inline static void matrix_multiply_dot_w( const DataBlock<T>& A,  const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_w_kahan( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_s(const  DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
 
-    inline static void matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C);
+    inline static void matrix_add_w(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_add_v(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_add_s(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
 
-    inline static void matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C);
-    inline static void matrix_subtract_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C);
+    inline static void matrix_subtract_w(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_subtract_v(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_subtract_s(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
 
-    inline static void matrix_multiply_vector_w( const datastruct<T>&M, const datastruct<T>& V, datastruct<T> C);
-    inline static void matrix_multiply_vector_v( const datastruct<T>&M, const datastruct<T>& V, datastruct<T> C);
-    inline static void matrix_multiply_vector_s( const datastruct<T>&M, const datastruct<T>& V, datastruct<T> C);
+    inline static void matrix_multiply_vector_w( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T> C);
+    inline static void matrix_multiply_vector_v( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T> C);
+    inline static void matrix_multiply_vector_s( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T> C);
 
-    inline static void matrix_multiply_vector_s( const datastruct<T>&M,const  T*V, datastruct<T> & C);
-    inline static void matrix_multiply_vector_v( const datastruct<T>&M,const  T*V, datastruct<T> & C);
-    inline static void matrix_multiply_vector_w( const datastruct<T>&M,const  T*V, datastruct<T> & C);
+    inline static void matrix_multiply_vector_s( const DataBlock<T>&M,const  T*V, DataBlock<T> & C);
+    inline static void matrix_multiply_vector_v( const DataBlock<T>&M,const  T*V, DataBlock<T> & C);
+    inline static void matrix_multiply_vector_w( const DataBlock<T>&M,const  T*V, DataBlock<T> & C);
 
-    inline static void vector_add_s(const  datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
-    inline static void vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
-    inline static void vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
+    inline static void vector_add_s(const  DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
+    inline static void vector_add_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
+    inline static void vector_add_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
 
-    inline static void vector_subtract_w(const  datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
-    inline static void vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
-    inline static void vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res);
+    inline static void vector_subtract_w(const  DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
+    inline static void vector_subtract_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
+    inline static void vector_subtract_s( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
 
-    inline static T dot_product_s( const datastruct<T> &vec1,const  datastruct<T> &vec2);
-    inline static T dot_product_v( const datastruct<T> &vec1, const datastruct<T> &vec2);
-    inline static T dot_product_w( const datastruct<T> &vec1,const  datastruct<T> &vec2);
-    inline static T dot_product_w_kahan(const  datastruct<T> &vec1, const datastruct<T> &vec2);
+    inline static T dot_product_s( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
+    inline static T dot_product_v( const DataBlock<T> &vec1, const DataBlock<T> &vec2);
+    inline static T dot_product_w( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
+    inline static T dot_product_w_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2);
 
-    inline static void matrix_multiply_scalar_s( const  datastruct<T>& M, const T V, datastruct<T>& C);
-    inline static void matrix_multiply_scalar_v( const  datastruct<T>& M,const  T V, datastruct<T>& C);
-    inline static void matrix_multiply_scalar_w( const  datastruct<T>& M,const  T V, datastruct<T>& C);
+    inline static void matrix_multiply_scalar_s( const  DataBlock<T>& M, const T V, DataBlock<T>& C);
+    inline static void matrix_multiply_scalar_v( const  DataBlock<T>& M,const  T V, DataBlock<T>& C);
+    inline static void matrix_multiply_scalar_w( const  DataBlock<T>& M,const  T V, DataBlock<T>& C);
 
-    inline static void vector_multiply_scalar_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
-    inline static void vector_multiply_scalar_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
-    inline static void vector_multiply_scalar_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res);
+    inline static void vector_multiply_scalar_s( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
+    inline static void vector_multiply_scalar_v( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
+    inline static void vector_multiply_scalar_w( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
 
     inline static T  kahan_sum(const T *arr,size_t n);
     inline static T  neumaier_sum(const T*arr,size_t n);
@@ -69,7 +69,7 @@ public:
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const datastruct<T>& A, datastruct<T>& L, bool initialize_to_zero)
+void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A, DataBlock<T>& L, bool initialize_to_zero)
 {
 
     const size_t n = A.dpextents[0];
@@ -120,7 +120,7 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const datastruct<T>& A
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  datastruct<T>& A, datastruct<T>& L, datastruct<T>& U,bool initialize_to_zero)
+void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, DataBlock<T>& L, DataBlock<T>& U,bool initialize_to_zero)
 {
 
     const size_t n = A.dpextents[0];
@@ -176,7 +176,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  datastruct<T>& A, dat
 
 #pragma omp begin declare target
 template <typename T >
-void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, datastruct<T> Q, datastruct<T> &R,bool initialize_to_zero, bool with_memmaps)
+void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataBlock<T> Q, DataBlock<T> &R,bool initialize_to_zero, bool with_memmaps)
 {
     const size_t n = A.dpextents[0];
     const size_t m = A.dpextents[1];
@@ -185,14 +185,14 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     T* __restrict tempM;
 
     if(with_memmaps)
-        tempM=Datastruct_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+        tempM=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
     else
         tempM=(T*)malloc(sizeof(T)*A.dpdatalength);
 
     size_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
     size_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
 
-    datastruct<T> M(tempM,A.dpdatalength,A.dprowmajor,A.dprank,Mext,Mstrides,false,false,false);
+    DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,A.dprank,Mext,Mstrides,false,false,false);
 
 
     if(initialize_to_zero)
@@ -230,14 +230,14 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     {
         size_t pextv[1];
         size_t pstrv[1];
-        datastruct<T> v = M.column(c,pextv,pstrv);
+        DataBlock<T> v = M.column(c,pextv,pstrv);
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1];
             size_t pstru[1];
 
             T dot_pr=0;
-            datastruct<T> u = Q.column(j,pextu,pstru);
+            DataBlock<T> u = Q.column(j,pextu,pstru);
             #pragma omp parallel for simd  reduction(+:dot_pr)shared(u,v)
             for (size_t i = 0; i < pext0; ++i)
             {
@@ -293,7 +293,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
     }
 
     if(with_memmaps)
-        Datastruct_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
+        DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
     else
         free(tempM);
 }
@@ -304,7 +304,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const datastruct<T>&A, data
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::cross_product( const datastruct<T>& vec1, const  datastruct<T>& vec2, datastruct<T>& res)
+void In_Kernel_Mathfunctions<T>::cross_product( const DataBlock<T>& vec1, const  DataBlock<T>& vec2, DataBlock<T>& res)
 {
     res(0) = vec1(1) * vec2(2) - vec1(2) * vec2(1);
     res(1) = vec1(2) * vec2(0) - vec1(0) * vec2(2);
@@ -316,7 +316,7 @@ void In_Kernel_Mathfunctions<T>::cross_product( const datastruct<T>& vec1, const
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
@@ -343,7 +343,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const datastruct<T>& A, 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w_kahan( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w_kahan( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
@@ -374,7 +374,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w_kahan( const datastruct<T
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
@@ -401,7 +401,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const datastruct<T>& A, 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const datastruct<T>& A, const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
@@ -427,7 +427,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const datastruct<T>& A, 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_add_w(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_add_w(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -446,7 +446,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_w(const datastruct<T>& A,const datas
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_add_v(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_add_v(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -466,7 +466,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_v(const datastruct<T>& A,const datas
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_add_s(const datastruct<T>& A,const datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_add_s(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -485,7 +485,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_s(const datastruct<T>& A,const datas
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -505,7 +505,7 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const datastruct<T>& A,const 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_subtract_v(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_subtract_v(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -524,7 +524,7 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_v(const datastruct<T>& A,const 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_subtract_s(const datastruct<T>& A,const  datastruct<T>& B, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_subtract_s(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
@@ -543,7 +543,7 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_s(const datastruct<T>& A,const 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M,const  datastruct<T>& V, datastruct<T> C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M,const  DataBlock<T>& V, DataBlock<T> C)
 {
 
 
@@ -566,7 +566,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const datastruct<T>&M,const  datastruct<T>& V, datastruct<T> C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M,const  DataBlock<T>& V, DataBlock<T> C)
 {
 
 
@@ -591,7 +591,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const datastruct<T>&M,const  datastruct<T>& V, datastruct<T> C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const DataBlock<T>&M,const  DataBlock<T>& V, DataBlock<T> C)
 {
 
     const size_t n= M.dpextents[0];
@@ -612,7 +612,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const datastruct<T>&M,const  T*V, datastruct<T> & C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const DataBlock<T>&M,const  T*V, DataBlock<T> & C)
 {
     const size_t n= M.dpextents[0];
     const size_t m=M.dpextents[1];
@@ -631,7 +631,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const datastruct<T>&M, const T*V, datastruct<T> & C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M, const T*V, DataBlock<T> & C)
 {
 
 
@@ -653,7 +653,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M, const T*V, datastruct<T> & C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M, const T*V, DataBlock<T> & C)
 {
 
 
@@ -678,7 +678,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const datastruct<T>&M
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_add_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_add_s( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     for (size_t i = 0; i < n; ++i)
@@ -691,7 +691,7 @@ void In_Kernel_Mathfunctions<T>::vector_add_s( const datastruct<T>& vec1,const  
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_add_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_add_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     #pragma omp simd
@@ -706,7 +706,7 @@ void In_Kernel_Mathfunctions<T>::vector_add_v( const datastruct<T>& vec1,const  
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_add_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_add_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     #pragma omp parallel for simd shared(res,vec1,vec2)
@@ -720,7 +720,7 @@ void In_Kernel_Mathfunctions<T>::vector_add_w( const datastruct<T>& vec1,const  
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_subtract_w( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_subtract_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     #pragma omp parallel for simd shared(res,vec1,vec2)
@@ -735,7 +735,7 @@ void In_Kernel_Mathfunctions<T>::vector_subtract_w( const datastruct<T>& vec1,co
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_subtract_v( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_subtract_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     #pragma omp simd
@@ -749,7 +749,7 @@ void In_Kernel_Mathfunctions<T>::vector_subtract_v( const datastruct<T>& vec1,co
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_subtract_s( const datastruct<T>& vec1,const  datastruct<T>& vec2, datastruct<T> & res)
+void In_Kernel_Mathfunctions<T>::vector_subtract_s( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
     for (size_t i = 0; i < n; ++i)
@@ -763,7 +763,7 @@ void In_Kernel_Mathfunctions<T>::vector_subtract_s( const datastruct<T>& vec1,co
 
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions<T>::dot_product_s(const  datastruct<T> &vec1, const datastruct<T> &vec2)
+T In_Kernel_Mathfunctions<T>::dot_product_s(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const size_t n=vec1.dpextents[0];
     T result=0;
@@ -779,7 +779,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_s(const  datastruct<T> &vec1, const da
 
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions<T>::dot_product_v(const  datastruct<T> &vec1, const datastruct<T> &vec2)
+T In_Kernel_Mathfunctions<T>::dot_product_v(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const size_t n=vec1.dpextents[0];
 
@@ -795,7 +795,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_v(const  datastruct<T> &vec1, const da
 
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions<T>::dot_product_w(const  datastruct<T> &vec1, const datastruct<T> &vec2)
+T In_Kernel_Mathfunctions<T>::dot_product_w(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const size_t n=vec1.dpextents[0];
     T result=0;
@@ -812,7 +812,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_w(const  datastruct<T> &vec1, const da
 
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  datastruct<T> &vec1, const datastruct<T> &vec2)
+T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
 
     const size_t n=vec1.dpextents[0];
@@ -890,7 +890,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  datastruct<T> &vec1, co
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_s(  const datastruct<T>& M, const T V, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_s(  const DataBlock<T>& M, const T V, DataBlock<T>& C)
 {
 
 
@@ -912,7 +912,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_s(  const datastruct<T>&
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_v(  const datastruct<T>& M, const T V, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_v(  const DataBlock<T>& M, const T V, DataBlock<T>& C)
 {
 
 
@@ -933,7 +933,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_v(  const datastruct<T>&
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const datastruct<T>& M, const T V, datastruct<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const DataBlock<T>& M, const T V, DataBlock<T>& C)
 {
 
     const size_t n=C.dpextents[0];
@@ -953,7 +953,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const datastruct<T>&
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_s( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_s( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
 {
     const size_t n=vec.dpextents[0];
     for (size_t i = 0; i < n; ++i)
@@ -966,7 +966,7 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_s( const datastruct<T>& 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_v( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_v( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
 {
     const size_t n=vec.dpextents[0];
 
@@ -981,7 +981,7 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_v( const datastruct<T>& 
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const datastruct<T>& vec,const T scalar,datastruct<T>& res)
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
 {
     const size_t n=vec.dpextents[0];
     #pragma omp parallel for simd shared(res,vec)

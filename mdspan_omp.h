@@ -12,7 +12,7 @@
 
 #include <cassert>
 
-#include "datastruct.h"
+#include "datablock.h"
 
 #include <array>
 #include <vector>
@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <set>
 
-#include "datastruct.h"
-#include "datastruct_gpu_memory_functions.h"
+#include "datablock.h"
+#include "datablock_gpu_memory_functions.h"
 
 using namespace std;
 
@@ -73,7 +73,7 @@ concept Container =
 
 
 template <typename T, typename Container>
-class mdspan:public datastruct<T>
+class mdspan:public DataBlock<T>
 {
 
 protected:
@@ -151,7 +151,7 @@ protected:
     void initialize_extents_and_strides(const Container&extents,const Container & strides);
     void initialize_extents(const Container&extents);
     void allocate_extents_and_strides(size_t r);
-    void adopt_subdatastruct_helper(const datastruct<T>& sub);
+    void adopt_subDataBlock_helper(const DataBlock<T>& sub);
 
     Container pextents;
     Container pstrides;
@@ -164,12 +164,12 @@ public:
 
     mdspan() {};
 
-    mdspan(const datastruct<T>& ds,const shared_ptr<mdspan<T,Container>::DevicemappingManager> &dev);
+    mdspan(const DataBlock<T>& ds,const shared_ptr<mdspan<T,Container>::DevicemappingManager> &dev);
 
     mdspan(const mdspan<T, Container>& other);
     mdspan(mdspan<T, Container>&& other)noexcept;
     mdspan<T, Container> &operator=(const mdspan<T,Container> & other);
-    mdspan<T, Container> &operator=(const datastruct<T> & other);
+    mdspan<T, Container> &operator=(const DataBlock<T> & other);
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
 
 
@@ -186,27 +186,27 @@ public:
     mdspan(T* data,const size_t rows, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
     virtual ~mdspan();
 
-    using datastruct<T>::operator();
+    using DataBlock<T>::operator();
     inline T& operator()(const Container& extents);
     inline T operator()(const Container& extents)const;
 
-    using datastruct<T>::operator=;
+    using DataBlock<T>::operator=;
 
     // Subspan methods
-    using datastruct<T>::subspan;
+    using DataBlock<T>::subspan;
     mdspan<T, Container> subspan(const Container& offsets,  Container& sub_extents) const;
-    using datastruct<T>::subspanmatrix;
+    using DataBlock<T>::subspanmatrix;
     mdspan<T, Container> subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-    using datastruct<T>::column;
+    using DataBlock<T>::column;
     mdspan<T, Container>column(const size_t col_index);
 
-    using datastruct<T>::row;
+    using DataBlock<T>::row;
     mdspan<T, Container>row(const size_t row_index);
 
-    using datastruct<T>::transpose;
+    using DataBlock<T>::transpose;
     mdspan<T, Container>transpose();
 
-    using datastruct<T>::collapsed_view;
+    using DataBlock<T>::collapsed_view;
     mdspan<T, std::vector<size_t>> collapsed_view();
 
     bool  device_data_upload(bool default_device,int devicenum=0);
@@ -310,7 +310,7 @@ mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> 
 }
 
 template <typename T, typename Container>
-mdspan<T, Container>&mdspan<T, Container>::operator=(const datastruct<T> & other)
+mdspan<T, Container>&mdspan<T, Container>::operator=(const DataBlock<T> & other)
 {
 
     if(this->dpdata!=other.dpdata)
@@ -436,7 +436,7 @@ mdspan<T, Container>::mdspan(const mdspan<T, Container>& other)
     }
 
 
-    // update raw pointers used by base datastruct
+    // update raw pointers used by base DataBlock
     this->dpextents  = pextents.data();
     this->dpstrides  = pstrides.data();
 
@@ -510,7 +510,7 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(const datastruct<T>&other,const shared_ptr<mdspan<T,Container>::DevicemappingManager>&m )
+mdspan<T, Container>::mdspan(const DataBlock<T>&other,const shared_ptr<mdspan<T,Container>::DevicemappingManager>&m )
 {
 
     p_has_offloaded_host_data = false;
@@ -662,7 +662,7 @@ void mdspan<T, Container>::initialize_extents_and_strides(const Container& exten
         pextents[i] = extents[i];
         pstrides[i] = strides[i];
     }
-    // Assign to datastruct
+    // Assign to DataBlock
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
 
@@ -711,14 +711,14 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
     {
         pextents[i] = extents[i];
     }
-    // Assign to datastruct
+    // Assign to DataBlock
     this->dpextents = pextents.data();
 }
 
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum)
-    :datastruct<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
     initialize_extents_and_strides(extents,strides);
 }
@@ -727,7 +727,7 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container&
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum)
-    : datastruct<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 
 {
     initialize_extents_and_strides(extents,strides);
@@ -738,7 +738,7 @@ mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container&
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  datastruct<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
@@ -754,7 +754,7 @@ mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  datastruct<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
 
     const size_t r=2;
@@ -782,7 +782,7 @@ mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,cons
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  datastruct<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
     const size_t r=1;
     if constexpr (StaticContainer<Container>)
@@ -824,7 +824,7 @@ bool mdspan<T, Container>:: device_data_upload(bool default_device,int devicenum
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    Datastruct_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(*this,devicenum);
+    DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(*this,devicenum);
 
     p_has_offloaded_host_data=true;
     return true;
@@ -844,7 +844,7 @@ bool mdspan<T, Container>:: device_data_alloc(bool default_device,int devicenum)
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    Datastruct_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(*this,devicenum);
+    DataBlock_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(*this,devicenum);
     p_has_offloaded_host_data=true;
 
     return true;
@@ -859,7 +859,7 @@ bool mdspan<T, Container>:: device_data_download_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(*this);
+    DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
 
     return true;
@@ -878,7 +878,7 @@ bool mdspan<T, Container>:: device_data_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    Datastruct_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(*this);
+    DataBlock_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
     return true;
 
@@ -890,7 +890,7 @@ bool mdspan<T, Container>:: host_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    Datastruct_GPU_Memory_Functions<T>::copy_data_to_host_ptr(*this);
+    DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_ptr(*this);
     return true;
 
 }
@@ -900,7 +900,7 @@ bool mdspan<T, Container>:: device_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    Datastruct_GPU_Memory_Functions<T>::copy_data_to_device_ptr(*this);
+    DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_ptr(*this);
     return true;
 
 }

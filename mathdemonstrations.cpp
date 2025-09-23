@@ -1,4 +1,4 @@
-#include "datastruct.h"
+#include "datablock.h"
 #include "mdspan_omp.h"
 #include "mathfunctions.h"
 #include "mathfunctions_mpi.h"
@@ -50,9 +50,9 @@ int main()
         C =A+B;
         C.printtensor();
         //static_tag<rank> is the same as an array container of <rank>
-        mdspan_data_t<double, static_tag<2>> D(rows,cols, true,false);
-        cout<<"multiplication of A and B"<<endl;
-        D=A*B;
+        mdspan_data_t<double, static_tag<2>> D(rows,rows, true,false);
+        cout<<"multiplication of A and transpose of B"<<endl;
+        D=A*B.transpose();
 
         D.printtensor();
 
@@ -261,9 +261,9 @@ int main()
             mdspan_data<double, std::vector<size_t>> verify(  {rows2, cols2},true);
 
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            cout<<"We can create a transpose with the base class datastruct, but also with mdspan"<<endl;
+            cout<<"We can create a transpose with the base class DataBlock, but also with mdspan"<<endl;
             size_t newext[2],newstr[2];
-            datastruct<double>m=L.transpose(newext,newstr);
+            DataBlock<double>m=L.transpose(newext,newstr);
             Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
             verify.printtensor();
         }
@@ -320,7 +320,7 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             size_t newext[2],newstr[2];
 
-            datastruct<double>m=L.transpose(newext,newstr);
+            DataBlock<double>m=L.transpose(newext,newstr);
             Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
             verify.printtensor();
 
