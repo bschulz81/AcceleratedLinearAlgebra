@@ -44,6 +44,11 @@ Todo:
 
 Version history
 
+By 23.09.2025:
+Renamed the datastruct class into DataBlock, in order to have a consistent naming scheme when I add support for fast handling of sparse tensors with a class holding an array of DataBlock classes.
+Fixed a missing requires requires declaration of the assign method in DataBlock
+Fixed a test for the math functions. The Multiply should be made with B.transpose as otherwise the result would not make sense. Corrently, the mathematical functions do not check the correct dimensions of the matrices in order be as fast as possible. Perhaps I should add such tests and return error values.
+
 By 19.09.2025
 Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
 Added many test cases and demonstrations of the library.  
