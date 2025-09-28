@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string.h>
 #include <sys/mman.h>
-
+#include <unistd.h>
 template<typename T>
 class DataBlock_Host_Memory_Functions
 {

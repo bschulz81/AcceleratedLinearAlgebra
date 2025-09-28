@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "indiceshelperfunctions.h"
 
-#include<iostream>
 
 #if defined(Unified_Shared_Memory)
 #pragma omp requires unified_shared_memory
@@ -56,6 +55,8 @@ class DataBlock_Host_Memory_Functions;
 template<typename T>
 class DataBlock_MPI_Functions;
 
+template<typename T>
+class BlockedDataView;
 
 template<typename T>
 class In_Kernel_Mathfunctions;
@@ -100,6 +101,7 @@ public:
     friend class GPU_Math_Functions<T>;
     friend class Math_Functions<T>;
     friend class Math_Functions_MPI<T>;
+    friend class BlockedDataView<T>;
 
     template<typename U, typename Container>
     friend class ::mdspan;

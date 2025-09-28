@@ -36,22 +36,24 @@ include_directories(datablocktests     ${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(mdspantests         ${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(mathdemonstrations  ${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(arraytest_mpi       ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(sparsetests       ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(datablocktests      ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/datablocktests.cpp)
 add_executable(mdspantests          ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mdspantests.cpp)
 add_executable(mathdemonstrations   ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mathdemonstrations.cpp)
 add_executable(arraytest_mpi        ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
-
+add_executable(sparsetests        ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/sparsetests.cpp)
 
 #Set this to if you want to use unified_shared_memory support
 #add_compile_definitions(Unified_Shared_Memory)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Configuring for GNU compiler (gcc)")
-    target_link_libraries(datablocktests PRIVATE       rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
-    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
-    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
-    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(datablocktests        PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(mdspantests           PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(mathdemonstrations    PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(arraytest_mpi         PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(sparsetests           PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -60,6 +62,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi OpenMP::OpenMP_CXX)
     target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi OpenMP::OpenMP_CXX)
     target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(sparseetests          PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 endif()
 
 #if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
@@ -69,6 +72,7 @@ endif()
 #    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 #    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 #    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+#    target_link_libraries(sparseetests          PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
 #endif()
 
 

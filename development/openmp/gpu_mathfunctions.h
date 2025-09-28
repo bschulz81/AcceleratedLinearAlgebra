@@ -10,15 +10,19 @@ class GPU_Math_Functions
 {
 public:
     inline static void matrix_multiply_dot_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
-    inline static void matrix_multiply_dot_g_kahan( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_multiply_dot_kahan_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+
     inline static void matrix_add_g(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
     inline static void matrix_subtract_g( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
 
-    inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,int dev,bool update_host=true);
-    inline static void matrix_multiply_vector_g(const  DataBlock<T>M,const T*V, DataBlock<T> & C, int dev,bool update_host=true);
-    inline static void matrix_multiply_scalar_g( const  DataBlock<T>& M, const T V, DataBlock<T>& C, int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const DataBlock<T> &V, DataBlock<T>&C,int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const T*V, DataBlock<T> &C, int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_kahan_g(const  DataBlock<T>&M, const DataBlock<T> &V, DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_multiply_vector_kahan_g(const  DataBlock<T>&M, const T*V, DataBlock<T> & C, int dev,bool update_host=true);
 
+    inline static void matrix_multiply_scalar_g (const  DataBlock<T>& M, const T V, DataBlock<T>& C, int dev,bool update_host=true);
     inline static void vector_multiply_scalar_g(const DataBlock<T>& vec, const T scalar,DataBlock<T>& res,int dev,bool update_host=true);
+
     inline static void vector_add_g(const  DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host=true);
     inline static void vector_subtract_g( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res,  int dev,bool update_host=true);
 
@@ -28,8 +32,120 @@ public:
     inline static void cholesky_decomposition_g(const DataBlock<T>& A, DataBlock<T> & L, int dev,bool update_host=true, bool initialize_output_to_zero=true);
     inline static void lu_decomposition_g(const DataBlock<T> &A,  DataBlock<T> & L,DataBlock<T> & U, int dev,bool update_host=true,bool initialize_output_to_zero=true);
     inline static void qr_decomposition_g(const DataBlock<T> &A,DataBlock<T>& Q, DataBlock<T> & R,  int dev,bool update_host=true,bool initialize_output_to_zero=true,bool memmaptempfiles=false);
-
+    inline static void matrix_multiply_dot_sparse_g(const BlockedDataView<T>& Ablocks,const BlockedDataView<T>& Bblocks, DataBlock<T>& C,int dev,bool update_host=true,bool initialize_output_to_zero=true );
 };
+
+#pragma omp begin declare target
+template <typename T>
+void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g(
+    const BlockedDataView<T>& A,
+    const BlockedDataView<T>& B,
+    DataBlock<T>& C, int dev,bool update_host,bool initialize_output_to_zero)
+
+{
+    // both A and B are assumed 2D
+    const size_t mblocks = A.usedblocks;
+    const size_t nblocks = B.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+    const size_t Bblock_rows = B.block_shape[0];
+    const size_t Bblock_cols = B.block_shape[1];
+
+    const size_t str0=C.dpstrides[0];
+    const size_t str1=C.dpstrides[1];
+
+    const size_t Astr0=A.dblock.dpstrides[0];
+    const size_t Astr1=A.dblock.dpstrides[1];
+    const size_t Bstr0=B.dblock.dpstrides[0];
+    const size_t Bstr1=B.dblock.dpstrides[1];
+
+    const size_t aext0=A.dblock.dpextents[0];
+    const size_t aext1=A.dblock.dpextents[1];
+
+    const size_t bext0=B.dblock.dpextents[0];
+    const size_t bext1=B.dblock.dpextents[1];
+
+    typename DataBlock_GPU_Memory_Functions<T>::BlockedDataViewOffloadHelper offloadA(A, dev);
+    typename DataBlock_GPU_Memory_Functions<T>::BlockedDataViewOffloadHelper offloadB(B, dev);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, true);
+
+    if(initialize_output_to_zero)
+    {
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(C) device(dev)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*str0+j*str1]=0;
+    }
+
+    #pragma omp  target teams distribute parallel for collapse(2)shared(C)  device(dev)
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        for (size_t jb = 0; jb < nblocks; ++jb)
+        {
+            const size_t a_start = A.pooled_offsets_starts[ia];
+            const size_t* a_off =  A.pooled_offsets_flat + a_start;
+
+            const size_t a_row_off = a_off[0];
+            const size_t a_col_off = a_off[1];
+            const  size_t a_rem_rows = aext0 - a_row_off;
+            const  size_t a_rem_cols = aext1 - a_col_off;
+
+            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+            const size_t b_start = B.pooled_offsets_starts[jb];
+
+            const size_t* b_off = B.pooled_offsets_flat + b_start;
+            const size_t b_row_off = b_off[0];
+            const size_t b_col_off = b_off[1];
+
+            const size_t b_rem_rows = bext0 - b_row_off;
+            const size_t b_rem_cols = bext1 - b_col_off;
+
+            const size_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
+            const size_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
+
+            const size_t a_k_start = a_col_off;
+            const size_t a_k_end   = a_col_off + a_tile_cols;
+
+            const size_t b_k_start = b_row_off;
+            const size_t b_k_end   = b_row_off + b_tile_rows;
+
+            const size_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
+            const size_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
+
+            if (k_start >= k_end)
+            {
+                continue;
+            }
+
+            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            {
+                const size_t global_i = a_row_off + ii;
+                for (size_t jj = 0; jj < b_tile_cols; ++jj)
+                {
+                    const size_t global_j = b_col_off + jj;
+                    T sum = T(0);
+                    #pragma omp simd reduction(+:sum)
+                    for (size_t kk = k_start; kk < k_end; ++kk)
+                    {
+                        const size_t a_index = (global_i * Astr0) +  (kk * Astr1);
+                        const size_t b_index = (kk *Bstr0) +        (global_j *Bstr1);
+                        sum += A.dblock.dpdata[a_index] * B.dblock.dpdata[b_index];
+                    }
+                    #pragma omp atomic update
+                    C.dpdata[global_i*str0+global_j*str1] += sum;
+                }
+            }
+        }
+    }
+}
+#pragma omp end declare target
+
+
+
+
 
 
 template <typename T>
@@ -44,12 +160,12 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g( const DataBlock<T>& A, const 
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
-   const size_t Astr0=A.dpstrides[0];
-   const size_t Astr1=A.dpstrides[1];
-   const size_t Bstr0=B.dpstrides[0];
-   const size_t Bstr1=B.dpstrides[1];
-   const size_t Cstr0=C.dpstrides[0];
-   const size_t Cstr1=C.dpstrides[1];
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
     #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C) device(dev)
     for (size_t i = 0; i < rows; ++i)
         for (size_t j = 0; j < cols; ++j)
@@ -69,7 +185,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g( const DataBlock<T>& A, const 
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_dot_g_kahan(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
@@ -153,7 +269,7 @@ void GPU_Math_Functions<T>::matrix_subtract_g( const DataBlock<T>& A,const  Data
 
 
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T>& C,int dev,bool update_host)
 {
 
 
@@ -174,7 +290,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, cons
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <m ; ++j)
         {
-            sum= M(i, j) * V(j);
+            sum+= M(i, j) * V(j);
         }
         C(i)=sum;
     }
@@ -182,8 +298,45 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, cons
 
 }
 
+
+
 template <typename T>
-void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>M, const T*V, DataBlock<T> & C,int dev,bool update_host)
+void GPU_Math_Functions<T>::matrix_multiply_vector_kahan_g( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T>& C,int dev,bool update_host)
+{
+
+
+    const size_t n= M.dpextents[0];
+    const size_t m=V.dpextents[0];
+
+
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperV(V,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+
+    #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
+    for (size_t i = 0; i <n; ++i)
+    {
+        T sum=0;
+        T c=0;
+        for (size_t j = 0; j <  m; ++j)
+        {
+            T y = M(i, j) * V(j) - c;
+            volatile T t = sum + y;
+            volatile T z = t - sum;
+            c = z - y;
+            sum = t;
+        }
+        C(i)=sum;
+    }
+
+
+}
+
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, const T*V, DataBlock<T> & C,int dev,bool update_host)
 {
 
 
@@ -202,7 +355,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>M, const
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <m ; ++j)
         {
-            sum= M(i, j) * V(j);
+            sum+= M(i, j) * V(j);
         }
         C(i)=sum;
     }
@@ -210,6 +363,40 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>M, const
     #pragma omp target exit data map (release:V[0:n])device(dev)
 
 }
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_multiply_vector_kahan_g( const DataBlock<T>&M, const T*V, DataBlock<T> & C,int dev,bool update_host)
+{
+
+
+    const size_t n= M.dpextents[0];
+    const size_t m=M.dpextents[1];
+
+    #pragma omp target enter data map (to:V[0:n])device(dev)
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
+
+    #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
+    for (size_t i = 0; i <n; ++i)
+    {
+        T sum=0;
+        T c=0;
+        for (size_t j = 0; j <  m; ++j)
+        {
+            T y = M(i, j) * V[j] - c;
+            volatile T t = sum + y;
+            volatile T z = t - sum;
+            c = z - y;
+            sum = t;
+        }
+        C(i)=sum;
+    }
+
+    #pragma omp target exit data map (release:V[0:n])device(dev)
+
+}
+
 
 
 
@@ -547,9 +734,9 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
 
 
     DataBlock<T> M=DataBlock_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,
-                    memmap_tempfiles,dev);
+                   memmap_tempfiles,dev);
 
-    DataBlock_GPU_Memory_Functions<T>::create_in_struct(M,dev);
+    DataBlock_GPU_Memory_Functions<T>::create_in(M,dev);
 
     if(initialize_output_to_zero)
     {
@@ -642,7 +829,7 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
             R(i,j)= sum;
         }
     }
-    DataBlock_GPU_Memory_Functions<T>::exit_struct(M,dev);
+    DataBlock_GPU_Memory_Functions<T>::exit(M,dev);
     DataBlock_GPU_Memory_Functions<T>::free_copy_device(M,memmap_tempfiles,dev);
 }
 
