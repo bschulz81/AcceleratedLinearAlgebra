@@ -566,16 +566,16 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(A_result5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(B_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(A_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(A_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(A_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(A_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(A_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(B_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(B_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(B_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(B_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(B_result5,policy.devicenum);
     }
 
     DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
@@ -596,14 +596,14 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B22,policy.devicenum);
     }
 
     if (ongpu)
@@ -661,13 +661,13 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M7,policy.devicenum);
     }
     if (policy.should_use_mpi_for_recursion(7))
     {
@@ -771,10 +771,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
     {
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C11,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C12,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C21,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(C22,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(C11,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(C12,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(C21,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(C22,policy.devicenum);
         }
 
         #pragma omp target teams distribute parallel for simd collapse(2) shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22)      device(policy.devicenum)
@@ -811,39 +811,39 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M7,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A_result5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A_result5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B_result1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B_result2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B_result3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B_result4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B_result5,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C22,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B22,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A22,policy.devicenum);
 
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
@@ -1135,23 +1135,23 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(B22,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S7,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(S8,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(S8,policy.devicenum);
     }
 
     if(ongpu)
@@ -1203,13 +1203,13 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_in(M7,policy.devicenum);
     }
 
 
@@ -1305,10 +1305,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::create_out(C22,policy.devicenum);
     }
 
 
@@ -1348,36 +1348,36 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(C22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(C22,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(M7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(M7,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S7,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(S8,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S1,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S2,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S3,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S4,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S5,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S6,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S7,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(S8,policy.devicenum);
 
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release_struct(B22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(A22,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B11,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B12,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B21,policy.devicenum);
+        DataBlock_GPU_Memory_Functions<T>::release(B22,policy.devicenum);
 
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
@@ -1508,10 +1508,10 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
 
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(L,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -1524,8 +1524,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
             tA.dpdata_is_devptr=true;
             tL.dpdata_is_devptr=true;
             //does not map the deviceptr but just the field-..
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tL,policy.devicenum);
         }
 
 
@@ -1634,13 +1634,13 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
         {
             if(policy.update_host)
                 DataBlock_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(A,policy.devicenum);
 //
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tA,policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tempA,policy.devicenum);
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
 
@@ -1839,11 +1839,11 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
 
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(L,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(U,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(U,policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tempA,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -1856,9 +1856,9 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
             tL.dpdata_is_devptr=true;
             tU.dpdata_is_devptr=true;
 
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tL,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tU,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tU,policy.devicenum);
         }
 
 
@@ -1976,22 +1976,22 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
 
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(A,policy.devicenum);
             if(policy.update_host)
             {
                 DataBlock_GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
                 DataBlock_GPU_Memory_Functions<T>::update_host(U,policy.devicenum);
             }
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tempA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tempA,policy.devicenum);
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::release_struct(L,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(U,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(L,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(U,policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tL,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tU,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tL,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tU,policy.devicenum);
         }
         else
         {
@@ -2203,11 +2203,11 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
 
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(A,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(Q,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(R,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(Q,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(R,policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(M,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(M,policy.devicenum);
 
             if(!tA.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -2219,9 +2219,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
             tA.dpdata_is_devptr=true;
             tQ.dpdata_is_devptr=true;
             tR.dpdata_is_devptr=true;
-            DataBlock_GPU_Memory_Functions<T>::create_in_struct(tA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tQ,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_out_struct(tR,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_in(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tQ,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::create_out(tR,policy.devicenum);
         }
 
 
@@ -2388,23 +2388,23 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
 
         if(separate_device_memory)
         {
-            DataBlock_GPU_Memory_Functions<T>::release_struct(A,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(A,policy.devicenum);
             if(policy.update_host)
             {
                 DataBlock_GPU_Memory_Functions<T>::update_host(Q,policy.devicenum);
                 DataBlock_GPU_Memory_Functions<T>::update_host(R,policy.devicenum);
             }
-            DataBlock_GPU_Memory_Functions<T>::release_struct(Q,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(R,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(M,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(Q,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(R,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(M,policy.devicenum);
 
             omp_target_free (tempS, policy.devicenum);
             omp_target_free(tempC, policy.devicenum);
             omp_target_free(tempM, policy.devicenum);
 
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tA,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tQ,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::release_struct(tR,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tA,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tQ,policy.devicenum);
+            DataBlock_GPU_Memory_Functions<T>::release(tR,policy.devicenum);
         }
         else
         {
