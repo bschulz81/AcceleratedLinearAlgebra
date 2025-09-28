@@ -3,7 +3,7 @@ A library with some linear algebra functions that works with OpenMP and Open-MPI
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
 While mdspan works with compile time set extents, this library uses c++ concepts, so that stl vectors on the heap can be used for extents.
-It has support for rowmajor and column mayor data (but that is not tested) and rank sizes larger than 2 (but that was not tested very much).
+It has support for rowmajor and column mayor data and rank sizes larger than 2 (but higher ranks are currently slow and not parallelized).
 
 Currently, the library uses open-mp on cpu and gpu and the message passing interface.
 
@@ -14,6 +14,9 @@ The library contains functions for matrix multiplication on accelerators, as wel
 For simple problems, the Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU, or on GPU. These variants will then use all three parallelization levels of the GPU. 
 For problems that are larger than the memory of the GPU, advanced algorithms are available, which can use the Strassen algorithm or its Winograd variant, to separate the problem into smaller sub-problems, which can then 
 be computed on gpu. The algorithms can be configured when to offload, or they choose this automatically.
+
+Functions that involve large sums, like matrix multiplication, or matrix vector multiplication or vector dot product have variants with Kahan summation, but I have not tested this feature much.
+Initial support for sparse matrices and sparse times sparse to dense matrix multiplication was added. In order to support a maximum amount of parallelization, I store the matrices dense and add indices of non-zero blocks. The multiplication then just visits overlapping non-zero blocks of the matrices.
 
 The provided cmakelists.txt compiles two test applications. One demonstrates the gpu offload and the parameters for various algorithms.
 The other demonstrates the message passing interface use of the library and can be run with 
