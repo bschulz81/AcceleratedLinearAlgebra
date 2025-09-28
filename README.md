@@ -45,18 +45,18 @@ Todo:
 
 Version history
 
- 28.09.2025
+28.09.2025:
 Added  initial support for sparse matrices and sparse matrix multiplication on cpu and gpu. 
 Fixed a typo in matrix vector multiply. 
 Matrix Vector multiply now has variants with Kahan summation.
 
 
- 23.09.2025:
+23.09.2025:
 Renamed the datastruct class into DataBlock, in order to have a consistent naming scheme when I add support for fast handling of sparse tensors with a class holding an array of DataBlock classes.
 Fixed a missing requires requires declaration of the assign method in DataBlock
 Fixed a test for the math functions. The Multiply should be made with B.transpose as otherwise the result would not make sense. Corrently, the mathematical functions do not check the correct dimensions of the matrices in order be as fast as possible. Perhaps I should add such tests and return error values.
 
- 19.09.2025
+19.09.2025:
 Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
 Added many test cases and demonstrations of the library.  
 Added a nice syntax for expression manipulation. 
@@ -69,11 +69,11 @@ Changed the order of arguments of the constructors in mdspan to make it more usa
 Changed the extraction of rows, columns and submatrices such that they collapse the rank automatically.
 
 
- 17.09.25:
+17.09.25:
 Updated the main_mpi.cpp file to use the new printtensor() function instead of the removed printmatrix function, 
 The printtensor function prints tensors residing on host as well as on device and can work with tensors of all ranks.
 
- 16.09.25:
+16.09.25:
 Speed improvements in the datastruct class for the supspanmatrix, subspan, row and column extraction methods, and the matrix multiplication.
 The column and row methods have now rank reducing and rank preserving forms
 The printtensor method now works with device data too
@@ -83,7 +83,7 @@ The mdspan data class can now create data purely on device.
 The code of the mdspan and mdspan_data and datastruct classes was significantly polished, improved and tested for various parameters and circumstances.
 The test application demonstrates more basic matrix and tensor access on device and on host.
 
- 11.09.25:
+11.09.25:
 Added test cases for simple matrix, vector and tensor operations with row and column major data.
 Reworked the datastruct class to ensure the matrix and tensor functions work for higher than rank 2,
 updated the mdspan class, which does not own the data, but strides and extents, to clean up the memory consistently.
@@ -93,10 +93,10 @@ After that one can then finally do numerical mathematics and add function optimi
 
 
 
- 09.09.25
+09.09.25:
 Fixed the class in datastruct.h to accomodate for column major matrices in addition to the rowmajor case which was used in the algorithms earlier. I added test cases for column major data
 
- 06.09.25
+06.09.25:
 Fixed a bug in the gpu version of the advancet algorithms for the Cholesky decomposition. All the Algorithms from https://arxiv.org/pdf/1812.02056 as well as the Strassen Algorithm and Its Winograd variant https://arxiv.org/abs/1410.1599 now work on device.
 
  06.09.25,
@@ -126,7 +126,7 @@ Of course the library is also able to use the simple algorithms for the QR decom
 (even those with improved Grahm Schmidt orthogonalization) need dot products of vectors and is affected by numerical instability of large sums. 
 
 
- 03.09,
+ 03.09.2025:
  A bug in the memory functions for gpu was fixed that confused offloading in recursive and repeated cases.
  As a consequence, issues in the gpu versions of the Strassen algorithm and its Winograd version are resolved.
  The Strassen and Winograd algorithms can now work on device, with devicepointers for the data supplied. 
@@ -134,10 +134,7 @@ Of course the library is also able to use the simple algorithms for the QR decom
 
 
 
- 31.08, 
-
-the changes were as follows:
-
+31.08.2025:
 I fixed a bug in the matrix*vector multiply function. 
 
 I rewrote the library into several classes in different files, which are easily testable. 
@@ -158,7 +155,7 @@ I Added more message passing interface support. But most of that is untested unt
 
 
 
- 12.08.2025:
+12.08.2025:
 In addition to the linear algebra functions for mdspan, some blas functions for execution within a gpu kernel additionally needed to be fixed for the different operators in which the strides do not occur as arguments. 
 I overlooked this on 11.08, since there was no warning from gcc, as some of functions were not called in the test application. This merely does an LU/Cholesky/QR decomposition on gpu and a strassen algorithm, and for this
 it offloads data of an mdspan class to gpu and computes, but does not! call other blas routines of the library within a kernel. I suspect I have to add more test cases.....
@@ -169,7 +166,7 @@ A refractoring with inheritance and several classes in different files will give
 
 
 
- 11.08.2025:
+11.08.2025:
 A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms. This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. I also tested them, in addition to OpenMP, with the Message Passing Interface.
 
 The Strassen and Winograd algorithms now work correctly with the Message Passing interface. 
@@ -178,7 +175,7 @@ They can distribute the problem on many nodes, and then, if it is small enough, 
 So ideally, one sets up one node per unit consisting of a processor with a gpu. More algorithms for the message passing interface may be added in the future.
 
 
- 07.08.2025, 
+07.08.2025: 
 Some OpenMP shared clauses were fixed,
 MPI recieve was put as a constructor into the mdspan class,
 MPI send was put in as a method, for the entire class with span fields, and for just the data.
@@ -190,7 +187,7 @@ Unfortunately, the Strassen Algorithm and its Winograd version still have proble
 They currently work only on CPU and once the problem is small enough, start conventional multiplication on GPU.
 
 
- 05.08.2025:
+05.08.2025:
 Fixed constructors when the memory is managed by the mdspan class. (important for usage with the Message passing interface)
 Shallow copies now work when the data is managed by the mdspan class 
 
@@ -198,7 +195,7 @@ a sharedptr dummy reference counter was introduced that calls a custom deleter w
 
 (note that in order to achive speed, the element access is always done with raw pointers, the shared ptr is used only in the constructors when the memory is handled by the class).
 
- 28.07.2025
+28.07.2025:
 Support was added for tensors whose data lies entirely on device.
 Fixes for the functions recieving and sending tensors witht he message passing interface was added. (still entirely untested)
 Support was added for the message passing interface to send tensors purely to and from device (still entirely untested)
@@ -206,7 +203,7 @@ Support was added for the message passing interface to send tensors purely to an
 
 
 
- 01.07.2025
+01.07.2025:
 The library now compiles with optimizations  on gcc 15.1.
 With gcc 15.1, the functions of the library can work on the GPU.
 
@@ -218,8 +215,8 @@ I currently do not know why that is so. The code produces no warnings if compile
 In the Cmakelists.txt, -fno-math-errno -fno-trapping-math were added, which speeds the computations up a bit, even if we can not use -O3 currently...
 
 
- 30.06.2025
- The library works on gcc 15.1 if no optimizations are switched on.
+30.06.2025:
+The library works on gcc 15.1 if no optimizations are switched on.
 
 The Cholesky, LU and QR decompositions now use all available three parallelization levels of the GPU, if the compiler supports them and accepts simd as parallelization level (currently only for gcc).
 Also, an initial support for offloading into multiple GPU devices has been added.
@@ -232,22 +229,20 @@ The Strassen algorithm only performs the last multiplication on gpu, and if exec
 One reason reason is that because of this compiler issue https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120753 it is currently difficult to have classes and structs which use device pointers and then run a loop over them. Also, memory copy to the gpu is inherently slow on gpu devices if they are installed in a PCI port. Therefore, the Strassen algorithm is only used for the decompositions if one works on the host, where it should also be possible to use the message passing interface over several nodes (but that is still untested). 
 
 By now, the library also has some support for unified_shared_memory, which, however, is only fast in few (and expensive) nvidia and amd devices https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120679:
-
 More linear algebra routines were added.
 
 
- 17.02.2025
- Tle library it runs and compiles with -O3 optimizations switched on.
-
+17.02.2025:
 Compilation with Gcc currently produces an internal compiler error due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118590 , https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118738 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118794 . For Windows support, one would have to add Windows specific support for memory mapped files. 
 
 
 
 
- 13.02.2025
+13.02.2025:
 I fixed a data race which led in some cases to a wrong calculation of the offloaded datalength. now the openmp code yields the same results as the old openacc code.
 After running them a few hundreds of times and with different matrices, I can by 13.02.2025, asses that they appear to work correctly if the gpu driver and the cuda version are the most recent.
 
-On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
+17.02.2025:
+The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
 
 Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. On some cases with reductions, one unfortunately still has to use threads with parallel for. 
