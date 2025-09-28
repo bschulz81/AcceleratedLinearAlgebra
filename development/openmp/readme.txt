@@ -6,7 +6,8 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
-
+By 28.09.2025
+Added a some support for sparse matrices and sparse multiplication on cpu and gpu. Fixed a typo in matrix vector multiply
 
 By 19.09.2025
 Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
