@@ -4,7 +4,6 @@
 
 #include "datablock.h"
 
-#include "iostream"
 
 template<typename T>
 class DataBlock_GPU_Memory_Functions;

@@ -3,6 +3,7 @@
 
 #include "datablock.h"
 #include "datablock_host_memory_functions.h"
+#include "datablockcontainer.h"
 
 template<typename T>
 class DataBlock_GPU_Memory_Functions
