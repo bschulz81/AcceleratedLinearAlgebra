@@ -6,10 +6,10 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
-By 28.09.2025
-Added a some support for sparse matrices and sparse multiplication on cpu and gpu. Fixed a typo in matrix vector multiply
+28.09.2025:
+Added support for sparse matrices and sparse multiplication on cpu and gpu. Fixed a typo in matrix vector multiply. Added more routines with Kahan summation.
 
-By 19.09.2025
+19.09.2025:
 Separated the various demonstrations how the classes work,and the tests of the classes into several programs. 
 Added many test cases and demonstrations of the library.  
 
@@ -29,10 +29,10 @@ Changed the extraction of rows, columns and submatrices such that they collapse 
 
 
 
-By 17.09.25;
+17.09.25:
 Updated the main_mpi.cpp file to use the new printtensor() function instead of the removed printmatrix function, 
 The printtensor function prints tensors residing on host as well as on device and can work with tensors of all ranks.
-By 16.09.25
+16.09.25:
 Speed improvements in the datastruct class for the supspanmatrix, subspan, row and column extraction methods, and the matrix multiplication.
 The column and row methods have now rank reducing and rank preserving forms
 The printtensor method now works with device data too
@@ -44,16 +44,16 @@ The test application demonstrates more basic matrix and tensor access on device 
 
 
 
-By 09.09.25
+09.09.25:
 Fixed the class in datastruct.h to accomodate for column major matrices in addition to the rowmajor case which was used in the algorithms earlier. I added test cases for column major data
 
-By 06.09.25
+06.09.25:
 Fixed a bug in the GPU version of the advanced algorithm for Cholesky decomposition.
 All the decomposition algorithms from  https://arxiv.org/pdf/1812.02056 as well as the Strassen algorithm and its Winograd Variant now work on device https://arxiv.org/abs/1410.1599
 
 
 
-By 06.09.25,
+06.09.25:
 1) the advanced algorithms for LU/and QR decomposition as well as the Strassen and Winograd algorithms can now work purely on gpu with gpu data pointers.
 
 2) the advanced algorithm for the QR decomposition  from https://arxiv.org/pdf/1812.02056 showed severe numerical stability errors. But these are inherent in the algorithms
@@ -70,7 +70,7 @@ Of course the library is also able to use the simple algorithms on gpu, which ar
 needs dot products of vectors and is affected by numerical instability of large sums. In order to increase precision, I have began to add methods for Kahan sums for products.
 
 
-By 31.08, the changes were as follows:
+31.08.2025:
 fixed a bug in the matrix*vector multiply function. 
 broke the library down into several classes in different files, which are easily testable. 
 one basic datastruct class, on which mathematical function can operate and which can be offloaded to gpu, one mdspan child class which can host strides and extents, 
@@ -82,7 +82,8 @@ The strassen algorithm, as well as the advanced algorithms for cholesky, lu and 
 added more message passing interface support. But most of that is untested until now.
 
 
-By 11.08.2025: A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. 
+11.08.2025: 
+A severe bug was discovered in the Strassen and Winograd algorithms. In order to improve optimization I had added the strides to the () operators of the tensors. 
 This caused difficulties with computations over matrices. I accidentially used two indices, instead of four in a computation of the aforementioned algorithms.
 This caused wrong results. I now changed this such that the () operators do not need strides. The algorithms now work correctly. 
 I also tested them, in addition to OpenMP, with the Message Passing Interface.
@@ -92,8 +93,7 @@ The Strassen and Winograd algorithms now work correctly with the Message Passing
 They can distribute the problem on many nodes, and then, if it is small enough, upload on gpu. So ideally, one sets up one node per unit consisting of a processor with a gpu.
 More algorithms for the message passing interface may be added in the future.
 
-By 07.08.2025,
-
+07.08.2025:
 Some OpenMP shared clauses were fixed, MPI recieve was put as a constructor into the mdspan class, MPI send was put in as a method, for the entire class with span 
 fields, and for just the data. Some Message Passing Interface functions (MPI Send, MPI recieve, MPI Bcast were tested. The test application was updated and now
 compiles a second application with the OpenMPI replacement compiler.
@@ -127,7 +127,6 @@ It also compiles with clang again. Unfortunately, clang does not seem to execute
 In contrast, the code produced by gcc starts cuda kernels and runs on my GPU device
 
 30.06.2025:
-
 More linear algebra routines were added
 Initial support for unified shared memory was added
 
@@ -142,29 +141,3 @@ Compilation with -O1 with gcc will trigger an interla compiler error https://gcc
 
 No support for Strassen's algorithm on the gpu, as it needs many temporary files. These data would be organized in structs,
 but using structs and classes together with data that rests solely on gpu is prevented by the following compiler problem https://gcc.gnu.org/bugzilla/show_bug.cgi?id=120753
-
-
-
-The files here are an initial openmp port of the openacc code.
-
-On 13.02, I found a data race in compute_datalength. 
-After fixing this, the code produces correct results everytime. 
-
-On 17.02.2025, The algorithms for the gpu where rewritten such that they now use teams of threads as often as possible. 
-The rewrite took Openmp's restrictions for the teams distribute pragma into account.
-
-Also, initial support for shared memory was added, but I was unable to test it, since my gpu has shared memory but is too old that clang would be able to use it. 
-Due to Openmp's restrictions on the teams distribute pragma, the use of teams of threads is in some cases only possible with shared memory. 
-
-On some cases with reductions, one unfortunately still has to use threads with parallel for. 
-
-The library now compiles with -O3 with clang.
-
-
-
-Compilation with nvc++ seems to fail because nvc++ does not recognize #pragma omp begin declare target commands, even though this is openmp standard...
-
-gcc compilation fails due to the following compiler bugs  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118518 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118794
-
-
-
