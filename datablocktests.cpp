@@ -39,8 +39,8 @@ int main(int argc, char** argv)
         cout <<"C"<<endl<<"Rank"<<Aa.rank()<<endl;
         Aa.printtensor();
 
-//
-//
+
+
         size_t exta3[2],stra3[2];
         double newda3[7];
         cout<<"column 1 of A with data c"<<endl;
@@ -209,7 +209,7 @@ int main(int argc, char** argv)
         Be.printtensor();
 
         size_t extb6[2],strb6[2];
-        double datab6[12];
+        double datab6[21];
         DataBlock<double>Bf= B.transpose_copy_s(extb6,strb6,datab6);
         cout<<"transpose with data copy"<<endl;
         Bf.printtensor();
