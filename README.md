@@ -44,7 +44,10 @@ Todo:
 
 
 Version history
+
+
 08.10.2025:
+
 Optimizations for the Strassen and Winograd Algorithm. 
 Added more support for operations with sparse matrices but I have not tested these sparsse operations yet.
 
