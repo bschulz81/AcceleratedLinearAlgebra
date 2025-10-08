@@ -54,7 +54,7 @@ With the new kernel 16.17.1 and its improved memory handling, and new nvidia dri
 I Tried to mitigate a newly occuring bug with openmp collapse(2) in a teams distribute parallel for construct in gcc for matrix multiply that occurs with the new 6.17 kernel and the gpu drivers nvidia-drivers-580.95.05. 
 Unfortunately, with the new kernel 6.17.1 and the new gpu drivers nvidia-drivers-580.95.05, there seem to occur also drastic memory problems that do not appear to come from my code but incorrect compilation and libgomp. 
 
-Fortunately, after the last fixes, https://releases.llvm.org/21.1.0/tools/clang/docs/ReleaseNotes.html#openmp-support the library, in the version from 08.10.2025,seems to compile and run with clang 21.1.2, kernel 6.17.1 and nvidia-drivers nvidia-drivers-580.95.05. It also produces the correct output for the functions called in the test applications.
+Fortunately, after the last fixes, https://releases.llvm.org/21.1.0/tools/clang/docs/ReleaseNotes.html#openmp-support the library, in the version from 08.10.2025, compiles and runs with clang 21.1.2, kernel 6.17.1 and nvidia-drivers nvidia-drivers-580.95.05. It also produces the correct output when compiled with clang.
 
 
 ### 28.09.2025:
