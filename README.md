@@ -49,7 +49,7 @@ Added more support for operations with sparse matrices but I have not tested the
 
 After the developers of the clang compiler fixed some bugs in version 21.1.2, the library now compiles and runs with clang 21.1.2
 
-With the new kernel 16.17.1 and new nvidia drivers and the new nvidia-drivers-580.95.05, new bugs occured with gcc's libgomp that prevent to run the library when compiled with gcc.
+With the new kernel 16.17.1 and its improved memory handling, and new nvidia drivers 580.95.05, new bugs occured with gcc's libgomp that prevent to run the library when compiled with gcc.
 
 I Tried to mitigate a newly occuring bug with openmp collapse(2) in a teams distribute parallel for construct in gcc for matrix multiply that occurs with the new 6.17 kernel and the gpu drivers nvidia-drivers-580.95.05. 
 Unfortunately, with the new kernel 6.17.1 and the new gpu drivers nvidia-drivers-580.95.05, there seem to occur also drastic memory problems that do not appear to come from my code but incorrect compilation and libgomp. 
