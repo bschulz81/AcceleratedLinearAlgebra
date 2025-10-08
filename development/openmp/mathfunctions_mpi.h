@@ -293,28 +293,28 @@ class Math_Functions_MPI: public Math_Functions<T>
 public:
 
 
-    inline static void strassen_multiply( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void strassen_multiply(const DataBlock<T> &aA, const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
 
-    inline static void winograd_multiply( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void winograd_multiply(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
 
-    inline static void cholesky_decomposition(DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void cholesky_decomposition(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
 
-    inline static void lu_decomposition(DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void lu_decomposition(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
 
-    inline static void qr_decomposition(DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void qr_decomposition(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
 
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
 protected:
-    inline static void strassen_multiply_h( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
+    inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
 
-    inline static void winograd_multiply_h( DataBlock<T> &aA, DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
+    inline static void winograd_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
 
-    inline static void cholesky_decomposition_h(DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy &par);
+    inline static void cholesky_decomposition_h(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy &par);
 
-    inline static void lu_decomposition_h(DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy &par);
+    inline static void lu_decomposition_h(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy &par);
 
-    inline static void qr_decomposition_h(DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
+    inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
 
 
     // optional default policy (initially empty = not constructed)
@@ -345,7 +345,7 @@ protected:
 
 
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply( DataBlock<T> & A,  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
+void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -360,8 +360,8 @@ void Math_Functions_MPI<T>::strassen_multiply( DataBlock<T> & A,  DataBlock<T> &
 
     if(separate_device_memory)
     {
-        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
-        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, policy.devicenum, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B,  policy.devicenum, false);
         typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
         DataBlock<T> tA=A,tB=B,tC=C;
 
@@ -386,7 +386,7 @@ void Math_Functions_MPI<T>::strassen_multiply( DataBlock<T> & A,  DataBlock<T> &
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T> & B, DataBlock<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
+void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const DataBlock<T> & B, DataBlock<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
 {
 
 
@@ -396,7 +396,6 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
     size_t p = A.dpextents[1]; // Columns in B
 
 
-    // Base case: if no dimension is divisible by 2, use standard multiplication
     if ((n%2!=0) || (m%2!=0) || (p%2!=0)  || m<=2 || n<=2|| p<=2 || !policy.should_use_recursion(n*p))
     {
         if(ongpu)
@@ -410,14 +409,14 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,false);
+                GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
                 return;
                 break;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,false);
+                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
                 else
                     In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
                 return;
@@ -441,16 +440,16 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 
 // Submatrices of A
 
-    size_t psext1[2],psstr1[2],psext2[2],psstr2[2],psext3[2],psstr3[2],psext4[2],psstr4[2],
-           psext5[2],psstr5[2],psext6[2],psstr6[2],psext7[2],psstr7[2],psext8[2],psstr8[2];
+    size_t psext1[2],a11str[2],psext2[2],a12str[2],psext3[2],a21str[2],psext4[2],a22str[2],
+           psext5[2],b11str[2],psext6[2],b12str[2],psext7[2],b21str[2],psext8[2],b22str[2];
 
 
 
 
 // Temporary storage for intermediate results
-    size_t s=half_n*half_p,
-           s2=half_n*half_m,
-           s3=half_m*half_p;
+    const size_t s=half_n*half_p,
+                 s2=half_n*half_m,
+                 s3=half_m*half_p;
 
     size_t ext1[2]= {half_n, half_p};
     size_t str1[2]= {half_p, 1};
@@ -561,114 +560,132 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
               M7(M7d,s,true,2,ext1,str1,false,false,separate_device_memory);
 
 
-
-
-
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_out(A_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(A_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(A_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(A_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(A_result5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(B_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(B_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(B_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(B_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(B_result5,policy.devicenum);
-    }
-
-    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
-                   A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,psstr2),
-                   A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,psstr3),
-                   A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,psstr4);
-
-
-
-
+    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,a11str),
+                  A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,a22str);
 
 // Submatrices of B
-    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
-                   B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,psstr6),
-                   B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,psstr7),
-                   B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,psstr8);
+    DataBlock<T>   B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,b11str),
+                   B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,b12str),
+                   B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,b21str),
+                   B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,b22str);
+
+    const size_t str20=str2[0];
+    const size_t str21=str2[1];
+    const size_t str30=str3[0];
+    const size_t str31=str3[1];
+
+    const size_t a11str0=a11str[0];
+    const size_t a11str1=a11str[1];
+
+    const size_t a12str0=a12str[0];
+    const size_t a12str1=a12str[1];
+
+    const size_t a21str0=a21str[0];
+    const size_t a21str1=a21str[1];
+
+    const size_t a22str0=a22str[0];
+    const size_t a22str1=a22str[1];
+
+    const size_t b11str0=b11str[0];
+    const size_t b11str1=b11str[1];
+
+    const size_t b12str0=b12str[0];
+    const size_t b12str1=b12str[1];
+
+    const size_t b21str0=b21str[0];
+    const size_t b21str1=b21str[1];
+
+    const size_t b22str0=b22str[0];
+    const size_t b22str1=b22str[1];
 
 
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_in(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B22,policy.devicenum);
-    }
+    const T* A11d=A11.dpdata;
+    const T* A12d=A12.dpdata;
+    const T* A21d=A21.dpdata;
+    const T* A22d=A22.dpdata;
+
+    const T* B11d=B11.dpdata;
+    const T* B12d=B12.dpdata;
+    const T* B21d=B21.dpdata;
+    const T* B22d=B22.dpdata;
+
 
     if (ongpu)
     {
 
-
-        #pragma omp target teams distribute parallel for simd collapse (2) shared(A_result1,A_result2,A_result3,A_result4,A_result5,A11,A22,A12,A21) device(policy.devicenum)
+        #pragma omp target teams distribute device(policy.devicenum) is_device_ptr(Ard1,Ard2,Ard3,Ard4,Ard5,A11d,A12d,A21d,A22d)
         for (size_t i=0; i<half_n; i++)
+            #pragma omp parallel for simd
             for (size_t j=0; j<half_m; j++)
             {
-                A_result1(i,j)=A11(i,j)+A22(i,j);
-                A_result2(i,j)=A21(i,j)+A22(i,j);
-                A_result3(i,j)=A11(i,j)+A12(i,j);
-                A_result4(i,j)=A21(i,j)-A11(i,j);
-                A_result5(i,j)=A12(i,j)-A22(i,j);
+               const T a11dd=A11d[i*a11str0+j*a11str1];
+               const T a22dd=A22d[i*a22str0+j*a22str1];
+               const T a21dd=A21d[i*a21str0+j*a21str1];
+               const T a12dd=A12d[i*a12str0+j*a12str1];
+               const size_t aindex=i*str20+j*str21;
+                Ard1[aindex]=a11dd+a22dd;
+                Ard2[aindex]=a21dd+a22dd;
+                Ard3[aindex]=a11dd+a12dd;
+                Ard4[aindex]=a21dd-a11dd;
+                Ard5[aindex]=a12dd-a22dd;
             }
 
-
-        #pragma omp target teams distribute parallel for simd collapse (2) shared(B_result1,B_result2,B_result3,B_result4,B_result5,B11,B22,B12,B21) device(policy.devicenum)
+        #pragma omp target teams distribute device(policy.devicenum) is_device_ptr(Brd1,Brd2,Brd3,Brd4,Brd5,B11d,B12d,B21d,B22d)
         for (size_t i=0; i<half_m; i++)
+            #pragma omp parallel for simd
             for (size_t j=0; j<half_p; j++)
             {
-                B_result1(i,j)=B11(i,j)+B22(i,j);
-                B_result2(i,j)=B12(i,j)-B22(i,j);
-                B_result3(i,j)=B21(i,j)-B11(i,j);
-                B_result4(i,j)=B11(i,j)+B12(i,j);
-                B_result5(i,j)=B21(i,j)+B22(i,j);
+               const T b11dd=B11d[i*b11str0+j*b11str1];
+               const T b21dd=B21d[i*b21str0+j*b21str1];
+               const T b12dd=B12d[i*b12str0+j*b12str1];
+               const T b22dd=B22d[i*b22str0+j*b22str1];
+               const size_t bindex=i*str30+j*str31;
+                Brd1[bindex]=b11dd+b22dd;
+                Brd2[bindex]=b12dd-b22dd;
+                Brd3[bindex]=b21dd-b11dd;
+                Brd4[bindex]=b11dd+b12dd;
+                Brd5[bindex]=b21dd+b22dd;
             }
 
     }
     else
     {
-        #pragma omp parallel for simd collapse (2)shared(A_result1,A_result2,A_result3,A_result4,A_result5,A11,A22,A12,A21)
+        #pragma omp parallel for simd collapse (2)
         for (size_t i=0; i<half_n; i++)
             for (size_t j=0; j<half_m; j++)
             {
-                A_result1(i,j)=A11(i,j)+A22(i,j);
-                A_result2(i,j)=A21(i,j)+A22(i,j);
-                A_result3(i,j)=A11(i,j)+A12(i,j);
-                A_result4(i,j)=A21(i,j)-A11(i,j);
-                A_result5(i,j)=A12(i,j)-A22(i,j);
+               const T a11dd=A11d[i*a11str0+j*a11str1];
+               const T a22dd=A22d[i*a22str0+j*a22str1];
+               const T a21dd=A21d[i*a21str0+j*a21str1];
+               const T a12dd=A12d[i*a12str0+j*a12str1];
+               const size_t aindex=i*str20+j*str21;
+                Ard1[aindex]=a11dd+a22dd;
+                Ard2[aindex]=a21dd+a22dd;
+                Ard3[aindex]=a11dd+a12dd;
+                Ard4[aindex]=a21dd-a11dd;
+                Ard5[aindex]=a12dd-a22dd;
             }
 
-        #pragma omp parallel for simd collapse (2)shared(B_result1,B_result2,B_result3,B_result4,B_result5,B11,B22,B12,B21)
+        #pragma omp parallel for simd collapse (2)
         for (size_t i=0; i<half_m; i++)
             for (size_t j=0; j<half_p; j++)
             {
-                B_result1(i,j)=B11(i,j)+B22(i,j);
-                B_result2(i,j)=B12(i,j)-B22(i,j);
-                B_result3(i,j)=B21(i,j)-B11(i,j);
-                B_result4(i,j)=B11(i,j)+B12(i,j);
-                B_result5(i,j)=B21(i,j)+B22(i,j);
+               const T b11dd=B11d[i*b11str0+j*b11str1];
+               const T b21dd=B21d[i*b21str0+j*b21str1];
+               const T b12dd=B12d[i*b12str0+j*b12str1];
+               const T b22dd=B22d[i*b22str0+j*b22str1];
+               const size_t bindex=i*str30+j*str31;
+                Brd1[bindex]=b11dd+b22dd;
+                Brd2[bindex]=b12dd-b22dd;
+                Brd3[bindex]=b21dd-b11dd;
+                Brd4[bindex]=b11dd+b12dd;
+                Brd5[bindex]=b21dd+b22dd;
             }
     }
 
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_in(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M7,policy.devicenum);
-    }
+
     if (policy.should_use_mpi_for_recursion(7))
     {
         int myrank=0,childdest=0;
@@ -746,105 +763,105 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
     {
         #pragma omp parallel shared(A_result1,A_result2,A_result3,A_result4,A_result5,  B_result1,B_result2,B_result3,B_result4,B_result5,   A11,A22,B22,B11,M1,M2,M3,M4,M5,M6,M7)
         {
-            strassen_multiply_h(A_result1, B_result1, M1, ongpu,  separate_device_memory, policy);
-            strassen_multiply_h(A_result2, B11, M2,ongpu,  separate_device_memory, policy);
-            strassen_multiply_h(A11, B_result2, M3,ongpu,  separate_device_memory, policy);
-            strassen_multiply_h(A22, B_result3, M4,ongpu,  separate_device_memory, policy);
-            strassen_multiply_h(A_result3, B22, M5,ongpu,  separate_device_memory,policy);
-            strassen_multiply_h(A_result4, B_result4, M6,ongpu,  separate_device_memory,policy);
-            strassen_multiply_h(A_result5, B_result5, M7,ongpu,  separate_device_memory, policy);
+            strassen_multiply_h(A_result1, B_result1,   M1,ongpu, separate_device_memory, policy);
+            strassen_multiply_h(A_result2, B11,         M2,ongpu,  separate_device_memory,policy);
+            strassen_multiply_h(A11, B_result2,         M3,ongpu,  separate_device_memory,policy);
+            strassen_multiply_h(A22, B_result3,         M4,ongpu,  separate_device_memory,policy);
+            strassen_multiply_h(A_result3, B22,         M5,ongpu,  separate_device_memory,policy);
+            strassen_multiply_h(A_result4, B_result4,   M6,ongpu,  separate_device_memory,policy);
+            strassen_multiply_h(A_result5, B_result5,   M7,ongpu,  separate_device_memory,policy);
         }
 
     }
 
-    size_t ext11a[2],str11a[2], ext12a[2],str12a[2], ext13a[2],str13a[2], ext14a[2],str14a[2];
+    size_t ext11a[2],cstr11[2], ext12a[2],cstr12[2], ext13a[2],cstr21[2], ext14a[2],cstr22[2];
 
 // Submatrices of C
-    DataBlock<T>   C11 = C.subspanmatrix(0, 0, half_n, half_p,ext11a,str11a),
-                    C12 = C.subspanmatrix(0, half_p, half_n, half_p,ext12a,str12a),
-                    C21 = C.subspanmatrix(half_n, 0, half_n, half_p,ext13a,str13a),
-                    C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,ext14a,str14a);
 
+    DataBlock<T>   C11 = C.subspanmatrix(0, 0, half_n, half_p,ext11a,cstr11),
+                   C12 = C.subspanmatrix(0, half_p, half_n, half_p,ext12a,cstr12),
+                   C21 = C.subspanmatrix(half_n, 0, half_n, half_p,ext13a,cstr21),
+                   C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,ext14a,cstr22);
 
+    const size_t cstr110=cstr11[0];
+    const size_t cstr111=cstr11[1];
 
+    const size_t cstr120=cstr12[0];
+    const size_t cstr121=cstr12[1];
+
+    const size_t cstr210=cstr21[0];
+    const size_t cstr211=cstr21[1];
+
+    const size_t cstr220=cstr22[0];
+    const size_t cstr221=cstr22[1];
+    T* C11d=C11.dpdata;
+    T* C12d=C12.dpdata;
+    T* C21d=C21.dpdata;
+    T* C22d=C22.dpdata;
+
+    const size_t str10=str1[0];
+    const size_t str11=str1[1];
     if(ongpu)
     {
-        if(separate_device_memory)
-        {
-            DataBlock_GPU_Memory_Functions<T>::create_in(C11,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in(C12,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in(C21,policy.devicenum);
-            DataBlock_GPU_Memory_Functions<T>::create_in(C22,policy.devicenum);
-        }
-
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22)      device(policy.devicenum)
+        #pragma omp target teams distribute  device(policy.devicenum) is_device_ptr(C11d,C12d,C21d,C22d,M1d,M2d,M3d,M4d,M5d,M6d)
         for (size_t i = 0; i < half_n; i++)
+            #pragma omp parallel for simd
             for (size_t j = 0; j < half_p; j++)
             {
-                T helper1 = M1(i,j)  +M4(i,j);
-                T helper2 = -M5(i,j) +M7(i,j);
-                C11(i,j)  =  helper1 +helper2;
-                C12(i, j) = M3(i, j) + M5(i, j);
-                C21(i, j) = M2(i, j) + M4(i, j);
-                T helper3 = M1(i, j) - M2(i, j) ;
-                T helper4 = M3(i, j) + M6(i, j);
-                C22(i,j)  =helper3+helper4;
+                const size_t mindex=i*str10+j*str11;
+                const T m1dd=M1d[mindex];
+                const T m2dd=M2d[mindex];
+                const T m3dd=M3d[mindex];
+                const T m4dd=M4d[mindex];
+                const T m5dd=M5d[mindex];
+                const T m6dd=M6d[mindex];
+                const T m7dd=M7d[mindex];
+
+                const T helper1 = m1dd  +m4dd ;
+                const T helper2 = -m5dd +m7dd ;
+
+                C11d[i*cstr110+j*cstr111]  =  helper1 +helper2;
+                C12d[i*cstr120+j*cstr121] = m3dd  + m5dd ;
+                C21d[i*cstr210+j*cstr211] = m2dd  + m4dd ;
+
+                T helper3 = m1dd - m2dd ;
+                T helper4 = m3dd  + m6dd ;
+
+                C22d[i*cstr220+j*cstr221]  =helper3+helper4;
             }
     }
     else
     {
-        #pragma omp parallel for simd shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22)   collapse(2)
+        #pragma omp parallel for simd collapse(2)
         for (size_t i = 0; i < half_n; i++)
             for (size_t j = 0; j < half_p; j++)
             {
-                T helper1 = M1(i,j)+M4(i,j);
-                T helper2 =-M5(i,j)+M7(i,j);
-                C11(i,j)  = helper1+helper2;
-                C12(i, j) = M3(i, j) + M5(i, j);
-                C21(i, j) = M2(i, j) + M4(i, j);
-                T helper3 = M1(i, j) - M2(i, j) ;
-                T helper4 = M3(i, j) + M6(i, j);
-                C22(i,j)=helper3+helper4;
+                const size_t mindex=i*str10+j*str11;
+                const T m1dd=M1d[mindex];
+                const T m2dd=M2d[mindex];
+                const T m3dd=M3d[mindex];
+                const T m4dd=M4d[mindex];
+                const T m5dd=M5d[mindex];
+                const T m6dd=M6d[mindex];
+                const T m7dd=M7d[mindex];
+
+                const T helper1 = m1dd  +m4dd ;
+                const T helper2 = -m5dd +m7dd ;
+
+                C11d[i*cstr110+j*cstr111]  =  helper1 +helper2;
+                C12d[i*cstr120+j*cstr121] = m3dd  + m5dd ;
+                C21d[i*cstr210+j*cstr211] = m2dd  + m4dd ;
+
+                T helper3 = m1dd - m2dd ;
+                T helper4 = m3dd  + m6dd ;
+
+                C22d[i*cstr220+j*cstr221]  =helper3+helper4;
             }
     }
 
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::release(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M7,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(A_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A_result5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B_result1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B_result2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B_result3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B_result4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B_result5,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C22,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B22,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A22,policy.devicenum);
-
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
         omp_target_free(M3d,policy.devicenum);
@@ -915,7 +932,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h( DataBlock<T> & A,  DataBlock<T>
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply(DataBlock<T>& A, DataBlock<T> &B, DataBlock<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
+void Math_Functions_MPI<T>::winograd_multiply(const DataBlock<T>& A, const DataBlock<T> &B, DataBlock<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -932,8 +949,8 @@ void Math_Functions_MPI<T>::winograd_multiply(DataBlock<T>& A, DataBlock<T> &B, 
 
     if(separate_device_memory)
     {
-        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadA(A, policy.devicenum, false, false);
-        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadB(B,  policy.devicenum, false, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, policy.devicenum, false);
+        typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B,  policy.devicenum, false);
         typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
         DataBlock<T> tA=A,tB=B,tC=C;
 
@@ -958,7 +975,7 @@ void Math_Functions_MPI<T>::winograd_multiply(DataBlock<T>& A, DataBlock<T> &B, 
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B, DataBlock<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
+void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const DataBlock<T> &B, DataBlock<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
 {
     // Dimensions of input matrices
     size_t n = A.dpextents[0]; // Rows in A
@@ -966,9 +983,6 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
     size_t p = A.dpextents[1]; // Columns in B
 
 
-    // Base case: if no dimension is divisible by 2, use standard multiplication
-
-    // Base case: if no dimension is divisible by 2, use standard multiplication
     if ((n%2!=0) || (m%2!=0) || (p%2!=0)  || m<=2 || n<=2|| p<=2 || !policy.should_use_recursion(n*p))
     {
         if(ongpu)
@@ -982,14 +996,14 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,false);
+                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,policy.update_host);
                 return;
                 break;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
+                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
                 else
                     In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
                 return;
@@ -1014,8 +1028,8 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     // Submatrices of A
 
-    size_t psext1[2],psstr1[2],psext2[2],psstr2[2],psext3[2],psstr3[2],psext4[2],psstr4[2],
-           psext5[2],psstr5[2],psext6[2],psstr6[2],psext7[2],psstr7[2],psext8[2],psstr8[2];
+    size_t psext1[2],a11str[2],psext2[2],a12str[2],psext3[2],a21str[2],psext4[2],a22str[2],
+           psext5[2],b11str[2],psext6[2],b12str[2],psext7[2],b21str[2],psext8[2],b22str[2];
 
 
     // Temporary storage for intermediate results
@@ -1121,96 +1135,144 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
 
 
-    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,psstr1),
-                   A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,psstr2),
-                   A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,psstr3),
-                   A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,psstr4);
+    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,a11str),
+                  A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,a22str);
 
     // Submatrices of B
-    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,psstr5),
-                   B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,psstr6),
-                   B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,psstr7),
-                   B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,psstr8);
+    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,b11str),
+                  B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,b12str),
+                  B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,b21str),
+                  B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,b22str);
 
 
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_in(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(B22,policy.devicenum);
+    const size_t a11str0=a11str[0];
+    const size_t a11str1=a11str[1];
 
-        DataBlock_GPU_Memory_Functions<T>::create_out(S1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S7,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(S8,policy.devicenum);
-    }
+    const size_t a12str0=a12str[0];
+    const size_t a12str1=a12str[1];
+
+    const size_t a21str0=a21str[0];
+    const size_t a21str1=a21str[1];
+
+    const size_t a22str0=a22str[0];
+    const size_t a22str1=a22str[1];
+
+    const size_t b11str0=b11str[0];
+    const size_t b11str1=b11str[1];
+
+    const size_t b12str0=b12str[0];
+    const size_t b12str1=b12str[1];
+
+    const size_t b21str0=b21str[0];
+    const size_t b21str1=b21str[1];
+
+    const size_t b22str0=b22str[0];
+    const size_t b22str1=b22str[1];
+
+    const T* A11d=A11.dpdata;
+    const T* A12d=A12.dpdata;
+    const T* A21d=A21.dpdata;
+    const T* A22d=A22.dpdata;
+
+    const T* B11d=B11.dpdata;
+    const T* B12d=B12.dpdata;
+    const T* B21d=B21.dpdata;
+    const T* B22d=B22.dpdata;
+
+    const size_t strs0=str3[0];
+    const size_t strs1=str3[1];
 
     if(ongpu)
     {
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(A22,A11,A21,S1,S2,S3,S4) device(policy.devicenum)
+        #pragma omp target teams distribute  device(policy.devicenum) is_device_ptr(A11d,A12d,A21d,A22d,S1d,S2d,S3d,S4d)
         for (size_t i=0; i<half_n; i++)
+        #pragma omp parallel for simd
             for (size_t j=0; j<half_m; j++)
             {
-                S1(i,j)=A21(i,j)+A22(i,j);
-                S2(i,j)=S1(i,j)-A11(i,j);
-                S3(i,j)=A11(i,j)-A21(i,j);
-                S4(i,j)=A12(i,j)-S2(i,j);
+
+                const T a11dd=A11d[a11str0*i+a11str1*j];
+                const T a12dd=A12d[a12str0*i+a12str1*j];
+                const T a21dd=A21d[a21str0*i+a21str1*j];
+                const T a22dd=A22d[a22str0*i+a22str1*j];
+
+                const size_t sindex=strs0*i+strs1*j;
+
+                const T s1=a21dd+a22dd;
+                const T s2=s1-a11dd;
+
+                S1d[sindex]=s1;
+
+                S2d[sindex]=s2;
+                S3d[sindex]=a11dd-a21dd;
+                S4d[sindex]=a12dd-s2;
 
             }
 
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(B12,B11,B22,B21,S5,S6,S7,S8) device(policy.devicenum)
+        #pragma omp target teams distribute device(policy.devicenum)is_device_ptr(B11d,B12d,B21d,B22d,S5d,S6d,S7d,S8d)
         for (size_t i=0; i<half_m; i++)
+            #pragma omp parallel for simd
             for (size_t j=0; j<half_p; j++)
             {
-                S5(i,j)=B12(i,j)-B11(i,j);
-                S6(i,j)=B22(i,j)-S5(i,j);
-                S7(i,j)=B22(i,j)-B12(i,j);
-                S8(i,j)=S6(i,j)-B21(i,j);
+                const T b11dd=B11d[b11str0*i+b11str1*j];
+                const T b12dd=B12d[b12str0*i+b12str1*j];
+                const T b21dd=B21d[b21str0*i+b21str1*j];
+                const T b22dd=B22d[b22str0*i+b22str1*j];
+
+                const size_t sindex=i*strs0+j*strs1;
+                const T s5=b12dd-b11dd;
+                const T s6=b22dd-s5;
+                S5d[sindex]=s5;
+                S6d[sindex]=b22dd-s5;
+                S6d[sindex]=s6;
+                S7d[sindex]=b22dd-b12dd;
+                S8d[sindex]=s6-b21dd;
             }
     }
     else
     {
-        #pragma omp  parallel for simd  shared(A22,A11,A21,S1,S2,S3,S4)collapse(2)
+        #pragma omp  parallel for simd collapse(2)
         for (size_t i=0; i<half_n; i++)
             for (size_t j=0; j<half_m; j++)
             {
-                S1(i,j)=A21(i,j)+A22(i,j);
-                S2(i,j)=S1(i,j)-A11(i,j);
-                S3(i,j)=A11(i,j)-A21(i,j);
-                S4(i,j)=A12(i,j)-S2(i,j);
+                const T a11dd=A11d[a11str0*i+a11str1*j];
+                const T a12dd=A12d[a12str0*i+a12str1*j];
+                const T a21dd=A21d[a21str0*i+a21str1*j];
+                const T a22dd=A22d[a22str0*i+a22str1*j];
+
+                const size_t sindex=strs0*i+strs1*j;
+
+                const T s1=a21dd+a22dd;
+                const T s2=s1-a11dd;
+
+                S1d[sindex]=s1;
+
+                S2d[sindex]=s2;
+                S3d[sindex]=a11dd-a21dd;
+                S4d[sindex]=a12dd-s2;
 
             }
-        #pragma omp parallel for simd shared(B12,B11,B22,B21,S5,S6,S7,S8)  collapse(2)
+        #pragma omp parallel for simd  collapse(2)
         for (size_t i=0; i<half_m; i++)
             for (size_t j=0; j<half_p; j++)
             {
+                const T b11dd=B11d[b11str0*i+b11str1*j];
+                const T b12dd=B12d[b12str0*i+b12str1*j];
+                const T b21dd=B21d[b21str0*i+b21str1*j];
+                const T b22dd=B22d[b22str0*i+b22str1*j];
 
-                S5(i,j)=B12(i,j)-B11(i,j);
-                S6(i,j)=B22(i,j)-S5(i,j);
-                S7(i,j)=B22(i,j)-B12(i,j);
-                S8(i,j)=S6(i,j)-B21(i,j);
+                const size_t sindex=i*strs0+j*strs1;
+                const T s5=b12dd-b11dd;
+                const T s6=b22dd-s5;
+                S5d[sindex]=s5;
+                S6d[sindex]=b22dd-s5;
+                S6d[sindex]=s6;
+                S7d[sindex]=b22dd-b12dd;
+                S8d[sindex]=s6-b21dd;
             }
     }
 
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_in(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_in(M7,policy.devicenum);
-    }
 
 
     if (policy.should_use_mpi_for_recursion(7))
@@ -1295,52 +1357,80 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
     }
 
 
-    size_t pext10a[2],pstr10a[2],pext11a[2],pstr11a[2],pext12a[2],pstr12a[2],pext13a[2],pstr13a[2];
+    size_t pext10a[2],cstr11[2],pext11a[2],cstr12[2],pext12a[2],cstr21[2],pext13a[2],cstr22[2];
 
-    DataBlock<T>  C11 = C.subspanmatrix(0, 0, half_n, half_p,pext10a,pstr10a),
-                   C12 = C.subspanmatrix(0, half_p, half_n, half_p,pext11a,pstr11a),
-                   C21 = C.subspanmatrix(half_n, 0, half_n, half_p,pext12a,pstr12a),
-                   C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,pext13a,pstr13a);
+    DataBlock<T>  C11 = C.subspanmatrix(0, 0, half_n, half_p,pext10a,cstr11),
+                  C12 = C.subspanmatrix(0, half_p, half_n, half_p,pext11a,cstr12),
+                  C21 = C.subspanmatrix(half_n, 0, half_n, half_p,pext12a,cstr21),
+                  C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,pext13a,cstr22);
+
+   const size_t cstr110=cstr11[0];
+    const size_t cstr111=cstr11[1];
+
+    const size_t cstr120=cstr12[0];
+    const size_t cstr121=cstr12[1];
+
+    const size_t cstr210=cstr21[0];
+    const size_t cstr211=cstr21[1];
+
+    const size_t cstr220=cstr22[0];
+    const size_t cstr221=cstr22[1];
+    T* C11d=C11.dpdata;
+    T* C12d=C12.dpdata;
+    T* C21d=C21.dpdata;
+    T* C22d=C22.dpdata;
 
 
-    if(separate_device_memory)
-    {
-        DataBlock_GPU_Memory_Functions<T>::create_out(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::create_out(C22,policy.devicenum);
-    }
-
-
+    const size_t str10=str1[0];
+    const size_t str11=str1[1];
 
     if(ongpu)
     {
-        #pragma omp target teams distribute parallel for simd collapse(2) shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22) device(policy.devicenum)
+        #pragma omp target teams distribute device(policy.devicenum) is_device_ptr(M1d,M2d,M3d,M4d,M5d,M6d,M7d,C11d,C12d,C21d,C22d)
         for (size_t i = 0; i < half_n; ++i)
+            #pragma omp  parallel for simd
             for (size_t j = 0; j < half_p; ++j)
             {
-                T T1=M1(i,j)+M2(i,j);
-                T T2=T1+M4(i,j);
-                C11(i, j) = M2(i, j) + M3(i,j);
-                T helper=M5(i,j)+M6(i,j);
-                C12(i, j) = T1 +helper ;
-                C21(i, j) = T2 - M7(i, j);
-                C22(i, j) = T2 + M5(i, j);
+                const size_t mindex=i*str10+j*str11;
+                const T m1dd=M1d[mindex];
+                const T m2dd=M2d[mindex];
+                const T m3dd=M3d[mindex];
+                const T m4dd=M4d[mindex];
+                const T m5dd=M5d[mindex];
+                const T m6dd=M6d[mindex];
+                const T m7dd=M7d[mindex];
+
+                const T T1=m1dd+m2dd;
+                const T T2=T1+m4dd;
+                const T helper=m5dd+m6dd;
+                C11d[cstr110*i+cstr111*j] = m2dd + m3dd;
+                C12d[cstr120*i+cstr121*j] = T1 +helper ;
+                C21d[cstr210*i+cstr211*j] = T2 - m7dd;
+                C22d[cstr220*i+cstr221*j] = T2 + m5dd;
             }
     }
     else
     {
-        #pragma omp parallel for simd collapse(2) shared(M1,M2,M3,M4,M5,M6,M7,C11,C12,C21,C22)
+        #pragma omp parallel for simd collapse(2)
         for (size_t i = 0; i < half_n; ++i)
             for (size_t j = 0; j < half_p; ++j)
             {
-                T T1=M1(i,j)+M2(i,j);
-                T T2=T1+M4(i,j);
-                C11(i, j) = M2(i, j) + M3(i,j);
-                T helper= M5(i,j)+M6(i,j);
-                C12(i, j) = T1 +helper;
-                C21(i, j) = T2 - M7(i, j);
-                C22(i, j) = T2 + M5(i, j);
+                const size_t mindex=i*str10+j*str11;
+                const T m1dd=M1d[mindex];
+                const T m2dd=M2d[mindex];
+                const T m3dd=M3d[mindex];
+                const T m4dd=M4d[mindex];
+                const T m5dd=M5d[mindex];
+                const T m6dd=M6d[mindex];
+                const T m7dd=M7d[mindex];
+
+                const T T1=m1dd+m2dd;
+                const T T2=T1+m4dd;
+                const T helper=m5dd+m6dd;
+                C11d[cstr110*i+cstr111*j] = m2dd + m3dd;
+                C12d[cstr120*i+cstr121*j] = T1 +helper ;
+                C21d[cstr210*i+cstr211*j] = T2 - m7dd;
+                C22d[cstr220*i+cstr221*j] = T2 + m5dd;
             }
 
     }
@@ -1348,37 +1438,6 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 
     if(separate_device_memory)
     {
-        DataBlock_GPU_Memory_Functions<T>::release(C11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(C22,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(M1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(M7,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(S1,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S2,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S3,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S4,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S5,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S6,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S7,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(S8,policy.devicenum);
-
-        DataBlock_GPU_Memory_Functions<T>::release(A11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(A22,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B11,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B12,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B21,policy.devicenum);
-        DataBlock_GPU_Memory_Functions<T>::release(B22,policy.devicenum);
-
         omp_target_free(M1d,policy.devicenum);
         omp_target_free(M2d,policy.devicenum);
         omp_target_free(M3d,policy.devicenum);
@@ -1441,14 +1500,14 @@ void Math_Functions_MPI<T>::winograd_multiply_h(DataBlock<T>& A, DataBlock<T> &B
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition(DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy *pol)
+void Math_Functions_MPI<T>::cholesky_decomposition(const DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy *pol)
 {
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
     Math_Functions_MPI<T>::cholesky_decomposition_h(A,L,policy);
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy &policy)
 {
 
 
@@ -1533,8 +1592,9 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
         if(policy.initialize_output_to_zeros)
         {
 
-            #pragma omp target teams distribute parallel for simd collapse(2) shared(tL,tempA) device(policy.devicenum)
+            #pragma omp target teams distribute  shared(tL,tempA) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
+                #pragma omp parallel for simd shared(tL,tempA)
                 for (size_t j = 0; j <n; ++j)
                 {
                     tL(i,j)=0;
@@ -1543,8 +1603,9 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
         }
         else
         {
-            #pragma omp target teams distribute parallel for simd collapse(2) shared(tempA,tA) device(policy.devicenum)
+            #pragma omp target teams distribute shared(tempA,tA) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
+                #pragma omp parallel for simd shared(tempA,tA)
                 for (size_t j = 0; j <n; ++j)
                 {
                     tempA(i,j)=tA(i,j);
@@ -1591,9 +1652,10 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
                     break;
                 }
 
-                #pragma omp target teams distribute parallel for simd collapse(2) shared(tempA,S) device(policy.devicenum)
+                #pragma omp target teams distribute shared(tempA,S) device(policy.devicenum)
                 for (size_t i = c; i < n; ++i)
                 {
+                   #pragma omp parallel for simd shared(tempA,S)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i, j) -= S(i - c, j - c);
@@ -1666,7 +1728,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
 
         T * sdata= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
         DataBlock<T>  tempA=DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
-                             ,policy.memmapped_files);
+                            ,policy.memmapped_files);
 
         if (policy.initialize_output_to_zeros)
         {
@@ -1770,7 +1832,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(DataBlock<T> & A,DataBlock<
 
 
 template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition(DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy* pol)
+void Math_Functions_MPI<T>::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy* pol)
 {
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -1779,7 +1841,7 @@ void Math_Functions_MPI<T>::lu_decomposition(DataBlock<T>& A, DataBlock<T> &L,Da
 
 }
 template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy& policy)
+void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy& policy)
 {
 
 
@@ -1864,9 +1926,9 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
 
         if(policy.initialize_output_to_zeros)
         {
-            #pragma omp target teams distribute parallel for simd shared(tL,tU,tempA,tA) device(policy.devicenum)
+            #pragma omp target teams distribute  shared(tL,tU,tempA,tA) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
-                #pragma omp simd
+                #pragma omp parallel for simd shared(tL,tU,tempA,tA)
                 for (size_t j = 0; j <n; ++j)
                 {
                     tL(i,j)=0;
@@ -1876,9 +1938,9 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
         }
         else
         {
-            #pragma omp target teams distribute parallel for simd shared(tempA,tA) device(policy.devicenum)
+            #pragma omp target teams distribute shared(tempA,tA)  device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
-                #pragma omp simd
+                #pragma omp parallel for simd shared(tempA,tA)
                 for (size_t j = 0; j <n; ++j)
                 {
                     tempA(i,j)=tA(i,j);
@@ -1932,9 +1994,10 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
 
 
 
-                #pragma omp target teams distribute parallel for simd collapse(2) shared(tempA,S) device(policy.devicenum)
+                #pragma omp target teams distribute shared(tempA,S) device(policy.devicenum)
                 for (size_t i = c; i < n; ++i)
                 {
+                    #pragma omp parallel for shared(tempA,S)
                     for (size_t j = c; j < n; ++j)
                     {
                         tempA(i,j) -= S(i - c, j - c);
@@ -1956,8 +2019,8 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
                 tU(c,i)=temp;
             }
 
-        T temp4=0;
-        omp_target_memcpy(&temp4,&tU.dpdata[0],sizeof(T),0,sizeof(T)*(tU.dpstrides[0]*c+tU.dpstrides[1]*c),omp_get_initial_device(),policy.devicenum);
+            T temp4=0;
+            omp_target_memcpy(&temp4,&tU.dpdata[0],sizeof(T),0,sizeof(T)*(tU.dpstrides[0]*c+tU.dpstrides[1]*c),omp_get_initial_device(),policy.devicenum);
 
 
             #pragma omp target teams distribute shared(tU,tempA,tL) device(policy.devicenum)
@@ -2014,7 +2077,7 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
         T * sdata= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
 
         DataBlock<T>  tempA=DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
-                             ,policy.memmapped_files);
+                            ,policy.memmapped_files);
 
         if (policy.initialize_output_to_zeros)
         {
@@ -2136,7 +2199,7 @@ void Math_Functions_MPI<T>::lu_decomposition_h(DataBlock<T>& A, DataBlock<T> &L,
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition(DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy *pol)
+void Math_Functions_MPI<T>::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy *pol)
 {
 
     Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
@@ -2144,7 +2207,7 @@ void Math_Functions_MPI<T>::qr_decomposition(DataBlock<T>& A, DataBlock<T>& Q, D
 
 }
 template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy &policy)
 {
 
     bool ongpu=policy.should_use_gpu(A,Q,R,Math_Functions_Policy::default_cubic_treshold,1);
@@ -2229,14 +2292,13 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
         if(policy.initialize_output_to_zeros)
         {
 
-            #pragma omp target teams distribute parallel for shared(Q,M,tA,tR) device(policy.devicenum)
-
+            #pragma omp target teams distribute shared(tQ,M,tA,tR) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
-                #pragma omp simd
+                #pragma omp parallel for simd  shared(tQ)
                 for (size_t j = 0; j < n; ++j)
                     tQ(i,j) = 0;
-                #pragma omp simd
+                #pragma omp parallel for simd  shared(M,tA,tR)
                 for (size_t j = 0; j < m; ++j)
                 {
                     M(i,j)=tA(i,j);
@@ -2246,10 +2308,10 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
         }
         else
         {
-            #pragma omp target teams distribute parallel for shared(tA,M) device(policy.devicenum)
+            #pragma omp target teams distribute shared(tA,M) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
-                #pragma omp simd
+                #pragma omp parallel for simd shared(tA,M)
                 for (size_t j = 0; j < m; ++j)
                 {
                     M(i,j)=tA(i,j);
@@ -2321,9 +2383,10 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
                 }
 
 
-                #pragma omp target teams distribute parallel for simd shared(M,S) device(policy.devicenum)
+                #pragma omp target teams distribute device(policy.devicenum)
                 for (size_t i = 0; i < n; ++i)
                 {
+                    #pragma omp parallel for simd shared(M,S)
                     for (size_t j = c; j < n; ++j)
                     {
                         M(i, j) -= S(i, j-c);
@@ -2429,8 +2492,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(DataBlock<T>& A, DataBlock<T>& Q,
 
 
         DataBlock<T> M= DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor,
-                         A.dprank,A.dpextents,A.dpstrides,
-                         policy.memmapped_files);
+                        A.dprank,A.dpextents,A.dpstrides,
+                        policy.memmapped_files);
 
         T * tempC= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(mm,policy.memmapped_files);
         T * tempS= DataBlock_Host_Memory_Functions<T>::alloc_data_ptr(nm,policy.memmapped_files);

@@ -6,17 +6,17 @@ project(arraytest VERSION 1.1.1)
 find_package(OpenMP REQUIRED)
 
 #GCC compiler flags.
-SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector   -Wall")
+#SET (CMAKE_CXX_COMPILER "g++" CACHE STRING "C++ compiler" FORCE)
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector  -Wall")
 
 #mpicc compiler flags.
 #SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
-#ET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp  -foffload=nvptx-none -fno-stack-protector  -g -Wall")
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp  -foffload=nvptx-none -fno-stack-protector  -Wall")
 
 
 #Clang compiler flags
-#SET (CMAKE_CXX_COMPILER clang++  CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda   -Wall")
+SET (CMAKE_CXX_COMPILER clang++  CACHE STRING "C++ compiler" FORCE)
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda   -Wall")
 
 
 #Nvidia's nvc++ compiler. Path should be set manually.
@@ -42,7 +42,7 @@ add_executable(datablocktests      ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/databl
 add_executable(mdspantests          ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mdspantests.cpp)
 add_executable(mathdemonstrations   ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mathdemonstrations.cpp)
 add_executable(arraytest_mpi        ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/main_mpi.cpp)
-add_executable(sparsetests        ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/sparsetests.cpp)
+add_executable(sparsetests         ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/sparsetests.cpp)
 
 #Set this to if you want to use unified_shared_memory support
 #add_compile_definitions(Unified_Shared_Memory)
@@ -58,11 +58,11 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Configuring for Clang compiler")
-    target_link_libraries(datablocktests PRIVATE       rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-    target_link_libraries(mdspantests PRIVATE           rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-    target_link_libraries(mathdemonstrations PRIVATE    rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-    target_link_libraries(arraytest_mpi PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
-    target_link_libraries(sparseetests          PRIVATE         rt m c stdc++ mpi  OpenMP::OpenMP_CXX)
+    target_link_libraries(datablocktests        PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(mdspantests           PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(mathdemonstrations    PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(arraytest_mpi         PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
+    target_link_libraries(sparsetests           PRIVATE         rt m c stdc++ mpi OpenMP::OpenMP_CXX)
 endif()
 
 #if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")

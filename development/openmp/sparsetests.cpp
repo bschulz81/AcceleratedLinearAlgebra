@@ -60,10 +60,11 @@ int main()
 
 
     Bd.printtensor();
+cout <<"sparsity "<<Bd.sparsity()<<endl;
 
     DataBlock<double> C1d(C1.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
     DataBlock<double> C2d(C2.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
-
+cout<<"naive matrix multiplication"<<endl;
     In_Kernel_Mathfunctions<double>::matrix_multiply_dot_s(Ad, Bd, C1d);
     C1d.printtensor();
 
@@ -74,7 +75,7 @@ int main()
 
 
 cout<<"We now do a sparse multiplication"<<endl;
-   In_Kernel_Mathfunctions<double>::matrix_multiply_dot_sparse_w(Ablocks, Bblocks, C2d);
+   In_Kernel_Mathfunctions<double>::matrix_multiply_dot_sparse_s(Ablocks, Bblocks, C2d);
    //would also work on device
     //GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks,Bblocks,C2d,omp_get_default_device(),true,true);
 
@@ -90,8 +91,13 @@ cout<<"of course we offload the data first to device"<<endl;
 Aspan.device_data_upload(true);
 Bspan.device_data_upload(true);
 Cspan.device_data_alloc(true);
+
+cout <<"sparsity "<<Bspan.sparsity()<<endl;
+
 BlockedDataView<double> Ablocks1(Aspan, block_shape,true);
 BlockedDataView<double> Bblocks2(Bspan, block_shape2,true);
+
+
 
 GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
 

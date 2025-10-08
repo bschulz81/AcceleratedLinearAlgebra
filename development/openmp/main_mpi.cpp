@@ -29,15 +29,12 @@ int main(int argc, char** argv)
 
             cout<<"this tests recursive algorithms of the library that use hybrid gpu and cpu mode with Message passing interface and OpenMP on device"<<endl;
 
-
-
             vector<double>A2_data(16,4);
             mdspan<double, std::vector<size_t>> A2(A2_data.data(),  {rows, cols},true);
             DataBlock_MPI_Functions<double>::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
             cout<<"Message Sent:\n";
             A2.printtensor();
         }
-
         else if(process_Rank == 1)
         {
 
@@ -48,7 +45,6 @@ int main(int argc, char** argv)
             DataBlock_MPI_Functions<double>::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
             cout<<"Message recieved"<<endl;
             B.printtensor();
-            B(1,1)=42;
         }
 
     }

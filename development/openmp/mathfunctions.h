@@ -45,8 +45,9 @@ inline void query_device_team_thread_counts(int dev, DeviceInfo &info) {
 
 
 
-struct Math_Functions_Policy
+class Math_Functions_Policy
 {
+    public:
     enum Mode { CPU_ONLY, GPU_ONLY, AUTO } mode = AUTO;
     bool update_host = true;
     bool memmapped_files = false;
