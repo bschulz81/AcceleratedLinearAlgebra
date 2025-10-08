@@ -6,6 +6,21 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+08.10.2025:
+Optimizations for the Strassen and Winograd Algorithm. 
+Added more support for operations with sparse matrices but I have not tested these sparsse operations yet.
+
+After clang fixed some bugs in version 21.1.2, the library now compiles and runs with clang 21.1.2
+
+With the new kernel 16.17.1 and new nvidia drivers and the new nvidia-drivers-580.95.05, new bugs occured with gcc's libgomp that prevent to run the library correctly when compiled with gcc.
+
+I Tried to mitigate a newly occuring bug with openmp collapse(2) in a teams distribute parallel for construct in gcc for matrix multiply that occurs with the new 6.17 kernel and the gpu drivers nvidia-drivers-580.95.05. 
+Unfortunately, with the new kernel 6.17.1 and the new gpu drivers nvidia-drivers-580.95.05, there seem to occur also drastic memory problems that do not appear to come from my code but incorrect compilation and libgomp. 
+
+Fortunately, after the last fixes, https://releases.llvm.org/21.1.0/tools/clang/docs/ReleaseNotes.html#openmp-support the library, 
+in the version from 08.10.2025,seems to compile and run with correct output with clang 21.1.2, kernel 6.17.1 and nvidia-drivers nvidia-drivers-580.95.05
+
+
 28.09.2025:
 Added support for sparse matrices and sparse multiplication on cpu and gpu. Fixed a typo in matrix vector multiply. Added more routines with Kahan summation.
 
