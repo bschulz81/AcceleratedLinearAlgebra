@@ -114,10 +114,10 @@ public:
 
     // Constructors
     DataBlock(T*  data, size_t datalength, bool rowm, size_t rank,size_t*   extents, size_t*   strides,
-               bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1 );
+              bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1 );
 
     DataBlock(T*  data,size_t datalength,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
-               bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
+              bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
 
 
     DataBlock(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr,int devicenum=-1 );
@@ -217,7 +217,7 @@ public:
         return dpstrides;
     }
 
-
+   inline float sparsity()const;
 
 
     // Operator overloads
@@ -287,19 +287,23 @@ public:
 
 
     template <typename Expr>
-    requires requires(Expr e, DataBlock<T>& self, const Math_Functions_Policy* pol) {
+    requires requires(Expr e, DataBlock<T>& self, const Math_Functions_Policy* pol)
+    {
         e.assign_to(self, pol);
     }
-    DataBlock& operator=(const Expr& expr) {
+    DataBlock& operator=(const Expr& expr)
+    {
         expr.assign_to(*this, nullptr);
         return *this;
     }
 
     template <typename Expr>
-    requires requires(Expr e, DataBlock<T>& self, const Math_Functions_Policy* pol) {
+    requires requires(Expr e, DataBlock<T>& self, const Math_Functions_Policy* pol)
+    {
         e.assign_to(self, pol);
     }
-    DataBlock& assign(const Expr& expr, const Math_Functions_Policy* policy) {
+    DataBlock& assign(const Expr& expr, const Math_Functions_Policy* policy)
+    {
         expr.assign_to(*this, policy);
         return *this;
     }
@@ -672,6 +676,40 @@ inline DataBlock<T> DataBlock<T>::transpose_copy_s(size_t*    newextents, size_t
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+template<typename T>
+inline  float DataBlock<T>::sparsity()const
+{
+    size_t count=0;
+    if(omp_is_initial_device()&& dpdata_is_devptr)
+    {
+        #pragma omp target teams distribute parallel for simd map(tofrom: count) shared(count) is_device_ptr(dpdata)  device(devptr_devicenum)
+        for(size_t i=0; i<dpdatalength; i++)
+        {
+            if(dpdata[i]==0)
+            {
+                #pragma omp atomic update
+                count++;
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for simd shared(count)
+        for(size_t i=0; i<dpdatalength; i++)
+        {
+            if(dpdata[i]==0)
+            {
+                #pragma omp atomic update
+                count++;
+            }
+        }
+    }
+    return (float)count/(float)dpdatalength;
+}
+#pragma omp end declare target
+
+
 
 #pragma omp begin declare target
 template<typename T>
@@ -827,7 +865,6 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
     size_t offset_index = 0;
     size_t length_index = 0; // for computing total length
 
-    // Compute offset and copy strides
     #pragma omp unroll
     for (size_t i = 0; i < r; ++i)
     {
@@ -835,7 +872,6 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
         length_index  += (psub_extents[i] - 1) * dpstrides[i];
     }
 
-    // Count non-collapsed dimensions
     size_t rank_out = 0;
     #pragma omp unroll
     for (size_t i = 0; i < r; ++i)
@@ -887,7 +923,6 @@ DataBlock<T> DataBlock<T>::subspan_copy(
 {
     const size_t r = dprank;
 
-    // Temporary strides for walking the sub-block during copy
     size_t* tempstr = new size_t[r];
     fill_strides(psub_extents, tempstr, r, dprowmajor);
 
@@ -955,7 +990,6 @@ DataBlock<T> DataBlock<T>::subspan_copy(
 
     delete[] tempstr;
 
-    // Compute pl AFTER collapsing
     size_t pl = compute_data_length_s(new_extents, new_strides, rank_out);
 
     return DataBlock(
@@ -988,7 +1022,6 @@ DataBlock<T>  DataBlock<T>::subspanmatrix( const size_t row, const size_t col,co
     size_t offset = row * dpstrides[0] + col * dpstrides[1];
     T* data_ptr = dpdata + offset;
 
-    // Decide rank based on tile size
     if (tile_rows == 1 && tile_cols == 1)
     {
         psub_extents[0] = 1;
@@ -997,21 +1030,18 @@ DataBlock<T>  DataBlock<T>::subspanmatrix( const size_t row, const size_t col,co
     }
     else if (tile_rows == 1)
     {
-        // Row vector
         psub_extents[0] = tile_cols;
         psub_strides[0] = dpstrides[1];
         return DataBlock<T>(data_ptr, tile_cols, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr);
     }
     else if (tile_cols == 1)
     {
-        // Column vector
         psub_extents[0] = tile_rows;
         psub_strides[0] = dpstrides[0];
         return DataBlock<T>(data_ptr, tile_rows, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr);
     }
     else
     {
-        // Full matrix
         size_t pl = (tile_rows-1) * dpstrides[0] + (tile_cols-1) * dpstrides[1] + 1;
         return DataBlock<T>(data_ptr, pl, dprowmajor, 2, psub_extents, psub_strides, dpdata_is_devptr);
     }
@@ -1035,22 +1065,22 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_w( const size_t row, const size_t
     psub_extents[1] = tile_cols;
     psub_strides[0] = dprowmajor ? tile_cols : 1;
     psub_strides[1] = dprowmajor ? 1 : tile_rows;
-
+    const size_t ps_str0=psub_strides[0];
+    const size_t ps_str1=psub_strides[1];
     // Copy data
     if (omp_is_initial_device() && dpdata_is_devptr)
     {
-        #pragma omp target parallel for simd collapse(2) device(devptr_devicenum) \
-        is_device_ptr(sub_data) is_device_ptr(pd)
+        #pragma omp target parallel for simd collapse(2) device(devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
     }
     else
     {
         #pragma omp parallel for simd collapse(2)
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
     }
 
     // Determine rank
@@ -1103,22 +1133,23 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_v( const size_t row, const size_t
     psub_extents[1] = tile_cols;
     psub_strides[0] = dprowmajor ? tile_cols : 1;
     psub_strides[1] = dprowmajor ? 1 : tile_rows;
+    const size_t ps_str0=psub_strides[0];
+    const size_t ps_str1=psub_strides[1];
 
     // Copy data
     if (omp_is_initial_device() && dpdata_is_devptr)
     {
-        #pragma omp target  simd collapse(2) device(devptr_devicenum) \
-        is_device_ptr(sub_data) is_device_ptr(pd)
+        #pragma omp target  simd collapse(2) device(devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
     }
     else
     {
         #pragma omp simd collapse(2)
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i *ps_str0+ j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
     }
 
     // Determine rank
@@ -1167,14 +1198,15 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t
     psub_extents[1] = tile_cols;
     psub_strides[0] = dprowmajor ? tile_cols : 1;
     psub_strides[1] = dprowmajor ? 1 : tile_rows;
-
+    const size_t ps_str0=psub_strides[0];
+    const size_t ps_str1=psub_strides[1];
     // Copy data
     if (omp_is_initial_device() && dpdata_is_devptr)
     {
         #pragma omp target device(devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
 
     }
     else
@@ -1182,7 +1214,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t
         #pragma omp unroll
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
-                sub_data[i * psub_strides[0] + j * psub_strides[1]] = pd[(row+i)*s0 + (col+j)*s1];
+                sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
     }
 
     // Determine rank

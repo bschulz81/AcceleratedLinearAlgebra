@@ -71,25 +71,640 @@ public:
     inline static T  kahan_sum(const T *arr,size_t n);
     inline static T  neumaier_sum(const T*arr,size_t n);
 
-    inline static void matrix_multiply_dot_sparse_w(const BlockedDataView<T>& Ablocks,
-            const BlockedDataView<T>& Bblocks,
-            DataBlock<T>& C );
-    inline static void matrix_multiply_dot_sparse_v(const BlockedDataView<T>& Ablocks,
-            const BlockedDataView<T>& Bblocks,
-            DataBlock<T>& C );
-    inline static void matrix_multiply_dot_sparse_s(const BlockedDataView<T>& Ablocks,
-            const BlockedDataView<T>& Bblocks,
-            DataBlock<T>& C );
+    inline static void matrix_multiply_dot_sparse_w(const BlockedDataView<T>& Ablocks, const BlockedDataView<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+    inline static void matrix_multiply_dot_sparse_v(const BlockedDataView<T>& Ablocks, const BlockedDataView<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+    inline static void matrix_multiply_dot_sparse_s(const BlockedDataView<T>& Ablocks, const BlockedDataView<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+
+    inline static void matrix_multiply_dot_sparse_w(const BlockedDataView<T>& Ablocks, const DataBlock<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+    inline static void matrix_multiply_dot_sparse_v(const BlockedDataView<T>& Ablocks, const DataBlock<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+    inline static void matrix_multiply_dot_sparse_s(const BlockedDataView<T>& Ablocks, const DataBlock<T>& Bblocks, DataBlock<T>& C,bool initialize_output_to_zero=true);
+
+
+    inline static  void matrix_vector_multiply_sparse_s(const BlockedDataView<T>& A, const DataBlock<T>& x,  DataBlock<T>& y,bool initialize_output_to_zero=true);
+    inline static  void matrix_vector_multiply_sparse_v(const BlockedDataView<T>& A, const DataBlock<T>& x,  DataBlock<T>& y,bool initialize_output_to_zero=true);
+    inline static  void matrix_vector_multiply_sparse_w(const BlockedDataView<T>& A, const DataBlock<T>& x,  DataBlock<T>& y,bool initialize_output_to_zero=true);
+
+    inline static  void matrix_vector_multiply_sparse_s(const BlockedDataView<T>& A, const BlockedDataView<T>& x, DataBlock<T>& y,bool initialize_output_to_zero=true);
+    inline static  void matrix_vector_multiply_sparse_v(const BlockedDataView<T>& A, const BlockedDataView<T>& x, DataBlock<T>& y,bool initialize_output_to_zero=true);
+    inline static  void matrix_vector_multiply_sparse_w(const BlockedDataView<T>& A, const BlockedDataView<T>& x, DataBlock<T>& y,bool initialize_output_to_zero=true);
 };
 #pragma omp end declare target
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w(
-    const BlockedDataView<T>& A,
-    const BlockedDataView<T>& B,
-    DataBlock<T>& C   // dense destination, must be zero-initialized
-)
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const BlockedDataView<T>& A, const BlockedDataView<T>& x,  DataBlock<T>& y,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+    const size_t nblocks = x.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+    const size_t Xblock_size = x.block_shape[0];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dblock.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t xext  = x.dblock.dpextents[0];
+
+    const size_t ystr0 = y.dpstrides[0];
+
+    if(initialize_to_zero)
+    {
+        #pragma omp parallel for simd shared(y)
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+
+    #pragma omp parallel for collapse(2) shared(A,x,y)
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        for (size_t jb = 0; jb < nblocks; ++jb)
+        {
+            const size_t a_start = A.pooled_offsets_starts[ia];
+            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+            const size_t a_row_off = a_off[0];
+            const size_t a_col_off = a_off[1];
+
+            const size_t a_rem_rows = aext0 - a_row_off;
+            const size_t a_rem_cols = aext1 - a_col_off;
+
+            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+            const size_t x_start = x.pooled_offsets_starts[jb];
+            const size_t* x_off  = x.pooled_offsets_flat + x_start;
+
+            const size_t x_off0 = x_off[0];
+            const size_t x_rem  = xext - x_off0;
+            const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+
+            // overlap check in "k" dimension
+            const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+            const size_t a= a_col_off + a_tile_cols;
+            const size_t b=x_off0 + x_tile;
+            const size_t k_end   =(a<b)?a:b;
+
+            if (k_start >= k_end) continue;
+
+            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            {
+                const size_t global_i = a_row_off + ii;
+                T sum = y.dpdata[global_i * ystr0];
+                #pragma omp simd reduction(+:sum)
+                for (size_t kk = k_start; kk < k_end; ++kk)
+                {
+                    const size_t a_index = global_i * Astr0 + kk * Astr1;
+                    const size_t x_index = kk * Xstr0;
+                    sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
+                }
+                y.dpdata[global_i * ystr0] = sum;
+            }
+        }
+    }
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
+    const BlockedDataView<T>& A,  const BlockedDataView<T>& x,  DataBlock<T>& y,bool initialize_to_zero )
+{
+    const size_t mblocks = A.usedblocks;
+    const size_t nblocks = x.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+    const size_t Xblock_size = x.block_shape[0];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dblock.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t xext  = x.dblock.dpextents[0];
+
+    const size_t ystr0 = y.dpstrides[0];
+    if(initialize_to_zero)
+    {
+        #pragma omp simd
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        for (size_t jb = 0; jb < nblocks; ++jb)
+        {
+            const size_t x_start = x.pooled_offsets_starts[jb];
+            const size_t* x_off  = x.pooled_offsets_flat + x_start;
+
+            const size_t x_off0 = x_off[0];
+            const size_t x_rem  = xext - x_off0;
+            const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+
+            // overlap check in "k" dimension
+            const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+            const size_t a= a_col_off + a_tile_cols;
+            const size_t b=x_off0 + x_tile;
+            const size_t k_end   =(a<b)?a:b;
+
+            if (k_start >= k_end) continue;
+
+            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            {
+                const size_t global_i = a_row_off + ii;
+                T sum = y.dpdata[global_i * ystr0];
+                #pragma omp simd reduction(+:sum)
+                for (size_t kk = k_start; kk < k_end; ++kk)
+                {
+                    const size_t a_index = global_i * Astr0 + kk * Astr1;
+                    const size_t x_index = kk * Xstr0;
+                    sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
+                }
+
+                y.dpdata[global_i * ystr0] = sum;
+            }
+        }
+    }
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
+    const BlockedDataView<T>& A,    const BlockedDataView<T>& x,    DataBlock<T>& y,bool initialize_to_zero )
+{
+    const size_t mblocks = A.usedblocks;
+    const size_t nblocks = x.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+    const size_t Xblock_size = x.block_shape[0];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dblock.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t xext  = x.dblock.dpextents[0];
+
+    const size_t ystr0 = y.dpstrides[0];
+
+    if(initialize_to_zero)
+    {
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        for (size_t jb = 0; jb < nblocks; ++jb)
+        {
+            const size_t x_start = x.pooled_offsets_starts[jb];
+            const size_t* x_off  = x.pooled_offsets_flat + x_start;
+
+            const size_t x_off0 = x_off[0];
+            const size_t x_rem  = xext - x_off0;
+            const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+
+            // overlap check in "k" dimension
+            const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+            const size_t a= a_col_off + a_tile_cols;
+            const size_t b=x_off0 + x_tile;
+            const size_t k_end   =(a<b)?a:b;
+
+            if (k_start >= k_end) continue;
+
+            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            {
+                const size_t global_i = a_row_off + ii;
+                T sum = y.dpdata[global_i * ystr0];
+
+                for (size_t kk = k_start; kk < k_end; ++kk)
+                {
+                    const size_t a_index = global_i * Astr0 + kk * Astr1;
+                    const size_t x_index = kk * Xstr0;
+                    sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
+                }
+
+                y.dpdata[global_i * ystr0] = sum;
+            }
+        }
+    }
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedDataView<T>& A, const DataBlock<T>& x, DataBlock<T>& y,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+
+    const size_t ystr0 = y.dpstrides[0];
+
+    if(initialize_to_zero)
+    {
+        #pragma omp parallel for simd shared(y)
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+
+
+    #pragma omp parallel for shared(A,x,y)
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+            T sum = y.dpdata[global_i * ystr0];  // accumulate
+            #pragma omp simd reduction(+:sum)
+            for (size_t kk = 0; kk < a_tile_cols; ++kk)
+            {
+                const size_t global_k = a_col_off + kk;
+                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
+                const size_t x_index  = global_k * Xstr0;
+                sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
+            }
+            y.dpdata[global_i * ystr0] = sum;
+        }
+    }
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDataView<T>& A,    const DataBlock<T>& x,     DataBlock<T>& y,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+
+    const size_t ystr0 = y.dpstrides[0];
+
+    if(initialize_to_zero)
+    {
+        #pragma omp simd
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+            T sum = y.dpdata[global_i * ystr0];  // accumulate
+            #pragma omp simd reduction(+:sum)
+            for (size_t kk = 0; kk < a_tile_cols; ++kk)
+            {
+                const size_t global_k = a_col_off + kk;
+                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
+                const size_t x_index  = global_k * Xstr0;
+                sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
+            }
+
+            y.dpdata[global_i * ystr0] = sum;
+        }
+    }
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(  const BlockedDataView<T>& A,  const DataBlock<T>& x, DataBlock<T>& y, bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Xstr0 = x.dpstrides[0];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+
+    const size_t ystr0 = y.dpstrides[0];
+    if(initialize_to_zero)
+    {
+        for(size_t i=0; i<y.dpextents[0]; i++)
+            y.dpdata[i*ystr0]=0;
+    }
+
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+            T sum = y.dpdata[global_i * ystr0];  // accumulate
+
+            for (size_t kk = 0; kk < a_tile_cols; ++kk)
+            {
+                const size_t global_k = a_col_off + kk;
+                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
+                const size_t x_index  = global_k * Xstr0;
+                sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
+            }
+
+            y.dpdata[global_i * ystr0] = sum;
+        }
+    }
+}
+#pragma omp end declare target
+
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedDataView<T>& A,  const DataBlock<T>& B, DataBlock<T>& C,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Bstr0 = B.dpstrides[0];
+    const size_t Bstr1 = B.dpstrides[1];
+    const size_t Cstr0 = C.dpstrides[0];
+    const size_t Cstr1 = C.dpstrides[1];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t bext0 = B.dpextents[0]; // must equal aext1
+    const size_t bext1 = B.dpextents[1];
+    if(initialize_to_zero)
+    {
+        #pragma omp parallel for simd collapse(2) shared(C)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*Cstr0+j*Cstr1]=0;
+    }
+    #pragma omp parallel for shared(A,B,C)
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+
+            for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
+            {
+                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+                #pragma omp simd reduction(+:sum)
+                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                {
+                    const size_t global_k = a_col_off + kk;
+
+                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
+                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
+
+                    sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
+                }
+
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+            }
+        }
+    }
+}
+
+
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedDataView<T>& A,  const DataBlock<T>& B, DataBlock<T>& C,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Bstr0 = B.dpstrides[0];
+    const size_t Bstr1 = B.dpstrides[1];
+    const size_t Cstr0 = C.dpstrides[0];
+    const size_t Cstr1 = C.dpstrides[1];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t bext0 = B.dpextents[0]; // must equal aext1
+    const size_t bext1 = B.dpextents[1];
+    if(initialize_to_zero)
+    {
+        #pragma omp simd collapse(2)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*Cstr0+j*Cstr1]=0;
+    }
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+        // Multiply this sparse tile of A with the corresponding slice of dense B
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+
+            for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
+            {
+                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+                #pragma omp simd reduction(+:sum)
+                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                {
+                    const size_t global_k = a_col_off + kk;
+
+                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
+                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
+
+                    sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
+                }
+
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+            }
+        }
+    }
+}
+
+
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedDataView<T>& A,  const DataBlock<T>& B, DataBlock<T>& C,bool initialize_to_zero)
+{
+    const size_t mblocks = A.usedblocks;
+
+    const size_t Ablock_rows = A.block_shape[0];
+    const size_t Ablock_cols = A.block_shape[1];
+
+    const size_t Astr0 = A.dblock.dpstrides[0];
+    const size_t Astr1 = A.dblock.dpstrides[1];
+    const size_t Bstr0 = B.dpstrides[0];
+    const size_t Bstr1 = B.dpstrides[1];
+    const size_t Cstr0 = C.dpstrides[0];
+    const size_t Cstr1 = C.dpstrides[1];
+
+    const size_t aext0 = A.dblock.dpextents[0];
+    const size_t aext1 = A.dblock.dpextents[1];
+    const size_t bext0 = B.dpextents[0]; // must equal aext1
+    const size_t bext1 = B.dpextents[1];
+    if(initialize_to_zero)
+    {
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*Cstr0+j*Cstr1]=0;
+    }
+    for (size_t ia = 0; ia < mblocks; ++ia)
+    {
+        const size_t a_start = A.pooled_offsets_starts[ia];
+        const size_t* a_off  = A.pooled_offsets_flat + a_start;
+
+        const size_t a_row_off = a_off[0];
+        const size_t a_col_off = a_off[1];
+
+        const size_t a_rem_rows = aext0 - a_row_off;
+        const size_t a_rem_cols = aext1 - a_col_off;
+
+        const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+        const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+
+
+        for (size_t ii = 0; ii < a_tile_rows; ++ii)
+        {
+            const size_t global_i = a_row_off + ii;
+
+            for (size_t jj = 0; jj < bext1; ++jj)
+            {
+                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+
+                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                {
+                    const size_t global_k = a_col_off + kk;
+
+                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
+                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
+
+                    sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
+                }
+
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+            }
+        }
+    }
+}
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedDataView<T>& A, const BlockedDataView<T>& B, DataBlock<T>& C, bool initialize_to_zero)
 {
     // both A and B are assumed 2D
     const size_t mblocks = A.usedblocks;
@@ -111,12 +726,13 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w(
     const size_t Astr1=A.dblock.dpstrides[1];
     const size_t Bstr0=B.dblock.dpstrides[0];
     const size_t Bstr1=B.dblock.dpstrides[1];
-
-    #pragma omp parallel for simd collapse(2)
-    for(size_t i=0; i<C.dpextents[0]; i++)
-        for(size_t j=0; j<C.dpextents[1]; j++)
-            C.dpdata[i*str0+j*str1]=0;
-
+    if(initialize_to_zero)
+    {
+        #pragma omp parallel for simd collapse(2)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*str0+j*str1]=0;
+    }
     #pragma omp parallel for collapse(2) shared(A,B,C)
     for (size_t ia = 0; ia < mblocks; ++ia)
     {
@@ -187,11 +803,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w(
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(
-    const BlockedDataView<T>& A,
-    const BlockedDataView<T>& B,
-    DataBlock<T>& C   // dense destination, must be zero-initialized
-)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(  const BlockedDataView<T>& A, const BlockedDataView<T>& B,  DataBlock<T>& C,bool initialize_to_zero)
 {
     // both A and B are assumed 2D
     const size_t mblocks = A.usedblocks;
@@ -209,11 +821,13 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(
 
     const size_t str0=C.dpstrides[0];
     const size_t str1=C.dpstrides[1];
-
-    #pragma omp simd collapse(2)
-    for(size_t i=0; i<C.dpextents[0]; i++)
-        for(size_t j=0; j<C.dpextents[1]; j++)
-            C.dpdata[i*str0+j*str1]=0;
+    if(initialize_to_zero)
+    {
+        #pragma omp simd collapse(2)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*str0+j*str1]=0;
+    }
 
 
     const size_t aext0=A.dblock.dpextents[0];
@@ -288,11 +902,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(
-    const BlockedDataView<T>& A,
-    const BlockedDataView<T>& B,
-    DataBlock<T>& C
-)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(   const BlockedDataView<T>& A,  const BlockedDataView<T>& B,   DataBlock<T>& C,bool initialize_to_zero)
 {
     // both A and B are assumed 2D
     const size_t mblocks = A.usedblocks;
@@ -316,9 +926,10 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(
     const size_t bext0=B.dblock.dpextents[0];
     const size_t bext1=B.dblock.dpextents[1];
 
-    for(size_t i=0; i<C.dpextents[0]; i++)
-        for(size_t j=0; j<C.dpextents[1]; j++)
-            C.dpdata[i*str0+j*str1]=0;
+    if(initialize_to_zero)
+        for(size_t i=0; i<C.dpextents[0]; i++)
+            for(size_t j=0; j<C.dpextents[1]; j++)
+                C.dpdata[i*str0+j*str1]=0;
 
 
     for (size_t ia = 0; ia < mblocks; ++ia)

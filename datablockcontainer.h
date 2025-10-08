@@ -3,8 +3,7 @@
 
 
 #include "datablock.h"
-
-
+#include<iostream>
 template<typename T>
 class DataBlock_GPU_Memory_Functions;
 
@@ -85,6 +84,7 @@ public:
         return dblock();
     }
 
+
 protected:
     const DataBlock<T> & dblock;
     size_t* block_shape;
@@ -137,7 +137,7 @@ protected:
         const T* pd=dblock.dpdata;
         if(devptr)
         {
-            #pragma omp target teams distribute parallel for map (tofrom: count) shared(count) is_device_ptr(pd) is_device_ptr(pooled_offsets_flat)is_device_ptr(pooled_offsets_starts)device(dblock.devptr_devicenum)
+            #pragma omp target teams distribute parallel for map (tofrom: count) shared(count) is_device_ptr(pd,pooled_offsets_flat,pooled_offsets_starts)device(dblock.devptr_devicenum)
             for (size_t bi = 0; bi < nblocks; ++bi)
             {
                 const size_t offset = bi * block_size;
@@ -210,7 +210,6 @@ outofloop2:
                     size_t slot;
                     #pragma omp atomic capture
                     slot = count++;
-
                     {
                         pooled_offsets_starts[slot] = slot;
                         pooled_offsets_flat[slot]   = offset;
@@ -248,9 +247,10 @@ outofloop2:
 
         if(devptr)
         {
-            #pragma omp target teams distribute parallel for collapse(2) map(tofrom:count) shared(count) is_device_ptr(pd) is_device_ptr(pooled_offsets_flat)is_device_ptr(pooled_offsets_starts) device(dblock.devptr_devicenum)
+            #pragma omp target teams distribute map(tofrom:count) shared(count) is_device_ptr(pd,pooled_offsets_flat,pooled_offsets_starts) device(dblock.devptr_devicenum)
             for (size_t bi = 0; bi < nblocks_row; ++bi)
             {
+                #pragma omp parallel for shared(count)
                 for (size_t bj = 0; bj < nblocks_col; ++bj)
                 {
                     const size_t row_off = bi * block_rows;
@@ -280,7 +280,7 @@ outofloop3:
                     {
                         size_t slot;
                         #pragma omp atomic capture
-                        slot = count++;    // atomically reserve a slot
+                        slot = count++;
                         const size_t pos = slot * 2;
                         pooled_offsets_starts[slot] = pos;
                         pooled_offsets_flat[pos]    = row_off;

@@ -238,7 +238,7 @@ int main()
             mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.transpose_copy(true);
             transposecopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            cout<<"mdspan_data subspanmatrix copy on memory"<<endl;
             mdspan_data<double,array<size_t,2>>subspanmatrixcopy=mdspan_data_matrix.subspanmatrix_copy(1,2,2,2,false);
             subspanmatrixcopy.printtensor();
 
@@ -251,9 +251,10 @@ int main()
             mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
 
             newcopy.printtensor();
+
             cout<<"mdspan_data subspanmatrix copy on device"<<endl;
 
-            mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
+           mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
             newcopy_subspan.printtensor();
             cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
 
@@ -347,8 +348,7 @@ int main()
 
 
     }
-//
-//    }
+
     {
 
         cout<< "This demonstrates some functions of the mdspan data class, which can, in contrast to mdspan, manage and own data."<<endl;
@@ -384,7 +384,7 @@ int main()
             mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.transpose_copy(true);
             transposecopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            cout<<"mdspan_data subspanmatrix copy on a memory"<<endl;
             mdspan_data<double,array<size_t,2>>subspanmatrixcopy=mdspan_data_matrix.subspanmatrix_copy(1,2,2,2,false);
             subspanmatrixcopy.printtensor();
 
@@ -397,10 +397,10 @@ int main()
             mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
 
             newcopy.printtensor();
-            cout<<"mdspan_data subspanmatrix copy on device"<<endl;
-
+          cout<<"mdspan_data subspanmatrix copy on device"<<endl;
+//
             mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
-            newcopy_subspan.printtensor();
+           newcopy_subspan.printtensor();
             cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
 
 

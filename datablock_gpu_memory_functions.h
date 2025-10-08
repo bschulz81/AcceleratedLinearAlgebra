@@ -534,7 +534,6 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int de
         #pragma omp target enter data map(to: dA.dpdata[0:l])device(devicenum)
     }
 
-
     #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
 
     #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
