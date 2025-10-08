@@ -10,7 +10,7 @@ Todo:
 Optimizations for the Strassen and Winograd Algorithm. 
 Added more support for operations with sparse matrices but I have not tested these sparsse operations yet.
 
-After clang fixed some bugs in version 21.1.2, the library now compiles and runs with clang 21.1.2
+After the clang compiler developers fixed some bugs in version 21.1.2 of clang, the library now compiles and runs with clang 21.1.2
 
 With the new kernel 16.17.1 and new nvidia drivers and the new nvidia-drivers-580.95.05, new bugs occured with gcc's libgomp that prevent to run the library correctly when compiled with gcc.
 
