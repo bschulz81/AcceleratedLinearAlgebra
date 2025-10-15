@@ -6,6 +6,15 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+15.10.2025
+Fixes to some routines for sparse, dense matrixmultiplication, and sparse dense matrix vector multiplications.
+Currently, the library does not work with gcc compiler due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
+
+The clang compiler in version 21.1.3 compiles the code of this library correctly. 
+
+Unlike gcc, clang currently has no support for the target simd directive on nvptx targets. I filed a feature request for this as the library uses this extensively https://github.com/llvm/llvm-project/issues/163335
+
+
 08.10.2025:
 Optimizations for the Strassen and Winograd Algorithm. 
 Added more support for operations with sparse matrices but I have not tested these sparsse operations yet.
