@@ -42,7 +42,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 ### 15.10.2025
 
-Currently, the library does not work with gcc due to the bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
+Currently, the library does not work with gcc due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
 
 The clang compiler in version 21.1.3 compiles the code correctly. 
 
