@@ -99,7 +99,7 @@ BlockedDataView<double> Bblocks2(Bspan, block_shape2,true);
 
 
 
-GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bspan,Cspan,omp_get_default_device(),true,true);
+GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
 
 Cspan.printtensor();
 

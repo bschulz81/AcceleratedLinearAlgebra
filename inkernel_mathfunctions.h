@@ -561,7 +561,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
 
                     sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
                 }
-                #pragma atomic update
+                #pragma omp atomic update
                 C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
             }
         }
