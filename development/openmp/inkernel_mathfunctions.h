@@ -154,7 +154,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
             for (size_t ii = 0; ii < a_tile_rows; ++ii)
             {
                 const size_t global_i = a_row_off + ii;
-                T sum = y.dpdata[global_i * ystr0];
+                T sum = 0;
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
@@ -162,7 +162,8 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
                     const size_t x_index = kk * Xstr0;
                     sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
                 }
-                y.dpdata[global_i * ystr0] = sum;
+                #pragma omp atomic update
+                y.dpdata[global_i * ystr0] += sum;
             }
         }
     }
@@ -232,7 +233,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
             for (size_t ii = 0; ii < a_tile_rows; ++ii)
             {
                 const size_t global_i = a_row_off + ii;
-                T sum = y.dpdata[global_i * ystr0];
+                T sum = 0;
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
@@ -240,8 +241,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
                     const size_t x_index = kk * Xstr0;
                     sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
                 }
-
-                y.dpdata[global_i * ystr0] = sum;
+                y.dpdata[global_i * ystr0] +=sum;
             }
         }
     }
@@ -311,7 +311,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
             for (size_t ii = 0; ii < a_tile_rows; ++ii)
             {
                 const size_t global_i = a_row_off + ii;
-                T sum = y.dpdata[global_i * ystr0];
+                T sum = 0;
 
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
@@ -319,8 +319,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
                     const size_t x_index = kk * Xstr0;
                     sum += A.dblock.dpdata[a_index] * x.dblock.dpdata[x_index];
                 }
-
-                y.dpdata[global_i * ystr0] = sum;
+                y.dpdata[global_i * ystr0]+= sum;
             }
         }
     }
@@ -373,7 +372,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
-            T sum = y.dpdata[global_i * ystr0];  // accumulate
+            T sum = 0;
             #pragma omp simd reduction(+:sum)
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
@@ -382,7 +381,8 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
                 const size_t x_index  = global_k * Xstr0;
                 sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
             }
-            y.dpdata[global_i * ystr0] = sum;
+            #pragma omp atomic update
+            y.dpdata[global_i * ystr0] += sum;
         }
     }
 }
@@ -432,7 +432,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
-            T sum = y.dpdata[global_i * ystr0];  // accumulate
+            T sum =0;  // accumulate
             #pragma omp simd reduction(+:sum)
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
@@ -442,7 +442,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
                 sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
             }
 
-            y.dpdata[global_i * ystr0] = sum;
+            y.dpdata[global_i * ystr0] += sum;
         }
     }
 }
@@ -488,8 +488,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(  const Blocked
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
-            T sum = y.dpdata[global_i * ystr0];  // accumulate
-
+            T sum =0 ;
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
@@ -498,7 +497,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(  const Blocked
                 sum += A.dblock.dpdata[a_index] * x.dpdata[x_index];
             }
 
-            y.dpdata[global_i * ystr0] = sum;
+            y.dpdata[global_i * ystr0] += sum;
         }
     }
 }
@@ -551,7 +550,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
-                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+                T sum = 0;
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -562,8 +561,8 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
 
                     sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
                 }
-
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+                #pragma atomic update
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
             }
         }
     }
@@ -617,7 +616,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
-                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+                T sum = 0;
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -629,7 +628,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
                     sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
                 }
 
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
             }
         }
     }
@@ -682,7 +681,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)
             {
-                T sum = C.dpdata[global_i * Cstr0 + jj * Cstr1];
+                T sum = 0;
 
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -693,8 +692,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedData
 
                     sum += A.dblock.dpdata[a_index] * B.dpdata[b_index];
                 }
-
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] = sum;
+                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
             }
         }
     }
@@ -1544,7 +1542,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M,
     #pragma omp parallel for shared(M,V,C)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1567,7 +1565,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M,
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1591,7 +1589,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const DataBlock<T>&M,
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V(j);
@@ -1614,7 +1612,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_kahan_s( const DataBlock
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         T c=0;
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1640,7 +1638,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_kahan_w( const DataBlock
     #pragma omp parallel for shared(M,V)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         T c=0;
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1667,7 +1665,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_kahan_s( const DataBlock
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         T c=0;
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1693,7 +1691,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_kahan_w( const DataBlock
     #pragma omp parallel for shared(M)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         T c=0;
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1722,7 +1720,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_s( const DataBlock<T>&M,
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V[j];
@@ -1743,7 +1741,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M,
 
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+:sum)
         for (size_t j = 0; j <  m; ++j)
         {
@@ -1765,7 +1763,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M,
     #pragma omp parallel for shared(M,V,C)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+:sum)
         for (size_t j = 0; j <  m; ++j)
         {

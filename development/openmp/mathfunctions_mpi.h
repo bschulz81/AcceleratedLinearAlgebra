@@ -409,14 +409,14 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
+                GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 return;
                 break;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
+                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 else
                     In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
                 return;
@@ -996,14 +996,14 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,policy.update_host);
+                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,true);
                 return;
                 break;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,policy.update_host);
+                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 else
                     In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
                 return;
@@ -2753,7 +2753,6 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             }
             else
             {
-
                 DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A);
                 DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B);
                 DataBlock_Host_Memory_Functions<T>::free_data_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files);
