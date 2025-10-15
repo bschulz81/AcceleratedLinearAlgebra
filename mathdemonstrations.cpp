@@ -151,7 +151,7 @@ int main()
 
         cout <<"CPU_ONLY lets it multiply on CPU.AUTO lets the library decide based on whether the data is already on gpu, the algorithm, and the data size."<<endl;
 
-        Math_Functions_Policy p1(Math_Functions_Policy::CPU_ONLY);
+        Math_Functions_Policy p1(Math_Functions_Policy::GPU_ONLY);
         cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
         Math_Functions<double>::matrix_multiply_dot(A, B, C,&p1);
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
@@ -174,10 +174,10 @@ int main()
 
         cout<<"we now set it on gpu and set the size when to stop recursion to 2, per default, this is at 64"<<endl;
 
-        Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,false,false);
+        Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::CPU_ONLY,false,false);
         p.size_to_stop_recursion=2;
 
-        Math_Functions_MPI<double>::winograd_multiply(A, B, C,&p);
+        Math_Functions_MPI<double>::strassen_multiply(A, B, C,&p);
 
         C.printtensor();
 
