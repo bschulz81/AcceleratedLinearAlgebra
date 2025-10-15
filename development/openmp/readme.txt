@@ -7,7 +7,7 @@ Todo:
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 15.10.2025
-Fixes to some routines for sparse, dense matrixmultiplication, and sparse dense matrix vector multiplications.
+Fixes to routines for sparse x dense matrix-multiplication, and sparse x dense matrix vector multiplications.
 Currently, the library does not work with gcc compiler due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
 
 The clang compiler in version 21.1.3 compiles the code of this library correctly. 
