@@ -550,7 +550,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
-                T sum = 0;
+                T sum = T(0);
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -616,7 +616,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
-                T sum = 0;
+                T sum = T(0);
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -681,7 +681,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedData
 
             for (size_t jj = 0; jj < bext1; ++jj)
             {
-                T sum = 0;
+                T sum = T(0);
 
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
@@ -1922,8 +1922,8 @@ T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, con
 
     if(n < (size_t)total_threads)
     {
-        T result = 0.0;
-        T c_final = 0.0;
+        T result = T(0);
+        T c_final = T(0);
         for (int i = 0; i < n; ++i)
         {
             T y = vec1(i) * vec2(i)- c_final;
@@ -1945,15 +1945,15 @@ T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, con
         #pragma omp parallel for simd
         for (int idx = 0; idx < total_threads; ++idx)
         {
-            thread_sums[idx] = 0.0;
-            thread_cs[idx] = 0.0;
+            thread_sums[idx] = T(0);
+            thread_cs[idx] = T(0);
         }
 
         #pragma omp parallel for
         for (int tid = 0; tid < total_threads; ++tid)
         {
-            T local_sum = 0.0;
-            T c = 0.0;
+            T local_sum = T(0);
+            T c = T(0);
 
             for (size_t i = tid; i < n; i += total_threads)
             {
@@ -1968,8 +1968,8 @@ T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, con
             thread_cs[tid]   = c;
         }
 
-        T result = 0.0;
-        T c_final = 0.0;
+        T result = T(0);
+        T c_final = T(0);
 
         for (int tid = 0; tid < total_threads; ++tid)
         {
@@ -2098,8 +2098,8 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const DataBlock<T>& v
 template <typename T>
 T  In_Kernel_Mathfunctions<T>::kahan_sum(const T *arr, size_t n)
 {
-    double sum = 0.0;
-    double c = 0.0; // compensation
+    double sum = T(0);
+    double c = T(0); // compensation
 
     for (size_t i = 0; i < n; ++i)
     {
@@ -2118,8 +2118,8 @@ T  In_Kernel_Mathfunctions<T>::kahan_sum(const T *arr, size_t n)
 template <typename T>
 T In_Kernel_Mathfunctions<T>::neumaier_sum(const T* arr, size_t n)
 {
-    double sum = 0.0;
-    double comp = 0.0;
+    double sum = T(0);
+    double comp = T(0);
 
     for (size_t i = 0; i < n; ++i)
     {
