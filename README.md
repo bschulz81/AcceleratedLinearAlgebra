@@ -42,9 +42,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 ### 15.10.2025
 
-Currently, the library does not work with gcc due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
+Currently, the library does not work with gcc compiler due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
 
-The clang compiler in version 21.1.3 compiles the code correctly. 
+The clang compiler in version 21.1.3 compiles the code of this library correctly. 
 
 Unlike gcc, clang currently has no support for the target simd directive on nvptx targets. I filed a feature request for this as the library uses this extensively https://github.com/llvm/llvm-project/issues/163335
 
