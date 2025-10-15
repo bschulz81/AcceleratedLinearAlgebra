@@ -69,7 +69,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
     {
         #pragma omp target teams distribute parallel for simd device(dev)shared(y)
         for(size_t i=0; i<y.dpextents[0]; i++)
-            y.dpdata[i*ystr0]=0;
+            y.dpdata[i*ystr0]=T(0);
     }
 
     #pragma omp target teams distribute parallel for shared(A,x,y)device(dev)
@@ -91,7 +91,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
-            T  sum=T(0) ;
+            T sum =T(0) ;
             #pragma omp simd reduction(+:sum)
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
@@ -136,7 +136,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
     {
         #pragma omp target teams distribute parallel for simd device(dev)shared(y)
         for(size_t i=0; i<y.dpextents[0]; i++)
-            y.dpdata[i*ystr0]=0;
+            y.dpdata[i*ystr0]=T(0);
     }
 
     #pragma omp target teams distribute  shared(A,x,y) device(dev)
@@ -175,7 +175,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
             for (size_t ii = 0; ii < a_tile_rows; ++ii)
             {
                 const size_t global_i = a_row_off + ii;
-                T  sum=T(0);
+                T sum =T(0);
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
@@ -221,7 +221,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
         for(size_t i=0; i<C.dpextents[0]; i++)
             #pragma omp parallel for simd  shared(C)
             for(size_t j=0; j<C.dpextents[1]; j++)
-                C.dpdata[i*Cstr0+j*Cstr1]=0;
+                C.dpdata[i*Cstr0+j*Cstr1]=T(0);
     }
 
     #pragma omp target teams distribute shared(A,B,C)device(dev)
@@ -301,7 +301,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
         for(size_t i=0; i<C.dpextents[0]; i++)
             #pragma omp parallel for simd  shared(C)
             for(size_t j=0; j<C.dpextents[1]; j++)
-                C.dpdata[i*str0+j*str1]=0;
+                C.dpdata[i*str0+j*str1]=T(0);
     }
 
     #pragma omp  target teams distribute shared(A,B,C) device(dev)
@@ -353,7 +353,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
                 for (size_t jj = 0; jj < b_tile_cols; ++jj)
                 {
                     const size_t global_j = b_col_off + jj;
-                    T sum = T(0);
+                    T sum = 0;
                     #pragma omp simd reduction(+:sum)
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
@@ -430,8 +430,8 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, 
         #pragma omp parallel for simd shared(A,B,C)
         for (size_t j = 0; j < cols; ++j)
         {
-            T sum = 0;
-            T c=0;
+            T sum = T(0);
+            T c=T(0);
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 T y =  A(i,k) *B(k,j) - c;
@@ -516,7 +516,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, cons
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <m ; ++j)
         {
@@ -548,8 +548,8 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_kahan_g( const DataBlock<T>&M
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
-        T c=0;
+        T sum=T(0);
+        T c=T(0);
         for (size_t j = 0; j <  m; ++j)
         {
             T y = M(i, j) * V(j) - c;
@@ -581,7 +581,7 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, cons
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
+        T sum=T(0);
         #pragma omp simd reduction(+: sum)
         for (size_t j = 0; j <m ; ++j)
         {
@@ -610,8 +610,8 @@ void GPU_Math_Functions<T>::matrix_multiply_vector_kahan_g( const DataBlock<T>&M
     #pragma omp target teams distribute parallel for shared(M,V,C) device(dev)
     for (size_t i = 0; i <n; ++i)
     {
-        T sum=0;
-        T c=0;
+        T sum=T(0);
+        T c=T(0);
         for (size_t j = 0; j <  m; ++j)
         {
             T y = M(i, j) * V[j] - c;
@@ -727,7 +727,7 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
 {
     const size_t n=vec1.dpextents[0];
 
-    T result=0;
+    T result=T(0);
 
 
 
@@ -842,14 +842,14 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
             #pragma omp parallel for simd shared(L)
             for (size_t j = 0; j <n; ++j)
             {
-                L(i,j)=0;
+                L(i,j)=T(0);
             }
     }
 
     for (size_t c = 0; c < n; ++c)
     {
 
-        T tmp=0;
+        T tmp=T(0);
 
         omp_target_memcpy(&tmp,dataA,sizeof(T),0,sizeof(T)*(A.dpstrides[0]*c+A.dpstrides[1]*c),omp_get_initial_device(),dev);
 
@@ -905,8 +905,8 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
             #pragma omp parallel for simd shared(U,L)
             for (size_t j = 0; j <n; ++j)
             {
-                L(i,j)=0;
-                U(i,j)=0;
+                L(i,j)=T(0);
+                U(i,j)=T(0);
             }
     }
 
@@ -926,7 +926,7 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
             }
             U(c,i)=temp;
         }
-        T temp4=0;
+        T temp4=T(0);
         omp_target_memcpy(&temp4,udata,sizeof(T),0,sizeof(T)*(U.dpstrides[0]*c+U.dpstrides[1]*c),omp_get_initial_device(),dev);
 
         #pragma omp target teams distribute shared(U,A,L) device(dev)
