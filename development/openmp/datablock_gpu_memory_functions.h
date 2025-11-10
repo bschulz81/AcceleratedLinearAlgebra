@@ -358,7 +358,6 @@ void DataBlock_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int device
 #else
     free(deviceptr);
 #endif
-
 }
 
 
@@ -627,6 +626,9 @@ void DataBlock_GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool wi
 
     free(m.dpextents);
     free(m.dpstrides);
+
+    m.devptr_devicenum=-1;
+    m.dpdata_is_devptr=false;
 #endif
 }
 
