@@ -103,7 +103,6 @@ int main()
         cout<<"We define two matrices"<<endl;
         vector<double>A_data(12*12,0);
         vector<double>B_data(12*12,0);
-        vector<double>C_data(12*12,1);
         size_t rowsA = 12, colsA = 12;
         A_data=
         {
@@ -140,7 +139,7 @@ int main()
 
         mdspan<double, std::vector<size_t>> A(A_data.data(), {rowsA, colsA});
         mdspan<double, std::array<size_t,2>> B(B_data.data(), {rowsA, colsA});
-        mdspan_data<double, std::vector<size_t>> C({rowsA, colsA});
+
 
 
         cout<<"Ordinary matrix multiplication, foced on gpu with a policy object"<<std::endl;
@@ -149,15 +148,33 @@ int main()
         A.printtensor();
         B.printtensor();
 
-        cout <<"CPU_ONLY lets it multiply on CPU.AUTO lets the library decide based on whether the data is already on gpu, the algorithm, and the data size."<<endl;
+        cout <<"the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations v just with simd, s without parallel loops"<<endl;
+
+        mdspan_data<double, std::vector<size_t>> C0({rowsA, colsA});
+        In_Kernel_Mathfunctions<double>::matrix_multiply_dot_s(A, B, C0);
+        cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
+
+        C0.printtensor();
+
+        cout <<"the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations w mean with parallel for"<<endl;
+        mdspan_data<double, std::vector<size_t>> C1({rowsA, colsA});
+        In_Kernel_Mathfunctions<double>::matrix_multiply_dot_w(A, B, C1);
+        cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
+
+        C1.printtensor();
+
+
+
+        mdspan_data<double, std::vector<size_t>> C2({rowsA, colsA});
+
+        cout <<"CPU_ONLY lets it multiply on CPU. GPU_ONLY executes on gpu. AUTO lets the library decide based on whether the data is already on gpu, the algorithm, and the data size."<<endl;
 
         Math_Functions_Policy p1(Math_Functions_Policy::GPU_ONLY);
         cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-        Math_Functions<double>::matrix_multiply_dot(A, B, C,&p1);
+        Math_Functions<double>::matrix_multiply_dot(A, B, C2,&p1);
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
 
-
-        C.printtensor();
+        C2.printtensor();
 
         cout<<"We can also use the Strassen algorithm or its Winograd variant for the multiplication."<<std::endl;
         cout<<"It may offload on gpu. With the Message Passing Interface enabled, it can do so in parallel. "<<std::endl;
@@ -170,16 +187,17 @@ int main()
         cout <<" default_linear_treshold = 1000000;"<<"The default number of elements at which vectors are auto offloaded for addition"<<std::endl;
         cout <<std::endl;
 
-        std::fill(C_data.begin(),C_data.end(),0);
+        mdspan_data<double, std::vector<size_t>> C3({rowsA, colsA});
+
 
         cout<<"we now set it on gpu and set the size when to stop recursion to 2, per default, this is at 64"<<endl;
 
-        Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::CPU_ONLY,false,false);
+        Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,false,false);
         p.size_to_stop_recursion=2;
 
-        Math_Functions_MPI<double>::strassen_multiply(A, B, C,&p);
+        Math_Functions_MPI<double>::strassen_multiply(A, B, C3,&p);
 
-        C.printtensor();
+        C3.printtensor();
 
     }
 
@@ -444,7 +462,7 @@ int main()
 
 
             cout<<"On gpu"<<std::endl;
-            Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
+            Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
 
             Math_Functions<double>::qr_decomposition(A,Q,R,&p);
             Q.printtensor();
@@ -454,7 +472,7 @@ int main()
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows4, cols4},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
+           Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
             verify.printtensor();
 
         }
@@ -470,7 +488,7 @@ int main()
                 Math_Functions_Policy::GPU_ONLY,
                 false,
                 false,
-                Math_MPI_Decomposition_Policy::Naive);
+                Math_MPI_Decomposition_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
 
