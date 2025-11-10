@@ -40,6 +40,10 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+
+### 10.11.2025
+make DataBlock a base class of DataBlock Container to simplify syntax. Clean Up memory at the end of sparsetests.cpp
+
 ### 15.10.2025
 Fixes to  routines for sparse x dense matrix-matrix multiplication, and sparse x dense matrix-vector multiplications.
 
