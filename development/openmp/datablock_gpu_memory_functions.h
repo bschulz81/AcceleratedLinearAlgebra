@@ -197,46 +197,6 @@ T* DataBlock_GPU_Memory_Functions<T>::alloc_data_device_ptr(size_t datalength,bo
 }
 
 
-template<typename T>
-DataBlock<T> DataBlock_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum)
-{
-#if defined(Unified_Shared_Memory)
-    return DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents( datalength, rowmajor,  rank, extents, strides,  with_memmap);
-#else
-
-    size_t*pextents;
-    size_t*pstrides;
-    T* pdata;
-    pextents=(size_t*) malloc(sizeof(size_t)*rank);
-    memcpy(pextents,extents,sizeof(size_t)*rank);
-
-    pstrides=(size_t*) malloc(sizeof(size_t)*rank);
-    memcpy(pstrides,strides,sizeof(size_t)*rank);
-
-    pdata=(T*)omp_target_alloc(sizeof(T)*datalength,devicenum);
-    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false,true);
-
-#endif
-}
-
-
-template<typename T>
-void DataBlock_GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool with_memmap,int devicenum)
-{
-
-#if defined(Unified_Shared_Memory)
-    DataBlock_Host_Memory_Functions<T>::free_copy(m,with_memmap);
-#else
-
-    if(m.dpdata_is_devptr)
-        omp_target_free(m.dpdata,devicenum);
-    else
-        free(m.dpdata);
-
-    free(m.dpextents);
-    free(m.dpstrides);
-#endif
-}
 
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(T*pdata,size_t datalength,bool with_memmap, int devicenum)
@@ -434,7 +394,8 @@ bool DataBlock_GPU_Memory_Functions<T>::update_device(DataBlock<T>& dL,int devic
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
     size_t r=dL.dprank;
-    if(dL.dpdata_is_devptr)devicenum=dL.devptr_devicenum;
+    if(dL.dpdata_is_devptr)
+        devicenum=dL.devptr_devicenum;
     #pragma omp target update to (dL) device(devicenum)
     #pragma omp target update to (dL.dpextents[0:r])device(devicenum)
     #pragma omp target update to (dL.dpstrides[0:r])device(devicenum)
@@ -456,7 +417,8 @@ bool DataBlock_GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicen
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
     size_t r=dL.dprank;
-    if(dL.dpdata_is_devptr)devicenum=dL.devptr_devicenum;
+    if(dL.dpdata_is_devptr)
+        devicenum=dL.devptr_devicenum;
     #pragma omp target update from (dL) device(devicenum)
     #pragma omp target update from (dL.dpstrides[0:r])device(devicenum)
     #pragma omp target update from (dL.dpextents[0:r])device(devicenum)
@@ -480,7 +442,8 @@ void  DataBlock_GPU_Memory_Functions<T>::create_out(DataBlock<T>& dA,int devicen
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
-    if(dA.dpdata_is_devptr)devicenum=dA.devptr_devicenum;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.devptr_devicenum;
     #pragma omp target enter data map(to: dA) device(devicenum)
     if(!dA.dpdata_is_devptr)
     {
@@ -502,7 +465,9 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in(DataBlock<T>& dA,int devicenu
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
-    if(dA.dpdata_is_devptr)devicenum=dA.devptr_devicenum;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.devptr_devicenum;
+
     #pragma omp target enter data map(to: dA)device(devicenum)
     if(!dA.dpdata_is_devptr)
     {
@@ -526,7 +491,8 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int de
 #if !defined(Unified_Shared_Memory)
     const size_t l=dA.dpdatalength;
     const size_t r=dA.dprank;
-    if(dA.dpdata_is_devptr)devicenum=dA.devptr_devicenum;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.devptr_devicenum;
 
     #pragma omp target enter data map(to: dA)device(devicenum)
     if(!dA.dpdata_is_devptr)
@@ -545,22 +511,22 @@ template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
 #if !defined(Unified_Shared_Memory)
-    size_t r=dA.dblock.dprank;
+    size_t r=dA.dprank;
     size_t count=dA.usedblocks;
     size_t count2=r*count;
-    const size_t l=dA.dblock.dpdatalength;
-    if(dA.dblock.dpdata_is_devptr)devicenum=dA.dblock.devptr_devicenum;
+    const size_t l=dA.dpdatalength;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.devptr_devicenum;
 
     #pragma omp target enter data map(to: dA)device(devicenum)
-    #pragma omp target enter data map(to: dA.dblock)device(devicenum)
-    if(!dA.dblock.dpdata_is_devptr)
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target enter data map(to: dA.dblock.dpdata[0:l])device(devicenum)
+        #pragma omp target enter data map(to: dA.dpdata[0:l])device(devicenum)
     }
-    #pragma omp target enter data map(to: dA.dblock.dpextents[0:r])device(devicenum)
-    #pragma omp target enter data map(to: dA.dblock.dpstrides[0:r])device(devicenum)
+    #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
+    #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
     #pragma omp target enter data map(to: dA.block_shape[0:r])device(devicenum)
-    if(!dA.dblock.dpdata_is_devptr)
+    if(!dA.dpdata_is_devptr)
     {
         #pragma omp target enter data map(to: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target enter data map(to: dA.pooled_offsets_starts[0:count+1])device(devicenum)
@@ -573,24 +539,24 @@ void  DataBlock_GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& 
 {
 
 #if !defined(Unified_Shared_Memory)
-    size_t r=dA.dblock.dprank;
+    size_t r=dA.dprank;
     size_t count=dA.usedblocks;
     size_t count2=r*count;
-    const size_t l=dA.dblock.dpdatalength;
-    if(dA.dblock.dpdata_is_devptr)devicenum=dA.dblock.devptr_devicenum;
-    if(!dA.dblock.dpdata_is_devptr)
+    const size_t l=dA.dpdatalength;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.dblock.devptr_devicenum;
+    if(!dA.dpdata_is_devptr)
     {
         #pragma omp target exit data map(delete: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target exit data map(delete: dA.pooled_offsets_starts[0:count+1])device(devicenum)
     }
     #pragma omp target exit data map(delete: dA.block_shape[0:r])device(devicenum)
-    #pragma omp target exit data map(delete: dA.dblock.dpstrides[0:r])device(devicenum)
-    #pragma omp target exit data map(delete: dA.dblock.dpextents[0:r])device(devicenum)
-    if(!dA.dblock.dpdata_is_devptr)
+    #pragma omp target exit data map(delete: dA.dpstrides[0:r])device(devicenum)
+    #pragma omp target exit data map(delete: dA.dpextents[0:r])device(devicenum)
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target exit data map(delete: dA.dblock.dpdata[0:l])device(devicenum)
+        #pragma omp target exit data map(delete: dA.dpdata[0:l])device(devicenum)
     }
-    #pragma omp target exit data map(delete: dA.dblock)device(devicenum)
     #pragma omp target exit data map(delete: dA)device(devicenum)
 
 #endif
@@ -602,26 +568,68 @@ void  DataBlock_GPU_Memory_Functions<T>::release_blocked(const BlockedDataView<T
 {
 
 #if !defined(Unified_Shared_Memory)
-    size_t r=dA.dblock.dprank;
+    size_t r=dA.dprank;
     size_t count=dA.usedblocks;
     size_t count2=r*count;
-    const size_t l=dA.dblock.dpdatalength;
-    if(!dA.dblock.dpdata_is_devptr)
+    const size_t l=dA.dpdatalength;
+    if(!dA.dpdata_is_devptr)
     {
         #pragma omp target exit data map(release: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target exit data map(release: dA.pooled_offsets_starts[0:count+1])device(devicenum)
     }
     #pragma omp target exit data map(release: dA.block_shape[0:r])device(devicenum)
-    #pragma omp target exit data map(release: dA.dblock.dpstrides[0:r])device(devicenum)
-    #pragma omp target exit data map(release: dA.dblock.dpextents[0:r])device(devicenum)
-    if(!dA.dblock.dpdata_is_devptr)
+    #pragma omp target exit data map(release: dA.dpstrides[0:r])device(devicenum)
+    #pragma omp target exit data map(release: dA.dpextents[0:r])device(devicenum)
+    if(!dA.dpdata_is_devptr)
     {
-        #pragma omp target exit data map(release: dA.dblock.dpdata[0:l])device(devicenum)
+        #pragma omp target exit data map(release: dA.dpdata[0:l])device(devicenum)
     }
-    #pragma omp target exit data map(release: dA.dblock)device(devicenum)
     #pragma omp target exit data map(release: dA)device(devicenum)
 #endif
 }
+
+
+template<typename T>
+DataBlock<T> DataBlock_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum)
+{
+#if defined(Unified_Shared_Memory)
+    return DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents( datalength, rowmajor,  rank, extents, strides,  with_memmap);
+#else
+
+    size_t*pextents;
+    size_t*pstrides;
+    T* pdata;
+    pextents=(size_t*) malloc(sizeof(size_t)*rank);
+    memcpy(pextents,extents,sizeof(size_t)*rank);
+
+    pstrides=(size_t*) malloc(sizeof(size_t)*rank);
+    memcpy(pstrides,strides,sizeof(size_t)*rank);
+
+    pdata=(T*)omp_target_alloc(sizeof(T)*datalength,devicenum);
+    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false,true, devicenum);
+
+#endif
+}
+
+
+template<typename T>
+void DataBlock_GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool with_memmap,int devicenum)
+{
+
+#if defined(Unified_Shared_Memory)
+    DataBlock_Host_Memory_Functions<T>::free_copy(m,with_memmap);
+#else
+
+    if(m.dpdata_is_devptr)
+        omp_target_free(m.dpdata,devicenum);
+    else
+        free(m.dpdata);
+
+    free(m.dpextents);
+    free(m.dpstrides);
+#endif
+}
+
 
 
 
@@ -651,7 +659,8 @@ void DataBlock_GPU_Memory_Functions<T>::exit(const DataBlock<T> &dA,int devicenu
 #if !defined(Unified_Shared_Memory)
     const size_t l=dA.dpdatalength;
     const size_t r=dA.dprank;
-    if(dA.dpdata_is_devptr)devicenum=dA.devptr_devicenum;
+    if(dA.dpdata_is_devptr)
+        devicenum=dA.devptr_devicenum;
     if(!dA.dpdata_is_devptr)
     {
         #pragma omp target exit data map(delete:dA.dpdata[0:l])device(devicenum)
@@ -705,6 +714,7 @@ void DataBlock_GPU_Memory_Functions<T>::release(const DataBlock<T> &dA,int devic
     #pragma omp target exit data map(release:dA)device(devicenum)
 
 #endif
+
 }
 
 #endif

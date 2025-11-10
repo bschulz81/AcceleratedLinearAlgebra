@@ -98,10 +98,12 @@ BlockedDataView<double> Ablocks1(Aspan, block_shape,true);
 BlockedDataView<double> Bblocks2(Bspan, block_shape2,true);
 
 
-
 GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
-
+//
 Cspan.printtensor();
-
+//
+Aspan.device_data_release();
+Bspan.device_data_release();
+Cspan.device_data_release();
     return 0;
 }
