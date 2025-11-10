@@ -6,6 +6,9 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+10.11.2025
+Make DataBlock a base class of DataBlock Container to simplify syntax. Clean Up memory at the end of sparsetests.cpp
+
 15.10.2025
 Fixes to routines for sparse x dense matrix-multiplication, and sparse x dense matrix vector multiplications.
 Currently, the library does not work with gcc compiler due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
