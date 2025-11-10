@@ -375,6 +375,9 @@ void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  Dat
         tA.dpdata_is_devptr=true;
         tB.dpdata_is_devptr=true;
         tC.dpdata_is_devptr=true;
+        tA.devptr_devicenum=policy.devicenum;
+        tB.devptr_devicenum=policy.devicenum;
+        tC.devptr_devicenum=policy.devicenum;
 
         strassen_multiply_h(tA,tB,tC,ongpu, separate_device_memory,policy);
     }
@@ -964,6 +967,9 @@ void Math_Functions_MPI<T>::winograd_multiply(const DataBlock<T>& A, const DataB
         tA.dpdata_is_devptr=true;
         tB.dpdata_is_devptr=true;
         tC.dpdata_is_devptr=true;
+        tA.devptr_devicenum=policy.devicenum;
+        tB.devptr_devicenum=policy.devicenum;
+        tC.devptr_devicenum=policy.devicenum;
 
         winograd_multiply_h(tA,tB,tC,ongpu, separate_device_memory,policy);
     }

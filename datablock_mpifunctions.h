@@ -857,7 +857,7 @@ inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock
     MPI_Recv(pstrides,prank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(pdata,sizeof(T)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
 
-    DataBlock<T> m(pdata,pdatalength,prowmajor,prank,pextents,pstrides,false,false,pdataisdevptr);
+    DataBlock<T> m(pdata,pdatalength,prowmajor,prank,pextents,pstrides,false,false,pdataisdevptr,devicenum);
     return m;
 
 #endif
@@ -872,6 +872,8 @@ void DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(DataBlock<T>&m, int d
     omp_target_free(m.dpdata,dev);
     free(m.dpextents);
     free(m.dpstrides);
+    m.devptr_devicenum=-1;
+    m.dpdata_is_devptr=false;
 #endif
 }
 
