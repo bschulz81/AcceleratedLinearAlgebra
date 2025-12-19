@@ -6,6 +6,9 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+19.12.2025
+optimized the OpenMP pragmas for slightly more performance. Added fixes to enable compilance with OpenMP 6.0 which deprecated reductions with a - sign.
+
 10.11.2025
 Make DataBlock a base class of DataBlock Container to simplify syntax. Clean Up memory at the end of sparsetests.cpp
 
