@@ -631,7 +631,7 @@ void compute_strides(const Container& extents, Container& strides,const bool row
 
         // Row-major layout: last dimension has stride 1
         strides[n - 1] = 1;
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (int i =(int) n - 2; i > 0; --i)
         {
             strides[i] = strides[i + 1] * extents[i + 1];
@@ -642,7 +642,7 @@ void compute_strides(const Container& extents, Container& strides,const bool row
     {
         // Column-major layout: first dimension has stride 1
         strides[0] = 1;
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i = 1; i < n; ++i)
         {
             strides[i] = strides[i - 1] * extents[i - 1];

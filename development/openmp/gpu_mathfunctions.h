@@ -75,7 +75,6 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
     #pragma omp target teams distribute parallel for shared(A,x,y)device(dev)
     for (size_t ia = 0; ia < mblocks; ++ia)
     {
-
         const size_t a_start = A.pooled_offsets_starts[ia];
         const size_t* a_off  = A.pooled_offsets_flat + a_start;
 
@@ -87,7 +86,6 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
 
         const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
         const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
@@ -103,6 +101,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
             #pragma omp atomic update
             y.dpdata[global_i * ystr0]  +=sum;
         }
+
     }
 }
 
@@ -139,10 +138,8 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
             y.dpdata[i*ystr0]=T(0);
     }
 
-    #pragma omp target teams distribute  shared(A,x,y) device(dev)
+    #pragma omp target teams distribute parallel for collapse(2)  shared(A,x,y) device(dev)
     for (size_t ia = 0; ia < mblocks; ++ia)
-    {
-        #pragma omp parallel for shared(A,x,y)
         for (size_t jb = 0; jb < nblocks; ++jb)
         {
             const size_t a_start = A.pooled_offsets_starts[ia];
@@ -187,8 +184,8 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
                 y.dpdata[global_i * ystr0] += sum;
             }
         }
-    }
 }
+
 
 
 template <typename T>
@@ -217,17 +214,15 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
 
     if(initialize_output_to_zero)
     {
-        #pragma omp target teams distribute shared(C) device(dev)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(C) device(dev)
         for(size_t i=0; i<C.dpextents[0]; i++)
-            #pragma omp parallel for simd  shared(C)
             for(size_t j=0; j<C.dpextents[1]; j++)
                 C.dpdata[i*Cstr0+j*Cstr1]=T(0);
     }
 
-    #pragma omp target teams distribute shared(A,B,C)device(dev)
+    #pragma omp target teams distribute parallel for shared(A,B,C)device(dev)
     for (size_t ia = 0; ia < mblocks; ++ia)
     {
-
         const size_t a_start = A.pooled_offsets_starts[ia];
         const size_t* a_off  = A.pooled_offsets_flat + a_start;
 
@@ -242,7 +237,6 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
         for (size_t ii = 0; ii < a_tile_rows; ++ii)
         {
             const size_t global_i = a_row_off + ii;
-            #pragma omp parallel for shared(A,B,C)
             for (size_t jj = 0; jj < bext1; ++jj)
             {
                 T sum=T(0);
@@ -262,6 +256,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
         }
     }
 }
+
 
 
 
@@ -297,17 +292,14 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
 
     if(initialize_output_to_zero)
     {
-        #pragma omp target teams distribute shared(C) device(dev)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(C) device(dev)
         for(size_t i=0; i<C.dpextents[0]; i++)
-            #pragma omp parallel for simd  shared(C)
             for(size_t j=0; j<C.dpextents[1]; j++)
                 C.dpdata[i*str0+j*str1]=T(0);
     }
 
-    #pragma omp  target teams distribute shared(A,B,C) device(dev)
+    #pragma omp  target teams distribute parallel for collapse(2) shared(A,B,C) device(dev)
     for (size_t ia = 0; ia < mblocks; ++ia)
-    {
-        #pragma omp parallel for shared(A,B,C)
         for (size_t jb = 0; jb < nblocks; ++jb)
         {
             const size_t a_start = A.pooled_offsets_starts[ia];
@@ -366,7 +358,6 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
                 }
             }
         }
-    }
 }
 
 
@@ -394,9 +385,8 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_g( const DataBlock<T>& A, const 
     const size_t Cstr0=C.dpstrides[0];
     const size_t Cstr1=C.dpstrides[1];
 
-    #pragma omp target teams distribute shared(A,B,C) device(dev)
+    #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C) device(dev)
     for (size_t i = 0; i < rows; ++i)
-        #pragma omp parallel for shared(A,B,C)
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = T(0);
@@ -425,9 +415,8 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, 
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
-    #pragma omp target teams distribute shared(A,B,C) device(dev)
+    #pragma omp target teams distribute parallel for collapse(2) shared(A,B,C) device(dev)
     for (size_t i = 0; i < rows; ++i)
-        #pragma omp parallel for simd shared(A,B,C)
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = T(0);
@@ -458,15 +447,12 @@ void GPU_Math_Functions<T>::matrix_add_g( const DataBlock<T>& A,const DataBlock<
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
-    #pragma omp target teams distribute parallel for shared(C,A,B) device(dev)
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,A,B) device(dev)
     for (size_t i = 0; i < n; ++i)
-    {
-        #pragma omp simd
         for (size_t j = 0; j <m ; ++j)
         {
             C(i,j) =A(i,j)+B(i,j);
         }
-    }
 
 
 }
@@ -484,15 +470,12 @@ void GPU_Math_Functions<T>::matrix_subtract_g( const DataBlock<T>& A,const  Data
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
-    #pragma omp target teams distribute parallel for shared(C,A,B) device(dev)
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,A,B) device(dev)
     for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
         for (size_t j = 0; j < m; ++j)
         {
             C(i,j) =A(i,j)-B(i,j);
         }
-    }
 
 
 }
@@ -643,15 +626,12 @@ void GPU_Math_Functions<T>::matrix_multiply_scalar_g( const  DataBlock<T>& M,con
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperM(M,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperC(C,dev,true,update_host);
 
-    #pragma omp target teams distribute parallel for shared(C,M) device(dev)
+    #pragma omp target teams distribute parallel for simd collapse(2) shared(C,M) device(dev)
     for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
         for (size_t j = 0; j <  m; ++j)
         {
             C(i,j)= M(i, j) * V;
         }
-    }
 
 
 }
@@ -837,9 +817,8 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
 
     if(initialize_output_to_zero)
     {
-        #pragma omp target teams distribute shared(L) device(dev)
+        #pragma omp target teams distribute parallel for simd collapse(2)shared(L) device(dev)
         for (size_t i = 0; i < n; ++i)
-            #pragma omp parallel for simd shared(L)
             for (size_t j = 0; j <n; ++j)
             {
                 L(i,j)=T(0);
@@ -851,9 +830,6 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
 
         T tmp=T(0);
 
-
-
-
         #pragma omp target teams distribute  parallel for simd reduction(+:tmp) map(tofrom:tmp)shared(L) device(dev)
         for (size_t k = 0; k < c; ++k)
         {
@@ -864,7 +840,7 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
         T tmp2;
         omp_target_memcpy(&tmp2,dataA,sizeof(T),0,sizeof(T)*(A.dpstrides[0]*c+A.dpstrides[1]*c),omp_get_initial_device(),dev);
 
-        T temp4=sqrt(tmp2-tmp);
+        const T temp4=sqrt(tmp2-tmp);
 
         omp_target_memcpy(dataL,&temp4,sizeof(T),sizeof(T)*(L.dpstrides[0]*c+L.dpstrides[1]*c),0,dev,omp_get_initial_device());
 
@@ -904,9 +880,8 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
 
     if(initialize_output_to_zero)
     {
-        #pragma omp target teams distribute shared(U,L) device(dev)
+        #pragma omp target teams distribute parallel for simd collapse(2) shared(U,L) device(dev)
         for (size_t i = 0; i < n; ++i)
-            #pragma omp parallel for simd shared(U,L)
             for (size_t j = 0; j <n; ++j)
             {
                 L(i,j)=T(0);
@@ -919,11 +894,11 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
     size_t z=0;
     for (size_t c = 0; c < n; ++c)
     {
-        #pragma omp target teams distribute shared(A,U,L) device(dev)
+        #pragma omp target teams distribute parallel for shared(A,U,L) device(dev)
         for (size_t i = c; i < n; ++i)
         {
-            T temp=0;
-            #pragma omp parallel for simd reduction(+:temp) shared(L,U)
+            T temp=T(0);
+            #pragma omp simd reduction(+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp += U( k,i) * L( c,k);
@@ -934,16 +909,17 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
         T temp4=T(0);
         omp_target_memcpy(&temp4,udata,sizeof(T),0,sizeof(T)*(U.dpstrides[0]*c+U.dpstrides[1]*c),omp_get_initial_device(),dev);
 
-        #pragma omp target teams distribute shared(U,A,L) device(dev)
+        #pragma omp target teams distribute parallel for shared(U,A,L) device(dev)
         for (size_t i = c; i < n; ++i)
         {
             T temp =T(0);
-            #pragma omp parallel for simd reduction (+:temp)shared(U,L)
+            #pragma omp simd reduction (+:temp)
             for (size_t k = z; k < c; ++k)
             {
                 temp += U(k,c) * L( i,k);
             }
-            L(i,c)= (A(i,c)-temp)/temp4;
+            temp=A(i,c)-temp;
+            L(i,c)= temp/temp4;
         }
     }
 
@@ -992,15 +968,12 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
     }
     else
     {
-        #pragma omp target teams distribute shared(M,A) device(dev)
+        #pragma omp target teams distribute parallel for simd collapse(2)shared(M,A) device(dev)
         for (size_t i = 0; i < n; ++i)
-        {
-            #pragma omp  parallel for simd shared(M,A)
             for (size_t j = 0; j < m; ++j)
             {
                 M(i,j)=A(i,j);
             }
-        }
     }
 
     size_t pext0=M.dpextents[0];
@@ -1014,14 +987,14 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
 
         for (size_t j = 0; j < c; ++j)
         {
-           size_t pextu[1], pstru[1];
+            size_t pextu[1], pstru[1];
 //
             DataBlock<T> u = tQ.column(j, pextu, pstru);
             typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperu(u,dev,false,false);
             T dot_pr = T(0);
 //
             #pragma omp target teams distribute parallel for simd reduction(+:dot_pr)shared(u,v) device(dev)
-           for (size_t i = 0; i < pext0; ++i)
+            for (size_t i = 0; i < pext0; ++i)
                 dot_pr += u(i) * v(i);
 //
             const T cdot_pr = dot_pr;
@@ -1051,10 +1024,8 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
     const size_t cols = A.dpextents[1];
     const  size_t inner_dim = tQ.dpextents[1];
 
-    #pragma omp target teams distribute shared(Q,A,R) device(dev)
+    #pragma omp target teams distribute parallel for collapse(2) shared(Q,A,R) device(dev)
     for (size_t i = 0; i < rows; ++i)
-    {
-        #pragma omp parallel for shared(Q,A,R)
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
@@ -1065,7 +1036,6 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
             }
             R(i,j)= sum;
         }
-    }
 
     DataBlock_GPU_Memory_Functions<T>::release(tQ,dev);
     DataBlock_GPU_Memory_Functions<T>::exit(M,dev);

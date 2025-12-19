@@ -40,7 +40,7 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
 {
     size_t offset = 0;
     // Row-major layout: iterate outermost to innermost
-    #pragma omp unroll
+    #pragma omp unroll partial
     for (size_t i = 0; i < r; ++i)
     {
         offset += indices[i] * strides[i];

@@ -1078,7 +1078,7 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A,
     {
         T tmp=T(0);
 
-        #pragma omp parallel for simd reduction(-:tmp) shared(L)
+        #pragma omp parallel for simd reduction(+:tmp) shared(L)
         for (size_t k = 0; k < c; ++k)
         {
             const T tmp3=L(c,k);
@@ -1091,12 +1091,13 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A,
         #pragma omp parallel for shared(A,L)
         for (size_t i = c + 1; i < n; ++i)
         {
-            T tmp2 = A(i, c);
-            #pragma omp simd reduction(-:tmp2)
+            T tmp2 =0;
+            #pragma omp simd reduction(+:tmp2)
             for (size_t k = 0; k < c; ++k)
             {
-                tmp2 -= L(i, k) * L(c, k);
+                tmp2 += L(i, k) * L(c, k);
             }
+            tmp2= A(i, c)-tmp2;
             L(i, c)=tmp2/tmp4;
         }
     }
@@ -1132,12 +1133,13 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, Data
         #pragma omp parallel for shared(A,L,U)
         for (size_t i = c; i < n; ++i)
         {
-            T temp=A(c,i);
-            #pragma omp simd reduction(-:temp)
+            T temp=T(0);
+            #pragma omp simd reduction(+:temp)
             for (size_t k = 0; k < c; ++k)
             {
-                temp -= U( k,i) * L( c,k);
+                temp += U( k,i) * L( c,k);
             }
+            temp=A(c,i)-temp;
             U(c,i)=temp;
         }
 
@@ -1145,12 +1147,13 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, Data
         #pragma omp parallel for shared(A,U,L)
         for (size_t i = c; i < n; ++i)
         {
-            T temp = A(i,c);
-            #pragma omp simd reduction (-:temp)
+            T temp =T(0);
+            #pragma omp simd reduction (+:temp)
             for (size_t k = 0; k < c; ++k)
             {
-                temp -= U(k,c) * L( i,k);
+                temp += U(k,c) * L( i,k);
             }
+            temp=A(i,c)-temp;
             L(i,c)=temp/temp4;
         }
     }

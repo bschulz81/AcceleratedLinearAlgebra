@@ -24,7 +24,7 @@ inline void fill_strides(const size_t*    extents,size_t*    strides, const size
     {
         // Row-major layout: last dimension has stride 1
         strides[rank - 1] = 1;
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (int i = rank - 2; i >= 0; --i)
         {
             strides[i] = strides[i + 1] * extents[i + 1];
@@ -34,7 +34,7 @@ inline void fill_strides(const size_t*    extents,size_t*    strides, const size
     {
         // Column-major layout: first dimension has stride 1
         strides[0] = 1;
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i = 1; i < rank; ++i)
         {
             strides[i] = strides[i - 1] * extents[i - 1];
@@ -659,7 +659,7 @@ inline DataBlock<T> DataBlock<T>::transpose_copy_s(size_t*    newextents, size_t
     }
     else
     {
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i=0; i<rows; i++)
             for (size_t j=0; j<cols; j++)
             {
@@ -865,7 +865,7 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
     size_t offset_index = 0;
     size_t length_index = 0; // for computing total length
 
-    #pragma omp unroll
+    #pragma omp unroll partial
     for (size_t i = 0; i < r; ++i)
     {
         offset_index  += poffsets[i] * dpstrides[i];
@@ -873,7 +873,7 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
     }
 
     size_t rank_out = 0;
-    #pragma omp unroll
+    #pragma omp unroll partial
     for (size_t i = 0; i < r; ++i)
         if (psub_extents[i] > 1) ++rank_out;
     if (rank_out == 0) rank_out = 1;
@@ -882,7 +882,7 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
     if (rank_out != r)
     {
         size_t idx = 0;
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i = 0; i < r; ++i)
         {
             if (psub_extents[i] > 1)
@@ -1211,7 +1211,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t
     }
     else
     {
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i = 0; i < tile_rows; ++i)
             for (size_t j = 0; j < tile_cols; ++j)
                 sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
@@ -1344,7 +1344,7 @@ DataBlock<T> DataBlock<T>::row_copy_s(const size_t row_index, size_t*    extents
     }
     else
     {
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t j = 0; j < pl; ++j)
             newdata[j] = pd[row_index*s0+j*s1];
     }
@@ -1410,7 +1410,7 @@ DataBlock<T> DataBlock<T>::column_copy_s(const size_t col_index, size_t*    exte
     else
     {
 
-        #pragma omp unroll
+        #pragma omp unroll partial
         for (size_t i = 0; i < pl; ++i)
             newdata[i] = pd[ i*s0+col_index*s1];
     }
