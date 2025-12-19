@@ -40,6 +40,8 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+### 19.12.2025
+optimized the OpenMP pragmas for slightly more performance. Added fixes to enable compilance with OpenMP 6.0 which deprecated reductions with a - sign.
 
 ### 10.11.2025
 make DataBlock a base class of DataBlock Container to simplify syntax. Clean Up memory at the end of sparsetests.cpp
