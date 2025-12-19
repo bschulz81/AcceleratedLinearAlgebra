@@ -3,7 +3,7 @@
 
 
 #include "datablock.h"
-#include<iostream>
+
 template<typename T>
 class DataBlock_GPU_Memory_Functions;
 
@@ -36,7 +36,7 @@ class mdspan_data;
 
 
 
-
+#include <iostream>
 template<typename T>
 class BlockedDataView:
     protected DataBlock<T>
@@ -167,7 +167,6 @@ outofloop1:
                     size_t slot;
                     #pragma omp atomic capture
                     slot = count++;
-
                     {
                         pooled_offsets_starts[slot] = slot;
                         pooled_offsets_flat[slot]   = offset;
@@ -226,7 +225,7 @@ outofloop2:
     }
 
 // --- Rank-2 specialized ---
-    void build_blocks_rank2(size_t block_rows, size_t block_cols, bool remove_zeroblocks)
+    void build_blocks_rank2(const size_t block_rows,const size_t block_cols,const bool remove_zeroblocks)
     {
         const size_t nblocks_row = (this->dpextents[0] + block_rows - 1) / block_rows;
         const size_t nblocks_col = (this->dpextents[1] + block_cols - 1) / block_cols;
@@ -271,7 +270,6 @@ outofloop2:
 
                         for (size_t i = 0; i < tile_rows && !keep; ++i)
                         {
-
                             for (size_t j = 0; j < tile_cols && !keep; ++j)
                             {
                                 if (pd[(row_off + i) * str0 + (col_off + j) *str1] != T(0))
@@ -288,10 +286,12 @@ outofloop3:
                         size_t slot;
                         #pragma omp atomic capture
                         slot = count++;
+                        {
                         size_t pos = slot * 2;
                         pooled_offsets_starts[slot] = pos;
                         pooled_offsets_flat[pos]    = row_off;
                         pooled_offsets_flat[pos+1]  = col_off;
+                        }
 
                     }
 
@@ -333,16 +333,18 @@ outofloop4:
                     {
                         size_t slot;
                         #pragma omp atomic capture
-                        slot = count++;    // atomically reserve a slot
+                        slot = count++;
+                        {
                         const size_t pos = slot * 2;
                         pooled_offsets_starts[slot] = pos;
                         pooled_offsets_flat[pos]    = row_off;
                         pooled_offsets_flat[pos+1]  = col_off;
+                        }
 
                     }
                 }
             }
-            pooled_offsets_starts[count] = count*2; // sentinel
+            pooled_offsets_starts[count] = count*2;
             usedblocks = count;
         }
     }
@@ -350,22 +352,24 @@ outofloop4:
     bool is_nonzero_block(const size_t* block_shape,
                           const size_t* block_idx,
                           const size_t* tile_extents,
-                          size_t rank)
+                          const size_t rank)
     {
         size_t* idx=new size_t[rank];
 
         for(size_t i=0; i<rank; i++)
             idx[i]=0;
 
-        return check_nonzero_recursive(block_shape, block_idx, tile_extents, rank, 0, idx);
-        delete []idx;
+
+    bool b=check_nonzero_recursive(block_shape, block_idx, tile_extents, rank, 0, idx);
+       delete []idx;
+       return b;
     }
 
     bool check_nonzero_recursive(const size_t* block_shape,
                                  const size_t* block_idx,
                                  const size_t* tile_extents,
-                                 size_t rank,
-                                 size_t dim,
+                                 const size_t rank,
+                                 const size_t dim,
                                  size_t* idx)
     {
 
@@ -378,8 +382,8 @@ outofloop4:
                 const size_t global_coord = block_idx[d] * block_shape[d] + idx[d];
                 linear += global_coord * this->dpstrides[d];
             }
-            T d;
 
+            T d;
             if(offsets_starts_is_devptr)
                 omp_target_memcpy(&d,this->dpdata,sizeof(T),0,sizeof(T)*linear,omp_get_initial_device(),devnum);
             else
@@ -397,7 +401,7 @@ outofloop4:
         return false;
     }
 
-    void build_blocks_arbitrary_rank(const size_t* bshape, bool remove_zeroblocks)
+    void build_blocks_arbitrary_rank(const size_t* bshape,const bool remove_zeroblocks)
     {
         const size_t r = this->dprank;
 

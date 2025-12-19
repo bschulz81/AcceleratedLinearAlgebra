@@ -428,8 +428,10 @@ bool DataBlock_GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicen
     }
     else
         return false;
-#endif
+#else
     return true;
+#endif
+
 }
 
 
