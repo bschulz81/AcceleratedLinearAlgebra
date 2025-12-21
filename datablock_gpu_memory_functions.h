@@ -527,7 +527,7 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView
     #pragma omp target enter data map(to: dA.dpextents[0:r])device(devicenum)
     #pragma omp target enter data map(to: dA.dpstrides[0:r])device(devicenum)
     #pragma omp target enter data map(to: dA.block_shape[0:r])device(devicenum)
-    if(!dA.dpdata_is_devptr)
+    if(!dA.offsets_starts_is_devptr)
     {
         #pragma omp target enter data map(to: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target enter data map(to: dA.pooled_offsets_starts[0:count+1])device(devicenum)
@@ -546,7 +546,7 @@ void  DataBlock_GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& 
     const size_t l=dA.dpdatalength;
     if(dA.dpdata_is_devptr)
         devicenum=dA.dblock.devptr_devicenum;
-    if(!dA.dpdata_is_devptr)
+    if(!dA.offsets_starts_is_devptr)
     {
         #pragma omp target exit data map(delete: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target exit data map(delete: dA.pooled_offsets_starts[0:count+1])device(devicenum)
@@ -573,7 +573,7 @@ void  DataBlock_GPU_Memory_Functions<T>::release_blocked(const BlockedDataView<T
     size_t count=dA.usedblocks;
     size_t count2=r*count;
     const size_t l=dA.dpdatalength;
-    if(!dA.dpdata_is_devptr)
+    if(!dA.offsets_starts_is_devptr)
     {
         #pragma omp target exit data map(release: dA.pooled_offsets_flat[0:count2])device(devicenum)
         #pragma omp target exit data map(release: dA.pooled_offsets_starts[0:count+1])device(devicenum)
