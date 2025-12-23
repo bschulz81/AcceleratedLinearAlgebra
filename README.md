@@ -49,11 +49,13 @@ make DataBlock a base class of DataBlock Container to simplify syntax. Clean Up 
 ### 15.10.2025
 Fixes to  routines for sparse x dense matrix-matrix multiplication, and sparse x dense matrix-vector multiplications.
 
-Currently, the library does not work with gcc compiler due to the compiler bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122281 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=122280 which I now filed for their openmp nvptx target.
+Currently, the library does not work with the gcc compiler (at least for nvidia gpu's) due to the following compiler bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123272 which I now filed for their openmp nvptx target. I have not tested whether it works for amd gpu's with gcc, where this bug may be absent.
 
-The clang compiler in version 21.1.3 compiles the code of this library correctly. 
+The clang compiler in version 21.1.3 compiles the code of this library and the test programs correctly with zero errors in cuda-sanitizer, apart from the arraytest_mpi program that uses the open message passing interface OpenMPI. Unfortunately, there is currently a general conflict with the cuda runtime initialization between clang when configured for nvptx offload and cuda-aware OpenMPI https://github.com/open-mpi/ompi/issues/13431#issue-3501189152. To address this, either clang or, in that case more likely, OpenMpi has to adapt their code. The issues seems to be that clang, if configured for offload, automatically reserves cuda memory on startup which OpenMPI also tries to reserve at initialization.
 
-Unlike gcc, clang currently has no support for the target simd directive on nvptx targets. I filed a feature request for this as the library uses this extensively https://github.com/llvm/llvm-project/issues/163335
+Also, unlike gcc, clang currently has no support for the target simd directive on nvptx targets. I filed a feature request for this as the library uses this extensively https://github.com/llvm/llvm-project/issues/163335
+
+The library uses the #pragma omp unroll partial directive for small loops and #pragma omp requires unified address. This part of the OpenMP standard is currently not supported by the nvidia hpc sdk compiler nvc++. Therefore, the source of the library does not compile without changes with nvidia's own compiler nvc++. The changes to make it compile with nvc++ are, however, rather easy to make. 
 
 ### 08.10.2025:
 
