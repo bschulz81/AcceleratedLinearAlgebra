@@ -27,7 +27,7 @@ Be sure to use more or equal nodes than are needed by the recursion. The Strasse
 
 
 
-The library currently compiles with clang 21.1.2 and produces the correct output for this compiler.
+The library currently compiles with clang 21.1.7 and produces the correct output for this compiler.
 
 A short tutorial how to configure clang and gcc for gpu-offload is here for the gentoo linux distribution: https://forums.gentoo.org/viewtopic-p-8848457.html?sid=7f023fe73bf270b0617ea00bcc1a4ea1
 
@@ -51,7 +51,7 @@ Fixes to  routines for sparse x dense matrix-matrix multiplication, and sparse x
 
 Currently, the library does not work with the gcc compiler (at least for nvidia gpu's) due to the following compiler bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123272 which I now filed for their openmp nvptx target. I have not tested whether it works for amd gpu's with gcc, where this bug may be absent.
 
-The clang compiler in version 21.1.3 compiles the code of this library and the test programs correctly with zero errors in cuda-sanitizer, apart from the arraytest_mpi program that uses the open message passing interface OpenMPI. Unfortunately, there is currently a general conflict with the cuda runtime initialization between clang when configured for nvptx offload and cuda-aware OpenMPI https://github.com/open-mpi/ompi/issues/13431#issue-3501189152. To address this, either clang or, in that case more likely, OpenMpi has to adapt their code. The issues seems to be that clang, if configured for offload, automatically reserves cuda memory on startup which OpenMPI also tries to reserve at initialization.
+The clang compiler in version 21.1.7 compiles the code of this library and the test programs correctly with zero errors in cuda-sanitizer, apart from the arraytest_mpi program that uses the open message passing interface OpenMPI. Unfortunately, there is currently a general conflict with the cuda runtime initialization between clang when configured for nvptx offload and cuda-aware OpenMPI https://github.com/open-mpi/ompi/issues/13431#issue-3501189152. To address this, either clang or, in that case more likely, OpenMpi has to adapt their code. The issues seems to be that clang, if configured for offload, automatically reserves cuda memory on startup which OpenMPI also tries to reserve at initialization.
 
 Also, unlike gcc, clang currently has no support for the target simd directive on nvptx targets. I filed a feature request for this as the library uses this extensively https://github.com/llvm/llvm-project/issues/163335
 
