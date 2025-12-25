@@ -6,6 +6,10 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+21.12.2025
+Added an OpenMPI patch that suppresses the cuda_memhost_register warning if the memory was already registered by the clang compiler. 
+
+
 19.12.2025
 optimized the OpenMP pragmas for slightly more performance. Added fixes to enable compilance with OpenMP 6.0 which deprecated reductions with a - sign.
 
