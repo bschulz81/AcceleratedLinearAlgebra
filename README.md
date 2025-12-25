@@ -40,6 +40,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+### 24.12.2025
+added a patch for OpenMPI-5.0.9 which can be used to suppress the cuda warning when executing programs using cuda-aware OpenMPI with clang as offload compiler that comes from OpenMPI trying to register host memory that is already reserved by clang. I have tested this with a simple program but I do, however, currently not know if this is the correct approach. OpenMPI may use better solutions for this.
+
 ### 19.12.2025
 optimized the OpenMP pragmas for slightly more performance. Added fixes to enable compilance with OpenMP 6.0 which deprecated reductions with a - sign.
 
