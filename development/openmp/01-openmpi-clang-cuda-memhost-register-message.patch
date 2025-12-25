@@ -1,0 +1,56 @@
+--- a/opal/mca/accelerator/cuda/accelerator_cuda.c
++++ b/opal/mca/accelerator/cuda/accelerator_cuda.c
+@@ -750,21 +750,32 @@
+-static int accelerator_cuda_host_register(int dev_id, void *ptr, size_t size)
+-{
+-    CUresult result;
+-    int delayed_init = opal_accelerator_cuda_delayed_init();
+-    if (OPAL_UNLIKELY(0 != delayed_init)) {
+-        return delayed_init;
+-    }
+-
+-    if (NULL == ptr && size > 0) {
+-        return OPAL_ERR_BAD_PARAM;
+-    }
+-
+-    result = cuMemHostRegister(ptr, size, 0);
+-    if (OPAL_UNLIKELY(CUDA_SUCCESS != result)) {
+-        opal_show_help("help-accelerator-cuda.txt", "cuMemHostRegister failed", true,
+-                       ptr, size, OPAL_PROC_MY_HOSTNAME, result);
+-        return OPAL_ERROR;
+-    }
+-
+-    return OPAL_SUCCESS;
+-}
++static int accelerator_cuda_host_register(int dev_id, void *ptr, size_t size)
++{
++    CUresult result;
++    int delayed_init = opal_accelerator_cuda_delayed_init();
++    if (OPAL_UNLIKELY(0 != delayed_init)) {
++        return delayed_init;
++    }
++
++    /* Skip registration if this is already a device pointer */
++    if (ptr != NULL && size > 0) {
++        int cuda_dev;
++        uint64_t flags;
++        if (accelerator_cuda_check_addr(ptr, &cuda_dev, &flags)) {
++            if (cuda_dev != MCA_ACCELERATOR_NO_DEVICE_ID) {
++                /* This is a device pointer; do not register it as host memory */
++                return OPAL_SUCCESS;
++            }
++        }
++    }
++
++    /* Attempt to register host memory, but silently skip failures */
++    result = cuMemHostRegister(ptr, size, 0);
++    if (OPAL_UNLIKELY(CUDA_SUCCESS != result)) {
++        /* Verbose output only; treat failure as non-fatal */
++        opal_output_verbose(20, opal_accelerator_base_framework.framework_output,
++                            "CUDA: cuMemHostRegister skipped for host memory %p of size %zu "
++                            "(return code %d)", ptr, size, result);
++        return OPAL_SUCCESS;
++    }
++
++    return OPAL_SUCCESS;
++}
