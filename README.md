@@ -41,7 +41,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 ### 24.12.2025
-added a patch for OpenMPI-5.0.9 which can be used to suppress the cuda warning when executing programs using cuda-aware OpenMPI with clang as offload compiler that comes from OpenMPI trying to register host memory that is already reserved by clang. I have tested this with a simple program. It supresses the warning but a better approach may be not to reserve the memory with cuda if an openmpi program is compiled with clang configured for nvptx offliad. In the future, the developers if OpenMPI may design better solutions for this.
+added a patch for OpenMPI-5.0.9 which can be used to suppress the cuda warning when executing programs using cuda-aware OpenMPI with clang as offload compiler that comes from OpenMPI trying to register host memory that is already reserved by clang. I have tested this with a simple program. It supresses the warning but a better approach may be not to reserve the memory with cuda if an openmpi program is compiled with clang configured for nvptx offload. In the future, the developers of OpenMPI may design better solutions for this.
 
 To install the patch under gentoo for openmpi 5.0.9:
 
