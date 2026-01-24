@@ -40,6 +40,14 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+### 24.01.2025:
+updated the library code such that it works around the gcc bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123750 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 
+Even if the library appears to work around the disastrous bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 I can not recommend gcc versions earlier than the gcc-16 development version where this is now fixed, until the patch https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=1ae53b20c2474c28da13835719cceeee0702c966 is backported to earlier gcc versions. The bug, which I discovered, lets gcc move variables of template type outside of their scopes, leading to wrong numerical results in OpenMP applications. 
+I also optimized the qr decomposition for better memory management. I updated the Strassen and Winograd algorithms to use tasks for recursion if no OpenMPI is available. 
+
+The code can now be compiled with gcc -O3. With clang, it can only be compiled without optimization, since clang does not support OpenMP simd (vector parallelization) for gpu targets.
+
+
 ### 24.12.2025
 added a patch for OpenMPI-5.0.9 which can be used to suppress the cuda warning when executing programs using cuda-aware OpenMPI with clang as offload compiler that comes from OpenMPI trying to register host memory that is already reserved by clang. I have tested this with a simple program. It supresses the warning but a better approach may be not to reserve the memory with cuda if an openmpi program is compiled with clang configured for nvptx offload. In the future, the developers of OpenMPI may design better solutions for this.
 
