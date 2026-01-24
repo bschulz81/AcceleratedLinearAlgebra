@@ -9,8 +9,8 @@ set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build/)
 set (LANGUAGES "C;CXX")
 
 #GCC compiler flags.
-#SET (CMAKE_CXX_COMPILER "/usr/bin/g++-16" CACHE STRING "C++ compiler" FORCE)
-#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector -fno-pie  -Wall")
+SET (CMAKE_CXX_COMPILER "/usr/bin/g++-16" CACHE STRING "C++ compiler" FORCE)
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector -Wall")
 
 #mpicc compiler flags.
 #SET (CMAKE_CXX_COMPILER "mpic++" CACHE STRING "C++ compiler" FORCE)
@@ -18,9 +18,9 @@ set (LANGUAGES "C;CXX")
 
 
 #Clang compiler flags
-SET (ENV{LIBRARY_PATH} "/usr/lib64/nvptx64-nvidia-cuda/:$ENV{LIBRARY_PATH}")
-SET (CMAKE_CXX_COMPILER /usr/lib/llvm/21/bin/clang++  CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Wall")
+#SET (ENV{LIBRARY_PATH} "/usr/lib64/nvptx64-nvidia-cuda/:$ENV{LIBRARY_PATH}")
+#SET (CMAKE_CXX_COMPILER /usr/lib/llvm/21/bin/clang++  CACHE STRING "C++ compiler" FORCE)
+#SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++23 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Wall")
 
 
 #Nvidia's nvc++ compiler. Path should be set manually.

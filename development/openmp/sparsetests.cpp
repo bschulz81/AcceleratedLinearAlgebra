@@ -1,9 +1,13 @@
 #include <vector>
+#include <iostream>
 #include "datablockcontainer.h"
 #include "inkernel_mathfunctions.h"
 #include "gpu_mathfunctions.h"
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
+
+using namespace std;
+
 int main()
 {
 
@@ -88,20 +92,22 @@ mdspan<double, std::vector<size_t>> Bspan(B.data(),  {K,N},true);
 mdspan_data<double, std::vector<size_t>> Cspan({M,N},true);
 
 cout<<"of course we offload the data first to device"<<endl;
-Aspan.device_data_upload(true);
-Bspan.device_data_upload(true);
-Cspan.device_data_alloc(true);
 
-cout <<"sparsity "<<Bspan.sparsity()<<endl;
+cout<<"did the offload of A work?: "<<Aspan.device_data_upload(true)<<endl;
+cout<<"did the offload of B work?: "<<Bspan.device_data_upload(true)<<endl;
+cout<<"did the offload of C work?: "<<Cspan.device_data_alloc(true)<<endl;
 
-BlockedDataView<double> Ablocks1(Aspan, block_shape,true);
-BlockedDataView<double> Bblocks2(Bspan, block_shape2,true);
+//cout <<"sparsity "<<Bspan.sparsity()<<endl;
+size_t block_shape3[2]={2,2};
+size_t block_shape4[2]={2,2};
+BlockedDataView<double> Ablocks1(Aspan, block_shape3,true);
+BlockedDataView<double> Bblocks2(Bspan, block_shape4,true);
 
 
 GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
-//
+
 Cspan.printtensor();
-//
+
 Aspan.device_data_release();
 Bspan.device_data_release();
 Cspan.device_data_release();

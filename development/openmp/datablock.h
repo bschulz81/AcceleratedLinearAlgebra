@@ -504,7 +504,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::transpose(size_t*    newex
     newstrides[0]=dpstrides[1];
     newstrides[1]=dpstrides[0];
 
-    return DataBlock(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
+    return DataBlock(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -574,7 +574,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_w(size_t*  
             }
     }
 
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -621,7 +621,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_v(size_t*  
                 newdata[dst_index] = pd[src_index];
             }
     }
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -671,7 +671,7 @@ inline DataBlock<T> DataBlock<T>::transpose_copy_s(size_t*    newextents, size_t
 
 
 
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -847,7 +847,8 @@ DataBlock<T> DataBlock<T>::collapsed_view(size_t num_non_collapsed_dims,size_t *
         num_non_collapsed_dims,
         extents,
         strides,
-        dpdata_is_devptr
+        dpdata_is_devptr,
+        devptr_devicenum
     );
 
     // User must manage extents/strides memory if needed
@@ -906,7 +907,8 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
                rank_out,
                newextents,
                new_strides,
-               dpdata_is_devptr
+               dpdata_is_devptr,
+               devptr_devicenum
            );
 }
 #pragma omp end  declare target
@@ -999,7 +1001,8 @@ DataBlock<T> DataBlock<T>::subspan_copy(
                rank_out,
                new_extents,
                new_strides,
-               dpdata_is_devptr
+               dpdata_is_devptr,
+               devptr_devicenum
            );
 }
 #pragma omp end declare target
@@ -1032,18 +1035,18 @@ DataBlock<T>  DataBlock<T>::subspanmatrix( const size_t row, const size_t col,co
     {
         psub_extents[0] = tile_cols;
         psub_strides[0] = dpstrides[1];
-        return DataBlock<T>(data_ptr, tile_cols, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr);
+        return DataBlock<T>(data_ptr, tile_cols, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
     }
     else if (tile_cols == 1)
     {
         psub_extents[0] = tile_rows;
         psub_strides[0] = dpstrides[0];
-        return DataBlock<T>(data_ptr, tile_rows, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr);
+        return DataBlock<T>(data_ptr, tile_rows, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
     }
     else
     {
         size_t pl = (tile_rows-1) * dpstrides[0] + (tile_cols-1) * dpstrides[1] + 1;
-        return DataBlock<T>(data_ptr, pl, dprowmajor, 2, psub_extents, psub_strides, dpdata_is_devptr);
+        return DataBlock<T>(data_ptr, pl, dprowmajor, 2, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
     }
 }
 #pragma omp end declare target
@@ -1106,7 +1109,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_w( const size_t row, const size_t
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -1175,7 +1178,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_v( const size_t row, const size_t
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
 
 }
 #pragma omp end declare target
@@ -1240,7 +1243,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
 
 
 }
@@ -1258,7 +1261,7 @@ DataBlock<T> DataBlock<T>::row(const size_t row_index, size_t*    extents,size_t
     extents[0] = dpextents[1];
     new_strides[0]=dpstrides[1];
 
-    return DataBlock<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1291,7 +1294,7 @@ DataBlock<T> DataBlock<T>::row_copy_w(const size_t row_index, size_t*    extents
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1320,7 +1323,7 @@ DataBlock<T> DataBlock<T>::row_copy_v(const size_t row_index, size_t*    extents
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1349,7 +1352,7 @@ DataBlock<T> DataBlock<T>::row_copy_s(const size_t row_index, size_t*    extents
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1383,7 +1386,7 @@ DataBlock<T> DataBlock<T>::column_copy_v(const size_t col_index, size_t*    exte
     }
 
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1415,7 +1418,7 @@ DataBlock<T> DataBlock<T>::column_copy_s(const size_t col_index, size_t*    exte
             newdata[i] = pd[ i*s0+col_index*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1447,7 +1450,7 @@ DataBlock<T> DataBlock<T>::column_copy_w(const size_t col_index, size_t*    exte
     }
 
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
 }
 #pragma omp end declare target
 
@@ -1460,7 +1463,7 @@ DataBlock<T> DataBlock<T>::column(const size_t col_index, size_t*    extents,siz
 {
     extents[0] = dpextents[0];
     new_strides[0]=dpstrides[0];
-    return DataBlock(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  1, extents,   new_strides,dpdata_is_devptr );
+    return DataBlock(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  1, extents,   new_strides,dpdata_is_devptr,devptr_devicenum );
 }
 #pragma omp end declare target
 

@@ -4,6 +4,10 @@
 #include "mathfunctions_mpi.h"
 #include "expression_templates.h"
 #include "mdspan_omp.h"
+
+#include <vector>
+#include <iostream>
+
 using namespace std;
 
 
@@ -13,7 +17,7 @@ int main()
 {
 
 
-    cout<<"This demonstrates basic mathematical abilities of the library on gpu, cpu and with the message passing interface"<<endl;
+    cout<<"This demonstrates basic mathematical abilities of the library on gpu, cpu"<<endl;
 
 
 
@@ -195,7 +199,7 @@ int main()
         Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,false,false);
         p.size_to_stop_recursion=2;
 
-        Math_Functions_MPI<double>::strassen_multiply(A, B, C3,&p);
+        Math_Functions_MPI<double>::winograd_multiply(A, B, C3,&p);
 
         C3.printtensor();
 
@@ -250,10 +254,6 @@ int main()
         size_t rows2 = 8, cols2 = 8;
         cout <<"Now we test more advanced algorithms"<<endl;
         {
-
-
-
-
 
             cout<<endl<<endl<<endl<<endl;
             cout<<"Now a cholesky decomposition on CPU"<<std::endl;
@@ -323,7 +323,7 @@ int main()
                 Math_Functions_Policy::GPU_ONLY,
                 false,
                 false,
-                Math_MPI_Decomposition_Policy::Naive);
+                Math_MPI_Decomposition_Policy::Strassen);
             p.size_to_stop_recursion=2;
             Math_Functions_MPI<double>::cholesky_decomposition(A,L,&p);
             L.printtensor();
@@ -429,11 +429,9 @@ int main()
         size_t rows4 = 8, cols4 = 8;
         {
 
-
             mdspan<double, std::vector<size_t>> A(A_data.data(),  {rows4, cols4},true);
             mdspan_data<double, std::vector<size_t>> Q( {rows4, cols4},true);
             mdspan_data<double, std::vector<size_t>> R( {rows4, cols4},true);
-
 
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
             A.printtensor();
@@ -442,8 +440,6 @@ int main()
             Math_Functions<double>::qr_decomposition(A,Q,R,&p);
             Q.printtensor();
             R.printtensor();
-
-
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows4, cols4},true);
@@ -481,6 +477,7 @@ int main()
             cout<<"with the advanced algorithms on gpu "<<std::endl;
 
             mdspan<double, std::vector<size_t>> A(A_data.data(),  {rows4, cols4});
+            A.printtensor();
             mdspan_data<double, std::vector<size_t>> Q({rows4, cols4});
             mdspan_data<double, std::vector<size_t>> R({rows4, cols4});
 
@@ -504,7 +501,7 @@ int main()
             Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
             verify.printtensor();
 
-        }
+       }
     }
 
 }
