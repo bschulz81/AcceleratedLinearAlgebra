@@ -27,7 +27,8 @@ Be sure to use more or equal nodes than are needed by the recursion. The Strasse
 
 
 
-The library currently compiles with clang 21.1.7 and produces the correct output for this compiler.
+The library currently compiles with gcc-16 and clang starting with version 21.1.7. It produces the correct output for these compilers.
+Because of  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 I can not recommend gcc compilers earlier than the development version 16 until the fix https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=1ae53b20c2474c28da13835719cceeee0702c966 is back ported to earlier gcc versions. 
 
 A short tutorial how to configure clang and gcc for gpu-offload is here for the gentoo linux distribution: https://forums.gentoo.org/viewtopic-p-8848457.html?sid=7f023fe73bf270b0617ea00bcc1a4ea1
 
