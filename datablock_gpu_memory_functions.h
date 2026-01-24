@@ -312,7 +312,6 @@ void DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(DataBlock
 {
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata_is_devptr)
-
     {
         omp_target_memcpy(dL.devptr_former_hostptr,dL.dpdata,sizeof(T)* dL.dpdatalength,0,0, omp_get_initial_device(),dL.devptr_devicenum);
         free_device_ptr(dL.dpdata, dL.devptr_devicenum);

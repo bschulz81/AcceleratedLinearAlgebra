@@ -3,7 +3,7 @@
 
 
 #include "datablock.h"
-
+#include<iostream>
 template<typename T>
 class DataBlock_GPU_Memory_Functions;
 
@@ -37,6 +37,9 @@ class mdspan_data;
 
 
 #include <iostream>
+
+
+#pragma omp begin declare target
 template<typename T>
 class BlockedDataView:
     protected DataBlock<T>
@@ -57,50 +60,16 @@ public:
     template<typename U, typename Container>
     friend class ::mdspan_data;
 
-    BlockedDataView(const DataBlock<T>& db, const size_t* block_shape, bool remove_zeroblocks)
+    BlockedDataView(const DataBlock<T>& db, const size_t* bshape, bool remove_zeroblocks)
         :DataBlock<T>(db)
     {
-        build_blocks(block_shape,remove_zeroblocks);
-    }
-
-    ~BlockedDataView()
-    {
-        delete[] block_shape;
-        if (offsets_starts_is_devptr &&omp_is_initial_device())
-        {
-            omp_target_free(pooled_offsets_flat,devnum);
-            omp_target_free(pooled_offsets_starts, devnum);
-        }
-        else
-        {
-            delete[] pooled_offsets_flat;
-            delete[] pooled_offsets_starts;
-        }
-    }
-
-    const DataBlock<T>& get_datablock()const
-    {
-        return *this;
-    }
-
-
-protected:
-    size_t* block_shape;
-    size_t* pooled_offsets_flat;   // stores concatenated coordinates
-    size_t* pooled_offsets_starts;
-    size_t usedblocks=0;
-    bool offsets_starts_is_devptr=false;
-    int  devnum=-1;
-
-    void build_blocks(const size_t* bshape, bool remove_zeroblocks = false)
-    {
-
         block_shape=new size_t[this->dprank];
         #pragma omp simd
         for (size_t i=0; i<this->dprank; i++)
             block_shape[i]=bshape[i];
 
         offsets_starts_is_devptr=(this->dpdata_is_devptr &&omp_is_initial_device());
+
         if(offsets_starts_is_devptr)
             devnum=this->devptr_devicenum;
         else
@@ -119,6 +88,37 @@ protected:
             break;
         }
     }
+
+    ~BlockedDataView()
+    {
+        delete[] block_shape;
+        if (offsets_starts_is_devptr &&omp_is_initial_device())
+        {
+            omp_target_free(pooled_offsets_flat,devnum);
+            omp_target_free(pooled_offsets_starts, devnum);
+        }
+        else
+        {
+            delete[] pooled_offsets_flat;
+            delete[] pooled_offsets_starts;
+        }
+        devnum=-1;
+    }
+
+    const DataBlock<T>& get_datablock()const
+    {
+        return *this;
+    }
+
+
+protected:
+    size_t* block_shape;
+    size_t* pooled_offsets_flat;   // stores concatenated coordinates
+    size_t* pooled_offsets_starts;
+    size_t usedblocks=0;
+    bool offsets_starts_is_devptr=false;
+    int  devnum=-1;
+
 
     // --- Rank-1 specialized ---
     void build_blocks_rank1(size_t block_size, bool remove_zeroblocks)
@@ -139,7 +139,7 @@ protected:
         const T* pd=this->dpdata;
         if(offsets_starts_is_devptr)
         {
-            #pragma omp target teams distribute parallel for map (tofrom: count) shared(count) is_device_ptr(pd,pooled_offsets_flat,pooled_offsets_starts)device(devnum)
+            #pragma omp target teams distribute parallel for map (tofrom: count)is_device_ptr(pd) device(devnum)
             for (size_t bi = 0; bi < nblocks; ++bi)
             {
                 const size_t offset = bi * block_size;
@@ -181,7 +181,7 @@ outofloop1:
         else
         {
 
-            #pragma omp parallel for shared(count)
+            #pragma omp parallel for
             for (size_t bi = 0; bi < nblocks; ++bi)
             {
                 const size_t offset = bi * block_size;
@@ -248,26 +248,24 @@ outofloop2:
 
         if(offsets_starts_is_devptr)
         {
-            #pragma omp target teams distribute map(tofrom:count) shared(count) is_device_ptr(pd,pooled_offsets_flat,pooled_offsets_starts) device(devnum)
+            #pragma omp target teams distribute parallel for collapse(2) map(tofrom:count) is_device_ptr(pd) device(devnum)
             for (size_t bi = 0; bi < nblocks_row; ++bi)
             {
-                #pragma omp parallel for shared(count)
                 for (size_t bj = 0; bj < nblocks_col; ++bj)
                 {
                     const size_t row_off = bi * block_rows;
                     const size_t diff1   = ext0 - row_off;
                     const size_t tile_rows = (block_rows < diff1) ? block_rows : diff1;
 
-                    bool keep = true;
+
 
                     const size_t col_off = bj * block_cols;
                     const size_t diff2   = ext1 - col_off;
                     const size_t tile_cols = (block_cols < diff2) ? block_cols : diff2;
-
+                    bool keep = true;
                     if (remove_zeroblocks)
                     {
                         keep = false;
-
                         for (size_t i = 0; i < tile_rows && !keep; ++i)
                         {
                             for (size_t j = 0; j < tile_cols && !keep; ++j)
@@ -304,7 +302,7 @@ outofloop3:
         }
         else
         {
-            #pragma omp parallel for collapse(2) shared(count)
+            #pragma omp parallel for collapse(2)
             for (size_t bi = 0; bi < nblocks_row; ++bi)
             {
                 for (size_t bj = 0; bj < nblocks_col; ++bj)
@@ -492,5 +490,6 @@ outofloop4:
         delete[] nblocks_dim;
     }
 };
+#pragma omp end declare target
 
 #endif
