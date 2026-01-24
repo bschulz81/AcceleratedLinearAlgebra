@@ -47,9 +47,12 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 ### 24.01.2026:
 updated the library code such that it works around the gcc bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123750 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 
-Even if the library appears to work around the disastrous bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 I can not recommend gcc versions earlier than the gcc-16 development version where this is now fixed, until the patch https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=1ae53b20c2474c28da13835719cceeee0702c966 is backported to earlier gcc versions. The bug, which I discovered, lets gcc move variables of template type outside of their scopes, leading to wrong numerical results in OpenMP applications. 
 
-The code can now be compiled with gcc and all optimizations <= -O3. With clang, it can only be compiled without optimization, since clang does not support OpenMP simd (vector parallelization) for gpu targets.
+Even if the library appears to work around the disastrous bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597, I can not recommend gcc versions earlier than the gcc-16 development version where this is now fixed, until the patch https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=1ae53b20c2474c28da13835719cceeee0702c966 is backported to earlier gcc versions. 
+
+The compiler bug, which I discovered, lets gcc move variables of template type outside of their scopes, leading to wrong numerical results in many OpenMP applications. 
+
+The code of my library can now be compiled with gcc and all optimizations <= -O3. With clang, it can only be compiled without optimization, since clang does not support OpenMP simd (vector parallelization) for gpu targets.
 
 I also optimized the qr decomposition for better memory management. I updated the Strassen and Winograd algorithms to use tasks for recursion if no OpenMPI is available. 
 I can now work to improve the OpenMPI code to adapt all mathematics functions for distributed computing, and then implement more interesting mathematics.
