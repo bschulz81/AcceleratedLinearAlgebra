@@ -6,6 +6,9 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+24.01.2026
+Worked around the gcc bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123750 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597. The library now compiles with gcc on all optimization levels. Optimized the memory usage of the qr decomposition. Optimized the Strassen and Winograd algorithms to use tasks.
+
 21.12.2025
 Added an OpenMPI patch that suppresses the cuda_memhost_register warning if the memory was already registered by the clang compiler. 
 
