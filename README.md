@@ -9,27 +9,28 @@ Currently, the library uses open-mp on cpu and gpu and the message passing inter
 
 An older version that contains openmp code for the host and open-acc code for the gpu offload is in the archive folder.
 
-The library contains functions for matrix multiplication on accelerators, as well as advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. 
+Apart from usual BLAS computations, the library contains advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. 
 
-For simple problems, the Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU, or on GPU. These variants will then use all three parallelization levels of the GPU. 
+For simple problems, the Cholesky, LU and QR decomposition can be set such that they work with multiple cores on CPU, or on GPU or distributed on clusters. On GPU, the variants will then use all three parallelization levels of the GPU. 
 For problems that are larger than the memory of the GPU, advanced algorithms are available, which can use the Strassen algorithm or its Winograd variant, to separate the problem into smaller sub-problems, which can then 
 be computed on gpu. The algorithms can be configured when to offload, or they choose this automatically.
 
-Functions that involve large sums, like matrix multiplication, or matrix vector multiplication or vector dot product have variants with Kahan summation, but I have not tested this feature much.
-Initial support for sparse matrices and sparse times sparse to dense matrix multiplication was added. In order to support a maximum amount of parallelization, I store the matrices dense and add indices of non-zero blocks. The multiplication then just visits overlapping non-zero blocks of the matrices.
+Functions that involve large sums, like matrix multiplication, or matrix vector multiplication or vector dot product have variants with Kahan summation.
+Initial support for sparse matrices and sparse times sparse to dense matrix multiplication was added.
+In order to support a maximum amount of parallelization, I store the matrices dense and add indices of non-zero blocks. The multiplication then just visits overlapping non-zero blocks of the matrices.
 
-The provided cmakelists.txt compiles two test applications. One demonstrates the gpu offload and the parameters for various algorithms.
-The other demonstrates the message passing interface use of the library and can be run with 
+The provided cmakelists.txt compiles 5 test applications. One demonstrates the basic DataBlock class, one the Mdspan and Mdspan_data class with gpu offload, another tests some sparse functionality of DataBlockContainer, and then another test application tests various mathematical abilities on GPU and CPU, finally, another test application demonstrates usage of the library on clusters. It can be run with 
 
 mpirun -np 12 ./arraytest_mpi 
 
-Be sure to use more or equal nodes than are needed by the recursion. The Strassen algorithm and its Winograd variant, as well as the advanced algorithms for Cholesky, Lu, and Qr decomposition can now auto-configure itself with the help of policy classes to decide whether they should work on gpu or adapt themselves for the message passing interface and gpu offload. 
+Be sure to use more or equal nodes than are needed by the recursion. The Strassen algorithm and its Winograd variant, as well as the advanced algorithms for Cholesky, Lu, and Qr decomposition can, if desired, auto-configure itself with the help of policy classes to decide whether they should work on gpu or adapt themselves for the message passing interface and gpu offload. 
 
-
+For some functions, the library has the ability to use equations with a simple operator like C=B+A where B,A are matrices filled with data and then evaluate the expression lazily on gpu or cpu.
 
 The library currently compiles with gcc-16 and clang starting with version 21.1.7. 
 
 It produces the correct output for these compilers.
+
 Because of  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 I can not recommend gcc compilers earlier than the development version 16 for any numerical computation using temppates, until the fix https://gcc.gnu.org/git/?p=gcc.git;a=commit;h=1ae53b20c2474c28da13835719cceeee0702c966 is backported to earlier gcc versions. 
 The compiler bug, which I discovered led to variales of template types being brought outside their scope, leading to wrong numerical values.
 
@@ -39,9 +40,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-0) Test the numerical stability and correct compilation of the algorithms even more with larger data. 
+0) Test the numerical stability and correct compilation of the algorithms with much larger data. 
 1) Test the new expanded support for the message passing interface support more intensely and refine them for usage.
-2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu then for local work.
+2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
