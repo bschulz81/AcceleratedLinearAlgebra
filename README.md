@@ -1,4 +1,4 @@
-# AcceleratedLinearAlgebra
+⁸# AcceleratedLinearAlgebra
 A library with some linear algebra functions that works with OpenMP and Open-MPI on the host and on gpu accelerators.
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
@@ -54,7 +54,7 @@ Improvements to the message passing interface api.
 
 Functions are provided to scatter a matrix into rows or columns on different mpi nodes , and to gather the matrix from the scatter. 
 It should also be possible to scatter a matrix into smaller submatrices and to gather it together.
-Similarly, it should be possible to gather a higher rank tensor int lower rank tensors on different mpi nodes and to gather them. Of course the functions are such that the data, except can be offloaded via mpi on device pointers directly. 
+Similarly, it should be possible to scatter a higher rank tensor int lower rank tensors on different mpi nodes and to gather them. Of course the functions are such that the data, except can be offloaded via mpi on device pointers directly. 
 The scatter and gather functions are designed such that they also work if the number of nodes is larger than the problem. Say you have a matrix which you scatter into 200 rows but your cluster has 2000 nodes. In that case, only 200 ranks would recieve data, the others nullpointers. The gather functions are such that they can acommodate and reject the nullpointers when building the tensors from the scattered subsets. For this, routines that print tensors or free memory were updated to check for nullpointers..MPI Broadcast is also included for tensors.
 
 I have yet tested this only with a smaller class for development and there it worked flawlessly for rowmajor and columnmajor tensors.
