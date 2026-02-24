@@ -68,6 +68,7 @@ template<typename T>
 void DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(T* mmap_ptr,const size_t array_size)
 {
     size_t file_size = array_size * sizeof(T);
+    if (mmap_ptr!=nullptr)
     if (munmap(mmap_ptr, file_size) == -1)
     {
         perror("munmap");
@@ -86,7 +87,8 @@ void DataBlock_Host_Memory_Functions<T>::free_data_ptr(T*pdata,size_t datalength
         if (with_memmap)
             DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
         else
-            free(pdata);
+            if(pdata!=nullptr)
+                free(pdata);
     }
 }
 
@@ -129,14 +131,16 @@ DataBlock<T> DataBlock_Host_Memory_Functions<T>::alloc_data_copy_strides_extents
 template<typename T>
 void DataBlock_Host_Memory_Functions<T>::free_copy(DataBlock<T>&m, bool with_memmap)
 {
-
+    if(m.dpextents!=nullptr)
     free(m.dpextents);
+    if(m.dpstrides!=nullptr)
     free(m.dpstrides);
 
     if (with_memmap)
         DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(m.dpdata,m.dpdatalength);
     else
-        free(m.dpdata);
+        if(m.dpdata!=nullptr)
+            free(m.dpdata);
 }
 
 

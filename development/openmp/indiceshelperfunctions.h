@@ -110,6 +110,20 @@ inline size_t compute_data_length_s(const size_t*__restrict  extents, const size
 }
 #pragma omp end declare target
 
-
+#pragma omp begin declare target
+inline bool is_row_major(const size_t*extents, const size_t* strides, const size_t rank)
+{
+    size_t expected = 1;
+    for (size_t i = 0; i < rank; ++i)
+    {
+        if (extents[i] == 1)
+            continue;
+        if (strides[i] != expected)
+            return false;
+        expected *= extents[i];
+    }
+    return true;
+}
+#pragma omp end declare target
 
 #endif
