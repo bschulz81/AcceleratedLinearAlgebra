@@ -474,7 +474,6 @@ template<typename T> DataBlock<T>::DataBlock(
 {
     if((rows>1) && (cols>1))
     {
-
         dprank=2;
         if(extents!=nullptr)
         {
@@ -487,22 +486,9 @@ template<typename T> DataBlock<T>::DataBlock(
             dpstrides[1]=(rowm==true)?1: rows;
             dprowmajor=rowm;
         }
-        if(strides!=nullptr && extents!=nullptr && compute_strides_from_extents==false)
+        if(strides!=nullptr && compute_strides_from_extents==false)
         {
-            switch(dprank)
-            {
-            case 0:
-                dprowmajor=true;
-                break;
-            case 1:
-                dprowmajor=true;
-                break;
-            case 2:
-                dprowmajor=dpstrides[1]<dpstrides[0];
-                break;
-            default:
-                dprowmajor=is_row_major(extents, strides,dprank);
-            }
+            dprowmajor=dpstrides[1]<dpstrides[0];
         }
         if(compute_datalength==true && extents!=nullptr && strides!=nullptr)
         {
