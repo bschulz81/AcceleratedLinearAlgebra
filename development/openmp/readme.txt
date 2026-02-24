@@ -6,6 +6,20 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+24.02.2026
+Improvements to the message passing interface api.
+
+Functions are provided to scatter a matrix into rows or columns on different mpi nodes , and to gather the matrix from the scatter. 
+It should also be possible to scatter a matrix into smaller submatrices and to gather it together.
+Similarly, it should be possible to gather a higher rank tensor int lower rank tensors on different mpi nodes and to gather them. Of course the functions are such that the data, except can be offloaded via mpi on device pointers directly. 
+MPI Broadcast is also included for tensors.
+
+I have yet tested this only with a smaller class for development and there it worked flawlessly for rowmajor and columnmajor tensors.
+
+I will soon update the mpi test application for these operations for the larger datablock class...
+
+This should open the possibility to write fully distributed algorithms where the nodes compute their tasks on gpu, whenever this is beneficial.
+
 24.01.2026
 Worked around the gcc bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123750 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597. The library now compiles with gcc on all optimization levels. Optimized the memory usage of the qr decomposition. Optimized the Strassen and Winograd algorithms to use tasks.
 
