@@ -261,13 +261,12 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_as_rows_alloc(DataBlo
 
     if (receives)
     {
-        size_t* ext = new size_t[1];
-        size_t* str = new size_t[1];
-
-        ext[0] = cols;
-        str[0] = 1;
+        size_t* ext=nullptr;
+        size_t* str=nullptr;
 
         alloc_helper(memmap,ondevice,devicenum,1,cols,ext,str,recv_buffer);
+        ext[0] = cols;
+        str[0] = 1;
 
         recv_db = DataBlock<T>(recv_buffer,cols, true,1, ext, str,ondevice,devicenum);
     }
@@ -385,17 +384,16 @@ inline void DataBlock_MPI_Functions<T>::MPI_gather_matrix_from_rows_alloc(
 
         if (recv_db)
         {
-            size_t* ext = new size_t[2];
-            size_t* str = new size_t[2];
+            size_t* ext = nullptr;
+            size_t* str =nullptr;
 
+            T*recv_buffer=nullptr;
+            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
             ext[0] = rows;
             ext[1] = cols;
 
             str[0] = rowmajor ? cols : 1;
             str[1] = rowmajor ? 1    : rows;
-
-            T*recv_buffer;
-            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
 
             recv_db = DataBlock<T>(recv_buffer,rows*cols, rowmajor,2, ext, str,ondevice,devicenum);
         }
@@ -502,13 +500,14 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(Data
 
     if (receives)
     {
-        size_t* ext = new size_t[1];
-        size_t* str = new size_t[1];
+        size_t* ext = nullptr;
+        size_t* str = nullptr;
 
+
+        T* recv_buffer=nullptr;
+        alloc_helper(memmap,ondevice,devicenum,1,rows,ext,str,recv_buffer);
         ext[0] = rows;
         str[0] = 1;
-        T* recv_buffer;
-        alloc_helper(memmap,ondevice,devicenum,1,rows,ext,str,recv_buffer);
 
         recv_db = DataBlock<T>(recv_buffer,rows, true,1, ext, str,ondevice,devicenum);
     }
@@ -591,7 +590,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
     const DataBlock<T>& send_db,
     MPI_Comm comm,
     int rootrank,
-    DataBlock<T>* recv_db ,  bool rowmajor,bool memmap, bool ondevice, int devicenum)
+    DataBlock<T>* recv_db,  bool rowmajor,bool memmap, bool ondevice, int devicenum)
 {
     int rank, size;
     MPI_Comm_rank(comm, &rank);
@@ -627,16 +626,17 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
 
         if (recv_db)
         {
-            size_t* ext = new size_t[2];
-            size_t* str = new size_t[2];
+            size_t* ext =nullptr;
+            size_t* str = nullptr;
 
+
+            T* recv_buffer=nullptr;
+            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
             ext[0] = rows;
             ext[1] = cols;
 
             str[0] = rowmajor ? cols : 1;
             str[1] = rowmajor ? 1    : rows;
-            T* recv_buffer;
-            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
 
             recv_db = DataBlock<T>(recv_buffer,rows*cols, rowmajor,2, ext, str,ondevice,devicenum);
         }
@@ -748,12 +748,15 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
 
     if(receives)
     {
-        size_t* ext = new size_t[2] {br, bc};
-        size_t* str = rmajor? new size_t[2] { bc,1}:
-                      new size_t[2] { 1,br} ;
+        size_t *ext=nullptr;
+        size_t *str=nullptr;
 
         alloc_helper(memmap,ondevice,devicenum,2,br*bc,ext,str,recv_buffer);
 
+        ext[0]=br;
+        ext[1]=bc;
+        str[0]=rmajor? bc:1;
+        str[1]=rmajor? 1:br;
         recv_db = DataBlock<T>(recv_buffer,br*bc, rmajor,2, ext, str,ondevice,devicenum);
     }
     else
@@ -834,7 +837,7 @@ template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc(
     const DataBlock<T>& send_db,
     MPI_Comm comm,
-    int rootrank,DataBlock<T>* recv_db ,bool rowmajor, int M, int N,bool memmap, bool ondevice, int devicenum )
+    int rootrank,DataBlock<T>* recv_db,bool rowmajor, int M, int N,bool memmap, bool ondevice, int devicenum )
 {
     int rank, size;
     MPI_Comm_rank(comm, &rank);
@@ -880,15 +883,16 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
             }
         }
 
-        size_t* ext = new size_t[2];
+        size_t* ext = nullptr;
+
+        size_t* str =nullptr;
+
+        T* recv_buffer=nullptr;
+        alloc_helper(memmap,ondevice,devicenum,2,N*M,ext,str,recv_buffer);
         ext[0]=M;
         ext[1]=N;
-        size_t* str =new size_t[2];
         str[0]= rowmajor ?N:1;
         str[1]=rowmajor ? 1:M;
-        T* recv_buffer;
-        alloc_helper(memmap,ondevice,devicenum,2,N*M,ext,str,recv_buffer);
-
         recv_db = DataBlock<T>(recv_buffer,N*M, rowmajor,2, ext, str,ondevice,devicenum);
 
     }
@@ -1027,8 +1031,11 @@ inline void DataBlock_MPI_Functions<T>:: MPI_Scatter_subtensor_to_subtensors_all
         for (size_t d = 0; d < R; ++d)
             data_len *= sub_extents[d];
 
-        size_t* ext = new size_t[R];
-        size_t* str = new size_t[R];
+        size_t* ext = nullptr;
+        size_t* str = nullptr;
+        T* recv_buffer=nullptr;
+
+        alloc_helper(memmap,ondevice,devicenum,R,data_len,ext,str,recv_buffer);
 
         for (size_t d = 0; d < R; ++d)
             ext[d] = sub_extents[d];
@@ -1045,8 +1052,7 @@ inline void DataBlock_MPI_Functions<T>:: MPI_Scatter_subtensor_to_subtensors_all
             for (size_t d = 1; d < R; ++d)
                 str[d] = str[d-1] * sub_extents[d-1];
         }
-        T* recv_buffer;
-        alloc_helper(memmap,ondevice,devicenum,R,data_len,ext,str,recv_buffer);
+
 
         recv_db = DataBlock<T>(recv_buffer,data_len, rowmajor,R, ext, str,ondevice,devicenum);
     }
@@ -1173,7 +1179,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
     int rootrank,
     bool rowmajor,
     size_t* global_extents,
-    DataBlock<T>* recv_db , bool memmap, bool ondevice, int devicenum)
+    DataBlock<T>* recv_db, bool memmap, bool ondevice, int devicenum)
 {
     int rank, size;
     MPI_Comm_rank(comm, &rank);
@@ -1217,16 +1223,21 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
     if (rank == rootrank && recv_db)
     {
 
-        size_t* ext = new size_t[R];
-        size_t* str = new size_t[R];
+        size_t* ext =nullptr;
+        size_t* str = nullptr;
+        T* recv_buffer=nullptr;
 
         size_t total_size = 1;
         for (size_t d = 0; d < R; ++d)
         {
-            ext[d] = global_extents[d];
             total_size *= global_extents[d];
         }
 
+        alloc_helper(memmap,ondevice,devicenum,R,total_size,ext,str,recv_buffer);
+        for (size_t d = 0; d < R; ++d)
+        {
+            ext[d] = global_extents[d];
+        }
         if (rowmajor)
         {
             str[R-1] = 1;
@@ -1239,9 +1250,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
             for (size_t d = 1; d < R; ++d)
                 str[d] = str[d-1] * global_extents[d-1];
         }
-        T* recv_buffer;
 
-        alloc_helper(memmap,ondevice,devicenum,R,total_size,ext,str,recv_buffer);
 
         recv_db = DataBlock<T>(recv_buffer,total_size, rowmajor,R, ext, str,ondevice,devicenum);
 
@@ -1395,9 +1404,9 @@ inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(bool w
     MPI_Recv(&prank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&prowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
 
-    size_t *pextents,
-           *pstrides;
-    T* pdata;
+    size_t *pextents=nullptr,
+            *pstrides=nullptr;
+    T* pdata=nullptr;
 
     alloc_helper(with_memmap,ondevice,devicenum,prank,pdatalength,pextents,pstrides,pdata);
 
