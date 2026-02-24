@@ -1234,6 +1234,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
         }
 
         alloc_helper(memmap,ondevice,devicenum,R,total_size,ext,str,recv_buffer);
+
         for (size_t d = 0; d < R; ++d)
         {
             ext[d] = global_extents[d];
