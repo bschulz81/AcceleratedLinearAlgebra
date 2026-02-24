@@ -219,6 +219,10 @@ void DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(T*pdata,size_t data
 template<typename T>
 bool DataBlock_GPU_Memory_Functions<T>::update_device_data(DataBlock<T>& dL,int devicenum)
 {
+
+    if (dL.dpdata==nullptr)
+        return false;
+
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
 
@@ -238,6 +242,10 @@ bool DataBlock_GPU_Memory_Functions<T>::update_device_data(DataBlock<T>& dL,int 
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::update_device_metadata(DataBlock<T>& dL,int devicenum)
 {
+    if (dL.dpextents==nullptr)
+        return;
+    if (dL.dpstrides==nullptr)
+        return;
 #if !defined(Unified_Shared_Memory)
     size_t r=dL.dprank;
     #pragma omp target update to (dL) device(devicenum)
@@ -251,6 +259,9 @@ void DataBlock_GPU_Memory_Functions<T>::update_device_metadata(DataBlock<T>& dL,
 template<typename T>
 bool DataBlock_GPU_Memory_Functions<T>::update_host_data(DataBlock<T>& dL,int devicenum)
 {
+
+    if (dL.dpdata==nullptr)
+        return false;
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
 
@@ -269,6 +280,11 @@ bool DataBlock_GPU_Memory_Functions<T>::update_host_data(DataBlock<T>& dL,int de
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::update_host_metadata(DataBlock<T>& dL,int devicenum)
 {
+    if (dL.dpextents==nullptr)
+        return;
+    if (dL.dpstrides==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     size_t r=dL.dprank;
     #pragma omp target update from (dL) device(devicenum)
@@ -280,6 +296,7 @@ void DataBlock_GPU_Memory_Functions<T>::update_host_metadata(DataBlock<T>& dL,in
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum)
 {
+
 #if !defined(Unified_Shared_Memory)
     if(!dL.dpdata_is_devptr)
     {
@@ -295,6 +312,7 @@ void DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(DataBlock
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(DataBlock<T>&dL, int devicenum)
 {
+
 #if !defined(Unified_Shared_Memory)
     if(!dL.dpdata_is_devptr)
     {
@@ -310,6 +328,10 @@ void DataBlock_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(DataBloc
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(DataBlock<T>&dL)
 {
+    if (dL.dpdata==nullptr)
+        return;
+    if (dL.devptr_former_hostptr==nullptr)
+        return;
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata_is_devptr)
     {
@@ -327,6 +349,8 @@ void DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(DataBlock
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(DataBlock<T>&dL)
 {
+    if (dL.dpdata==nullptr)
+        return;
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata_is_devptr)
     {
@@ -352,6 +376,9 @@ T* DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int device
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int devicenum)
 {
+    if (deviceptr==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     omp_target_free(deviceptr, devicenum);
 #else
@@ -363,6 +390,11 @@ void DataBlock_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int device
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_ptr(DataBlock<T>& dL)
 {
+    if (dL.dpdata==nullptr)
+        return;
+    if (dL.devptr_former_hostptr==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata!=dL.devptr_former_hostptr)
         omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)*dL.dpdatalength,0,0,dL.devptr_devicenum,omp_get_initial_device());
@@ -376,6 +408,11 @@ void DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_ptr(DataBlock<T>& dL
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_ptr(DataBlock<T>& dL)
 {
+    if (dL.dpdata==nullptr)
+        return;
+    if (dL.devptr_former_hostptr==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata!=dL.devptr_former_hostptr)
         omp_target_memcpy(dL.devptr_former_hostptr,dL.dpdata,sizeof(T)*dL.dpdatalength,0,0,omp_get_initial_device(),dL.devptr_devicenum);
@@ -389,6 +426,13 @@ void DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_ptr(DataBlock<T>& dL)
 template<typename T>
 bool DataBlock_GPU_Memory_Functions<T>::update_device(DataBlock<T>& dL,int devicenum)
 {
+
+    if (dL.dpdata==nullptr)
+        return false;
+    if (dL.dpextents==nullptr)
+        return false;
+    if (dL.dpstrides==nullptr)
+        return false;
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
     size_t r=dL.dprank;
@@ -412,6 +456,13 @@ bool DataBlock_GPU_Memory_Functions<T>::update_device(DataBlock<T>& dL,int devic
 template<typename T>
 bool DataBlock_GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicenum)
 {
+    if (dL.dpdata==nullptr)
+        return false;
+    if (dL.dpextents==nullptr)
+        return false;
+    if (dL.dpstrides==nullptr)
+        return false;
+
 #if !defined(Unified_Shared_Memory)
     size_t l=dL.dpdatalength;
     size_t r=dL.dprank;
@@ -439,6 +490,13 @@ bool DataBlock_GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicen
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::create_out(DataBlock<T>& dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
@@ -462,6 +520,13 @@ void  DataBlock_GPU_Memory_Functions<T>::create_out(DataBlock<T>& dA,int devicen
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::create_in(DataBlock<T>& dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
@@ -488,6 +553,14 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in(DataBlock<T>& dA,int devicenu
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int devicenum)
 {
+
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     const size_t l=dA.dpdatalength;
     const size_t r=dA.dprank;
@@ -510,6 +583,20 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int de
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
+
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+    if (dA.block_shape==nullptr)
+        return;
+    if (dA.pooled_offsets_flat==nullptr)
+        return;
+    if (dA.pooled_offsets_starts==nullptr)
+        return;
+
 #if !defined(Unified_Shared_Memory)
     size_t r=dA.dprank;
     size_t count=dA.usedblocks;
@@ -537,6 +624,18 @@ void  DataBlock_GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+    if (dA.block_shape==nullptr)
+        return;
+    if (dA.pooled_offsets_flat==nullptr)
+        return;
+    if (dA.pooled_offsets_starts==nullptr)
+        return;
 
 #if !defined(Unified_Shared_Memory)
     size_t r=dA.dprank;
@@ -566,6 +665,18 @@ void  DataBlock_GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& 
 template<typename T>
 void  DataBlock_GPU_Memory_Functions<T>::release_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+    if (dA.block_shape==nullptr)
+        return;
+    if (dA.pooled_offsets_flat==nullptr)
+        return;
+    if (dA.pooled_offsets_starts==nullptr)
+        return;
 
 #if !defined(Unified_Shared_Memory)
     size_t r=dA.dprank;
@@ -620,13 +731,18 @@ void DataBlock_GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool wi
     DataBlock_Host_Memory_Functions<T>::free_copy(m,with_memmap);
 #else
 
-    if(m.dpdata_is_devptr)
-        omp_target_free(m.dpdata,devicenum);
-    else
-        free(m.dpdata);
+    if(m.dpdata!=nullptr)
+    {
+        if(m.dpdata_is_devptr)
+            omp_target_free(m.dpdata,devicenum);
+        else
+            free(m.dpdata);
+    }
+    if(m.dpextents!=nullptr)
+        free(m.dpextents);
 
-    free(m.dpextents);
-    free(m.dpstrides);
+    if(m.dpstrides!=nullptr)
+        free(m.dpstrides);
 
     m.devptr_devicenum=-1;
     m.dpdata_is_devptr=false;
@@ -639,6 +755,14 @@ void DataBlock_GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool wi
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::exit(DataBlock<T> &dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
+
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
     size_t r=dA.dprank;
@@ -659,6 +783,14 @@ void DataBlock_GPU_Memory_Functions<T>::exit(DataBlock<T> &dA,int devicenum)
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::exit(const DataBlock<T> &dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
+
 #if !defined(Unified_Shared_Memory)
     const size_t l=dA.dpdatalength;
     const size_t r=dA.dprank;
@@ -681,6 +813,13 @@ void DataBlock_GPU_Memory_Functions<T>::exit(const DataBlock<T> &dA,int devicenu
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::release(DataBlock<T> &dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
 
 #if !defined(Unified_Shared_Memory)
     size_t l=dA.dpdatalength;
@@ -702,6 +841,13 @@ void DataBlock_GPU_Memory_Functions<T>::release(DataBlock<T> &dA,int devicenum)
 template<typename T>
 void DataBlock_GPU_Memory_Functions<T>::release(const DataBlock<T> &dA,int devicenum)
 {
+    if (dA.dpdata==nullptr)
+        return;
+    if (dA.dpextents==nullptr)
+        return;
+    if (dA.dpstrides==nullptr)
+        return;
+
 
 #if !defined(Unified_Shared_Memory)
     const size_t l=dA.dpdatalength;

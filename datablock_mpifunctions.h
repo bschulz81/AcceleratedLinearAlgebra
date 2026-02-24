@@ -110,9 +110,41 @@ class DataBlock_MPI_Functions
 {
 public:
 
-    inline static DataBlock<T> MPI_Recv_alloc_DataBlock(bool with_memmap, const int source,const  int tag, MPI_Comm pcomm);
-    inline static DataBlock<T> MPI_Recv_device_alloc_DataBlock(bool with_memmap, int devicenum, const int source,const  int tag, MPI_Comm pcomm);
-    inline static void MPI_Free_device_DataBlock(DataBlock<T>&m, int devicenum);
+
+    inline static void MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    inline static void MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool with_memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank);
+
+    inline static void MPI_Scatter_matrix_as_rows_alloc(DataBlock<T>& recv_db,bool memmap, bool ondevice,int devicenum,
+            MPI_Comm comm, int rootrank,  const DataBlock<T>* send_db = nullptr);
+
+    inline static void MPI_Scatter_matrix_to_columns_alloc(DataBlock<T>& recv_db,
+            MPI_Comm comm,bool memmap, bool ongpu, int devnum,
+            int rootrank,const DataBlock<T>* send_db=nullptr);
+
+    inline static void MPI_gather_matrix_from_rows_alloc(    const DataBlock<T>& send_db,    MPI_Comm comm,    int rootrank,
+            DataBlock<T>* recv_db = nullptr,bool rowmajor=true,bool memmap=false, bool ongpu=false, int devicenum=-1);
+
+    inline static void MPI_Gather_matrix_from_columns_alloc(   const DataBlock<T>& send_db,   MPI_Comm comm,    int rootrank,
+            DataBlock<T>* recv_db = nullptr,  bool rowmajor=true,bool memmap=false, bool ongpu=false, int devicenum=-1);
+
+    inline static void MPI_Scatter_matrix_to_submatrices_alloc( size_t br,  size_t bc,
+            DataBlock<T>& recv_db,bool memmap, bool ongpu, int devicenum,
+            MPI_Comm comm,   int rootrank,  const DataBlock<T>* send_db = nullptr);
+
+    inline static void MPI_Scatter_subtensor_to_subtensors_alloc(
+        const size_t* sub_extents, DataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
+        MPI_Comm comm, int rootrank, const DataBlock<T>* send_db = nullptr);
+
+    inline static void MPI_Gather_matrix_from_submatrices_alloc(
+        const DataBlock<T>& send_db, MPI_Comm comm, int rootrank,DataBlock<T>* recv_db = nullptr,
+        bool rowmajor=true, int M=0, int N=0,bool memmap=false, bool ongpu=false, int devicenum=-1 );
+
+    inline static void MPI_Gather_tensor_from_subtensors_alloc(  const DataBlock<T>& send_db,  MPI_Comm comm,  int rootrank,
+            bool rowmajor=true, size_t* global_extents=nullptr,
+            DataBlock<T>* recv_db = nullptr, bool memmap=false, bool ongpu=false, int devicenum=-1);
+
+    inline static DataBlock<T> MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm);
+
     inline static void MPI_Free_DataBlock(DataBlock<T>&m);
 
     inline static void MPI_Send_DataBlock(DataBlock<T> &m,const int dest, const int tag, MPI_Comm pcomm);
@@ -124,633 +156,1209 @@ public:
     inline static void MPI_Recv_DataBlock_pdata(DataBlock<T>& mds,const int source, const int tag,const  MPI_Comm pcomm);
     inline static void MPI_Send_DataBlock_pdata(DataBlock<T> &m,const int dest,const int tag,const MPI_Comm pcomm);
 
-
-    inline static void mpi_broadcast_subtensor( const DataBlock<T>& root_ds,    DataBlock<T>& local_view,   const size_t* sub_extents,    const size_t* sub_strides,    const size_t* sub_offsets,    int root,    MPI_Comm comm);
-    inline static void mpi_broadcast_subtensor(DataBlock<T>& ds,    const size_t* sub_extents,    const size_t* sub_strides,  const size_t* sub_offsets,    int root, MPI_Comm comm);
-    inline static void mpi_broadcast_DataBlock(DataBlock<T>& ds, int root, MPI_Comm comm);
-    inline static MPI_Datatype create_strided_type(const DataBlock<T>& m);
-
-
-    inline static void mpi_scatter_subtensor(const DataBlock<T>& send_ds,
-            DataBlock<T>& recv_ds,
-            const size_t* send_extents,
-            const size_t* send_strides,
-            const size_t* send_offsets,
-            const size_t* recv_extents,
-            const size_t* recv_strides,
-            const size_t* recv_offsets,
-            int root, MPI_Comm comm);
-    inline static void mpi_gather_subtensor(const DataBlock<T>& send_ds,
-                                            DataBlock<T>& recv_ds,
-                                            const size_t* send_extents,
-                                            const size_t* send_strides,
-                                            const size_t* send_offsets,
-                                            const size_t* recv_extents,
-                                            const size_t* recv_strides,
-                                            const size_t* recv_offsets,
-                                            int root, MPI_Comm comm);
-
-
-    inline static MPI_Datatype mpi_row_type(const DataBlock<T>& mat_ds, size_t row_index);
-
-    inline static MPI_Datatype mpi_column_type(const DataBlock<T>& mat_ds, size_t col_index);
-
-    inline static void mpi_scatter_row(const DataBlock<T>& send_mat,  DataBlock<T>& recv_row, size_t row_index,  int root, MPI_Comm comm);
-
-
-    inline static void mpi_gather_row(const DataBlock<T>& send_row,  DataBlock<T>& recv_mat,   size_t row_index,  int root, MPI_Comm comm);
-
-
-    inline static void mpi_scatter_column(const DataBlock<T>& send_mat,DataBlock<T>& recv_col,size_t col_index, int root, MPI_Comm comm);
-
-    inline static void mpi_gather_column(const DataBlock<T>& send_col,  DataBlock<T>& recv_mat, size_t col_index,   int root, MPI_Comm comm);
-
-    inline static MPI_Datatype mpi_substruct_type(const DataBlock<T>& sub_ds);
-    inline static MPI_Datatype mpi_subspanmatrix_type(const DataBlock<T>& mat_ds);
-    inline static MPI_Datatype mpi_subtensor_type(const DataBlock<T>& ds, const size_t* sub_extents, const size_t* sub_strides,   const size_t* sub_offsets);
-
-    inline static MPI_Datatype mpi_datatype(const DataBlock<T>& ds);
-    inline static MPI_Datatype make_mpi_subtensor_type(const DataBlock<T>& sub);
-
-
-    inline static void mpi_scatter_substruct(const DataBlock<T>& send_ds,  DataBlock<T>& recv_ds, int root, MPI_Comm comm);
-    inline static void mpi_gather_substruct(const DataBlock<T>& send_ds, DataBlock<T>& recv_ds, int root,   MPI_Comm comm);
-    inline static void mpi_scatter_submatrix(const DataBlock<T>& send_mat, DataBlock<T>& recv_mat,int root,MPI_Comm comm);
-    inline static void mpi_gather_submatrix(const DataBlock<T>& send_mat, DataBlock<T>& recv_mat,int root, MPI_Comm comm);
-
-    inline static void mpi_allreduce_row(DataBlock<T>& mat,
-                                         size_t row_index,
-                                         MPI_Op op,
-                                         MPI_Comm comm);
-
-    inline static void mpi_allreduce_column(DataBlock<T>& mat,
-                                            size_t col_index,
-                                            MPI_Op op,
-                                            MPI_Comm comm);
-
-    inline static void mpi_reduce_row(const DataBlock<T>& send_mat,
-                                      DataBlock<T>& recv_mat,
-                                      size_t row_index,
-                                      int root, MPI_Op op, MPI_Comm comm)   ;
-
-
-    inline static void mpi_allreduce_subtensor(DataBlock<T>& ds,
-            const size_t* sub_extents,
-            const size_t* sub_strides,   // unused by subarray, kept for symmetry
-            const size_t* sub_offsets,
-            MPI_Op op,
-            MPI_Comm comm)   ;
-
-    inline static void mpi_allreduce(DataBlock<T>& ds,
-                                     MPI_Op op,
-                                     MPI_Comm comm);
-
-    inline static void mpi_reduce(const DataBlock<T>& send_ds,
-                                  DataBlock<T>& recv_ds,
-                                  int root,
-                                  MPI_Op op,
-                                  MPI_Comm comm);
-
-
-    inline static void mpi_reduce_subtensor(const DataBlock<T>& send_ds,
-                                            DataBlock<T>& recv_ds,
-                                            const size_t* send_extents,
-                                            const size_t* send_strides,
-                                            const size_t* send_offsets,
-                                            const size_t* recv_extents,
-                                            const size_t* recv_strides,
-                                            const size_t* recv_offsets,
-                                            int root, MPI_Op op, MPI_Comm comm);
-
-
-    inline static void mpi_reduce_column(const DataBlock<T>& send_mat,
-                                         DataBlock<T>& recv_mat,
-                                         size_t col_index,
-                                         int root, MPI_Op op, MPI_Comm comm);
-
+protected:
+    inline static void alloc_helper(bool &memmap,bool& ondevice, int& devnum, size_t rank,size_t datalength,size_t* pextents,size_t *pstrides,T *pdata);
 };
 
 
+template <typename T>
+void DataBlock_MPI_Functions<T>::alloc_helper(bool &memmap,bool &ondevice, int& devicenum, size_t rank,size_t datalength,size_t* pextents,size_t *pstrides,T *pdata)
+{
+    pextents= (size_t*)malloc(sizeof(size_t)*rank);
+    pstrides= (size_t*)malloc(sizeof(size_t)*rank);
+
+#if defined(Unified_Shared_Memory)
+    ondevice=false;
+    devicenum=-1;
+    if(with_memmap)
+    {
+        pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
+    }
+    else
+    {
+        pdata=(T*)malloc(sizeof(T)*pdatalength);
+    }
+#else
+
+    if(ondevice)
+    {
+        memmap=false;
+        pdata=(T*)omp_target_alloc(sizeof(T)*datalength,devicenum);
+    }
+    else
+    {
+        devicenum=-1;
+        if(memmap)
+        {
+            pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(datalength);
+        }
+        else
+        {
+            pdata=(T*)malloc(sizeof(T)*datalength);
+        }
+    }
+#endif
+}
+
 
 template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::create_strided_type(const DataBlock<T>& m)
+inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
-    int ndims = m.rank();
+    int rank;
+    MPI_Comm_rank(com, &rank);
+    MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, MPI_COMM_WORLD);
+}
 
-    // Base case: 1D array
-    if(ndims == 1)
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank)
+{
+    int rank;
+    MPI_Comm_rank(com, &rank);
+    MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dprank,    1,    mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, MPI_COMM_WORLD);
+
+    if (rank != rootrank)
     {
-        MPI_Datatype type;
-        MPI_Type_contiguous(m.dpextents[0], mpi_get_type<T>(), &type);
-        MPI_Type_commit(&type);
-        return type;
+        alloc_helper(memmap,ondevice,devicenum,db.dprank,db.dpdatalength,db.dpextents,db.dpstrides,db.dpdata);
+        db.devptr_devicenum=devicenum;
+        db.dpdata_is_devptr=ondevice;
+        db.devptr_former_hostptr=nullptr;
+    }
+    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, MPI_COMM_WORLD);
+}
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_as_rows_alloc(DataBlock<T>& recv_db,bool memmap, bool ondevice,int devicenum,
+        MPI_Comm comm,   int rootrank,  const DataBlock<T>* send_db )
+{
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    size_t rows = 0, cols = 0;
+
+    if (rank == rootrank)
+    {
+        rows = send_db->dpextents[0];
+        cols = send_db->dpextents[1];
     }
 
-    // Recursive: create type for inner dimensions
-    DataBlock<T> inner;
-    // construct a "fake" DataBlock for inner slice (extents+strides from 1..end)
-    // or just pass extents+strides arrays offset by 1
-    MPI_Datatype inner_type = create_strided_type_inner(ndims-1, m.extents()+1, m.strides()+1);
+    MPI_Bcast(&rows, 1, mpi_get_type<size_t>(), rootrank, comm);
+    MPI_Bcast(&cols, 1, mpi_get_type<size_t>(), rootrank, comm);
 
-    // Wrap with hvector using stride of first dimension
-    MPI_Datatype type;
-    MPI_Type_create_hvector(m.dpextents[0], 1, m.dpstrides[0]*sizeof(T), inner_type, &type);
-    MPI_Type_commit(&type);
-    MPI_Type_free(&inner_type);
-    return type;
+    bool receives = (rank < rows);
+
+    T* recv_buffer = nullptr;
+
+    if (receives)
+    {
+        size_t* ext = new size_t[1];
+        size_t* str = new size_t[1];
+
+        ext[0] = cols;
+        str[0] = 1;
+
+        alloc_helper(memmap,ondevice,devicenum,1,cols,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,cols, true,1, ext, str,ondevice,devicenum);
+    }
+    else
+    {
+        recv_db.dpdata = nullptr;
+        recv_db.dpextents = nullptr;
+        recv_db.dpstrides = nullptr;
+    }
+
+    MPI_Datatype tmp, row_type=MPI_DATATYPE_NULL;
+
+    if (rank == rootrank)
+    {
+        MPI_Type_vector(
+            cols,
+            1,
+            send_db->dpstrides[1],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(
+            tmp,
+            0,
+            send_db->dpstrides[0] * sizeof(T),
+            &row_type);
+
+        MPI_Type_commit(&row_type);
+        MPI_Type_free(&tmp);
+    }
+
+    int* sendcounts=nullptr, *displs=nullptr;
+
+    if (rank == rootrank)
+    {
+        sendcounts=new int[size],
+        displs=new int[size];
+
+        for (int i = 0; i < size; ++i)
+        {
+            if (i < rows)
+            {
+                sendcounts[i] = 1;
+                displs[i]     = i;
+            }
+            else
+            {
+                sendcounts[i] = 0;
+                displs[i]     = 0;
+            }
+        }
+    }
+
+    MPI_Scatterv(
+        rank == rootrank ? send_db->dpdata : nullptr,
+        sendcounts,
+        displs,
+        row_type,
+        receives ? recv_buffer : nullptr,
+        receives ? cols : 0,
+        mpi_get_type<T>(),
+        rootrank,
+        comm);
+
+    if (rank == rootrank)
+    {
+        MPI_Type_free(&row_type);
+        delete[] sendcounts;
+        delete[] displs;
+    }
 }
 
-template <typename T>
-void DataBlock_MPI_Functions<T>::mpi_broadcast_subtensor(DataBlock<T>& ds,
-        const size_t* sub_extents,
-        const size_t* sub_strides,
-        const size_t* sub_offsets,
-        int root,
-        MPI_Comm comm)
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_gather_matrix_from_rows_alloc(
+    const DataBlock<T>& send_db,
+    MPI_Comm comm,
+    int rootrank,
+    DataBlock<T>* recv_db,bool rowmajor,bool memmap, bool ondevice, int devicenum)
 {
-    // Create datatype for the sub-block
-    MPI_Datatype sub_type =
-        DataBlock_MPI_Functions<T>::mpi_subtensor_type(ds, sub_extents, sub_strides, sub_offsets);
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
 
-    // Broadcast the data from root
-    MPI_Bcast(ds.dpdata, 1, sub_type, root, comm);
+    // --- Determine if this rank contributes ---
+    int contributes = (send_db.dpdata != nullptr) ? 1: 0;
 
-    // Clean up
-    MPI_Type_free(&sub_type);
+    // --- Gather row lengths on root ---
+    size_t local_cols = contributes ? send_db.dpextents[0] : 0;
+
+    size_t* all_cols = nullptr;
+
+    if (rank == rootrank)
+        all_cols = new size_t[size];
+
+    MPI_Gather(&local_cols, 1, mpi_get_type<size_t>(),
+               all_cols, 1, mpi_get_type<size_t>(),
+               rootrank, comm);
+
+    size_t rows = 0;
+    size_t cols = 0;
+
+    if (rank == rootrank)
+    {
+        rows = 0;
+
+        for (int i = 0; i < size; ++i)
+            if (all_cols[i] > 0)
+            {
+                rows++;
+                cols = all_cols[0];
+            }
+
+        if (recv_db)
+        {
+            size_t* ext = new size_t[2];
+            size_t* str = new size_t[2];
+
+            ext[0] = rows;
+            ext[1] = cols;
+
+            str[0] = rowmajor ? cols : 1;
+            str[1] = rowmajor ? 1    : rows;
+
+            T*recv_buffer;
+            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
+
+            recv_db = DataBlock<T>(recv_buffer,rows*cols, rowmajor,2, ext, str,ondevice,devicenum);
+        }
+    }
+
+    // --- Prepare datatype on root ---
+    MPI_Datatype tmp, row_type=MPI_DATATYPE_NULL;
+
+    if (rank == rootrank)
+    {
+        MPI_Datatype tmp;
+
+        MPI_Type_vector(
+            cols,
+            1,
+            recv_db->dpstrides[1],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(
+            tmp,
+            0,
+            recv_db->dpstrides[0] * sizeof(T),
+            &row_type);
+
+        MPI_Type_commit(&row_type);
+        MPI_Type_free(&tmp);
+    }
+
+    int* recvcounts = nullptr;
+    int* displs     = nullptr;
+
+
+    if (rank == rootrank)
+    {
+        recvcounts = new int[size];
+        displs     = new int[size];
+
+        int offset = 0;
+
+        for (int i = 0; i < size; ++i)
+        {
+            if (all_cols[i] > 0)
+            {
+                recvcounts[i] = 1;
+                displs[i]     = offset++;
+            }
+            else
+            {
+                recvcounts[i] = 0;
+                displs[i]     = 0;
+            }
+        }
+    }
+
+    MPI_Gatherv(
+        contributes ? send_db.dpdata : nullptr,
+        contributes ? local_cols : 0,
+        mpi_get_type<T>(),
+        rank == rootrank ? recv_db->dpdata : nullptr,
+        recvcounts,
+        displs,
+        row_type,
+        rootrank,
+        comm);
+
+    if (rank == rootrank)
+    {
+        MPI_Type_free(&row_type);
+        delete[] recvcounts;
+        delete[] displs;
+        delete[] all_cols;
+    }
+
 }
 
 
-template <typename T>
-inline static void mpi_broadcast_DataBlock(DataBlock<T>& ds, int root, MPI_Comm comm)
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(DataBlock<T>& recv_db,
+        MPI_Comm comm,bool memmap, bool ondevice, int devicenum,
+        int rootrank,const DataBlock<T>* send_db)
 {
-    // broad meta info (extents, strides, rank, etc.) if needed
-    MPI_Bcast(&ds.dprank, 1, mpi_get_type<size_t>(), root, comm);
-    MPI_Bcast(ds.dpextents, ds.dprank, mpi_get_type<size_t>(), root, comm);
-    MPI_Bcast(ds.dpstrides, ds.dprank, mpi_get_type<size_t>(), root, comm);
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
 
-    MPI_Bcast(ds.dpdata, ds.dpdatalength, mpi_get_type<T>(), root, comm);
+    size_t rows = 0, cols = 0;
+
+    if (rank == rootrank)
+    {
+        rows = send_db->dpextents[0];
+        cols = send_db->dpextents[1];
+    }
+
+    MPI_Bcast(&rows, 1, mpi_get_type<size_t>(), rootrank, comm);
+    MPI_Bcast(&cols, 1, mpi_get_type<size_t>(), rootrank, comm);
+
+    bool receives = (rank < cols);
+
+    T* recv_buffer = nullptr;
+
+    if (receives)
+    {
+        size_t* ext = new size_t[1];
+        size_t* str = new size_t[1];
+
+        ext[0] = rows;
+        str[0] = 1;
+        T* recv_buffer;
+        alloc_helper(memmap,ondevice,devicenum,1,rows,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,rows, true,1, ext, str,ondevice,devicenum);
+    }
+    else
+    {
+        recv_db.dpdata=nullptr;
+        recv_db.dpextents=nullptr;
+        recv_db.dpstrides=nullptr;
+    }
+
+
+
+
+    MPI_Datatype tmp, col_type=MPI_DATATYPE_NULL;
+
+
+    if(rank==rootrank)
+    {
+        MPI_Type_vector(
+            rows,
+            1,
+            send_db->dpstrides[0],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(
+            tmp,
+            0,
+            send_db->dpstrides[1] * sizeof(T),
+            &col_type);
+
+        MPI_Type_commit(&col_type);
+        MPI_Type_free(&tmp);
+    }
+
+    int* sendcounts, *displs;
+
+    if (rank == rootrank)
+    {
+        sendcounts=new int[size],
+        displs=new int[size];
+
+        for (int i = 0; i < size; ++i)
+        {
+            if (i < cols)
+            {
+                sendcounts[i] = 1;
+                displs[i] = i ;
+            }
+            else
+            {
+                sendcounts[i] = 0;
+                displs[i] = 0;
+            }
+        }
+    }
+
+    MPI_Scatterv(
+        rank == rootrank ? send_db->dpdata : nullptr,
+        rank == rootrank ? sendcounts : nullptr,
+        rank == rootrank ? displs : nullptr,
+        col_type,
+        receives ? recv_buffer : nullptr,
+        receives ? rows : 0,
+        mpi_get_type<T>(),
+        rootrank,
+        comm);
+    if(rank==rootrank)
+    {
+        MPI_Type_free(&col_type);
+        delete[] sendcounts;
+        delete[] displs;
+    }
 }
 
 
-template <typename T>
-void DataBlock_MPI_Functions<T>::mpi_broadcast_subtensor(
-    const DataBlock<T>& root_ds,  // valid on root
-    DataBlock<T>& local_view,     // must point to allocated memory
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
+    const DataBlock<T>& send_db,
+    MPI_Comm comm,
+    int rootrank,
+    DataBlock<T>* recv_db ,  bool rowmajor,bool memmap, bool ondevice, int devicenum)
+{
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    int contributes = (send_db.dpdata != nullptr) ? 1 : 0;
+
+    size_t local_rows = contributes ? send_db.dpextents[0] : 0;
+
+    size_t* all_rows = nullptr;
+
+    if (rank == rootrank)
+        all_rows = new size_t[size];
+
+    MPI_Gather(&local_rows, 1, mpi_get_type<size_t>(),
+               all_rows, 1, mpi_get_type<size_t>(),
+               rootrank, comm);
+
+    size_t rows = 0;
+    size_t cols = 0;
+
+    if (rank == rootrank)
+    {
+        cols = 0;
+        for (int i = 0; i < size; ++i)
+        {
+            if (all_rows[i] > 0)
+            {
+                cols++;
+                rows = all_rows[0];
+            }
+        }
+
+        if (recv_db)
+        {
+            size_t* ext = new size_t[2];
+            size_t* str = new size_t[2];
+
+            ext[0] = rows;
+            ext[1] = cols;
+
+            str[0] = rowmajor ? cols : 1;
+            str[1] = rowmajor ? 1    : rows;
+            T* recv_buffer;
+            alloc_helper(memmap,ondevice,devicenum,2,rows*cols,ext,str,recv_buffer);
+
+            recv_db = DataBlock<T>(recv_buffer,rows*cols, rowmajor,2, ext, str,ondevice,devicenum);
+        }
+    }
+
+    MPI_Datatype tmp, col_type= MPI_DATATYPE_NULL;
+
+    if (rank == rootrank)
+    {
+        MPI_Type_vector(
+            rows,
+            1,
+            recv_db->dpstrides[0],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(
+            tmp,
+            0,
+            recv_db->dpstrides[1] * sizeof(T),
+            &col_type);
+
+        MPI_Type_commit(&col_type);
+        MPI_Type_free(&tmp);
+    }
+
+    int* recvcounts = nullptr;
+    int* displs     = nullptr;
+
+    if (rank == rootrank)
+    {
+        recvcounts = new int[size];
+        displs     = new int[size];
+
+        int offset = 0;
+
+        for (int i = 0; i < size; ++i)
+        {
+            if (all_rows[i] > 0)
+            {
+                recvcounts[i] = 1;
+                displs[i]     = offset++;
+            }
+            else
+            {
+                recvcounts[i] = 0;
+                displs[i]     = 0;
+            }
+        }
+    }
+
+    MPI_Gatherv(
+        contributes ? send_db.dpdata : nullptr,
+        contributes ? local_rows : 0,
+        mpi_get_type<T>(),
+        rank == rootrank ? recv_db->dpdata : nullptr,
+        recvcounts,
+        displs,
+        col_type,
+        rootrank,
+        comm);
+
+    if (rank == rootrank)
+    {
+        MPI_Type_free(&col_type);
+        delete[] recvcounts;
+        delete[] displs;
+        delete[] all_rows;
+    }
+}
+
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
+    size_t br,
+    size_t bc,
+    DataBlock<T>& recv_db,bool memmap, bool ondevice, int devicenum,
+    MPI_Comm comm,
+    int rootrank,
+    const DataBlock<T>* send_db )
+{
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    size_t M=0, N=0;
+    bool rmajor;
+
+    if(rank==rootrank)
+    {
+        M = send_db->dpextents[0];
+        N = send_db->dpextents[1];
+        rmajor=send_db->dpstrides[1]<send_db->dpstrides[0];
+    }
+
+    MPI_Bcast(&M,1,mpi_get_type<size_t>(),rootrank,comm);
+    MPI_Bcast(&N,1,mpi_get_type<size_t>(),rootrank,comm);
+    MPI_Bcast(&rmajor,1,mpi_get_type<bool>(),rootrank,comm);
+
+    size_t grid_r = M / br;
+    size_t grid_c = N / bc;
+
+    bool receives = (rank < grid_r * grid_c);
+
+    T* recv_buffer = nullptr;
+
+
+    if(receives)
+    {
+        size_t* ext = new size_t[2] {br, bc};
+        size_t* str = rmajor? new size_t[2] { bc,1}:
+                      new size_t[2] { 1,br} ;
+
+        alloc_helper(memmap,ondevice,devicenum,2,br*bc,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,br*bc, rmajor,2, ext, str,ondevice,devicenum);
+    }
+    else
+    {
+        recv_db.dpdata=nullptr;
+        recv_db.dpextents=nullptr;
+        recv_db.dpstrides=nullptr;
+    }
+
+    MPI_Datatype tmp, block_type=MPI_DATATYPE_NULL;
+
+    if(rank==rootrank)
+    {
+        MPI_Type_vector(
+            br,
+            bc,
+            rmajor?send_db->dpstrides[0]: send_db->dpstrides[1],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(
+            tmp,
+            0,
+            sizeof(T),
+            &block_type);
+
+        MPI_Type_commit(&block_type);
+        MPI_Type_free(&tmp);
+    }
+
+    int* sendcounts, *displs;
+    if(rank==rootrank)
+    {
+        sendcounts=new int[size],
+        displs=new int[size];
+        for(int i=0; i<size; i++)
+        {
+            if(i < grid_r*grid_c)
+            {
+                size_t bi = i / grid_c;
+                size_t bj = i % grid_c;
+                sendcounts[i] = 1;
+                displs[i] =
+                    bi * br * (rmajor? send_db->dpstrides[0]: send_db->dpstrides[1])
+                    + bj * bc * (rmajor?  send_db->dpstrides[1]: send_db->dpstrides[0]);
+            }
+            else
+            {
+                sendcounts[i]=0;
+                displs[i]=0;
+            }
+        }
+    }
+
+    MPI_Scatterv(
+        rank==rootrank?send_db->dpdata:nullptr,
+        rank==rootrank?sendcounts:nullptr,
+        rank==rootrank?displs:nullptr,
+        block_type,
+        receives?recv_buffer:nullptr,
+        receives?br*bc:0,
+        mpi_get_type<T>(),
+        rootrank,
+        comm);
+
+    if(rank==rootrank)
+    {
+        MPI_Type_free(&block_type);
+        delete[] sendcounts;
+        delete[] displs;
+    }
+}
+
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc(
+    const DataBlock<T>& send_db,
+    MPI_Comm comm,
+    int rootrank,DataBlock<T>* recv_db ,bool rowmajor, int M, int N,bool memmap, bool ondevice, int devicenum )
+{
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    int contributes = (send_db.dpdata != nullptr) ? 1 : 0;
+
+
+    size_t* all_nodes = nullptr;
+
+    size_t local_gridsize_m = contributes ? send_db.dpextents[0] : 0;
+    size_t local_gridsize_n = contributes ? send_db.dpextents[1] : 0;
+
+    size_t *all_grids_m,*all_grids_n;
+
+    if (rank == rootrank)
+    {
+        all_grids_m = new size_t[size];
+        all_grids_n = new size_t[size];
+
+    }
+
+    MPI_Gather(&local_gridsize_m, 1, mpi_get_type<size_t>(),
+               all_grids_m, 1, mpi_get_type<size_t>(),
+               rootrank, comm);
+
+    MPI_Gather(&local_gridsize_n, 1, mpi_get_type<size_t>(),
+               all_grids_n, 1, mpi_get_type<size_t>(),
+               rootrank, comm);
+
+    MPI_Bcast(&rowmajor,1,mpi_get_type<bool>(),rootrank, comm);
+
+    int filled_gridsize_m=0, filled_gridsize_n= 0;
+    if(rank == rootrank && recv_db)
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            if (all_grids_m[i] > 0 && all_grids_n[i] > 0)
+            {
+                filled_gridsize_m = all_grids_m[i];
+                filled_gridsize_n = all_grids_n[i];
+                break;
+            }
+        }
+
+        size_t* ext = new size_t[2];
+        ext[0]=M;
+        ext[1]=N;
+        size_t* str =new size_t[2];
+        str[0]= rowmajor ?N:1;
+        str[1]=rowmajor ? 1:M;
+        T* recv_buffer;
+        alloc_helper(memmap,ondevice,devicenum,2,N*M,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,N*M, rowmajor,2, ext, str,ondevice,devicenum);
+
+    }
+
+
+    MPI_Datatype tmp, block_type = MPI_DATATYPE_NULL;
+
+    if(rank == rootrank)
+    {
+        MPI_Type_vector(
+            filled_gridsize_m,
+            filled_gridsize_n,
+            rowmajor ? recv_db->dpstrides[0]
+            : recv_db->dpstrides[1],
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(tmp, 0, sizeof(T), &block_type);
+        MPI_Type_commit(&block_type);
+        MPI_Type_free(&tmp);
+    }
+
+
+
+    int* recvcounts = nullptr;
+    int* displs     = nullptr;
+
+    if(rank == rootrank)
+    {
+        size_t grid_r = M / filled_gridsize_m;
+        size_t grid_c = N / filled_gridsize_n;
+
+        recvcounts = new int[size];
+        displs     = new int[size];
+
+        for(int i=0; i<size; i++)
+        {
+            if(i < grid_r*grid_c)
+            {
+                size_t bi = i / grid_c;
+                size_t bj = i % grid_c;
+
+                recvcounts[i] = 1;
+
+                displs[i] =
+                    bi * filled_gridsize_m * (rowmajor?  recv_db->dpstrides[0]: recv_db->dpstrides[1])
+                    + bj * filled_gridsize_n * (rowmajor?  recv_db->dpstrides[1]: recv_db->dpstrides[0]);
+            }
+            else
+            {
+                recvcounts[i] = 0;
+                displs[i] = 0;
+            }
+        }
+    }
+
+    MPI_Gatherv(
+        contributes ? send_db.dpdata : nullptr,
+        contributes ? local_gridsize_m*local_gridsize_n : 0,
+        mpi_get_type<T>(),
+        rank == rootrank ? recv_db->dpdata : nullptr,
+        recvcounts,
+        displs,
+        block_type,
+        rootrank,
+        comm);
+
+    if(rank == rootrank)
+    {
+        MPI_Type_free(&block_type);
+        delete[] recvcounts;
+        delete[] displs;
+    }
+}
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>:: MPI_Scatter_subtensor_to_subtensors_alloc(
     const size_t* sub_extents,
-    const size_t* sub_strides,
-    const size_t* sub_offsets,
-    int root,
-    MPI_Comm comm)
+    DataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
+    MPI_Comm comm,
+    int rootrank,
+    const DataBlock<T>* send_db )
 {
-    MPI_Datatype sub_type =
-        DataBlock_MPI_Functions<T>::mpi_subtensor_type(
-            root_ds, sub_extents, sub_strides, sub_offsets);
-
-    MPI_Bcast(local_view.dpdata, 1, sub_type, root, comm);
-
-    MPI_Type_free(&sub_type);
-}
-
-
-template <typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::make_mpi_subtensor_type(const DataBlock<T>& sub)
-{
-    int ndims = sub.dprank;
-    // Base case: 1D array
-    if (ndims == 1)
-    {
-        MPI_Datatype type;
-        MPI_Type_contiguous(sub.dpextents[0], mpi_get_type<T>(), &type);
-        MPI_Type_commit(&type);
-        return type;
-    }
-
-    // Recursive creation for higher dimensions
-    MPI_Datatype inner_type = create_strided_type_inner(ndims - 1, sub.dpextents + 1, sub.dpstrides + 1);
-
-    // Wrap inner type in an hvector for the first dimension
-    MPI_Datatype type;
-    MPI_Type_create_hvector(
-        sub.dpextents[0],            // number of blocks
-        1,                                             // 1 inner block per outer block
-        static_cast<MPI_Aint>(sub.dpstrides[0] * sizeof(T)), // stride in bytes
-        inner_type,
-        &type
-    );
-
-    MPI_Type_commit(&type);
-    MPI_Type_free(&inner_type);  // free temporary inner type
-    return type;
-}
-
-
-
-template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_subtensor_type(const DataBlock<T>& ds,
-        const size_t* sub_extents,
-        const size_t* sub_strides,
-        const size_t* sub_offsets)
-{
-
-    // Sizes = global tensor dimensions
-    int* sizes=new int[ds.dprank];
-    // Subsizes = sub-tensor dimensions
-    int* subsizes=new int[ds.dprank];
-    // Starts = offset (in units of elements, not bytes)
-    int* starts=new int[ds.dprank];
-
-
-    for (int i = 0; i < ds.dprank; i++)
-    {
-        sizes[i]    =ds.pdextents[i];
-        subsizes[i] = sub_extents[i];
-        starts[i]   = sub_offsets[i];
-    }
-
-    int order = ds.rowmajor() ? MPI_ORDER_C : MPI_ORDER_FORTRAN;
-
-    MPI_Datatype newtype;
-    MPI_Type_create_subarray(ds.dprank,
-                             sizes,
-                             subsizes,
-                             starts,
-                             order,
-                             mpi_get_type<T>(),
-                             &newtype);
-
-    MPI_Type_commit(&newtype);
-
-    delete []sizes;
-    delete []subsizes;
-    delete []starts;
-
-    return newtype;
-}
-
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_scatter_subtensor(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        const size_t* send_extents,
-        const size_t* send_strides,
-        const size_t* send_offsets,
-        const size_t* recv_extents,
-        const size_t* recv_strides,
-        const size_t* recv_offsets,
-        int root, MPI_Comm comm)
-{
-    int rank;
+    int rank, size;
     MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
 
-    MPI_Datatype send_type = MPI_DATATYPE_NULL;
-    MPI_Datatype recv_type = mpi_subtensor_type(recv_ds, recv_extents, recv_strides, recv_offsets);
+    size_t R = 0;
 
-    if(rank == root)
+    if (rank == rootrank)
+        R = send_db->dprank;
+
+    MPI_Bcast(&R, 1, mpi_get_type<size_t>(), rootrank, comm);
+
+    size_t* global_ext=new size_t[R];
+    size_t *global_str=new size_t[R];
+
+    if (rank == rootrank)
     {
-        send_type = mpi_subtensor_type(send_ds, send_extents, send_strides, send_offsets);
+        for (size_t d = 0; d < R; ++d)
+        {
+            global_ext[d] = send_db->dpextents[d];
+            global_str[d] = send_db->dpstrides[d];
+        }
     }
 
-    MPI_Scatter(rank == root ? send_ds.dpdata : nullptr,
-                1, send_type,
-                recv_ds.dpdata, 1, recv_type,
-                root, comm);
+    MPI_Bcast(global_ext, R, mpi_get_type<size_t>(), rootrank, comm);
 
-    if(send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
-    MPI_Type_free(&recv_type);
-}
+    // ---- detect layout ----
+    bool rowmajor = false;
 
+    if (rank == rootrank)
+        rowmajor = (send_db->dpstrides[R-1] == 1);
 
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_gather_subtensor(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        const size_t* send_extents,
-        const size_t* send_strides,
-        const size_t* send_offsets,
-        const size_t* recv_extents,
-        const size_t* recv_strides,
-        const size_t* recv_offsets,
-        int root, MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
+    MPI_Bcast(&rowmajor, 1, mpi_get_type<bool>(), rootrank, comm);
 
-    MPI_Datatype send_type = mpi_subtensor_type(send_ds, send_extents, send_strides, send_offsets);
-    MPI_Datatype recv_type = MPI_DATATYPE_NULL;
+    // ---- compute block grid ----
+    size_t * grid=new size_t [R];
+    size_t total_blocks = 1;
 
-    if(rank == root)
+    for (size_t d = 0; d < R; ++d)
     {
-        recv_type = mpi_subtensor_type(recv_ds, recv_extents, recv_strides, recv_offsets);
+        grid[d] = global_ext[d] / sub_extents[d];
+        total_blocks *= grid[d];
     }
 
-    MPI_Gather(send_ds.dpdata, 1, send_type,
-               rank == root ? recv_ds.dpdata : nullptr,
-               1, recv_type,
-               root, comm);
-
-    MPI_Type_free(&send_type);
-    if(recv_type != MPI_DATATYPE_NULL) MPI_Type_free(&recv_type);
-}
+    bool receives = (rank < total_blocks);
 
 
-template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_row_type(const DataBlock<T>& mat_ds, size_t row_index)
-{
-    MPI_Datatype row_type;
-    if (mat_ds.rowmajor())
+
+    if (receives)
     {
-        // Row-major: rows are contiguous
-        MPI_Type_contiguous(mat_ds.dpextents[1],
-                            mpi_get_type<T>(),
-                            &row_type);
+        size_t data_len = 1;
+        for (size_t d = 0; d < R; ++d)
+            data_len *= sub_extents[d];
+
+        size_t* ext = new size_t[R];
+        size_t* str = new size_t[R];
+
+        for (size_t d = 0; d < R; ++d)
+            ext[d] = sub_extents[d];
+
+        if (rowmajor)
+        {
+            str[R-1] = 1;
+            for (int d = R-2; d >= 0; --d)
+                str[d] = str[d+1] * sub_extents[d+1];
+        }
+        else
+        {
+            str[0] = 1;
+            for (size_t d = 1; d < R; ++d)
+                str[d] = str[d-1] * sub_extents[d-1];
+        }
+        T* recv_buffer;
+        alloc_helper(memmap,ondevice,devicenum,R,data_len,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,data_len, rowmajor,R, ext, str,ondevice,devicenum);
     }
     else
     {
-        // Column-major: rows are strided
-        MPI_Type_vector(mat_ds.dpextents[1],
-                        1,
-                        mat_ds.dpstrides[1],
-                        mpi_get_type<T>(),
-                        &row_type);
+        recv_db.dpdata = nullptr;
+        recv_db.dpextents = nullptr;
+        recv_db.dpstrides = nullptr;
     }
-    MPI_Type_commit(&row_type);
-    return row_type;
+
+
+    MPI_Datatype subarray_type = MPI_DATATYPE_NULL;
+
+    if (rank == rootrank)
+    {
+        int* sizes=new int[R];
+        int* subs=new int[R];
+        int* starts=new int[R];
+
+        for (size_t d = 0; d < R; ++d)
+        {
+            starts[d]=0;
+            sizes[d] = static_cast<int>(global_ext[d]);
+            subs[d]  = static_cast<int>(sub_extents[d]);
+        }
+
+        MPI_Datatype tmp_type;
+
+        MPI_Type_create_subarray(
+            R,
+            sizes,
+            subs,
+            starts,
+            rowmajor ? MPI_ORDER_C : MPI_ORDER_FORTRAN,
+            mpi_get_type<T>(),
+            &tmp_type);
+
+
+        MPI_Type_create_resized(
+            tmp_type,
+            0,
+            sizeof(T),
+            &subarray_type);
+
+        MPI_Type_commit(&subarray_type);
+        MPI_Type_free(&tmp_type);
+
+        delete[] sizes;
+        delete[] subs;
+        delete[] starts;
+    }
+
+
+    int* sendcounts=nullptr;
+    int* displs=nullptr;
+
+    if (rank == rootrank)
+    {
+        sendcounts=new int[size];
+        displs =new int[size];
+        for (int p = 0; p < size; ++p)
+        {
+            if (p < total_blocks)
+            {
+                size_t *block_index=new size_t[R];
+                size_t tmp = p;
+
+                for (int d = R-1; d >= 0; --d)
+                {
+                    block_index[d] = tmp % grid[d];
+                    tmp /= grid[d];
+                }
+
+                size_t offset = 0;
+
+                for (size_t d = 0; d < R; ++d)
+                    offset += block_index[d] *
+                              sub_extents[d] *
+                              global_str[d];
+
+                sendcounts[p] = 1;
+                displs[p] = static_cast<int>(offset);
+
+                delete[] block_index;
+            }
+            else
+            {
+                sendcounts[p] = 0;
+                displs[p] = 0;
+            }
+        }
+    }
+
+
+    MPI_Scatterv(
+        rank == rootrank ? send_db->dpdata : nullptr,
+        sendcounts,
+        displs,
+        subarray_type,
+        receives ? recv_db.dpdata : nullptr,
+        receives ? recv_db.dpdatalength : 0,
+        mpi_get_type<T>(),
+        rootrank,
+        comm);
+
+    if (rank == rootrank)
+    {
+        MPI_Type_free(&subarray_type);
+        delete[] sendcounts;
+        delete[] displs;
+    }
+
+    delete[] grid;
+    delete[] global_ext;
+    delete[] global_str;
 }
 
-// -----------------------------
-// Column of a matrix (Nx1 view)
-// -----------------------------
+
+
 template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_column_type(const DataBlock<T>& mat_ds, size_t col_index)
+inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
+    const DataBlock<T>& send_db,
+    MPI_Comm comm,
+    int rootrank,
+    bool rowmajor,
+    size_t* global_extents,
+    DataBlock<T>* recv_db , bool memmap, bool ondevice, int devicenum)
 {
-    MPI_Datatype col_type;
-    if (mat_ds.rowmajor())
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    bool contributes = (send_db.dpdata != nullptr);
+
+    size_t R = contributes ? send_db.dprank : 0;
+
+    MPI_Allreduce(MPI_IN_PLACE, &R, 1,
+                  mpi_get_type<size_t>(),
+                  MPI_MAX, comm);
+
+
+    MPI_Bcast(&rowmajor, 1,
+              mpi_get_type<bool>(),
+              rootrank, comm);
+
+    if (rank!= rootrank)
+        global_extents = new size_t[R];
+
+
+    MPI_Bcast(global_extents, R,
+              mpi_get_type<size_t>(),
+              rootrank, comm);
+
+
+    size_t* local_ext = new size_t[R];
+
+    for (size_t d = 0; d < R; ++d)
+        local_ext[d] = contributes? send_db.dpextents[d]:0 ;
+
+    size_t* sub_ext = new size_t[R];
+
+    MPI_Reduce(local_ext, sub_ext,R, mpi_get_type<size_t>(), MPI_MAX, rootrank, comm);
+
+    // ---- ROOT allocates global tensor ----
+    size_t* grid = new size_t[R];
+    size_t total_blocks = 1;
+
+    if (rank == rootrank && recv_db)
     {
-        // Row-major: columns are strided
-        MPI_Type_vector(mat_ds.dpextents[0],
-                        1,
-                        mat_ds.dpstrides[0],
-                        mpi_get_type<T>(),
-                        &col_type);
+
+        size_t* ext = new size_t[R];
+        size_t* str = new size_t[R];
+
+        size_t total_size = 1;
+        for (size_t d = 0; d < R; ++d)
+        {
+            ext[d] = global_extents[d];
+            total_size *= global_extents[d];
+        }
+
+        if (rowmajor)
+        {
+            str[R-1] = 1;
+            for (int d = R-2; d >= 0; --d)
+                str[d] = str[d+1] * global_extents[d+1];
+        }
+        else
+        {
+            str[0] = 1;
+            for (size_t d = 1; d < R; ++d)
+                str[d] = str[d-1] * global_extents[d-1];
+        }
+        T* recv_buffer;
+
+        alloc_helper(memmap,ondevice,devicenum,R,total_size,ext,str,recv_buffer);
+
+        recv_db = DataBlock<T>(recv_buffer,total_size, rowmajor,R, ext, str,ondevice,devicenum);
+
+        for (size_t d = 0; d < R; ++d)
+        {
+            grid[d] = global_extents[d] / sub_ext[d];
+            total_blocks *= grid[d];
+        }
+    }
+
+    // ---- datatype ----
+    MPI_Datatype block_type = MPI_DATATYPE_NULL;
+
+    if (rank == rootrank)
+    {
+        int* sizes  = new int[R];
+        int* subs   = new int[R];
+        int* starts = new int[R];
+
+
+        for (size_t d = 0; d < R; ++d)
+        {
+            starts[d]=0;
+            sizes[d] = static_cast<int>(global_extents[d]);
+            subs[d]  = static_cast<int>(sub_ext[d]);
+        }
+
+
+        MPI_Datatype tmp;
+
+        MPI_Type_create_subarray(
+            R,
+            sizes,
+            subs,
+            starts,
+            rowmajor ? MPI_ORDER_C : MPI_ORDER_FORTRAN,
+            mpi_get_type<T>(),
+            &tmp);
+
+        MPI_Type_create_resized(tmp, 0, sizeof(T), &block_type);
+        MPI_Type_commit(&block_type);
+        MPI_Type_free(&tmp);
+
+
+        delete[] starts;
+        delete[] sizes;
+        delete[]subs;
+    }
+
+    // ---- recvcounts + displs ----
+    int* recvcounts = nullptr;
+    int* displs     = nullptr;
+
+    if (rank == rootrank)
+    {
+        recvcounts = new int[size];
+        displs     = new int[size];
+
+        size_t* block_index = new size_t[R];
+
+        for (int p = 0; p < size; ++p)
+        {
+            if (p < total_blocks)
+            {
+                size_t tmp = p;
+
+                for (int d = R-1; d >= 0; --d)
+                {
+                    block_index[d] = tmp % grid[d];
+                    tmp /= grid[d];
+                }
+
+                size_t offset = 0;
+                for (size_t d = 0; d < R; ++d)
+                    offset += block_index[d] *
+                              sub_ext[d] *
+                              recv_db->dpstrides[d];
+
+                recvcounts[p] = 1;
+                displs[p]     = static_cast<int>(offset);
+            }
+            else
+            {
+                recvcounts[p] = 0;
+                displs[p]     = 0;
+            }
+        }
+
+        delete[] block_index;
+    }
+
+    MPI_Gatherv(
+        contributes ? send_db.dpdata : nullptr,
+        contributes ? send_db.dpdatalength : 0,
+        mpi_get_type<T>(),
+        rank == rootrank ? recv_db->dpdata : nullptr,
+        recvcounts,
+        displs,
+        block_type,
+        rootrank,
+        comm);
+
+    if (rank == rootrank)
+    {
+        MPI_Type_free(&block_type);
+        delete[] recvcounts;
+        delete[] displs;
     }
     else
     {
-        // Column-major: columns are contiguous
-        MPI_Type_contiguous(mat_ds.dpextents[0],
-                            mpi_get_type<T>(),
-                            &col_type);
-    }
-    MPI_Type_commit(&col_type);
-    return col_type;
-}
-
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_scatter_row(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_row,
-        size_t row_index,
-        int root, MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = MPI_DATATYPE_NULL;
-    MPI_Datatype recv_type = mpi_row_type(recv_row, 0);
-
-    if(rank == root) send_type = mpi_row_type(send_mat, row_index);
-
-    MPI_Scatter(rank == root ? send_mat.dpdata + row_index * send_mat.dpstrides[0] : nullptr,
-                1, send_type,
-                recv_row.dpdata, 1, recv_type, root, comm);
-
-    if(send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
-    MPI_Type_free(&recv_type);
-}
-
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_gather_row(const DataBlock<T>& send_row,
-        DataBlock<T>& recv_mat,
-        size_t row_index,
-        int root, MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = mpi_row_type(send_row, 0);
-    MPI_Datatype recv_type = MPI_DATATYPE_NULL;
-
-    if(rank == root) recv_type = mpi_row_type(recv_mat, row_index);
-
-    MPI_Gather(send_row.dpdata, 1, send_type,
-               rank == root ? recv_mat.dpdata + row_index * recv_mat.dpstrides[0] : nullptr,
-               1, recv_type, root, comm);
-
-    MPI_Type_free(&send_type);
-    if(recv_type != MPI_DATATYPE_NULL) MPI_Type_free(&recv_type);
-}
-
-// -----------------------------
-// Scatter / gather a column
-// -----------------------------
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_scatter_column(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_col,
-        size_t col_index,
-        int root, MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = MPI_DATATYPE_NULL;
-    MPI_Datatype recv_type = mpi_subvector_type(recv_col);
-
-    if(rank == root) send_type = mpi_column_type(send_mat, col_index);
-
-    MPI_Scatter(rank == root ? send_mat.dpdata + col_index : nullptr,
-                1, send_type,
-                recv_col.dpdata, 1, recv_type, root, comm);
-
-    if(send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
-    MPI_Type_free(&recv_type);
-}
-
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_gather_column(const DataBlock<T>& send_col,
-        DataBlock<T>& recv_mat,
-        size_t col_index,
-        int root, MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = mpi_subvector_type(send_col);
-    MPI_Datatype recv_type = MPI_DATATYPE_NULL;
-
-    if(rank == root) recv_type = mpi_column_type(recv_mat, col_index);
-
-    MPI_Gather(send_col.dpdata, 1, send_type,
-               rank == root ? recv_mat.dpdata + col_index : nullptr,
-               1, recv_type, root, comm);
-
-    MPI_Type_free(&send_type);
-    if(recv_type != MPI_DATATYPE_NULL) MPI_Type_free(&recv_type);
-}
-
-
-#include <mpi.h>
-
-// -----------------------------
-// MPI Datatype helpers
-// -----------------------------
-template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_datatype(const DataBlock<T>& ds)
-{
-    int ndims = ds.dprank;
-    int* sizes    = new int[ndims];
-    int* subsizes = new int[ndims];
-    int* starts   = new int[ndims] {0};
-
-    for (int i = 0; i < ndims; ++i)
-    {
-        sizes[i]    = ds.dpextents[i];
-        subsizes[i] = sizes[i];
+        delete[] global_extents;
     }
 
-    int order = ds.rowmajor() ? MPI_ORDER_C : MPI_ORDER_FORTRAN;
-    MPI_Datatype type;
-    MPI_Type_create_subarray(ndims, sizes, subsizes, starts, order, mpi_get_type<T>(), &type);
-    MPI_Type_commit(&type);
+    delete[] grid;
+    delete[] sub_ext;
 
-    delete[] sizes;
-    delete[] subsizes;
-    delete[] starts;
-    return type;
 }
-
-template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_substruct_type(const DataBlock<T>& sub_ds)
-{
-    // Uses substruct-style extents + strides
-    int ndims = sub_ds.dprank;
-    if (ndims == 1)
-    {
-        MPI_Datatype type;
-        MPI_Type_contiguous(sub_ds.dpextents[0], mpi_get_type<T>(), &type);
-        MPI_Type_commit(&type);
-        return type;
-    }
-
-    // recursive hvector-based type
-    MPI_Datatype inner_type;
-    {
-        size_t* offsets = new size_t[ndims-1] {0};
-        size_t* strides = new size_t[ndims-1] {0};
-        DataBlock<T> inner_view = sub_ds.substruct_s(offsets, sub_ds.dpextents + 1, strides);
-        inner_type = mpi_substruct_type(inner_view);
-        delete[] offsets;
-        delete[] strides;
-    }
-
-    MPI_Datatype type;
-    MPI_Type_create_hvector(sub_ds.dpextents[0], 1, sub_ds.dpstrides[0] * sizeof(T), inner_type, &type);
-    MPI_Type_commit(&type);
-    MPI_Type_free(&inner_type);
-
-    return type;
-}
-
-template<typename T>
-MPI_Datatype DataBlock_MPI_Functions<T>::mpi_subspanmatrix_type(const DataBlock<T>& mat_ds)
-{
-    // specialized 2-D view
-    MPI_Datatype type;
-    MPI_Type_create_hvector(mat_ds.dpextents[0], mat_ds.dpextents[1], mat_ds.dpstrides[0] * sizeof(T), mpi_get_type<T>(), &type);
-    MPI_Type_commit(&type);
-    return type;
-}
-
-// -----------------------------
-// MPI Scatter/Gather helpers
-// -----------------------------
-
-// Scatter a subtensor (view)
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_scatter_substruct(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        int root,
-        MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = MPI_DATATYPE_NULL;
-    MPI_Datatype recv_type = mpi_substruct_type(recv_ds);
-
-    if (rank == root) send_type = mpi_substruct_type(send_ds);
-
-    MPI_Scatter(rank == root ? send_ds.dpdata : nullptr, 1, send_type,
-                recv_ds.dpdata, 1, recv_type, root, comm);
-
-    if (send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
-    MPI_Type_free(&recv_type);
-}
-
-// Gather a subtensor (view)
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_gather_substruct(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        int root,
-        MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = mpi_substruct_type(send_ds);
-    MPI_Datatype recv_type = MPI_DATATYPE_NULL;
-
-    if (rank == root) recv_type = mpi_substruct_type(recv_ds);
-
-    MPI_Gather(send_ds.dpdata, 1, send_type,
-               rank == root ? recv_ds.dpdata : nullptr,
-               1, recv_type, root, comm);
-
-    MPI_Type_free(&send_type);
-    if (recv_type != MPI_DATATYPE_NULL) MPI_Type_free(&recv_type);
-}
-
-// Specialized 2-D scatter/gather for submatrices
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_scatter_submatrix(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_mat,
-        int root,
-        MPI_Comm comm)
-{
-    MPI_Datatype send_type = MPI_DATATYPE_NULL;
-    MPI_Datatype recv_type = mpi_subspanmatrix_type(recv_mat);
-
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == root) send_type = mpi_subspanmatrix_type(send_mat);
-
-    MPI_Scatter(rank == root ? send_mat.dpdata : nullptr, 1, send_type,
-                recv_mat.dpdata, 1, recv_type, root, comm);
-
-    if (send_type != MPI_DATATYPE_NULL) MPI_Type_free(&send_type);
-    MPI_Type_free(&recv_type);
-}
-
-template<typename T>
-void DataBlock_MPI_Functions<T>::mpi_gather_submatrix(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_mat,
-        int root,
-        MPI_Comm comm)
-{
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Datatype send_type = mpi_subspanmatrix_type(send_mat);
-    MPI_Datatype recv_type = MPI_DATATYPE_NULL;
-
-    if (rank == root) recv_type = mpi_subspanmatrix_type(recv_mat);
-
-    MPI_Gather(send_mat.dpdata, 1, send_type,
-               rank == root ? recv_mat.dpdata : nullptr,
-               1, recv_type, root, comm);
-
-    MPI_Type_free(&send_type);
-    if (recv_type != MPI_DATATYPE_NULL) MPI_Type_free(&recv_type);
-}
-
 
 template<typename T>
 inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
@@ -758,7 +1366,6 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(DataBlock<T> &m, int
     MPI_Send(&m.dpdatalength, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprank, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprowmajor, 1, mpi_get_type<bool>(), dest, tag, pcomm);
-    MPI_Send(&m.dpdata_is_devptr,1, mpi_get_type<bool>(), dest, tag, pcomm);
     MPI_Send(m.dpextents, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(m.dpstrides, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
@@ -778,112 +1385,51 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(DataBlock<T> &
 }
 
 template<typename T>
-inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(bool with_memmap, const int source,const  int tag, MPI_Comm pcomm)
+inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm)
 {
     MPI_Status status;
     size_t pdatalength, prank;
     bool prowmajor;
-    bool pdataisdevptr;
 
     MPI_Recv(&pdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&prank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&prowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
 
-    MPI_Recv(&pdataisdevptr,1, mpi_get_type<bool>(), source, tag, pcomm,&status);
-
-
-    pdataisdevptr=false;
-
-
     size_t *pextents,
            *pstrides;
-
     T* pdata;
 
-    pextents= (size_t*)malloc(sizeof(size_t)*prank);
-    MPI_Recv(pextents,prank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
-
-    pstrides= (size_t*)malloc(sizeof(size_t)*prank);
-    MPI_Recv(pstrides,prank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
-
-
-    if(with_memmap)
-    {
-        pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
-    }
-    else
-    {
-        pdata=(T*)malloc(sizeof(T)*pdatalength);
-    }
-    MPI_Recv(pdata,sizeof(T)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
-
-
-    return DataBlock<T>(pdata,pdatalength,prowmajor,prank,pextents,pstrides,false,false,pdataisdevptr);
-}
-
-
-
-template<typename T>
-inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock(bool with_memmap, int devicenum, const int source,const  int tag, MPI_Comm pcomm)
-{
-#if defined(Unified_Shared_Memory)
-    return MPI_Recv_alloc_DataBlock( with_memmap, source, tag, pcomm);
-#else
-
-    MPI_Status status;
-    size_t pdatalength, prank;
-    bool prowmajor;
-    bool pdataisdevptr;
-
-    MPI_Recv(&pdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
-    MPI_Recv(&prank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
-    MPI_Recv(&prowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
-
-    MPI_Recv(&pdataisdevptr,1, mpi_get_type<bool>(), source, tag, pcomm,&status);
-
-    pdataisdevptr=true;
-
-    size_t *pextents,
-           *pstrides;
-
-    T* pdata;
-
-    pextents=(size_t*)malloc(sizeof(size_t)*prank);
-    pstrides=(size_t*)malloc(sizeof(size_t)*prank);
-
-    pdata=(T*)omp_target_alloc(sizeof(T)*pdatalength,devicenum);
+    alloc_helper(with_memmap,ondevice,devicenum,prank,pdatalength,pextents,pstrides,pdata);
 
     MPI_Recv(pextents,prank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+
     MPI_Recv(pstrides,prank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+
     MPI_Recv(pdata,sizeof(T)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
 
-    DataBlock<T> m(pdata,pdatalength,prowmajor,prank,pextents,pstrides,false,false,pdataisdevptr,devicenum);
-    return m;
+    return DataBlock<T>(pdata,pdatalength,prowmajor,prank,pextents,pstrides,ondevice, devicenum);
 
-#endif
 }
 
-template <typename T>
-void DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(DataBlock<T>&m, int dev)
-{
-#if defined(Unified_Shared_Memory)
-    MPI_Free_DataBlock(m);
-#else
-    omp_target_free(m.dpdata,dev);
-    free(m.dpextents);
-    free(m.dpstrides);
-    m.devptr_devicenum=-1;
-    m.dpdata_is_devptr=false;
-#endif
-}
 
 
 template <typename T>
 void DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(DataBlock<T>&m)
 {
-    free(m.dpdata);
-    free(m.dpextents);
-    free(m.dpstrides);
+
+    if(m.dpdata!=nullptr)
+    {
+#if defined(Unified_Shared_Memory)
+        free(m.dpdata);
+#else
+        if(m.dpdata_is_devptr)
+            omp_target_free(m.dpdata,m.devptr_devicenum);
+        else
+            free(m.dpdata);
+#endif
+    }
+    if(m.dpextents!=nullptr) free(m.dpextents);
+    if(m.dpstrides!=nullptr) free(m.dpstrides);
 }
 
 template<typename T>
@@ -894,10 +1440,6 @@ void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock(DataBlock<T>& m,const int so
     MPI_Recv(&m.dpdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
-
-    //ignore this since here, only the reciever can decide where to store the memory.
-    bool dadatevptr;
-    MPI_Recv(&dadatevptr,1, mpi_get_type<bool>(), source, tag, pcomm,&status);
 
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
 
@@ -923,189 +1465,6 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(DataBlock<T>& 
     MPI_Recv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, &status);
 }
 
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_allreduce_row(DataBlock<T>& mat,
-        size_t row_index,
-        MPI_Op op,
-        MPI_Comm comm)
-{
-    MPI_Datatype row_t = mpi_row_type(mat, row_index);
-    T* row_ptr = mat.dpdata + row_index * mat.dpstrides[0];
-    MPI_Allreduce(MPI_IN_PLACE, row_ptr, 1, row_t, op, comm);
-    MPI_Type_free(&row_t);
-}
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_allreduce_column(DataBlock<T>& mat,
-        size_t col_index,
-        MPI_Op op,
-        MPI_Comm comm)
-{
-    MPI_Datatype col_t = mpi_column_type(mat, col_index);
-    T* col_ptr = mat.dpdata + col_index * mat.dpstrides[1];
-    MPI_Allreduce(MPI_IN_PLACE, col_ptr, 1, col_t, op, comm);
-    MPI_Type_free(&col_t);
-}
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_reduce_row(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_mat,
-        size_t row_index,
-        int root, MPI_Op op, MPI_Comm comm)
-{
-    MPI_Datatype t = mpi_row_type(send_mat, row_index);
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == root)
-    {
-        T* recv_ptr = recv_mat.dpdata + row_index * recv_mat.dpstrides[0];
-        // in-place allowed if same buffer
-        if (send_mat.dpdata == recv_mat.dpdata)
-        {
-            MPI_Reduce(MPI_IN_PLACE, recv_ptr, 1, t, op, root, comm);
-        }
-        else
-        {
-            T* send_ptr = send_mat.dpdata + row_index * send_mat.dpstrides[0];
-            MPI_Reduce(send_ptr, recv_ptr, 1, t, op, root, comm);
-        }
-    }
-    else
-    {
-        T* send_ptr = send_mat.dpdata + row_index * send_mat.dpstrides[0];
-        MPI_Reduce(send_ptr, nullptr, 1, t, op, root, comm);
-    }
-    MPI_Type_free(&t);
-}
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_allreduce_subtensor(DataBlock<T>& ds,
-        const size_t* sub_extents,
-        const size_t* sub_strides,   // unused by subarray, kept for symmetry
-        const size_t* sub_offsets,
-        MPI_Op op,
-        MPI_Comm comm)
-{
-    MPI_Datatype st = mpi_subtensor_type(ds, sub_extents, sub_strides, sub_offsets);
-    // ds.dpdata must point to the base of the parent; subarray/starts locate the view
-    MPI_Allreduce(MPI_IN_PLACE, ds.dpdata, 1, st, op, comm);
-    MPI_Type_free(&st);
-}
-
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_allreduce(DataBlock<T>& ds,
-        MPI_Op op,
-        MPI_Comm comm)
-{
-    // Works for contiguous or strided via derived type
-    MPI_Datatype dtype = mpi_datatype(ds);
-    MPI_Allreduce(MPI_IN_PLACE, ds.dpdata, 1, dtype, op, comm);
-    MPI_Type_free(&dtype);
-}
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_reduce(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        int root,
-        MPI_Op op,
-        MPI_Comm comm)
-{
-    // send_ds and recv_ds must describe the same shape/layout
-    MPI_Datatype dtype = mpi_datatype(send_ds);
-
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == root)
-    {
-        // allow in-place at root
-        if (send_ds.dpdata == recv_ds.dpdata)
-        {
-            MPI_Reduce(MPI_IN_PLACE, recv_ds.dpdata, 1, dtype, op, root, comm);
-        }
-        else
-        {
-            MPI_Reduce(send_ds.dpdata, recv_ds.dpdata, 1, dtype, op, root, comm);
-        }
-    }
-    else
-    {
-        MPI_Reduce(send_ds.dpdata, nullptr, 1, dtype, op, root, comm);
-    }
-    MPI_Type_free(&dtype);
-}
-
-
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_reduce_subtensor(const DataBlock<T>& send_ds,
-        DataBlock<T>& recv_ds,
-        const size_t* send_extents,
-        const size_t* send_strides,
-        const size_t* send_offsets,
-        const size_t* recv_extents,
-        const size_t* recv_strides,
-        const size_t* recv_offsets,
-        int root, MPI_Op op, MPI_Comm comm)
-{
-    MPI_Datatype send_t = mpi_subtensor_type(send_ds, send_extents, send_strides, send_offsets);
-
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == root)
-    {
-        MPI_Datatype recv_t = mpi_subtensor_type(recv_ds, recv_extents, recv_strides, recv_offsets);
-        // If recv view aliases the same memory the root used as send, allow in-place.
-        if (send_ds.dpdata == recv_ds.dpdata &&
-                std::memcmp(send_extents, recv_extents, sizeof(size_t)*recv_ds.dprank)==0 &&
-                std::memcmp(send_offsets, recv_offsets, sizeof(size_t)*recv_ds.dprank)==0)
-        {
-            MPI_Reduce(MPI_IN_PLACE, recv_ds.dpdata, 1, recv_t, op, root, comm);
-        }
-        else
-        {
-            MPI_Reduce(send_ds.dpdata, recv_ds.dpdata, 1, recv_t, op, root, comm);
-        }
-        MPI_Type_free(&recv_t);
-    }
-    else
-    {
-        MPI_Reduce(send_ds.dpdata, nullptr, 1, send_t, op, root, comm);
-    }
-    MPI_Type_free(&send_t);
-}
-
-
-template<typename T>
-inline void DataBlock_MPI_Functions<T>::mpi_reduce_column(const DataBlock<T>& send_mat,
-        DataBlock<T>& recv_mat,
-        size_t col_index,
-        int root, MPI_Op op, MPI_Comm comm)
-{
-    MPI_Datatype t = mpi_column_type(send_mat, col_index);
-    int rank;
-    MPI_Comm_rank(comm, &rank);
-    if (rank == root)
-    {
-        T* recv_ptr = recv_mat.dpdata + col_index * recv_mat.dpstrides[1];
-        if (send_mat.dpdata == recv_mat.dpdata)
-        {
-            MPI_Reduce(MPI_IN_PLACE, recv_ptr, 1, t, op, root, comm);
-        }
-        else
-        {
-            T* send_ptr = send_mat.dpdata + col_index * send_mat.dpstrides[1];
-            MPI_Reduce(send_ptr, recv_ptr, 1, t, op, root, comm);
-        }
-    }
-    else
-    {
-        T* send_ptr = send_mat.dpdata + col_index * send_mat.dpstrides[1];
-        MPI_Reduce(send_ptr, nullptr, 1, t, op, root, comm);
-    }
-    MPI_Type_free(&t);
-}
 
 #endif
 

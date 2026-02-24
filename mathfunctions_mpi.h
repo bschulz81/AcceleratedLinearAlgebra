@@ -2740,16 +2740,10 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
                 separate_device_memory=true;
 #endif
             }
-            if(separate_device_memory)
-            {
-                A=DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
-                B=DataBlock_MPI_Functions<T>::MPI_Recv_device_alloc_DataBlock(policy.memmapped_files,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
-            }
-            else
-            {
-                A=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,status.MPI_SOURCE, 2, policy.comm);
-                B=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,status.MPI_SOURCE, 3, policy.comm);
-            }
+
+            A=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
+            B=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
+
 
             bool crowm=true;
             size_t rowsC=A.dpextents[0],
@@ -2796,16 +2790,15 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             }
 
             DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
+
+            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A);
+            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B);
             if(separate_device_memory)
             {
-                DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(A,policy.devicenum);
-                DataBlock_MPI_Functions<T>::MPI_Free_device_DataBlock(B,policy.devicenum);
                 DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
             }
             else
             {
-                DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A);
-                DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B);
                 DataBlock_Host_Memory_Functions<T>::free_data_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files);
             }
 
