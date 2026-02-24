@@ -61,6 +61,8 @@ I will soon update the mpi test application for these operations for the larger 
 
 This should open the possibility to write fully distributed algorithms where the nodes compute their tasks on gpu, whenever this is beneficial.
 
+(The reason this update took so long is that I only recently understood how MPI custom datatype constructions really work, and that one has to resize them)
+
 
 ### 24.01.2026:
 updated the library code such that it works around the gcc bugs https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123750 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123597 
