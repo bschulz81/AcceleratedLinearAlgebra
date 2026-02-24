@@ -46,7 +46,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
-### 24.02.2026, 6:37
+### 24.02.2026, 06:37 o'clock
 Fix for a memory problem that came up in the last update from the refractoring of the Message Passing Scatter and Gather for tensors...
 
 ### 24.02.2026
