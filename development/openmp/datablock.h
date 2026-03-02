@@ -1309,7 +1309,7 @@ DataBlock<T> DataBlock<T>::row_copy_w(const size_t row_index, size_t*    extents
 
     const size_t pl=dpextents[1];
     extents[0] = pl;
-
+    new_strides[0] = 1;
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
     const T*    pd=dpdata;
@@ -1465,7 +1465,7 @@ DataBlock<T> DataBlock<T>::column_copy_w(const size_t col_index, size_t*    exte
     const size_t pl=dpextents[0];
     extents[0] = pl;
 
-    new_strides[0] = dprowmajor ? dpstrides[1] : dpstrides[0];
+    new_strides[0] = 1;
 
     const size_t s0=dpstrides[0];
     const size_t s1=dpstrides[1];
