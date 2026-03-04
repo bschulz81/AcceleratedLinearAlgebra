@@ -400,7 +400,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_gather_matrix_from_rows_alloc(
     }
 
     // --- Prepare datatype on root ---
-    MPI_Datatype tmp, row_type=MPI_DATATYPE_NULL;
+    MPI_Datatype row_type=MPI_DATATYPE_NULL;
 
     if (rank == rootrank)
     {
@@ -846,7 +846,6 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
     int contributes = (send_db.dpdata != nullptr) ? 1 : 0;
 
 
-    size_t* all_nodes = nullptr;
 
     size_t local_gridsize_m = contributes ? send_db.dpextents[0] : 0;
     size_t local_gridsize_n = contributes ? send_db.dpextents[1] : 0;
