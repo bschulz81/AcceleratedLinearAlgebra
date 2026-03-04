@@ -245,6 +245,9 @@ int main(int argc, char** argv)
                                  true,
                                  true,
                                  false);
+        std::cout<<"A tensor in colmajor \n";
+        T_col.printtensor();
+
 
         size_t offsetsC[3]     = {1,0,0};
         size_t sub_extentsC[3] = {1,3,4};

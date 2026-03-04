@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="arraytest"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="datablocktests">
+				<Option output="/home/benni/projects/arraylibrary/openmp/datablocktests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 datablocktests"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="datablocktests/fast">
+				<Option output="/home/benni/projects/arraylibrary/openmp/datablocktests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 datablocktests/fast"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mdspantests">
+				<Option output="/home/benni/projects/arraylibrary/openmp/mdspantests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 mdspantests"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mdspantests/fast">
+				<Option output="/home/benni/projects/arraylibrary/openmp/mdspantests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 mdspantests/fast"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mathdemonstrations">
+				<Option output="/home/benni/projects/arraylibrary/openmp/mathdemonstrations" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 mathdemonstrations"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="mathdemonstrations/fast">
+				<Option output="/home/benni/projects/arraylibrary/openmp/mathdemonstrations" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 mathdemonstrations/fast"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="arraytest_mpi">
+				<Option output="/home/benni/projects/arraylibrary/openmp/arraytest_mpi" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 arraytest_mpi"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="arraytest_mpi/fast">
+				<Option output="/home/benni/projects/arraylibrary/openmp/arraytest_mpi" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 arraytest_mpi/fast"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="sparsetests">
+				<Option output="/home/benni/projects/arraylibrary/openmp/sparsetests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 sparsetests"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="sparsetests/fast">
+				<Option output="/home/benni/projects/arraylibrary/openmp/sparsetests" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/datablocktests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mdspantests"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/mathdemonstrations"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/arraytest_mpi"/>
+					<Add directory="/home/benni/projects/arraylibrary/openmp/sparsetests"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 sparsetests/fast"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/benni/projects/arraylibrary/openmp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -f &quot;/home/benni/projects/arraylibrary/openmp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/datablocktests.cpp">
+			<Option target="datablocktests"/>
+		</Unit>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/main_mpi.cpp">
+			<Option target="arraytest_mpi"/>
+		</Unit>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/mathdemonstrations.cpp">
+			<Option target="mathdemonstrations"/>
+		</Unit>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/mdspantests.cpp">
+			<Option target="mdspantests"/>
+		</Unit>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/sparsetests.cpp">
+			<Option target="sparsetests"/>
+		</Unit>
+		<Unit filename="/home/benni/projects/arraylibrary/openmp/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
