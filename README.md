@@ -1,4 +1,4 @@
-⁸# AcceleratedLinearAlgebra
+# AcceleratedLinearAlgebra
 A library with some linear algebra functions that works with OpenMP and Open-MPI on the host and on gpu accelerators.
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
