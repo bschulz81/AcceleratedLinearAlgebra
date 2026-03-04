@@ -47,7 +47,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 ### 04.03.2026
-Fixed an indexing bug in datablock for the parallel copy of a subspan. Changed the cmakelists.txt to support clang 22
+Fixed an indexing bug in datablock for the parallel copy of a subspan. Changed the cmakelists.txt to support clang 22. Changed the tutorial at https://forums.gentoo.org/viewtopic-t-1172069.html how to compile gcc and clang 22 for gpu offload on gentoo Linux
 
 ### 24.02.2026, 06:37 o'clock
 Fix for a memory problem that came up in the last update from the refractoring of the Message Passing Scatter and Gather for tensors...
