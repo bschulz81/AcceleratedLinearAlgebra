@@ -41,9 +41,8 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Todo:
 
 0) Test the numerical stability and correct compilation of the algorithms with much larger data. 
-1) Test the new expanded support for the message passing interface support more intensely and refine them for usage.
-2) Add options for the linear algebra functions such that most or all of them can use the message passing interface as well as the gpu for local work.
-3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+1) Add options for linear algebra and tensor functions such that most or all of them can use the message passing interface as well as the gpu for local work.
+2) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
 ### 15.03.2026
