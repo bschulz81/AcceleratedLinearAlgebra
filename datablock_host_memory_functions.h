@@ -12,10 +12,10 @@ public:
     inline static DataBlock<T> alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap);
 
     inline static T*  alloc_data_ptr(size_t length,bool create_memmap);
-    inline static void free_data_ptr(T*pdata,size_t datalength,bool with_memmap);
+    inline static void free_data_ptr(T*&pdata,size_t datalength,bool with_memmap);
 
     inline static T* create_temp_mmap(const size_t array_size);
-    inline static void delete_temp_mmap(T* mmap_ptr,const size_t array_size);
+    inline static void delete_temp_mmap(T* &mmap_ptr,const size_t array_size);
 };
 
 template<typename T>
@@ -65,7 +65,7 @@ T* DataBlock_Host_Memory_Functions<T>::create_temp_mmap(const size_t array_size)
 }
 
 template<typename T>
-void DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(T* mmap_ptr,const size_t array_size)
+void DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(T* &mmap_ptr,const size_t array_size)
 {
     size_t file_size = array_size * sizeof(T);
     if (mmap_ptr!=nullptr)
@@ -80,7 +80,7 @@ void DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(T* mmap_ptr,const size
 
 
 template<typename T>
-void DataBlock_Host_Memory_Functions<T>::free_data_ptr(T*pdata,size_t datalength,bool with_memmap)
+void DataBlock_Host_Memory_Functions<T>::free_data_ptr(T*&pdata,size_t datalength,bool with_memmap)
 {
     if(pdata!=nullptr)
     {

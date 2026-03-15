@@ -14,32 +14,15 @@
 
 
 
-struct Math_MPI_Functions_Policy : public Math_Functions_Policy
+struct Math_MPI_Functions_Policy : public Math_Functions_Policy,MPI_Policy
 {
 public:
-    MPI_Comm comm = MPI_COMM_WORLD;
-    bool mpi_enabled = true;
-
-    int mpi_rank = 0;
-    int mpi_size = 1;
     bool allow_gpu_sharing = true;
 
-    Math_MPI_Functions_Policy(Mode m = AUTO,bool gpu_sharing=false,bool mpi=true)
-        : Math_Functions_Policy(m), mpi_enabled(mpi),allow_gpu_sharing(gpu_sharing)
-    {
-        if (mpi_enabled)
-        {
-            int init;
-            MPI_Initialized(&init);
-            if(init)
-            {
-                MPI_Comm_rank(comm, &mpi_rank);
-                MPI_Comm_size(comm, &mpi_size);
-            }
-            else
-                mpi_enabled=false;
-        }
+    Math_MPI_Functions_Policy(Mode m = AUTO,bool gpu_sharing=false,bool mpi=true,MPI_Comm comm=MPI_COMM_WORLD, bool defaultgrid=true, size_t gridrank=2, size_t *proc_grid=nullptr,size_t *cyclic_block=nullptr )
+        : Math_Functions_Policy(m), MPI_Policy (mpi, comm),    allow_gpu_sharing(gpu_sharing)
 
+    {
         // Use cached num_gpus from base class
         if(mpi_enabled)
         {
@@ -149,6 +132,8 @@ public:
         }
     }
 
+
+
 };
 
 
@@ -169,11 +154,11 @@ public:
 
     bool should_use_mpi_for_recursion(size_t num_subcalls) const
     {
-        if (!mpi_enabled)
+        if (!this->mpi_enabled)
             return false;
         int myrank=0;
-        MPI_Comm_rank(comm, &myrank);
-        return std::abs(mpi_size) >= pow(num_subcalls,myrank+1);
+        MPI_Comm_rank(this->comm, &myrank);
+        return std::abs(this->mpi_size) >= pow(num_subcalls,myrank+1);
     }
 
 
@@ -2179,7 +2164,7 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
 
 
 
@@ -2791,8 +2776,8 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
 
             DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
 
-            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A);
-            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B);
+            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A,policy.memmapped_files);
+            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B,policy.memmapped_files);
             if(separate_device_memory)
             {
                 DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);

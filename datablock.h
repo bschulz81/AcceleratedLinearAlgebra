@@ -76,6 +76,9 @@ class mdspan;
 template<typename U, typename Container>
 class mdspan_data;
 
+template <typename T>
+class DistributedDataBlock;
+
 
 class Math_Functions_Policy;
 
@@ -102,6 +105,7 @@ public:
     friend class Math_Functions<T>;
     friend class Math_Functions_MPI<T>;
     friend class BlockedDataView<T>;
+    friend class DistributedDataBlock<T>;
 
     template<typename U, typename Container>
     friend class ::mdspan;
@@ -116,9 +120,8 @@ public:
     DataBlock(T*  data, size_t datalength, bool rowm, size_t rank,size_t*   extents, size_t*   strides,
               bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1 );
 
-    DataBlock(T*  data,size_t datalength,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
-              bool compute_datalength, bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
-
+    DataBlock(T*  data,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
+              bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
 
     DataBlock(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr,int devicenum=-1 );
 
@@ -375,6 +378,7 @@ DataBlock<T>::DataBlock(
     dpstrides(strides),
     dpdatalength(datalength),
     dprank(rank),
+    dprowmajor(rowm),
     devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
     dpdata_is_devptr(false)
@@ -386,7 +390,6 @@ DataBlock<T>::DataBlock(
     if(compute_strides_from_extents==true && extents!=nullptr && strides!=nullptr && rank !=0)
     {
         fill_strides(dpextents,dpstrides,rank,rowm);
-        dprowmajor=rowm;
     }
 
     if(compute_strides_from_extents==false && extents!=nullptr && strides!=nullptr && rank !=0)
@@ -450,20 +453,17 @@ template<typename T> DataBlock<T>::DataBlock(
 #pragma omp begin declare target
 template<typename T> DataBlock<T>::DataBlock(
     T*    data,
-    size_t datalength,
     bool rowm,
     size_t rows,
     size_t cols,
     size_t*    extents,
     size_t*    strides,
-    bool compute_datalength,
     bool compute_strides_from_extents,
     bool data_is_devptr,
     int devicenum
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
-    dpdatalength(datalength),
     dprowmajor(rowm),
     devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
@@ -480,35 +480,45 @@ template<typename T> DataBlock<T>::DataBlock(
             dpextents[0]=rows;
             dpextents[1]=cols;
         }
-        if(strides!=nullptr && compute_strides_from_extents)
+        if(strides!=nullptr)
         {
-            dpstrides[0]=(rowm==true)? cols:1;
-            dpstrides[1]=(rowm==true)?1: rows;
-            dprowmajor=rowm;
-        }
-        if(strides!=nullptr && compute_strides_from_extents==false)
-        {
-            dprowmajor=dpstrides[1]<dpstrides[0];
-        }
-        if(compute_datalength==true && extents!=nullptr && strides!=nullptr)
-        {
-            dpdatalength=(rows-1) * strides[0]+(cols-1)*strides[1]+1;
+            if(compute_strides_from_extents)
+            {
+                dpstrides[0]=(rowm==true)? cols:1;
+                dpstrides[1]=(rowm==true)?1: rows;
+                dprowmajor=rowm;
+            }
+            else
+            {
+                dprowmajor=dpstrides[1]<dpstrides[0];
+            }
+            if(extents!=nullptr)
+            {
+                dpdatalength=(rows-1) * strides[0]+(cols-1)*strides[1]+1;
+            }
         }
     }
     else
     {
-        dprank=1;
-        if (rows>1)
+        if(rows>1)
         {
+            dprank=1;
             dpdatalength=rows;
             dpextents[0]=rows;
+            dpstrides[0]=1;
         }
-        else
+        if(cols>1)
         {
+            dprank=1;
             dpdatalength=cols;
             dpextents[0]=cols;
+            dpstrides[0]=1;
         }
-        dpstrides[0]=1;
+        if(rows==0 && cols==0)
+        {
+            dprank=0;
+            dpdatalength=0;
+        }
         dprowmajor=true;
     }
 
