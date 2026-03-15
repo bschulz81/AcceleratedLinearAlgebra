@@ -158,7 +158,7 @@ int main(int argc, char** argv)
         cout<<"B"<< B.datalength()<<endl<<endl;
         size_t extbbb[2];
         size_t strbbb[2];
-        DataBlock<double>Bbbb(B_data_colmajor.data(),0, false,3,7,extbbb,strbbb,true,true,false);
+        DataBlock<double>Bbbb(B_data_colmajor.data(), false,3,7,extbbb,strbbb,true,true);
         Bbbb.printtensor();
 
         cout<<"column 1"<<endl;

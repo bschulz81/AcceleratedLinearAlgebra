@@ -145,11 +145,11 @@ public:
     inline static void copy_data_to_host_ptr(DataBlock<T>& dL);
     inline static void copy_data_to_device_ptr(DataBlock<T>& dL);
     inline static T* alloc_device_ptr(size_t length, int devicenum);
-    inline static void free_device_ptr(T* deviceptr, int devicenum);
+    inline static void free_device_ptr(T* &deviceptr, int devicenum);
 
 
     inline static T* alloc_data_device_ptr(size_t datalength,bool with_memmap, int devicenum);
-    inline static void free_data_device_ptr(T*pdata,size_t datalength,bool with_memmap, int devicenum);
+    inline static void free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum);
 
     inline static DataBlock<T> alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum);
     inline static void free_copy_device(DataBlock<T>&m, bool with_memmap, int devicenum);
@@ -199,7 +199,7 @@ T* DataBlock_GPU_Memory_Functions<T>::alloc_data_device_ptr(size_t datalength,bo
 
 
 template<typename T>
-void DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(T*pdata,size_t datalength,bool with_memmap, int devicenum)
+void DataBlock_GPU_Memory_Functions<T>::free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum)
 {
 #if defined(Unified_Shared_Memory)
     if(pdata!=nullptr)
@@ -374,7 +374,7 @@ T* DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int device
 
 }
 template<typename T>
-void DataBlock_GPU_Memory_Functions<T>::free_device_ptr(T* deviceptr, int devicenum)
+void DataBlock_GPU_Memory_Functions<T>::free_device_ptr(T* &deviceptr, int devicenum)
 {
     if (deviceptr==nullptr)
         return;

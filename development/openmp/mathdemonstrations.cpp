@@ -468,7 +468,7 @@ int main()
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows4, cols4},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-           Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
+            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
             verify.printtensor();
 
         }
@@ -501,7 +501,7 @@ int main()
             Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
             verify.printtensor();
 
-       }
+        }
     }
 
 }

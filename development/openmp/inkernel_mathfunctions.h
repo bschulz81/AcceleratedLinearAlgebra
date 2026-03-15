@@ -1193,7 +1193,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
     const size_t m = A.dpextents[1];
 
 
-    T* __restrict tempM;
+    T* tempM;
 
     if(with_memmaps)
         tempM=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
