@@ -47,7 +47,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 ### 15.03.2026
-tested and optimized the row, col, submarix, and tensor gatherers and expanded their functionality. a grid policy object is added that specifies the policy of a processing and block grid. If not specially set, a rank depending default grid for block cyclic scattering and gathering is used for matrix and tensor scattering. The scatterer and gatherer are optimized with OpenMP and asynchronic MPI send and recieve. The test application now demonstrates tensor scattering. Outcommented sections demonstrate matrix scattering if activated, and can be easily replaced with row/column scattering, A DistributedDatablock class was added which can store distributed tensors that sit on several MPI nodes. Bugs in the memory routines were fixed...
+tested and optimized the row, col, submarix, and tensor scatterers/gatherer functions and expanded their functionality. 
+A grid policy object is added that specifies the policy of a processing and block grid on which the data is scattered over MPI ranks. If not specially set, a rank depending default grid for block cyclic scattering and gathering is used for matrix and tensor scattering.
+The scatterer and gatherer are optimized with OpenMP and asynchronic MPI send and recieve. The test application now demonstrates tensor scattering. Outcommented sections demonstrate matrix scattering if activated, and can be easily replaced with row/column scattering, A DistributedDatablock class was added which can store distributed tensors that sit on several MPI nodes. Bugs in the memory routines were fixed...
 
 With block cyclic ordering and a class for distributed tensors, it is now much easier to implement load balanced parallel tensor and matrix algorithms that use several mpi nodes. By now only the Strassen and Winograd variant of the Strassen algorithm are implemented. With a fast OpenMP, MPI async optimized scatterer that uses flexible scattering grids, and a dedicated distributed Tensor class that stores the necessary metadata and local data, distributing data over severa nodes is now convenient.
 
