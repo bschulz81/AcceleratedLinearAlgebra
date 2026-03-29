@@ -47,7 +47,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 ### 29.03.2026
 Added a prototype of a distributed summa algorithm for matrix multiplication in the development section. It does not yet use the gpu, but that is only a change of a few lines.
-The reason I am not adding it into the main section is that it is fragile. If one uses the wrong block number for the scattering then it stops without calculation. If the number of mpi nodes is a prime number, it will also stop.
+The reason I am not adding it into the main section is that it is fragile. If one uses the wrong block extents  for the scattering (they must follow the same rules as the sizes for A,B,C in a matrix multiplication) then it stops without calculation. If the number of mpi nodes is a prime number, it will also stop.
 If the mpi communicators of the scattered DataBlocks are different, then errors may occur. I must first think on the necessary architecture to make it easily usable, before I will activate it for gpu and put it in the main section.#
 One can not expect a user to think about block sizes and communicators before a matrix multiplication. The rest of blas functions are then considerable easier to implement.
 
