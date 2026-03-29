@@ -6,6 +6,7 @@
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
 #include <math.h>
+
 #include "datablock_host_memory_functions.h"
 #include "datablock_gpu_memory_functions.h"
 #include "datablock_mpifunctions.h"
@@ -13,8 +14,7 @@
 
 
 
-
-struct Math_MPI_Functions_Policy : public Math_Functions_Policy,MPI_Policy
+struct Math_MPI_Functions_Policy : public Math_Functions_Policy, MPI_Policy
 {
 public:
     bool allow_gpu_sharing = true;
@@ -67,6 +67,32 @@ public:
     }
 
     template <typename T>
+    bool should_use_gpu(const DistributedDataBlock<T>& A,
+                        const DistributedDataBlock<T>& B,
+                        const  DistributedDataBlock<T>& C,
+                        const size_t threshold)const
+    {
+        const size_t problem_size = A.pdatalength;
+
+        switch (mode)
+        {
+        case CPU_ONLY:
+            return false;
+        case GPU_ONLY:
+            return (num_gpus > 0);  // use cached value
+        case AUTO:
+            const bool A_on_dev = A.pdpdata_is_devptr &&(A.pdevptr_devicenum==devicenum);
+            const bool B_on_dev = B.pdpdata_is_devptr &&(B.pdevptr_devicenum==devicenum);
+            const bool C_on_dev = C.pdpdata_is_devptr &&(C.pdevptr_devicenum==devicenum);
+            if(A_on_dev  || B_on_dev ||C_on_dev)
+                return true;
+            return this->should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
+        }
+        return false;
+    }
+
+
+    template <typename T>
     bool should_use_gpu(const DataBlock<T>& A,
                         const DataBlock<T>& B,
                         const  DataBlock<T>& C,
@@ -114,6 +140,31 @@ public:
     }
 
     template <typename T>
+    bool should_use_gpu(const DistributedDataBlock<T>& v1,
+                        const DistributedDataBlock<T>& v2,
+                        const size_t threshold)const
+    {
+        const size_t problem_size = v1.pdatalength;
+
+        switch (mode)
+        {
+        case CPU_ONLY:
+            return false;
+        case GPU_ONLY:
+            return (num_gpus > 0);  // use cached value
+        case AUTO:
+            const bool A_on_dev = v1.dpdata_is_devptr &&(v1.pdevptr_devicenum==devicenum);
+            const bool B_on_dev = v2.dpdata_is_devptr &&(v2.pdevptr_devicenum==devicenum);
+
+            if(A_on_dev||B_on_dev) return true;
+
+            return this->should_use_gpu(problem_size, threshold, A_on_dev  || B_on_dev);
+
+        }
+    }
+
+
+    template <typename T>
     bool should_use_gpu(const DataBlock<T>& v1,
                         const size_t threshold)const
     {
@@ -131,6 +182,26 @@ public:
 
         }
     }
+
+    template <typename T>
+    bool should_use_gpu(const DistributedDataBlock<T>& v1,
+                        const size_t threshold)const
+    {
+        const size_t problem_size = v1.pdatalength;
+        switch (mode)
+        {
+        case CPU_ONLY:
+            return false;
+        case GPU_ONLY:
+            return (num_gpus > 0);  // use cached value
+        case AUTO:
+            const bool A_on_dev = v1.dpdata_is_devptr &&(v1.pdevptr_devicenum==devicenum);
+            if(A_on_dev) return true;
+            return this->should_use_gpu(problem_size, threshold, A_on_dev );
+
+        }
+    }
+
 
 
 
@@ -185,6 +256,7 @@ public:
         // Enough ranks → allow GPU if mapping allows it
         return Math_MPI_Functions_Policy::should_use_gpu(problem_size, threshold, any_input_output_on_device);
     }
+
 
     template <typename T>
     bool should_use_gpu(const DataBlock<T>& A,
@@ -265,6 +337,8 @@ public:
 
 
 
+template<typename T>
+class DataBlock_MPI_Functions;
 
 
 
@@ -290,6 +364,9 @@ public:
 
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
+    inline static void SUMMA_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+
+
 protected:
     inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
 
@@ -302,15 +379,16 @@ protected:
     inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
 
 
-    // optional default policy (initially empty = not constructed)
+
     inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
 
-    // helper to access it with lazy init
+
+
     static const Math_MPI_Decomposition_Policy& get_default_policy()
     {
         if (!default_policy.has_value())
         {
-            // only construct when needed
+
             default_policy.emplace(Math_Functions_Policy::AUTO);
         }
         return *default_policy;
@@ -318,14 +396,204 @@ protected:
 
     static void set_default_policy(const Math_MPI_Decomposition_Policy& p)
     {
-        default_policy = p; // assigns, overwrites if already constructed
+        default_policy = p;
     }
 
     static void reset_default_policy()
     {
-        default_policy.reset(); // clear back to "uninitialized"
+        default_policy.reset();
     }
 };
+
+
+template <typename T>
+void Math_Functions_MPI<T>::SUMMA_Distributed(
+    const DistributedDataBlock<T>& A,
+    const DistributedDataBlock<T>& B,
+    DistributedDataBlock<T>& C,
+    const Math_MPI_Functions_Policy* pol)
+{
+
+    const Math_MPI_Functions_Policy policy =
+        (pol != nullptr) ? *pol : get_default_policy();
+    if(!policy.mpi_enabled) return;
+
+    if (A.pcomm == MPI_COMM_NULL)
+        return;
+    if (B.pcomm == MPI_COMM_NULL)
+        return;
+    if (C.pcomm == MPI_COMM_NULL)
+        return;
+
+    MPI_Comm comm = A.pcomm;
+
+    if(A.pglobal_extents[1] != B.pglobal_extents[0])
+        return;
+    if(A.pglobal_extents[0] != C.pglobal_extents[0])
+        return;
+    if(B.pglobal_extents[1] != C.pglobal_extents[1])
+        return;
+    if(A.pblock_extents[1] != B.pblock_extents[0])
+        return;
+    if(A.pblock_extents[0] != C.pblock_extents[0])
+        return;
+    if(B.pblock_extents[1] != C.pblock_extents[1])
+        return;
+
+    int size;
+    MPI_Comm_size(comm,&size);
+    int rank;
+
+    if(size<4)
+        return;
+    if(checkPrimeNumber(size))
+        return;
+
+    MPI_Comm_rank(comm, &rank);
+
+
+    const size_t Pr = A.pproc_grid[0];
+    const size_t Pc = A.pproc_grid[1];
+
+    int my_row = rank / Pc;
+    int my_col = rank % Pc;
+
+    const size_t br = A.pblock_extents[0];
+    const size_t bk = A.pblock_extents[1];
+    const size_t bc = B.pblock_extents[1];
+
+    const size_t M = A.pglobal_extents[0];
+    const size_t N = B.pglobal_extents[1];
+    const size_t Ktot = A.pglobal_extents[1];
+
+    const size_t grid_r = (M + br - 1) / br;
+    const size_t grid_c = (N + bc - 1) / bc;
+    const size_t grid_k = (Ktot + bk - 1) / bk;
+
+
+    MPI_Comm row_comm, col_comm;
+    MPI_Comm_split(comm, my_row, my_col, &row_comm);
+    MPI_Comm_split(comm, my_col, my_row, &col_comm);
+
+
+    size_t max_A = br * bk;
+    size_t max_B = bk * bc;
+
+    T* A_buf;
+    T* B_buf;
+    bool ongpu=false, memmap=false;
+    int devnum=-1;
+    DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A,A_buf);
+    DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B,B_buf);
+
+    size_t A_ext[2], A_str[2];
+    size_t B_ext[2], B_str[2];
+
+    for (size_t k = 0; k < grid_k; k++)
+    {
+        int root_col = k % Pc;
+        size_t diff1= M - my_row * br;
+
+        size_t A_rows =(br<=diff1)?br:diff1;
+        size_t diff2=Ktot - k * bk;
+        size_t A_cols = (bk<=diff2)? bk:diff2;
+
+        T* A_ptr = A_buf;
+
+
+        if (my_col == root_col)
+        {
+            size_t A_lin = my_row * grid_k + k;
+
+            auto it = A.pglobal_to_local_index.find(A_lin);
+            if (it != A.pglobal_to_local_index.end())
+                A_ptr = A.pblocks[it->second].dpdata;
+        }
+
+        MPI_Bcast(A_ptr, A_rows*A_cols, mpi_get_type<T>(), root_col, row_comm);
+
+        A_ext[0] = A_rows;
+        A_ext[1] = A_cols;
+        A_str[0] = A.pglobal_rowmajor ? A_cols : 1;
+        A_str[1] = A.pglobal_rowmajor ? 1 : A_rows;
+
+        DataBlock<T> A_panel(
+            A_ptr,
+            A_rows*A_cols,
+            A.pglobal_rowmajor,
+            2,
+            A_ext,
+            A_str,
+            false,
+            -1);
+
+
+        int root_row = k % Pr;
+        size_t diff3= Ktot - k * bk;
+
+        size_t B_rows =(bk<=diff2)?bk:diff3;
+        size_t diff4=N - my_col * bc;
+
+        size_t B_cols = (bc<=diff4)? bc:diff4;
+
+        T* B_ptr = B_buf;
+
+        if (my_row == root_row)
+        {
+            size_t B_lin = k * grid_c + my_col;
+
+            auto it = B.pglobal_to_local_index.find(B_lin);
+            if (it != B.pglobal_to_local_index.end())
+                B_ptr = B.pblocks[it->second].dpdata;
+        }
+
+        MPI_Bcast(B_ptr, B_rows*B_cols, mpi_get_type<T>(), root_row, col_comm);
+
+        B_ext[0] = B_rows;
+        B_ext[1] = B_cols;
+        B_str[0] = B.pglobal_rowmajor ? B_cols : 1;
+        B_str[1] = B.pglobal_rowmajor ? 1 : B_rows;
+
+        DataBlock<T> B_panel(
+            B_ptr,
+            B_rows*B_cols,
+            B.pglobal_rowmajor,
+            2,
+            B_ext,
+            B_str,
+            false,
+            -1);
+
+
+        for (size_t i = 0; i < C.plocal_blocknumber; i++)
+        {
+            DataBlock<T>& Cblk = C.pblocks[i];
+
+            DataBlock<T> C_local(
+                Cblk.dpdata,
+                Cblk.dpextents[0] * Cblk.dpextents[1],
+                C.pglobal_rowmajor,
+                2,
+                Cblk.dpextents,
+                Cblk.dpstrides,
+                false,
+                -1);
+
+            In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_s(
+                A_panel,
+                B_panel,
+                C_local);
+        }
+    }
+
+    DataBlock_MPI_Functions<T>::free_helper2(false,false,-1,max_A,A_buf);
+    DataBlock_MPI_Functions<T>::free_helper2(false,false,-1,max_B,B_buf);
+
+    MPI_Comm_free(&row_comm);
+    MPI_Comm_free(&col_comm);
+}
+
+
 
 
 

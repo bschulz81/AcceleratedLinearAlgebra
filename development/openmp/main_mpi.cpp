@@ -112,29 +112,177 @@ int main(int argc, char** argv)
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     int rootrank=0;
+    if (rank == rootrank)
+    {
+        std::vector<double> A_data =
+        {
+            1,  2,  3,   4,  5,  6,   7,  8,  9,   10,
+            13, 14, 15,  16, 17, 18,  19, 20, 21,   22,
+            25, 26, 27,  28, 29, 30,  31, 32, 33,   34,
+            37, 38, 39,  40, 41, 42,  43, 44, 45,   46,
+        };
+        size_t extentsA[2] = {4,10};
+        size_t stridesA[2];
+
+        DataBlock<double> A1(A_data.data(),0, true,2, extentsA,stridesA,true, true, false, -1);
+
+        A1.printtensor();
+
+        DistributedDataBlock<double> block1;
+//        std::cout<<"scatter blocks";
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(2,3,block1,true, false, omp_get_default_device(), MPI_COMM_WORLD,0,&A1);
+//        std::cout<<"printblocks from root"<<std::endl;
+//        std::cout<< block1.local_blocknumber();
+        block1.printtensors();
+
+    std::vector<double> B_data =
+        {
+            1,  2,  3,   4,  5,  6,   7,  8,  9,   10,
+            13, 14, 15,  16, 17, 18,  19, 20, 21,   22,
+            25, 26, 27,  28, 29, 30,  31, 32, 33,   34,
+            37, 38, 39,  40, 41, 42,  43, 44, 45,   46,
+        };
+        size_t extentsB[2] = {10,4};
+        size_t stridesB[2];
+
+        DataBlock<double> B1(B_data.data(),0, true,2, extentsB,stridesB,true, true, false, -1);
+
+        B1.printtensor();
+
+        DistributedDataBlock<double> block2;
+  //      std::cout<<"scatter blocks";
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block2,false, false, omp_get_default_device(), MPI_COMM_WORLD,0,&B1);
+//        std::cout<<"printblocks from root"<<std::endl;
+//        std::cout<< block2.local_blocknumber();
+       block2.printtensors();
+
+
+            std::vector<double> C_data =
+        {
+            0, 0, 0,  0, 0,
+            0, 0, 0,  0, 0,
+            0, 0, 0,  0, 0,
+            0, 0, 0,  0, 0,
+            0, 0, 0,  0, 0,
+        };
+        size_t extentsC[2] = {4,4};
+        size_t stridesC[2];
+
+        DataBlock<double> C1(C_data.data(),0, true,2, extentsC,stridesC,true, true, false, -1);
+
+        C1.printtensor();
+
+        DistributedDataBlock<double> block3;
+//        std::cout<<"scatter blocks";
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(2,3,block3,false, false, omp_get_default_device(), MPI_COMM_WORLD,0,&C1);
+//        std::cout<<"printblocks from root"<<std::endl;
+//        std::cout<< block3.local_blocknumber();
+    //    block1.printtensors();
+
+      Math_Functions_MPI<double>::SUMMA_Distributed(block1,block2,block3);
+
+
+        DataBlock<double> A1copy;
+        DataBlock_MPI_Functions<double>::MPI_Gather_matrix_from_submatrices_alloc(block3,0,&A1copy,  false, false, -1);
+        A1copy.printtensor();
+
+        if(block1.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block1);
+        }
+
+        if(block2.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block2);
+        }
+        if(block3.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block3);
+        }
+
+
+        DataBlock_MPI_Functions<double>::MPI_Free_DataBlock(A1copy,false);
+    }
+    else
+    {
+        DistributedDataBlock<double> block1;
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(2,3,block1,false, false,-1,MPI_COMM_WORLD,0);
+
+//        std::cout<<"printblock"<<std::endl;
+//        std::cout<< block1.local_blocknumber();
+//
+        block1.printtensors();
+
+
+        DistributedDataBlock<double> block2;
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block2,false, false,-1,MPI_COMM_WORLD,0);
+
+//        std::cout<<"printblock"<<std::endl;
+//        std::cout<< block2.local_blocknumber();
+//
+        block2.printtensors();
+
+
+        DistributedDataBlock<double> block3;
+        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(2,3,block3,false, false,-1,MPI_COMM_WORLD,0);
+
+//        std::cout<<"printblock C"<<std::endl;
+//        std::cout<< block3.local_blocknumber();
+//
+//        block3.printtensors();
+
+       Math_Functions_MPI<double>::SUMMA_Distributed(block1,block2,block3);
+
+        DataBlock_MPI_Functions<double>::MPI_Gather_matrix_from_submatrices_alloc(block3,0);
+
+
+        if(block1.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block1);
+        }
+
+        if(block2.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block2);
+        }
+        if(block3.local_blocknumber()>0)
+        {
+            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block3);
+        }
+    }
+
+
+
+
+//    MPI_Init(&argc, &argv);
+//    int rank;
+//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//    int rootrank=0;
+//
 //    if (rank == rootrank)
 //    {
-
+//        std::vector<double> A_data =
+//        {
+//            1,  2,  3,   4,  5,  6,   7,  8,  9,   10,
+//            13, 14, 15,  16, 17, 18,  19, 20, 21,   22,
+//            25, 26, 27,  28, 29, 30,  31, 32, 33,   34,
+//            37, 38, 39,  40, 41, 42,  43, 44, 45,   46,
+//            49, 50, 51,  52, 53, 54,  55, 56, 57,   58
+//        };
+//        size_t extents[3] = {4,2,5};
+//        size_t strides[3];
 //
+//        DataBlock<double> A1(A_data.data(),0, true,3, extents,strides,true, true, false, -1);
 //
-//       std::vector<double> A_data =
-//{
-//     1,  2,  3,   4,  5,  6,   7,  8,  9,   10,
-//    13, 14, 15,  16, 17, 18,  19, 20, 21,   22,
-//    25, 26, 27,  28, 29, 30,  31, 32, 33,   34,
-//    37, 38, 39,  40, 41, 42,  43, 44, 45,   46,
-//    49, 50, 51,  52, 53, 54,  55, 56, 57,   58
-//};
-//      size_t extents[2] = {5,10};
-//      size_t strides[2];
-//
-//      DataBlock<double> A1(A_data.data(),0, true,2, extents,strides,true, true, false, -1);
 //
 //        A1.printtensor();
 //
 //        DistributedDataBlock<double> block;
-//        std::cout<<"scatter blocks";
-//        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(3,4,block,false, true , omp_get_default_device(), MPI_COMM_WORLD,0,&A1);
+//        std::cout<<"scatter block";
+//        size_t blockrank=3;
+//        size_t blockextents[3]= {2,2,3};
+//
+//        DataBlock_MPI_Functions<double>::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,false, false,-1, MPI_COMM_WORLD,0,&A1);
 //        std::cout<<"printblocks from root"<<std::endl;
 //        std::cout<< block.local_blocknumber();
 //        block.printtensors();
@@ -142,102 +290,46 @@ int main(int argc, char** argv)
 //
 //
 //        DataBlock<double> A1copy;
-//        DataBlock_MPI_Functions<double>::MPI_Gather_matrix_from_submatrices_alloc(block,MPI_COMM_WORLD,0,&A1copy,  false, false, -1);
-//       A1copy.printtensor();
+//        DataBlock_MPI_Functions<double>::MPI_Gather_tensor_from_subtensors_alloc(block,MPI_COMM_WORLD,0,&A1copy,  false, false, -1);
+//        A1copy.printtensor();
 //        if(block.local_blocknumber()>0)
 //        {
-//          DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block);
+//            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block);
 //        }
 //
 //        DataBlock_MPI_Functions<double>::MPI_Free_DataBlock(A1copy,false);
-
-    if (rank == rootrank)
-    {
-       std::vector<double> A_data =
-{
-     1,  2,  3,   4,  5,  6,   7,  8,  9,   10,
-    13, 14, 15,  16, 17, 18,  19, 20, 21,   22,
-    25, 26, 27,  28, 29, 30,  31, 32, 33,   34,
-    37, 38, 39,  40, 41, 42,  43, 44, 45,   46,
-    49, 50, 51,  52, 53, 54,  55, 56, 57,   58
-};
-      size_t extents[3] = {5,2,5};
-      size_t strides[3];
-
-      DataBlock<double> A1(A_data.data(),0, false,3, extents,strides,true, true, false, -1);
-
-
-        A1.printtensor();
-
-        DistributedDataBlock<double> block;
-        std::cout<<"scatter block";
-size_t blockrank=3;
-size_t blockextents[3]={3,1,3};
-
-        DataBlock_MPI_Functions<double>::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,false, false ,-1, MPI_COMM_WORLD,0,&A1);
-        std::cout<<"printblocks from root"<<std::endl;
-        std::cout<< block.local_blocknumber();
-        block.printtensors();
-
-
-
-        DataBlock<double> A1copy;
-       DataBlock_MPI_Functions<double>::MPI_Gather_tensor_from_subtensors_alloc(block,MPI_COMM_WORLD,0,&A1copy,  false, false, -1);
-      A1copy.printtensor();
-        if(block.local_blocknumber()>0)
-        {
-          DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block);
-        }
-
-        DataBlock_MPI_Functions<double>::MPI_Free_DataBlock(A1copy,false);
-
-
-    }
-    else
-    {
-
-
-        DistributedDataBlock<double> block;
-
-size_t blockrank=3;
-size_t blockextents[3]={3,1,3};
-
-        DataBlock_MPI_Functions<double>::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block, false, false,-1,MPI_COMM_WORLD,0);
-
-        std::cout<<"printblock"<<std::endl;
-        std::cout<< block.local_blocknumber();
-
-        block.printtensors();
-
-       DataBlock_MPI_Functions<double>::MPI_Gather_tensor_from_subtensors_alloc(block,MPI_COMM_WORLD,0);
-
-       if(block.local_blocknumber()>0)
-        {
-            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block);
-        }
-
+//
+//
+//    }
+//    else
+//    {
+//
+//
 //        DistributedDataBlock<double> block;
-//        DataBlock_MPI_Functions<double>::MPI_Scatter_matrix_to_submatrices_alloc(3,4,block,false, false,-1,MPI_COMM_WORLD,0);
+//
+//        size_t blockrank=3;
+//        size_t blockextents[3]= {2,2,3};
+//
+//        DataBlock_MPI_Functions<double>::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block, false, false,-1,MPI_COMM_WORLD,0);
 //
 //        std::cout<<"printblock"<<std::endl;
 //        std::cout<< block.local_blocknumber();
 //
 //        block.printtensors();
 //
+//        DataBlock_MPI_Functions<double>::MPI_Gather_tensor_from_subtensors_alloc(block,MPI_COMM_WORLD,0);
 //
-//      DataBlock_MPI_Functions<double>::MPI_Gather_matrix_from_submatrices_alloc(block,MPI_COMM_WORLD,0);
-//
-//       if(block.local_blocknumber()>0)
+//        if(block.local_blocknumber()>0)
 //        {
 //            DataBlock_MPI_Functions<double>::MPI_Free_DistributedDataBlock(block);
 //        }
+//
+//    }
 
-
-
-
-    }
 
 
     MPI_Finalize();
     return 0;
+
+
 }

@@ -6,6 +6,7 @@
 
 #include <complex>
 #include <type_traits>
+#include <unordered_map>
 #include <cstdint>
 #include <cstring>
 #include <cmath>
@@ -130,6 +131,7 @@ public:
 
         int remaining = processsize;
 
+        #pragma omp unroll partial
         for(size_t d = 0; d < gridrank; d++)
         {
             double root = std::pow((double)remaining, 1.0/(gridrank-d));
@@ -263,6 +265,8 @@ public:
             pcyclic_block=nullptr;
         }
     }
+
+
 };
 
 
@@ -313,10 +317,17 @@ template<typename T>
 class DataBlock_MPI_Functions;
 
 template<typename T>
+class Math_Functions_MPI;
+
+class Math_MPI_Functions_Policy;
+
+
+template<typename T>
 class DistributedDataBlock
 {
     friend class DataBlock_MPI_Functions<T>;
-
+    friend class Math_Functions_MPI<T>;
+    friend class Math_MPI_Functions_Policy;
 public:
     size_t globalrank()const
     {
@@ -450,8 +461,13 @@ protected:
     bool pglobal_rowmajor=true;
     MPI_Comm pcomm;
     size_t plocal_blocknumber=0;
-    size_t* pblock_coords=nullptr; // size = local_blocknumber * globalrank
-    DataBlock<T>* pblocks;
+    size_t* pblock_coords=nullptr;
+
+    size_t* pblock_indices=nullptr;
+    size_t* pblock_linear_idx=nullptr;
+
+    DataBlock<T>* pblocks=nullptr;
+    std::unordered_map<size_t, size_t> pglobal_to_local_index;
 };
 
 template<typename T>
@@ -460,30 +476,36 @@ class DataBlock_MPI_Functions
 public:
 
     inline static void MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    inline static void MPI_Bcast_DataBlock_meta (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    inline static void MPI_Bcast_DataBlock_extents_strides (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    inline static void MPI_Bcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    inline static void MPI_IBcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com,MPI_Request*req, int rootrank);
+
     inline static void MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool with_memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank);
+
 
     inline static void MPI_Scatter_matrix_to_rows_alloc   (  DistributedDataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
             MPI_Comm comm,   int rootrank,    const DataBlock<T>* send_db=nullptr);
     inline static void MPI_Gather_matrix_from_rows_alloc( const DistributedDataBlock<T>& send_db,
-            MPI_Comm comm,    int rootrank,    DataBlock<T>* recv_db=nullptr,    bool memmap=false,    bool ondevice=false,    int devicenum=-1);
+            int rootrank,    DataBlock<T>* recv_db=nullptr,    bool memmap=false,    bool ondevice=false,    int devicenum=-1);
 
     inline static void MPI_Scatter_matrix_to_columns_alloc(  DistributedDataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
             MPI_Comm comm,   int rootrank,    const DataBlock<T>* send_db=nullptr);
-    inline static void MPI_Gather_matrix_from_columns_alloc(   const DistributedDataBlock<T>& send_db,   MPI_Comm comm,    int rootrank,DataBlock<T>* recv_db = nullptr,
+    inline static void MPI_Gather_matrix_from_columns_alloc(   const DistributedDataBlock<T>& send_db,      int rootrank,DataBlock<T>* recv_db = nullptr,
             bool memmap=false, bool ongpu=false, int devicenum=-1);
 
     inline static void MPI_Scatter_matrix_to_submatrices_alloc(  size_t br,    size_t bc,    DistributedDataBlock<T>& recv_db,
             bool memmap, bool ondevice, int devicenum,    MPI_Comm comm,    int rootrank,    const DataBlock<T>* send_db=nullptr, MPI_GridPol *ppol=nullptr);
 
     inline static void MPI_Gather_matrix_from_submatrices_alloc( const DistributedDataBlock<T>& send_db,
-            MPI_Comm comm, int rootrank,DataBlock<T>* recv_db = nullptr,bool memmap=false, bool ongpu=false, int devicenum=-1 );
+            int rootrank,DataBlock<T>* recv_db = nullptr,bool memmap=false, bool ongpu=false, int devicenum=-1 );
 
     inline static void MPI_Scatter_tensor_to_subtensors_alloc(    size_t blockrank,    const size_t* block_extents,
             DistributedDataBlock<T>& recv_db,    bool memmap,    bool ondevice,    int devicenum,    MPI_Comm comm,
             int rootrank,    const DataBlock<T>* send_db=nullptr, MPI_GridPol *ppol=nullptr);
 
 
-    inline static void MPI_Gather_tensor_from_subtensors_alloc(  const DistributedDataBlock<T>& send_db,  MPI_Comm comm,  int rootrank,
+    inline static void MPI_Gather_tensor_from_subtensors_alloc(  const DistributedDataBlock<T>& send_db,  int rootrank,
             DataBlock<T>* recv_db = nullptr, bool memmap=false, bool ongpu=false, int devicenum=-1);
 
     inline static DataBlock<T> MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm);
@@ -494,11 +516,17 @@ public:
     inline static void MPI_Send_DataBlock(DataBlock<T> &m,const int dest, const int tag, MPI_Comm pcomm);
     inline static void MPI_Recv_DataBlock(DataBlock<T>& m, const int source,const  int tag, MPI_Comm pcomm);
 
-    inline static void MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm);
-    inline static void MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm);
+    inline static void MPI_Send_DataBlock_meta(DataBlock<T> &m,const int dest, const int tag, MPI_Comm pcomm);
+    inline static void MPI_Recv_DataBlock_meta(DataBlock<T>& m, const int source,const  int tag, MPI_Comm pcomm);
+
 
     inline static void MPI_Recv_DataBlock_pdata(DataBlock<T>& mds,const int source, const int tag,const  MPI_Comm pcomm);
     inline static void MPI_Send_DataBlock_pdata(DataBlock<T> &m,const int dest,const int tag,const MPI_Comm pcomm);
+
+
+    inline static void MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm,MPI_Request *request);
+    inline static void MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,MPI_Request *request);
+
 
 
     inline static std::optional<MPI_GridPol> default_grid_policy;
@@ -514,9 +542,12 @@ public:
         return *default_grid_policy;
     }
 
-protected:
     inline static void alloc_helper(bool &memmap,bool& ondevice, int& devnum, size_t rank,size_t datalength,size_t* &pextents,size_t *&pstrides,T *&pdata);
     inline static void alloc_helper2(bool &memmap,bool &ondevice, int& devicenum, size_t datalength,T *&pdata);
+
+    inline static void free_helper(bool memmap,bool ondevice, int devnum,size_t datalength,size_t* &pextents,size_t *&pstrides,T *&pdata);
+
+    inline static void free_helper2(bool memmap,bool ondevice, int devicenum, size_t datalength,T *&pdata);
 
     inline static int compute_owner(const size_t* bcoords,const size_t* proc_grid, const size_t* cyclic_block,size_t gridrank);
 };
@@ -528,27 +559,22 @@ inline int DataBlock_MPI_Functions<T>::compute_owner(
     const size_t* cyclic_block,
     size_t gridrank)
 {
-    size_t *proc_coord=new size_t [gridrank];
-
-    #pragma omp parallel for simd if(parallel: gridrank > 30)
-    for(size_t d=0; d<gridrank; d++)
-    {
-        size_t group = bcoords[d] / cyclic_block[d];
-        proc_coord[d] = group % proc_grid[d];
-    }
-
-
-
-    int owner = 0;
+    int owner=0;
     #pragma omp unroll partial
     for(size_t d=0; d<gridrank; d++)
-        owner = owner * proc_grid[d] + proc_coord[d];
-
-    delete []proc_coord;
+    {
+        int group = bcoords[d] / cyclic_block[d];
+        int proc_coord = group % proc_grid[d];
+        owner = owner * proc_grid[d] + proc_coord;
+    }
 
     return owner;
 
 }
+
+
+
+
 
 template <typename T>
 void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
@@ -636,6 +662,21 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
         free(m.pglobal_strides);
         m.pglobal_strides=nullptr;
     }
+
+    if(m.pblock_indices)
+    {
+        free(m.pblock_indices);
+        m.pblock_indices=nullptr;
+    }
+    if(m.pblock_linear_idx)
+    {
+        free(m.pblock_linear_idx);
+        m.pblock_linear_idx=nullptr;
+    }
+
+    m.pglobal_to_local_index.clear();
+
+
 }
 
 
@@ -645,6 +686,14 @@ void DataBlock_MPI_Functions<T>::alloc_helper(bool &memmap,bool &ondevice, int& 
 {
     pextents= (size_t*)malloc(sizeof(size_t)*rank);
     pstrides= (size_t*)malloc(sizeof(size_t)*rank);
+    alloc_helper2(memmap,ondevice,devicenum,datalength,pdata);
+
+}
+
+
+template <typename T>
+void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int& devicenum,size_t datalength,T *&pdata)
+{
 
 #if defined(Unified_Shared_Memory)
     ondevice=false;
@@ -679,41 +728,54 @@ void DataBlock_MPI_Functions<T>::alloc_helper(bool &memmap,bool &ondevice, int& 
 #endif
 }
 
+
+
+
 template <typename T>
-void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int& devicenum, size_t datalength,T *&pdata)
+void DataBlock_MPI_Functions<T>::free_helper(bool memmap,bool ondevice, int devicenum, size_t datalength,size_t*& pextents,size_t *&pstrides,T *&pdata)
+{
+    free_helper2(memmap,ondevice,devicenum,datalength,pdata);
+
+    free(pextents);
+    free(pstrides);
+    pextents=nullptr;
+    pstrides=nullptr;
+}
+
+
+
+template <typename T>
+void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int devicenum, size_t datalength,T *&pdata)
 {
 
 #if defined(Unified_Shared_Memory)
-    ondevice=false;
-    devicenum=-1;
     if(with_memmap)
     {
-        pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
+        DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(pdata,pdatalength)
     }
     else
     {
-        pdata=(T*)malloc(sizeof(T)*pdatalength);
+        free(pdata);
     }
 #else
-
     if(ondevice)
     {
-        memmap=false;
-        pdata=(T*)omp_target_alloc(sizeof(T)*datalength,devicenum);
+        omp_target_free(pdata,devicenum);
     }
     else
     {
-        devicenum=-1;
         if(memmap)
         {
-            pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(datalength);
+            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
         }
         else
         {
-            pdata=(T*)malloc(sizeof(T)*datalength);
+            free(pdata);
         }
     }
 #endif
+    pdata=nullptr;
+
 }
 
 
@@ -721,24 +783,52 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
-    int rank;
-    MPI_Comm_rank(com, &rank);
-    MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
+    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, com);
 }
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com, int rootrank)
+{
+    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, com);
+}
+
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_meta (DataBlock<T> &db,MPI_Comm com, int rootrank)
+{
+    MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
+}
+
+
+
+template<typename T>
+inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_extents_strides (DataBlock<T> &db,MPI_Comm com, int rootrank)
+{
+    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+}
+
+
 
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank)
 {
     int rank;
     MPI_Comm_rank(com, &rank);
-    MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (&db.dprank,    1,    mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprank,    1,    mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
 
     if (rank != rootrank)
     {
@@ -747,9 +837,9 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> 
         db.dpdata_is_devptr=ondevice;
         db.devptr_former_hostptr=nullptr;
     }
-    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, MPI_COMM_WORLD);
-    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, MPI_COMM_WORLD);
+    MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
+    MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, com);
 }
 
 
@@ -764,6 +854,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_rows_alloc(
     int rank,size;
     MPI_Comm_rank(comm,&rank);
     MPI_Comm_size(comm,&size);
+
 
     recv_db.pglobal_extents=(size_t*)malloc(sizeof(size_t)*2);
     recv_db.pglobal_strides=(size_t*)malloc(sizeof(size_t)*2);
@@ -815,21 +906,29 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_rows_alloc(
     recv_db.pblock_coords =
         (local_rows>0)?(size_t*)malloc(sizeof(size_t)*2*local_rows):nullptr;
 
+    recv_db.pblock_indices =(local_rows>0)?(size_t*)malloc(sizeof(size_t)*recv_db.pblock_rank*local_rows):nullptr;
 
+    recv_db.pblock_linear_idx =(local_rows>0)?(size_t*)malloc(sizeof(size_t)*local_rows):nullptr;
+
+    recv_db.pglobal_to_local_index.reserve(local_rows);
 
     size_t idx=0;
 
-    for(size_t r=0; r<M; r++)
+
+
+    for(size_t r = 0; r < M; r++)
     {
-        if(r%size!=(size_t)rank)
+        if(r % size != (size_t)rank)
             continue;
-        recv_db.pblock_coords[2*idx]   = r;
-        recv_db.pblock_coords[2*idx+1] = 0;
+
+        recv_db.pblock_coords[2*idx]     = r;
+        recv_db.pblock_coords[2*idx + 1] = 0;
+        recv_db.pblock_indices[idx] = r;
+        recv_db.pblock_linear_idx[idx] = r;
+        recv_db.pglobal_to_local_index[r] = idx;
+
         idx++;
     }
-
-
-
 
 
     recv_db.pdatalength=N*local_rows;
@@ -842,10 +941,6 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_rows_alloc(
     recv_db.pdpdata_is_devptr=ondevice;
     recv_db.pdevptr_devicenum=devicenum;
     recv_db.pmemmap=memmap;
-
-
-
-
 
     MPI_Request* reqs=new MPI_Request[local_rows];
 
@@ -1026,7 +1121,11 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(
     recv_db.pblock_coords =
         (local_cols>0)?(size_t*)malloc(sizeof(size_t)*2*local_cols):nullptr;
 
+    recv_db.pblock_indices =(local_cols>0)?(size_t*)malloc(sizeof(size_t)*recv_db.pblock_rank*local_cols):nullptr;
 
+    recv_db.pblock_linear_idx =(local_cols>0)?(size_t*)malloc(sizeof(size_t)*local_cols):nullptr;
+
+    recv_db.pglobal_to_local_index.reserve(local_cols);
 
     size_t idx=0;
 
@@ -1037,6 +1136,11 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(
 
         recv_db.pblock_coords[2*idx]   = 0;
         recv_db.pblock_coords[2*idx+1] = c;
+
+        recv_db.pblock_indices[idx] = c;
+        recv_db.pblock_linear_idx[idx] = c;
+        recv_db.pglobal_to_local_index[c] = idx;
+
         idx++;
     }
 
@@ -1163,18 +1267,21 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
     bool memmap,
     bool ondevice,
     int devicenum,
-    MPI_Comm comm,
+    MPI_Comm active_comm,
     int rootrank,
     const DataBlock<T>* send_db, MPI_GridPol *pol)
 {
+
+    recv_db.pcomm = active_comm;
+    if (active_comm == MPI_COMM_NULL)
+    {
+        return;
+    }
+
     int rank,size;
-    MPI_Comm_rank(comm,&rank);
-    MPI_Comm_size(comm,&size);
+    MPI_Comm_rank(active_comm,&rank);
+    MPI_Comm_size(active_comm,&size);
 
-
-
-
-    recv_db.pcomm = comm;
     recv_db.pglobalrank = 2;
 
     recv_db.pglobal_extents=(size_t*)malloc(sizeof(size_t)*2);
@@ -1202,7 +1309,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
         recv_db.pblock_extents[0]=br;
         recv_db.pblock_extents[1]=bc;
 
-        const MPI_GridPol& policy = (pol != nullptr) ? *pol : get_default_grid_policy(comm,2);
+        const MPI_GridPol& policy = (pol != nullptr) ? *pol : get_default_grid_policy(active_comm,2);
         Pr=policy.pproc_grid[0];
         Pc=policy.pproc_grid[1];
         recv_db.pproc_grid[0]=Pr;
@@ -1210,12 +1317,12 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
     }
 
 
-    MPI_Bcast(recv_db.pglobal_extents,2,mpi_get_type<size_t>(),rootrank,comm);
-    MPI_Bcast(recv_db.pglobal_strides,2,mpi_get_type<size_t>(),rootrank,comm);
-    MPI_Bcast(&recv_db.pglobal_rowmajor,1,mpi_get_type<bool>(),rootrank,comm);
+    MPI_Bcast(recv_db.pglobal_extents,2,mpi_get_type<size_t>(),rootrank,active_comm);
+    MPI_Bcast(recv_db.pglobal_strides,2,mpi_get_type<size_t>(),rootrank,active_comm);
+    MPI_Bcast(&recv_db.pglobal_rowmajor,1,mpi_get_type<bool>(),rootrank,active_comm);
 
-    MPI_Bcast(recv_db.pblock_extents,2,mpi_get_type<size_t>(),rootrank,comm);
-    MPI_Bcast(recv_db.pproc_grid,2,mpi_get_type<size_t>(),rootrank,comm);
+    MPI_Bcast(recv_db.pblock_extents,2,mpi_get_type<size_t>(),rootrank,active_comm);
+    MPI_Bcast(recv_db.pproc_grid,2,mpi_get_type<size_t>(),rootrank,active_comm);
 
     Pr=recv_db.pproc_grid[0];
     Pc=recv_db.pproc_grid[1];
@@ -1231,13 +1338,19 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
 
 
     size_t local_blocks=0;
+
     #pragma omp parallel for simd collapse(2)
     for(size_t bi=0; bi<grid_r; bi++)
+    {
         for(size_t bj=0; bj<grid_c; bj++)
         {
-            int proc_row = bi % Pr;
-            int proc_col = bj % Pc;
-            int owner = proc_row * Pc + proc_col;
+            size_t bcoords[2] = {bi, bj};
+            int owner = compute_owner(
+                            bcoords,
+                            recv_db.pproc_grid,
+                            recv_db.pcyclic_block,
+                            2);
+
 
             if(owner == rank)
             {
@@ -1245,6 +1358,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
                 local_blocks++;
             }
         }
+    }
 
     recv_db.plocal_blocknumber=local_blocks;
 
@@ -1254,28 +1368,52 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
     recv_db.pblock_coords =
         (local_blocks>0)?(size_t*)malloc(sizeof(size_t)*2*local_blocks):nullptr;
 
+    recv_db.pblock_indices =
+        (local_blocks>0)?(size_t*)malloc(sizeof(size_t)*2*local_blocks):nullptr;
+
+    recv_db.pblock_linear_idx =
+        (local_blocks>0)?(size_t*)malloc(sizeof(size_t)*local_blocks):nullptr;
+
+
 
 
 
     #pragma omp parallel for collapse(2)
     for(size_t bi=0; bi<grid_r; bi++)
+    {
         for(size_t bj=0; bj<grid_c; bj++)
         {
-            int proc_row = bi % Pr;
-            int proc_col = bj % Pc;
+            size_t bcoords[2] = {bi, bj};
+            int owner = compute_owner(
+                            bcoords,
+                            recv_db.pproc_grid,
+                            recv_db.pcyclic_block,
+                            2);
 
-            if(proc_row * Pc + proc_col != rank)
+            if(owner != rank)
                 continue;
+
+
+            size_t proc_row = (bi / recv_db.pcyclic_block[0]) % Pr;
+            size_t proc_col = (bj / recv_db.pcyclic_block[1]) % Pc;
 
             size_t local_cols = (grid_c + Pc - proc_col - 1) / Pc;
             size_t local_i = bi / Pr;
             size_t local_j = bj / Pc;
 
             size_t my_idx = local_i * local_cols + local_j;
+            recv_db.pblock_indices[2*my_idx]   = bi;
+            recv_db.pblock_indices[2*my_idx+1] = bj;
 
-            recv_db.pblock_coords[2*my_idx]   = bi*br;
-            recv_db.pblock_coords[2*my_idx+1] = bj*bc;
+            size_t r0 = bi * br;
+            size_t c0 = bj * bc;
+
+            recv_db.pblock_coords[2*my_idx]   = r0;
+            recv_db.pblock_coords[2*my_idx+1] = c0;
+
+            recv_db.pblock_linear_idx[my_idx] = bi * grid_c + bj;
         }
+    }
 
 
 
@@ -1311,16 +1449,20 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
     size_t req_idx = 0;
 
     for(size_t bi=0; bi<grid_r; bi++)
+    {
         for(size_t bj=0; bj<grid_c; bj++)
         {
-            int proc_row = bi % Pr;
-            int proc_col = bj % Pc;
-            int owner = proc_row * Pc + proc_col;
+            size_t bcoords[2] = {bi, bj};
+            int owner = compute_owner(
+                            bcoords,
+                            recv_db.pproc_grid,
+                            recv_db.pcyclic_block,
+                            2);
 
             if(owner != rank)
                 continue;
-            size_t b = bi * grid_c + bj;
 
+            size_t b = bi * grid_c + bj;
             size_t r0 = bi * br;
             size_t c0 = bj * bc;
             size_t diff= M - r0;
@@ -1334,18 +1476,32 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
                 mpi_get_type<T>(),
                 rootrank,
                 b,
-                comm,
+                active_comm,
                 &reqs[req_idx]);
 
             offset += rows * cols;
             req_idx++;
         }
-
+    }
 
 
 
     if(rank==rootrank)
     {
+        MPI_Datatype tmp0,blocktype0;
+
+        MPI_Type_vector(
+            send_db->dprowmajor? br:bc,
+            send_db->dprowmajor? bc:br,
+            send_db->dprowmajor? send_db->dpstrides[0]:send_db->dpstrides[1],
+            mpi_get_type<T>(),
+            &tmp0);
+
+        MPI_Type_create_resized(tmp0,0,sizeof(T),&blocktype0);
+        MPI_Type_commit(&blocktype0);
+        MPI_Type_free(&tmp0);
+
+
         MPI_Request* sendreqs=new MPI_Request[total_blocks];
 
         for(size_t bi=0; bi<grid_r; bi++)
@@ -1353,30 +1509,38 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
             {
                 size_t b = bi * grid_c + bj;
 
-                int proc_row = bi % Pr;
-                int proc_col = bj % Pc;
-                int owner = proc_row * Pc + proc_col;
-
+                size_t bcoords[2] = {bi, bj};
+                int owner = compute_owner(
+                                bcoords,
+                                recv_db.pproc_grid,
+                                recv_db.pcyclic_block,
+                                2);
                 size_t r0 = bi * br;
                 size_t c0 = bj * bc;
 
-                size_t diff=M-r0;
-                size_t rows =br<=diff? br:diff;
-                diff=N-c0;
-                size_t cols =bc<=diff? bc:diff;
+                size_t diff1=M-r0,
+                       diff2=N-c0;
 
-                MPI_Datatype tmp,blocktype;
+                bool edgecase=false;
 
-                MPI_Type_vector(
-                    send_db->dprowmajor? rows:cols,
-                    send_db->dprowmajor? cols:rows,
-                    send_db->dprowmajor? send_db->dpstrides[0]:send_db->dpstrides[1],
-                    mpi_get_type<T>(),
-                    &tmp);
+                MPI_Datatype tmp1,blocktype1;
+                if(diff1 < br || diff2 < bc)
+                {
+                    size_t rows=br<diff1? br:diff1;
+                    size_t cols=bc<diff2? bc:diff2;
 
-                MPI_Type_create_resized(tmp,0,sizeof(T),&blocktype);
-                MPI_Type_commit(&blocktype);
-                MPI_Type_free(&tmp);
+                    MPI_Type_vector(
+                        send_db->dprowmajor? rows:cols,
+                        send_db->dprowmajor? cols:rows,
+                        send_db->dprowmajor? send_db->dpstrides[0]:send_db->dpstrides[1],
+                        mpi_get_type<T>(),
+                        &tmp1);
+                    MPI_Type_create_resized(tmp1,0,sizeof(T),&blocktype1);
+                    MPI_Type_commit(&blocktype1);
+                    MPI_Type_free(&tmp1);
+                    edgecase=true;
+                }
+
 
                 T* start =
                     send_db->dpdata +
@@ -1386,16 +1550,20 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
                 MPI_Isend(
                     start,
                     1,
-                    blocktype,
+                    edgecase? blocktype1: blocktype0,
                     owner,
                     b,
-                    comm,
+                    active_comm,
                     &sendreqs[b]);
 
-                MPI_Type_free(&blocktype);
+                if(edgecase)
+                    MPI_Type_free(&blocktype1);
             }
 
+
         MPI_Waitall(total_blocks,sendreqs,MPI_STATUSES_IGNORE);
+        MPI_Type_free(&blocktype0);
+
         delete[] sendreqs;
     }
 
@@ -1404,9 +1572,11 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
     delete[] reqs;
 
     offset=0;
+
     recv_db.pextentsbuffer =(size_t*)malloc(sizeof(size_t)*2*local_blocks);
     recv_db.pstridesbuffer=(size_t*)malloc(sizeof(size_t)*2*local_blocks);
 
+    recv_db.pglobal_to_local_index.reserve(local_blocks);
     #pragma omp parallel for ordered schedule(static)
     for(size_t i=0; i<local_blocks; i++)
     {
@@ -1419,8 +1589,6 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
         size_t rows =br<diff? br:diff;
         diff=N-c0;
         size_t cols = bc<=diff? bc:diff;
-
-
 
         bext_i[0]=rows;
         bext_i[1]=cols;
@@ -1439,9 +1607,12 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_submatrices_alloc(
                     bstr_i,
                     ondevice,
                     devicenum);
+            size_t lin = recv_db.pblock_linear_idx[i];
+            recv_db.pglobal_to_local_index[lin]=i;
 
             offset += rows*cols;
         }
+
     }
 }
 
@@ -1453,23 +1624,31 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     bool memmap,
     bool ondevice,
     int devicenum,
-    MPI_Comm comm,
+    MPI_Comm active_comm,
     int rootrank,
     const DataBlock<T>* send_db,
     MPI_GridPol* ppol)
 {
-    int rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
 
-    recv_db.pcomm = comm;
+    recv_db.pcomm = active_comm;
+
+    if (active_comm == MPI_COMM_NULL)
+        return;
+
+    int rank,size;
+    MPI_Comm_rank(active_comm,&rank);
+    MPI_Comm_size(active_comm,&size);
+
+
+
+
     recv_db.pglobalrank = blockrank;
     size_t pgridrank;
 
 
     if(rank == rootrank)
     {
-        const MPI_GridPol& policy = (ppol != nullptr) ? *ppol : get_default_grid_policy(comm,blockrank);
+        const MPI_GridPol& policy = (ppol != nullptr) ? *ppol : get_default_grid_policy(active_comm,blockrank);
         pgridrank = std::min(policy.pgridrank, send_db->dprank);
         recv_db.pgridrank = pgridrank;
 
@@ -1509,10 +1688,10 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     }
 
 
-    MPI_Bcast(&recv_db.pgridrank, 1, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(&recv_db.pglobalrank, 1, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(&recv_db.pblock_rank, 1, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(&recv_db.pglobal_rowmajor, 1, mpi_get_type<bool>(), rootrank, comm);
+    MPI_Bcast(&recv_db.pgridrank, 1, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(&recv_db.pglobalrank, 1, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(&recv_db.pblock_rank, 1, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(&recv_db.pglobal_rowmajor, 1, mpi_get_type<bool>(), rootrank, active_comm);
 
     pgridrank = recv_db.pgridrank;
 
@@ -1525,27 +1704,28 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
         recv_db.pblock_extents = (size_t*)malloc(sizeof(size_t) * recv_db.pblock_rank);
     }
 
-    MPI_Bcast(recv_db.pproc_grid, recv_db.pgridrank, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(recv_db.pcyclic_block, recv_db.pgridrank, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(recv_db.pglobal_extents, recv_db.pglobalrank, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(recv_db.pglobal_strides, recv_db.pglobalrank, mpi_get_type<size_t>(), rootrank, comm);
-    MPI_Bcast(recv_db.pblock_extents, recv_db.pblock_rank, mpi_get_type<size_t>(), rootrank, comm);
+    MPI_Bcast(recv_db.pproc_grid, recv_db.pgridrank, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(recv_db.pcyclic_block, recv_db.pgridrank, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(recv_db.pglobal_extents, recv_db.pglobalrank, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(recv_db.pglobal_strides, recv_db.pglobalrank, mpi_get_type<size_t>(), rootrank, active_comm);
+    MPI_Bcast(recv_db.pblock_extents, recv_db.pblock_rank, mpi_get_type<size_t>(), rootrank, active_comm);
 
 
     size_t* grid = new size_t[recv_db.pglobalrank];
-    size_t total_blocks = 1;
 
 
-    #pragma omp parallel for simd reduction(*:total_blocks) if(parallel: blockrank > 30)
+
+    #pragma omp parallel for simd if(parallel: blockrank > 30)
     for(size_t d = 0; d < blockrank; d++)
     {
         grid[d] = (recv_db.pglobal_extents[d] + recv_db.pblock_extents[d] - 1) / recv_db.pblock_extents[d];
     }
 
-    #pragma omp parallel for simd reduction(*:total_blocks) if(parallel: recv_db.pglobalrank-blockrank > 30)
+    #pragma omp parallel for if(parallel: recv_db.pglobalrank-blockrank > 30)
     for(size_t d = blockrank; d < recv_db.pglobalrank; d++)
         grid[d] = 1;
 
+    size_t total_blocks = 1;
     #pragma omp parallel for simd reduction(*:total_blocks) if(parallel: recv_db.pglobalrank > 30)
     for(size_t d = 0; d < recv_db.pglobalrank; d++)
         total_blocks *= grid[d];
@@ -1584,6 +1764,10 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     recv_db.pblocks = (local_blocks > 0) ? (DataBlock<T>*)malloc(sizeof(DataBlock<T>) * local_blocks) : nullptr;
     recv_db.pblock_coords = (local_blocks > 0) ? (size_t*)malloc(sizeof(size_t) * blockrank * local_blocks) : nullptr;
 
+    recv_db.pblock_indices =(local_blocks > 0) ? (size_t*)malloc(sizeof(size_t) * blockrank * local_blocks) : nullptr;
+    recv_db.pblock_linear_idx =(local_blocks>0)?(size_t*)malloc(sizeof(size_t)*local_blocks):nullptr;
+
+    recv_db.pglobal_to_local_index.reserve(local_blocks);
 
     size_t idx = 0;
     #pragma omp parallel
@@ -1592,6 +1776,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
         #pragma omp for ordered
         for(size_t b = 0; b < total_blocks; b++)
         {
+
             size_t tmp = b;
 
             #pragma omp unroll partial
@@ -1610,7 +1795,13 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
             #pragma omp ordered
             {
                 for(size_t d = 0; d < blockrank; d++)
+                {
+                    recv_db.pblock_indices[idx* blockrank+ d] = bcoords[d];
                     recv_db.pblock_coords[idx*blockrank + d] = bcoords[d] * recv_db.pblock_extents[d];
+                }
+                recv_db.pblock_linear_idx[idx] = b;
+                recv_db.pglobal_to_local_index[b] = idx;
+
                 idx++;
             }
         }
@@ -1618,19 +1809,26 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
         delete[] bcoords;
     }
 
+    size_t* block_sizes = new size_t[local_blocks];
+
     size_t total_recv_elems = 0;
     #pragma omp parallel for reduction(+:total_recv_elems)
     for(size_t i = 0; i < local_blocks; i++)
     {
-        size_t elems = 1;
-        #pragma omp simd reduction (*:elems)
+        size_t tmp = 1;
+
+        #pragma omp simd reduction (*:tmp )
+
         for(size_t d = 0; d < blockrank; d++)
         {
             size_t start = recv_db.pblock_coords[i*blockrank + d];
             size_t diff = recv_db.pglobal_extents[d] - start;
             size_t len = (recv_db.pblock_extents[d] <= diff) ? recv_db.pblock_extents[d] : diff;
-            elems *= len;
+            tmp *= len;
         }
+        block_sizes[i]=tmp;
+
+        size_t elems=block_sizes[i] ;
 
         #pragma omp simd reduction(*:elems)
         for(size_t d = blockrank; d < recv_db.pglobalrank; d++)
@@ -1654,54 +1852,43 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     MPI_Request* reqs = new MPI_Request[local_blocks];
     size_t offset = 0;
     size_t req_idx = 0;
-    size_t *bcoords=new size_t[blockrank];
-    for(size_t b = 0; b < total_blocks; b++)
+    for(size_t i = 0; i < local_blocks; i++)
     {
-        size_t tmp = b;
+        size_t elems = block_sizes[i];
 
-        size_t elems = 1;
+        #pragma omp parallel for simd reduction(*:elems) if(parallel:blockrank>30)
+        for(size_t d = blockrank; d < recv_db.pglobalrank; d++)
+            elems *= recv_db.pglobal_extents[d];
 
-        #pragma omp unroll partial
-        for(int d = blockrank-1; d >= 0; d--)
-        {
-            bcoords[d] = tmp % grid[d];
-            tmp /= grid[d];
-        }
+        size_t b = recv_db.pblock_linear_idx[i];
 
-        #pragma omp parallel for simd if(parallel:blockrank>30)
-        for(int d = blockrank-1; d >= 0; d--)
-        {
-            size_t start = bcoords[d] * block_extents[d];
-            size_t diff = recv_db.pglobal_extents[d] - start;
-            size_t len = (block_extents[d] <= diff) ? block_extents[d] : diff;
-            elems *= len;
-        }
+        MPI_Irecv(recv_db.pdata + offset, elems,
+                  mpi_get_type<T>(), rootrank, b, active_comm, &reqs[req_idx]);
 
-        int owner = compute_owner(bcoords, recv_db.pproc_grid, recv_db.pcyclic_block, recv_db.pgridrank);
-        if(owner != rank) continue;
-
-        MPI_Irecv(recv_db.pdata + offset, elems, mpi_get_type<T>(), rootrank, b, comm, &reqs[req_idx]);
         offset += elems;
         req_idx++;
     }
 
 
-
     if(rank == rootrank)
     {
         MPI_Request* sendreqs = new MPI_Request[total_blocks];
-        int* sizes = new int[blockrank];
-        int* subs = new int[blockrank];
+
+        int* sizes  = new int[blockrank];
+        int* subs   = new int[blockrank];
         int* starts = new int[blockrank];
 
-
-        #pragma omp parallel for simd if(parallel: blockrank > 30)
+        #pragma omp parallel for simd if(parallel:blockrank>30)
         for(size_t d = 0; d < blockrank; d++)
             sizes[d] = (int)send_db->dpextents[d];
 
+        size_t* bcoords = new size_t[recv_db.pglobalrank];
+
         for(size_t b = 0; b < total_blocks; b++)
         {
+
             size_t tmp = b;
+
             #pragma omp unroll partial
             for(int d = blockrank-1; d >= 0; d--)
             {
@@ -1710,29 +1897,38 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
             }
 
             #pragma omp parallel for simd if(parallel:blockrank>30)
-            for(int d = blockrank-1; d >= 0; d--)
+            for(int d = 0; d < (int)blockrank; d++)
             {
                 starts[d] = (int)(bcoords[d] * block_extents[d]);
                 size_t diff = recv_db.pglobal_extents[d] - starts[d];
                 subs[d] = (int)((block_extents[d] <= diff) ? block_extents[d] : diff);
             }
 
-            int owner = compute_owner(bcoords, recv_db.pproc_grid, recv_db.pcyclic_block, recv_db.pgridrank);
+            int owner = compute_owner(bcoords,
+                                      recv_db.pproc_grid,
+                                      recv_db.pcyclic_block,
+                                      recv_db.pgridrank);
 
             MPI_Datatype tmp_type, blocktype;
+
             MPI_Type_create_subarray(blockrank, sizes, subs, starts,
                                      send_db->dprowmajor ? MPI_ORDER_C : MPI_ORDER_FORTRAN,
                                      mpi_get_type<T>(), &tmp_type);
+
             MPI_Type_create_resized(tmp_type, 0, sizeof(T), &blocktype);
             MPI_Type_commit(&blocktype);
             MPI_Type_free(&tmp_type);
 
-            MPI_Isend(send_db->dpdata, 1, blocktype, owner, b, comm, &sendreqs[b]);
+            MPI_Isend(send_db->dpdata, 1, blocktype,
+                      owner, b, active_comm, &sendreqs[b]);
+
             MPI_Type_free(&blocktype);
         }
 
         MPI_Waitall(total_blocks, sendreqs, MPI_STATUSES_IGNORE);
 
+
+        delete[] bcoords;
         delete[] sendreqs;
         delete[] sizes;
         delete[] subs;
@@ -1740,73 +1936,92 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     }
 
     MPI_Waitall(local_blocks, reqs, MPI_STATUSES_IGNORE);
-    delete[]bcoords;
 
     delete[] reqs;
     delete[] grid;
-
 
     offset = 0;
 
 
     recv_db.pextentsbuffer= (size_t*)malloc(sizeof(size_t) * blockrank*local_blocks);
     recv_db.pstridesbuffer = (size_t*)malloc(sizeof(size_t) * blockrank*local_blocks);
-    #pragma omp parallel for ordered schedule(static)
+
+
+
+
+    size_t* offsets = new size_t[local_blocks];
+
+
+    offsets[0] = 0;
+
+    #pragma omp unroll partial
+    for(size_t i = 1; i < local_blocks; i++)
+        offsets[i] = offsets[i-1] + block_sizes[i-1];
+
+
+    #pragma omp parallel for
     for(size_t i = 0; i < local_blocks; i++)
     {
 
-        size_t elems = 1;
         size_t* bext_i = recv_db.pextentsbuffer + i*blockrank;
         size_t* bstr_i = recv_db.pstridesbuffer + i*blockrank;
-        #pragma omp   simd reduction(* :elems)
+
+        #pragma omp simd
         for(size_t d = 0; d < blockrank; d++)
         {
             size_t start = recv_db.pblock_coords[i*blockrank + d];
-            size_t diff = recv_db.pglobal_extents[d] - start;
-            size_t len = (block_extents[d] <= diff) ? block_extents[d] : diff;
+            size_t diff  = recv_db.pglobal_extents[d] - start;
+            size_t len   = (block_extents[d] <= diff) ? block_extents[d] : diff;
             bext_i[d] = len;
-            elems *= len;
         }
 
         if(recv_db.pglobal_rowmajor)
         {
             bstr_i[blockrank-1] = 1;
-            #pragma omp unroll
+            #pragma omp unroll partial
             for(int d = blockrank-2; d >= 0; d--)
                 bstr_i[d] = bstr_i[d+1] * bext_i[d+1];
         }
         else
         {
             bstr_i[0] = 1;
-            #pragma omp unroll
+            #pragma omp unroll partial
             for(size_t d = 1; d < blockrank; d++)
                 bstr_i[d] = bstr_i[d-1] * bext_i[d-1];
         }
 
-        #pragma omp ordered
-        {
-            recv_db.pblocks[i] =
-                DataBlock<T>(recv_db.pdata + offset, elems, recv_db.pglobal_rowmajor,
-                             blockrank, bext_i, bstr_i, ondevice, devicenum);
-            offset += elems;
-        }
+        recv_db.pblocks[i] =
+            DataBlock<T>(recv_db.pdata + offsets[i],
+                         block_sizes[i],
+                         recv_db.pglobal_rowmajor,
+                         blockrank,
+                         bext_i,
+                         bstr_i,
+                         ondevice,
+                         devicenum);
     }
+    delete[]offsets;
+    delete[]block_sizes;
 }
 
 
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
     const DistributedDataBlock<T>& send_db,
-    MPI_Comm comm,
     int rootrank,
     DataBlock<T>* recv_db,
     bool memmap,
     bool ondevice,
     int devicenum)
 {
+
+    if (send_db.pcomm == MPI_COMM_NULL)
+        return;
+
     int rank,size;
-    MPI_Comm_rank(comm,&rank);
-    MPI_Comm_size(comm,&size);
+
+    MPI_Comm_rank(send_db.pcomm,&rank);
+    MPI_Comm_size(send_db.pcomm,&size);
 
     size_t M = send_db.pglobal_extents[0];
     size_t N = send_db.pglobal_extents[1];
@@ -1854,7 +2069,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
             mpi_get_type<T>(),
             rootrank,
             rank,
-            comm,
+            send_db.pcomm,
             &sendreq);
     }
 
@@ -1914,7 +2129,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
 
             T* start = recv_db->dpdata + p * recv_db->dpstrides[0];
 
-            MPI_Irecv(start, 1, type, p, p, comm, &reqs[p]);
+            MPI_Irecv(start, 1, type, p, p, send_db.pcomm, &reqs[p]);
             MPI_Type_free(&type);
         }
 
@@ -1933,16 +2148,18 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
     const DistributedDataBlock<T>& send_db,
-    MPI_Comm comm,
     int rootrank,
     DataBlock<T>* recv_db,
     bool memmap,
     bool ongpu,
     int devicenum)
 {
+    if (send_db.pcomm == MPI_COMM_NULL)
+        return;
+
     int rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(send_db.pcomm, &rank);
+    MPI_Comm_size(send_db.pcomm, &size);
 
     size_t M = send_db.pglobal_extents[0];
     size_t N = send_db.pglobal_extents[1];
@@ -1987,7 +2204,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
             mpi_get_type<T>(),
             rootrank,
             rank,
-            comm,
+            send_db.pcomm,
             &sendreq);
     }
 
@@ -2041,7 +2258,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
 
             T* start = recv_db->dpdata + p * recv_db->dpstrides[1];
 
-            MPI_Irecv(start, 1, type,  p, p, comm,  &reqs[p]);
+            MPI_Irecv(start, 1, type,  p, p, send_db.pcomm,  &reqs[p]);
 
             MPI_Type_free(&type);
         }
@@ -2060,16 +2277,17 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc(
     const DistributedDataBlock<T>& send_db,
-    MPI_Comm comm,
     int rootrank,
     DataBlock<T>* recv_db,
     bool memmap,
     bool ongpu,
     int devicenum)
 {
+    if (send_db.pcomm == MPI_COMM_NULL)
+        return;
     int rank,size;
-    MPI_Comm_rank(comm,&rank);
-    MPI_Comm_size(comm,&size);
+    MPI_Comm_rank(send_db.pcomm,&rank);
+    MPI_Comm_size(send_db.pcomm,&size);
 
     size_t Pr= send_db.pproc_grid[0];
     size_t Pc=send_db.pproc_grid[1];
@@ -2136,48 +2354,56 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
     if(rank==rootrank)
     {
 
+        MPI_Datatype tmp,type;
+        MPI_Type_vector(
+            rowmajor? br:bc,
+            rowmajor? bc:br,
+            rowmajor? recv_db->dpstrides[0]:recv_db->dpstrides[1],
+            mpi_get_type<T>(),&tmp);
+        MPI_Type_create_resized(tmp,0,sizeof(T),&type);
+        MPI_Type_commit(&type);
+        MPI_Type_free(&tmp);
+
         for(size_t bi=0; bi<grid_r; bi++)
+        {
             for(size_t bj=0; bj<grid_c; bj++)
             {
-                MPI_Datatype type=MPI_DATATYPE_NULL;
-
+                MPI_Datatype type1;
                 size_t b = bi*grid_c + bj;
 
-                int proc_row = bi % Pr;
-                int proc_col = bj % Pc;
-                int owner = proc_row * Pc + proc_col;
+
+                size_t bcoords[2] = {bi, bj};
+                int owner = compute_owner(
+                                bcoords,
+                                send_db.pproc_grid,
+                                send_db.pcyclic_block,
+                                2);
 
                 size_t r0 = bi*br;
                 size_t c0 = bj*bc;
-                size_t diff=M-r0;
-                size_t rows =br<=diff? br:diff;
-                diff=N-c0;
-                size_t cols = bc<=diff? bc:diff;
+                size_t diff1=M-r0;
+                size_t diff2=N-c0;
 
-                MPI_Datatype tmp;
-
-                if(rowmajor)
+                bool edgecase=false;
+                if(diff1<br|| diff2<bc)
                 {
-                    MPI_Type_vector(
-                        rows,
-                        cols,
-                        recv_db->dpstrides[0],
-                        mpi_get_type<T>(),
-                        &tmp);
-                }
-                else
-                {
-                    MPI_Type_vector(
-                        cols,
-                        rows,
-                        recv_db->dpstrides[1],
-                        mpi_get_type<T>(),
-                        &tmp);
-                }
+                    size_t rows =br<=diff1? br:diff1;
+                    size_t cols = bc<=diff2? bc:diff2;
 
-                MPI_Type_create_resized(tmp,0,sizeof(T),&type);
-                MPI_Type_commit(&type);
-                MPI_Type_free(&tmp);
+                    MPI_Datatype tmp1;
+
+                    MPI_Type_vector(
+                        rowmajor? rows:cols,
+                        rowmajor? cols:rows,
+                        rowmajor? recv_db->dpstrides[0]:recv_db->dpstrides[1],
+                        mpi_get_type<T>(),
+                        &tmp1);
+
+                    MPI_Type_create_resized(tmp1,0,sizeof(T),&type1);
+                    MPI_Type_commit(&type1);
+                    MPI_Type_free(&tmp1);
+                    edgecase=true;
+                }
 
                 T* start =
                     recv_db->dpdata +
@@ -2187,15 +2413,20 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
                 MPI_Irecv(
                     start,
                     1,
-                    type,
+                    edgecase? type1:type,
                     owner,
                     b,
-                    comm,
+                    send_db.pcomm,
                     &reqs[recv_idx]);
 
                 recv_idx++;
-                MPI_Type_free(&type);
+
+                if(edgecase)
+                    MPI_Type_free(&type1);
             }
+        }
+
+        MPI_Type_free(&type);
     }
 
 
@@ -2206,13 +2437,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
 
     for(size_t i=0; i<send_db.plocal_blocknumber; i++)
     {
-        size_t r0 = send_db.pblock_coords[2*i];
-        size_t c0 = send_db.pblock_coords[2*i+1];
-
-        size_t bi = r0 / br;
-        size_t bj = c0 / bc;
-
-        size_t b = bi * grid_c + bj;
+        size_t b = send_db.pblock_linear_idx[i];
 
         size_t rows = send_db.pblocks[i].dpextents[0];
         size_t cols = send_db.pblocks[i].dpextents[1];
@@ -2223,7 +2448,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
             mpi_get_type<T>(),
             rootrank,
             b,
-            comm,
+            send_db.pcomm,
             &sendreqs[send_idx++]);
     }
 
@@ -2241,19 +2466,24 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
         delete[] reqs;
     }
 }
+
+
+
 template<typename T>
 inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
     const DistributedDataBlock<T>& send_db,
-    MPI_Comm comm,
     int rootrank,
     DataBlock<T>* recv_db,
     bool memmap,
     bool ongpu,
     int devicenum)
 {
+    if (send_db.pcomm == MPI_COMM_NULL)
+        return;
+
     int rank,size;
-    MPI_Comm_rank(comm,&rank);
-    MPI_Comm_size(comm,&size);
+    MPI_Comm_rank(send_db.pcomm,&rank);
+    MPI_Comm_size(send_db.pcomm,&size);
 
     size_t rank_t    = send_db.pglobalrank;
     size_t blockrank = send_db.pblock_rank;
@@ -2356,6 +2586,8 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
         #pragma omp parallel for simd if(parallel:rank_t>30)
         for(size_t d=0; d<rank_t; d++)
             sizes[d]=(int)global_ext[d];
+
+
         size_t* bcoords=new size_t[rank_t];
 
         for(size_t b=0; b<total_blocks; b++)
@@ -2405,7 +2637,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
                 blocktype,
                 owner,
                 b,
-                comm,
+                send_db.pcomm,
                 &reqs[recv_idx++]);
 
             MPI_Type_free(&blocktype);
@@ -2428,14 +2660,8 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
 
     for(size_t i=0; i<send_db.plocal_blocknumber; i++)
     {
-        size_t b=0;
-        #pragma omp unroll partial
-        for(size_t d=0; d<blockrank; d++)
-        {
-            size_t coord = send_db.pblock_coords[i*blockrank+d];
-            size_t bi = coord / block_ext[d];
-            b = b*grid[d] + bi;
-        }
+        size_t b = send_db.pblock_linear_idx[i];
+
 
         size_t elems=1;
 
@@ -2453,7 +2679,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
             mpi_get_type<T>(),
             rootrank,
             b,
-            comm,
+            send_db.pcomm,
             &sendreqs[send_idx++]);
     }
 
@@ -2482,11 +2708,23 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(DataBlock<T> &m, int
     MPI_Send(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
+
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_meta(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
 {
-    MPI_Request request;
-    MPI_Isend(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm,&request);
+    MPI_Send(&m.dpdatalength, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
+    MPI_Send(&m.dprank, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
+    MPI_Send(&m.dprowmajor, 1, mpi_get_type<bool>(), dest, tag, pcomm);
+    MPI_Send(m.dpextents, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
+    MPI_Send(m.dpstrides, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
+}
+
+
+
+template<typename T>
+inline  void DataBlock_MPI_Functions<T>::MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm,MPI_Request *request)
+{
+    MPI_Isend(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm,request);
 }
 
 template<typename T>
@@ -2546,6 +2784,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(DataBlock<T>&m, bool with_me
     if(m.dpstrides!=nullptr) free(m.dpstrides);
 }
 
+
 template<typename T>
 void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
 {
@@ -2564,12 +2803,27 @@ void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock(DataBlock<T>& m,const int so
 }
 
 
+template<typename T>
+void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_meta(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
+{
+    MPI_Status status;
+
+    MPI_Recv(&m.dpdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+    MPI_Recv(&m.dprank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+    MPI_Recv(&m.dprowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
+
+    MPI_Recv(m.dpextents,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+
+    MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
+}
+
+
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions<T>::MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,  MPI_Request *request)
 {
-    MPI_Request request;
-    MPI_Irecv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, &request);
+
+    MPI_Irecv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, request);
 }
 
 template<typename T>

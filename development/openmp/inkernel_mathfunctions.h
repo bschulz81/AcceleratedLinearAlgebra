@@ -21,19 +21,36 @@ public:
     inline static void cross_product( const DataBlock<T>& vec1,const   DataBlock<T>& vec2, DataBlock<T>& res);
 
     inline static void matrix_multiply_dot_w( const DataBlock<T>& A,  const DataBlock<T>& B, DataBlock<T>& C);
-    inline static void matrix_multiply_dot_w_kahan( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_multiply_dot_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_multiply_dot_s(const  DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+
+    inline static void matrix_multiply_dot_accumulate_w( const DataBlock<T>& A,  const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_accumulate_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_accumulate_s(const  DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+
+    inline static void matrix_multiply_dot_accumulate_kahan_w(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_multiply_dot_accumulate_kahan_s(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C);
+
     inline static void matrix_multiply_dot_kahan_w(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_multiply_dot_kahan_s(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C);
 
-    inline static void matrix_add_w(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
-    inline static void matrix_add_v(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
-    inline static void matrix_add_s(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_add_w( const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_add_v( const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+    inline static void matrix_add_s( const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+
+    inline static void matrix_add_accumulate_w( DataBlock<T>& A,const DataBlock<T>& B);
+    inline static void matrix_add_accumulate_v( DataBlock<T>& A,const DataBlock<T>& B);
+    inline static void matrix_add_accumulate_s( DataBlock<T>& A,const DataBlock<T>& B);
+
+
 
     inline static void matrix_subtract_w(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_subtract_v(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_subtract_s(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C);
+
+    inline static void matrix_subtract_accumulate_w( DataBlock<T>& A,const  DataBlock<T>& B);
+    inline static void matrix_subtract_accumulate_v( DataBlock<T>& A,const  DataBlock<T>& B);
+    inline static void matrix_subtract_accumulate_s( DataBlock<T>& A,const DataBlock<T>& B);
 
     inline static void matrix_multiply_vector_w( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T> &C);
     inline static void matrix_multiply_vector_v( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T> &C);
@@ -47,13 +64,22 @@ public:
     inline static void matrix_multiply_vector_kahan_w( const DataBlock<T>&M,const  T*V, DataBlock<T> & C);
     inline static void matrix_multiply_vector_kahan_s( const DataBlock<T>&M,const  T*V, DataBlock<T> & C);
 
+
     inline static void vector_add_s(const  DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
     inline static void vector_add_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
     inline static void vector_add_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
 
+    inline static void vector_add_accumulate_s(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
+    inline static void vector_add_accumulate_v(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
+    inline static void vector_add_accumulate_w(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
+
     inline static void vector_subtract_w(const  DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
     inline static void vector_subtract_v( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
     inline static void vector_subtract_s( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res);
+
+    inline static void vector_subtract_accumulate_w(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
+    inline static void vector_subtract_accumulate_v(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
+    inline static void vector_subtract_accumulate_s(  DataBlock<T>& vec1,const  DataBlock<T>& vec2);
 
     inline static T dot_product_s( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
     inline static T dot_product_v( const DataBlock<T> &vec1, const DataBlock<T> &vec2);
@@ -64,9 +90,18 @@ public:
     inline static void matrix_multiply_scalar_v( const  DataBlock<T>& M,const  T V, DataBlock<T>& C);
     inline static void matrix_multiply_scalar_w( const  DataBlock<T>& M,const  T V, DataBlock<T>& C);
 
+    inline static void matrix_multiply_scalar_accumulate_s(   DataBlock<T>& M, const T V );
+    inline static void matrix_multiply_scalar_accumulate_v(   DataBlock<T>& M,const  T V);
+    inline static void matrix_multiply_scalar_accumulate_w(   DataBlock<T>& M,const  T V);
+
+
     inline static void vector_multiply_scalar_s( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
     inline static void vector_multiply_scalar_v( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
     inline static void vector_multiply_scalar_w( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res);
+
+    inline static void vector_multiply_scalar_accumulate_s(  DataBlock<T>& vec,const T scalar);
+    inline static void vector_multiply_scalar_accumulate_v(  DataBlock<T>& vec,const T scalar);
+    inline static void vector_multiply_scalar_accumulate_w(  DataBlock<T>& vec,const T scalar);
 
     inline static T  kahan_sum(const T *arr,size_t n);
     inline static T  neumaier_sum(const T*arr,size_t n);
@@ -1004,10 +1039,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(   const BlockedDa
     }
 }
 
-
 #pragma omp end declare target
 
-
+#pragma omp begin declare target
 template <typename T>
 void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_kahan_w(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
 {
@@ -1036,7 +1070,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_kahan_w(const  DataBlock<T>
 
 
 }
+#pragma omp end declare target
 
+#pragma omp begin declare target
 template <typename T>
 void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_kahan_s(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
 {
@@ -1066,6 +1102,76 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_kahan_s(const  DataBlock<T>
 
 
 }
+#pragma omp end declare target
+
+
+
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_kahan_w(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    #pragma omp parallel for collapse(2)
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum = T(0);
+            T c=T(0);
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                T y =  A(i,k) *B(k,j) - c;
+                volatile T t = sum + y;
+                volatile T z = t - sum;
+                c = z - y;
+                sum = t;
+            }
+            C(i,j)+= sum;
+        }
+    }
+
+
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_kahan_s(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+
+    for (size_t i = 0; i < rows; ++i)
+    {
+
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum = T(0);
+            T c=T(0);
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                T y =  A(i,k) *B(k,j) - c;
+                volatile T t = sum + y;
+                volatile T z = t - sum;
+                c = z - y;
+                sum = t;
+            }
+            C(i,j)+= sum;
+        }
+    }
+
+
+}
+#pragma omp end declare target
+
 
 
 
@@ -1352,34 +1458,40 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
 
 
 
+
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w_kahan( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
+
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
 
     #pragma omp parallel for collapse(2)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
         {
-            T sum = T(0);
-            T c=T(0);
+            T sum =T(0);
+            #pragma omp simd reduction(+:sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                T y =  A(i,k) *B(k,j) - c;
-                volatile T t = sum + y;
-                volatile T z = t - sum;
-                c = z - y;
-                sum = t;
+                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
             }
-            C(i,j)= sum;
+            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
         }
     }
 }
 #pragma omp end declare target
+
+
 
 
 
@@ -1419,6 +1531,41 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const DataBlock<T>& A, c
 
 #pragma omp begin declare target
 template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
+
+
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum =T(0);
+            #pragma omp simd reduction(+:sum)
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+            }
+            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+        }
+    }
+}
+#pragma omp end declare target
+
+
+
+
+#pragma omp begin declare target
+template <typename T>
 void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
     const size_t rows=A.dpextents[0];
@@ -1447,6 +1594,36 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const DataBlock<T>& A, c
 }
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_s( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
+
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum =T(0);
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+            }
+            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+        }
+    }
+}
+#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -1507,6 +1684,73 @@ void In_Kernel_Mathfunctions<T>::matrix_add_s(const DataBlock<T>& A,const DataBl
 #pragma omp end declare target
 
 
+
+
+
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_w( DataBlock<T>& A,const DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp parallel for
+    for (size_t i = 0; i < n; ++i)
+    {
+        #pragma omp simd
+        for (size_t j = 0; j <m ; ++j)
+        {
+            A(i,j)+=B(i,j);
+        }
+    }
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_v( DataBlock<T>& A,const DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp simd collapse(2)
+    for (size_t i = 0; i < n; ++i)
+    {
+        for (size_t j = 0; j <m ; ++j)
+        {
+            A(i,j)+=B(i,j);
+        }
+    }
+
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_s( DataBlock<T>& A,const DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    for (size_t i = 0; i < n; ++i)
+    {
+        for (size_t j = 0; j <m ; ++j)
+        {
+           A(i,j)+=B(i,j);
+        }
+    }
+
+
+}
+#pragma omp end declare target
+
+
+
+
+
 #pragma omp begin declare target
 template <typename T>
 void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C)
@@ -1562,6 +1806,65 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_s(const DataBlock<T>& A,const  
 
 }
 #pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_subtract_accumulate_w( DataBlock<T>& A,const  DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp parallel for
+    for (size_t i = 0; i <n; ++i)
+    {
+        #pragma omp simd
+        for (size_t j = 0; j < m; ++j)
+        {
+            A(i,j)-=B(i,j);
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_subtract_accumulate_v( DataBlock<T>& A,const  DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    #pragma omp simd collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j < m; ++j)
+        {
+            A(i,j)-=B(i,j);
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_subtract_accumulate_s( DataBlock<T>& A,const  DataBlock<T>& B)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j < m; ++j)
+        {
+            A(i,j)-=B(i,j);
+        }
+    }
+
+}
+#pragma omp end declare target
+
 
 
 
@@ -1853,6 +2156,54 @@ void In_Kernel_Mathfunctions<T>::vector_add_w( const DataBlock<T>& vec1,const  D
 }
 #pragma omp end declare target
 
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::vector_add_accumulate_s( DataBlock<T>& vec1,const  DataBlock<T>& vec2)
+{
+    const size_t n=vec1.dpextents[0];
+    for (size_t i = 0; i < n; ++i)
+    {
+        vec1(i)+=vec2(i);
+    }
+
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::vector_add_accumulate_v( DataBlock<T>& vec1,const  DataBlock<T>& vec2)
+{
+    const size_t n=vec1.dpextents[0];
+    #pragma omp simd
+    for (size_t i = 0; i < n; ++i)
+    {
+        vec1(i)+=vec2(i);
+    }
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::vector_add_accumulate_w( DataBlock<T>& vec1,const  DataBlock<T>& vec2)
+{
+    const size_t n=vec1.dpextents[0];
+    #pragma omp parallel for simd
+    for (size_t i = 0; i < n; ++i)
+    {
+        vec1(i)+=vec2(i);
+    }
+
+}
+#pragma omp end declare target
+
+
+
+
+
 #pragma omp begin declare target
 template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_subtract_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
@@ -2050,7 +2401,6 @@ template <typename T>
 void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_v(  const DataBlock<T>& M, const T V, DataBlock<T>& C)
 {
 
-
     const size_t n=C.dpextents[0];
     const size_t m= C.dpextents[1];
 
@@ -2086,6 +2436,78 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const DataBlock<T>& 
 }
 #pragma omp end declare target
 
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_s(  DataBlock<T>& M, const T V)
+{
+
+
+    const size_t n=M.dpextents[0];
+    const size_t m= M.dpextents[1];
+
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j <  m; ++j)
+        {
+            M(i, j) *=V;
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_v(   DataBlock<T>& M, const T V)
+{
+
+
+    const size_t n=M.dpextents[0];
+    const size_t m= M.dpextents[1];
+
+    #pragma omp simd collapse(2)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j <  m; ++j)
+        {
+            M(i, j) *= V;
+        }
+    }
+
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_w(   DataBlock<T>& M, const T V)
+{
+
+    const size_t n=M.dpextents[0];
+    const size_t m= M.dpextents[1];
+    #pragma omp parallel for
+    for (size_t i = 0; i <n; ++i)
+    {
+        #pragma omp simd
+        for (size_t j = 0; j <  m; ++j)
+        {
+             M(i, j) *= V;
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+
+
+
+
+
+
 #pragma omp begin declare target
 template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_s( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
@@ -2116,17 +2538,52 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_v( const DataBlock<T>& v
 
 #pragma omp begin declare target
 template <typename T>
-void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_w( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_w( DataBlock<T>& vec,const T scalar)
 {
     const size_t n=vec.dpextents[0];
     #pragma omp parallel for simd
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec(i)*scalar;
+         vec(i)*=scalar;
     }
 }
 
 #pragma omp end declare target
+
+
+
+
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_s( DataBlock<T>& vec,const T scalar)
+{
+    const size_t n=vec.dpextents[0];
+    for (size_t i = 0; i < n; ++i)
+    {
+         vec(i)*=scalar;
+    }
+}
+
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_v(  DataBlock<T>& vec,const T scalar)
+{
+    const size_t n=vec.dpextents[0];
+
+    #pragma omp simd
+    for (size_t i = 0; i < n; ++i)
+    {
+         vec(i)*=scalar;
+    }
+}
+
+#pragma omp end declare target
+
+
+
 
 #pragma omp begin declare target
 template <typename T>
