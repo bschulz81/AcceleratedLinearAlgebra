@@ -45,6 +45,12 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 2) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+### 29.03.2026
+Added a prototype of a distributed summa algorithm for matrix multiplication in the development section. It does not yet use the gpu, but that is only a change of a few lines.
+The reason I am not adding it into the main section is that it is fragile. If one uses the wrong block number for the scattering then it stops without calculation. If the number of mpi nodes is a prime number, it will also stop.
+If the mpi communicators of the scattered DataBlocks are different, then errors may occur. I must first think on the necessary architecture to make it easily usable, before I will activate it for gpu and put it in the main section.#
+One can not expect a user to think about block sizes and communicators before a matrix multiplication. The rest of blas functions are then considerable easier to implement.
+
 ### 15.03.2026
 tested and optimized the row, col, submarix, and tensor scatterers/gatherer functions and expanded their functionality. 
 A grid policy object is added that specifies the policy of a processing and block grid on which the data is scattered over MPI ranks. If not specially set, a rank depending default grid for block cyclic scattering and gathering is used for matrix and tensor scattering.
