@@ -43,12 +43,18 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 1) Add options for linear algebra and tensor functions such that most or all of them can use the message passing interface as well as the gpu for local work.
 2) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+
 # Version history
+
+
 ### 10.04.2026
 Added a Summa algorithm for matrices distributed with the message passing interface that works on GPU and CPU.
 Optimized the performance of the matrix and tensor scattering functions with OpenMP.
 
 Simplified the example code for the message passing interface. Now distributed functions are called only once.
+
+I found this bug in clang-22 which prevents further optimizations of the tensor scatterer with OpenMP inscan for prefix sums:
+https://github.com/llvm/llvm-project/issues/191549 Gcc would compile it with these optimizations. However, their effect is probably small anyway.
 
 ### 29.03.2026
 Added a prototype of a distributed summa algorithm for matrix multiplication in the development section. It does not yet use the gpu, but that is only a change of a few lines.
