@@ -14,12 +14,12 @@
 
 
 
-struct Math_MPI_Functions_Policy : public Math_Functions_Policy, MPI_Policy
+class Math_MPI_Functions_Policy : public Math_Functions_Policy, public MPI_Policy
 {
 public:
     bool allow_gpu_sharing = true;
 
-    Math_MPI_Functions_Policy(Mode m = AUTO,bool gpu_sharing=false,bool mpi=true,MPI_Comm comm=MPI_COMM_WORLD, bool defaultgrid=true, size_t gridrank=2, size_t *proc_grid=nullptr,size_t *cyclic_block=nullptr )
+    Math_MPI_Functions_Policy(Mode m = AUTO,bool gpu_sharing=true,bool mpi=true,MPI_Comm comm=MPI_COMM_WORLD)
         : Math_Functions_Policy(m), MPI_Policy (mpi, comm),    allow_gpu_sharing(gpu_sharing)
 
     {
@@ -81,11 +81,13 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = A.pdpdata_is_devptr &&(A.pdevptr_devicenum==devicenum);
-            const bool B_on_dev = B.pdpdata_is_devptr &&(B.pdevptr_devicenum==devicenum);
-            const bool C_on_dev = C.pdpdata_is_devptr &&(C.pdevptr_devicenum==devicenum);
+            const bool A_on_dev = A.pdpdata_is_devptr ;
+            const bool B_on_dev = B.pdpdata_is_devptr ;
+            const bool C_on_dev = C.pdpdata_is_devptr;
             if(A_on_dev  || B_on_dev ||C_on_dev)
                 return true;
+
+
             return this->should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
         return false;
@@ -107,19 +109,21 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-            const bool B_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-            const bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+            const bool A_on_dev = A.dpdata_is_devptr;
+            const bool B_on_dev = B.dpdata_is_devptr;
+            const bool C_on_dev = C.dpdata_is_devptr;
             if(A_on_dev|| C_on_dev|| B_on_dev) return true;
+
+
             return this->should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
-        return false;
-    }
+    return false;
+}
 
-    template <typename T>
-    bool should_use_gpu(const DataBlock<T>& v1,
-                        const DataBlock<T>& v2,
-                        const size_t threshold)const
+template <typename T>
+bool should_use_gpu(const DataBlock<T>& v1,
+                    const DataBlock<T>& v2,
+                    const size_t threshold)const
     {
         const size_t problem_size = v1.datalength();
 
@@ -130,8 +134,8 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-            const bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+            const bool A_on_dev = v1.dpdata_is_devptr;
+            const bool C_on_dev = v2.dpdata_is_devptr;
             if(A_on_dev||C_on_dev) return true;
 
             return this->should_use_gpu(problem_size, threshold, A_on_dev  || C_on_dev);
@@ -153,8 +157,8 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = v1.dpdata_is_devptr &&(v1.pdevptr_devicenum==devicenum);
-            const bool B_on_dev = v2.dpdata_is_devptr &&(v2.pdevptr_devicenum==devicenum);
+            const bool A_on_dev = v1.dpdata_is_devptr;
+            const bool B_on_dev = v2.dpdata_is_devptr;
 
             if(A_on_dev||B_on_dev) return true;
 
@@ -176,7 +180,7 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            const bool A_on_dev = v1.dpdata_is_devptr;
             if(A_on_dev) return true;
             return this->should_use_gpu(problem_size, threshold, A_on_dev );
 
@@ -195,7 +199,7 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = v1.dpdata_is_devptr &&(v1.pdevptr_devicenum==devicenum);
+            const bool A_on_dev = v1.dpdata_is_devptr ;
             if(A_on_dev) return true;
             return this->should_use_gpu(problem_size, threshold, A_on_dev );
 
@@ -364,7 +368,7 @@ public:
 
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
-    inline static void SUMMA_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    inline static bool SUMMA_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
 
 
 protected:
@@ -407,7 +411,7 @@ protected:
 
 
 template <typename T>
-void Math_Functions_MPI<T>::SUMMA_Distributed(
+bool Math_Functions_MPI<T>::SUMMA_Distributed(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& B,
     DistributedDataBlock<T>& C,
@@ -416,38 +420,40 @@ void Math_Functions_MPI<T>::SUMMA_Distributed(
 
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
-    if(!policy.mpi_enabled) return;
+    if(!policy.mpi_enabled)
+        return false;
 
     if (A.pcomm == MPI_COMM_NULL)
-        return;
+        return false;
     if (B.pcomm == MPI_COMM_NULL)
-        return;
+        return false;
     if (C.pcomm == MPI_COMM_NULL)
-        return;
+        return false;
 
     MPI_Comm comm = A.pcomm;
 
     if(A.pglobal_extents[1] != B.pglobal_extents[0])
-        return;
+        return false;
     if(A.pglobal_extents[0] != C.pglobal_extents[0])
-        return;
+        return false;
     if(B.pglobal_extents[1] != C.pglobal_extents[1])
-        return;
+        return false;
     if(A.pblock_extents[1] != B.pblock_extents[0])
-        return;
+        return false;
     if(A.pblock_extents[0] != C.pblock_extents[0])
-        return;
+        return false;
     if(B.pblock_extents[1] != C.pblock_extents[1])
-        return;
+        return false;
 
     int size;
     MPI_Comm_size(comm,&size);
     int rank;
 
     if(size<4)
-        return;
+        return false;
+
     if(checkPrimeNumber(size))
-        return;
+        return false;
 
     MPI_Comm_rank(comm, &rank);
 
@@ -481,22 +487,108 @@ void Math_Functions_MPI<T>::SUMMA_Distributed(
 
     T* A_buf;
     T* B_buf;
-    bool ongpu=false, memmap=false;
-    int devnum=-1;
+    bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold);
+    bool memmap=policy.memmapped_files;
+
+    int devnum=policy.devicenum;
+
+    if(A.pdpdata_is_devptr&& A.pdevptr_devicenum!=devnum)
+        return false;
+    if(B.pdpdata_is_devptr&& B.pdevptr_devicenum!=devnum)
+        return false;
+    if(C.pdpdata_is_devptr&& C.pdevptr_devicenum!=devnum)
+        return false;
+    if(A.pdevptr_devicenum!=B.pdevptr_devicenum ||A.pdevptr_devicenum!=C.pdevptr_devicenum)
+        return false;
+
+
     DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A,A_buf);
     DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B,B_buf);
 
-    size_t A_ext[2], A_str[2];
-    size_t B_ext[2], B_str[2];
+    T* adata=nullptr;
+
+    if(ongpu)
+    {
+        if(A.plocal_blocknumber > 0)
+        {
+            if(!A.pdpdata_is_devptr)
+            {
+                adata=(T*) omp_target_alloc(sizeof(T)*A.pdatalength,devnum);
+                omp_target_memcpy(adata,A.pdata,sizeof(T)*A.pdatalength,0,0,devnum,omp_get_initial_device());
+            }
+            else
+            {
+                adata=A.pdata;
+            }
+        }
+    }
+    else
+        adata=A.pdata;
+
+    T* bdata=nullptr;
+    if(ongpu)
+    {
+        if (B.plocal_blocknumber > 0)
+        {
+            if(!B.pdpdata_is_devptr)
+            {
+                bdata=(T*) omp_target_alloc(sizeof(T)*B.pdatalength,devnum);
+                omp_target_memcpy(bdata,B.pdata,sizeof(T)*B.pdatalength,0,0,devnum,omp_get_initial_device());
+            }
+            else
+            {
+            bdata=B.pdata;
+            }
+        }
+    }
+    else
+        bdata=B.pdata;
+
+    size_t *coffsets=nullptr,*cstrides=nullptr;
+    T* cdata=nullptr;
+    if(ongpu)
+    {
+        if (C.plocal_blocknumber > 0)
+        {
+            size_t length_extents_strides=sizeof(size_t)*2*C.plocal_blocknumber;
+
+            coffsets=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+            omp_target_memcpy(coffsets,C.pblock_offsets,length_extents_strides,0,0,devnum,omp_get_initial_device());
+            cstrides=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+            omp_target_memcpy(cstrides,C.pstridesbuffer,length_extents_strides,0,0,devnum,omp_get_initial_device());
+
+            if(!C.pdpdata_is_devptr)
+            {
+                cdata=(T*) omp_target_alloc(sizeof(T)*C.pdatalength,devnum);
+                omp_target_memcpy(cdata,C.pdata,sizeof(T)*C.pdatalength,0,0,devnum,omp_get_initial_device());
+            }
+            else
+            {
+                cdata=C.pdata;
+            }
+        }
+    }
+    else
+    {
+        if (C.plocal_blocknumber > 0)
+        {
+            cdata=C.pdata;
+            coffsets=C.pblock_offsets;
+            cstrides=C.pstridesbuffer;
+        }
+    }
+
+
+
 
     for (size_t k = 0; k < grid_k; k++)
     {
         int root_col = k % Pc;
         size_t diff1= M - my_row * br;
 
-        size_t A_rows =(br<=diff1)?br:diff1;
+        const size_t A_rows =(br<=diff1)?br:diff1;
         size_t diff2=Ktot - k * bk;
-        size_t A_cols = (bk<=diff2)? bk:diff2;
+        const size_t A_cols = (bk<=diff2)? bk:diff2;
 
         T* A_ptr = A_buf;
 
@@ -507,34 +599,30 @@ void Math_Functions_MPI<T>::SUMMA_Distributed(
 
             auto it = A.pglobal_to_local_index.find(A_lin);
             if (it != A.pglobal_to_local_index.end())
-                A_ptr = A.pblocks[it->second].dpdata;
+            {
+                size_t idx = it->second;
+                size_t offset = A.pblocks[idx].dpdata - A.pdata;
+                A_ptr = adata + offset;
+
+            }
         }
+
 
         MPI_Bcast(A_ptr, A_rows*A_cols, mpi_get_type<T>(), root_col, row_comm);
 
-        A_ext[0] = A_rows;
-        A_ext[1] = A_cols;
-        A_str[0] = A.pglobal_rowmajor ? A_cols : 1;
-        A_str[1] = A.pglobal_rowmajor ? 1 : A_rows;
-
-        DataBlock<T> A_panel(
-            A_ptr,
-            A_rows*A_cols,
-            A.pglobal_rowmajor,
-            2,
-            A_ext,
-            A_str,
-            false,
-            -1);
+        const size_t Aext0 = A_rows;
+        const size_t Aext1 = A_cols;
+        const size_t Astr0 = A.pglobal_rowmajor ? A_cols : 1;
+        const size_t Astr1 = A.pglobal_rowmajor ? 1 : A_rows;
 
 
         int root_row = k % Pr;
         size_t diff3= Ktot - k * bk;
 
-        size_t B_rows =(bk<=diff2)?bk:diff3;
+        const size_t B_rows =(bk<=diff3)?bk:diff3;
         size_t diff4=N - my_col * bc;
 
-        size_t B_cols = (bc<=diff4)? bc:diff4;
+        const size_t B_cols = (bc<=diff4)? bc:diff4;
 
         T* B_ptr = B_buf;
 
@@ -544,53 +632,104 @@ void Math_Functions_MPI<T>::SUMMA_Distributed(
 
             auto it = B.pglobal_to_local_index.find(B_lin);
             if (it != B.pglobal_to_local_index.end())
-                B_ptr = B.pblocks[it->second].dpdata;
+            {
+                size_t idx = it->second;
+                size_t offset = B.pblocks[idx].dpdata - B.pdata;
+                B_ptr = bdata + offset;
+            }
         }
 
         MPI_Bcast(B_ptr, B_rows*B_cols, mpi_get_type<T>(), root_row, col_comm);
 
-        B_ext[0] = B_rows;
-        B_ext[1] = B_cols;
-        B_str[0] = B.pglobal_rowmajor ? B_cols : 1;
-        B_str[1] = B.pglobal_rowmajor ? 1 : B_rows;
+        const  size_t Bext0 = B_rows;
+        const size_t Bext1 = B_cols;
+        const size_t Bstr0 = B.pglobal_rowmajor ? B_cols : 1;
+        const size_t Bstr1 = B.pglobal_rowmajor ? 1 : B_rows;
 
-        DataBlock<T> B_panel(
-            B_ptr,
-            B_rows*B_cols,
-            B.pglobal_rowmajor,
-            2,
-            B_ext,
-            B_str,
-            false,
-            -1);
-
-
-        for (size_t i = 0; i < C.plocal_blocknumber; i++)
+        if (C.plocal_blocknumber > 0)
         {
-            DataBlock<T>& Cblk = C.pblocks[i];
 
-            DataBlock<T> C_local(
-                Cblk.dpdata,
-                Cblk.dpextents[0] * Cblk.dpextents[1],
-                C.pglobal_rowmajor,
-                2,
-                Cblk.dpextents,
-                Cblk.dpstrides,
-                false,
-                -1);
+            if(ongpu)
+            {
+                #pragma omp target teams distribute parallel for collapse(3)device(devnum) is_device_ptr(cdata,coffsets,A_ptr,B_ptr)
+                for (size_t i = 0; i < C.plocal_blocknumber; i++)
+                {
+                    for (size_t ir = 0; ir < A_rows; ++ir)
+                    {
+                        for (size_t j = 0; j < B_cols; ++j)
+                        {
+                            T* C_ptr=cdata+coffsets[i];
+                            const size_t Cstr0=cstrides[2*i];
+                            const size_t Cstr1=cstrides[2*i+1];
+                            T sum =T(0);
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t k = 0; k < A_cols; ++k)
+                            {
+                                sum += A_ptr[ir*Astr0+k*Astr1] *B_ptr[k*Bstr0+j*Bstr1];
+                            }
+                            C_ptr[ir*Cstr0+j*Cstr1]+= sum;
+                        }
+                    }
+                }
+            }
+            else
+            {
 
-            In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_s(
-                A_panel,
-                B_panel,
-                C_local);
+                #pragma omp parallel for collapse(3)
+                for (size_t i = 0; i < C.plocal_blocknumber; i++)
+                {
+                    for (size_t ir = 0; ir < A_rows; ++ir)
+                    {
+                        for (size_t j = 0; j < B_cols; ++j)
+                        {
+                            T* C_ptr=cdata+coffsets[i];
+                            const size_t Cstr0=cstrides[2*i];
+                            const size_t Cstr1=cstrides[2*i+1];
+                            T sum =T(0);
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t k = 0; k < A_cols; ++k)
+                            {
+                                sum += A_ptr[ir*Astr0+k*Astr1] *B_ptr[k*Bstr0+j*Bstr1];
+                            }
+                            C_ptr[ir*Cstr0+j*Cstr1] +=sum;
+                        }
+                    }
+                }
+            }
         }
     }
 
-    DataBlock_MPI_Functions<T>::free_helper2(false,false,-1,max_A,A_buf);
-    DataBlock_MPI_Functions<T>::free_helper2(false,false,-1,max_B,B_buf);
+    if(ongpu)
+    {
+        if (A.plocal_blocknumber > 0)
+        {
+            if(!A.pdpdata_is_devptr)
+                omp_target_free(adata,devnum);
+        }
+        if (B.plocal_blocknumber > 0)
+        {
+            if(!B.pdpdata_is_devptr)
+                omp_target_free(bdata,devnum);
+        }
+
+        if (C.plocal_blocknumber>0)
+        {
+            if(!C.pdpdata_is_devptr)
+            {
+                omp_target_memcpy(C.pdata,cdata,sizeof(T)*C.pdatalength,0,0,omp_get_initial_device(),devnum);
+                omp_target_free(cdata,devnum);
+            }
+            omp_target_free(cstrides,devnum);
+            omp_target_free(coffsets,devnum);
+        }
+    }
+    DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A,A_buf);
+    DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B,B_buf);
 
     MPI_Comm_free(&row_comm);
     MPI_Comm_free(&col_comm);
+
+    return true;
 }
 
 
