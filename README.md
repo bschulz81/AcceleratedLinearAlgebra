@@ -40,11 +40,14 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-0) Test the numerical stability and correct compilation of the algorithms with much larger data. 
 1) Add options for linear algebra and tensor functions such that most or all of them can use the message passing interface as well as the gpu for local work.
 2) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 # Version history
+### 10.04.2026
+Added a Summa algorithm for matrices distributed with the message passing interface that works on GPU and CPU.
+Optimized the performance of the matrix and tensor scattering functions with OpenMP.
+
 ### 29.03.2026
 Added a prototype of a distributed summa algorithm for matrix multiplication in the development section. It does not yet use the gpu, but that is only a change of a few lines.
 The reason I am not adding it into the main section is that it is fragile. If one uses the wrong block extents  for the scattering (they must follow the same rules as the sizes for A,B,C in a matrix multiplication) then it stops without calculation. If the number of mpi nodes is a prime number, it will also stop.
