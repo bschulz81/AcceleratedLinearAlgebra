@@ -17,6 +17,14 @@ public:
     inline static void matrix_add_g(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
     inline static void matrix_subtract_g( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
 
+    inline static void matrix_multiply_dot_accumulate_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+    inline static void matrix_multiply_dot_accumulate_kahan_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
+
+    inline static void matrix_add_accumulate_g( DataBlock<T>& A,const DataBlock<T>& B,int dev,bool update_host=true);
+    inline static void matrix_subtract_accumulate_g(  DataBlock<T>& A,const  DataBlock<T>& B,int dev,bool update_host=true);
+
+
+
     inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const DataBlock<T> &V, DataBlock<T>&C,int dev,bool update_host=true);
     inline static void matrix_multiply_vector_g(const  DataBlock<T>&M, const T*V, DataBlock<T> &C, int dev,bool update_host=true);
     inline static void matrix_multiply_vector_kahan_g(const  DataBlock<T>&M, const DataBlock<T> &V, DataBlock<T>& C,int dev,bool update_host=true);
@@ -27,6 +35,10 @@ public:
 
     inline static void vector_add_g(const  DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host=true);
     inline static void vector_subtract_g( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res,  int dev,bool update_host=true);
+
+    inline static void vector_add_accumulate_g(  DataBlock<T>& vec1, const DataBlock<T>& vec2,int dev,bool update_host=true);
+    inline static void vector_subtract_accumulate_g(  DataBlock<T>& vec1,const  DataBlock<T>& vec2,  int dev,bool update_host=true);
+
 
     inline static T dot_product_g( const DataBlock<T> &vec1,const  DataBlock<T> &vec2, int dev);
     inline static T dot_product_g_kahan( const DataBlock<T> &vec1,const  DataBlock<T> &vec2,int dev, int nteams, int nthreads_per_team );
@@ -491,6 +503,126 @@ void GPU_Math_Functions<T>::matrix_subtract_g( const DataBlock<T>& A,const  Data
 }
 
 
+
+
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_multiply_dot_accumulate_g( const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, false, update_host);
+
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
+
+    #pragma omp target teams distribute parallel for collapse(2)  device(dev)
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum = T(0);
+            #pragma omp simd reduction(+:sum)
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+            }
+            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+        }
+    }
+}
+
+
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_multiply_dot_accumulate_kahan_g(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, false, update_host);
+
+    #pragma omp target teams distribute parallel for collapse(2) device(dev)
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum = T(0);
+            T c=T(0);
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                T y =  A(i,k) *B(k,j) - c;
+                volatile T t = sum + y;
+                volatile T z = t - sum;
+                c = z - y;
+                sum = t;
+            }
+            C(i,j)+= sum;
+        }
+    }
+
+
+}
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_add_accumulate_g(  DataBlock<T>& A,const DataBlock<T>& B,int dev,bool update_host)
+{
+
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
+
+    #pragma omp target teams distribute parallel for simd collapse(2)  device(dev)
+    for (size_t i = 0; i < n; ++i)
+    {
+        for (size_t j = 0; j <m ; ++j)
+        {
+            A(i,j)+=B(i,j);
+        }
+    }
+
+}
+
+
+template <typename T>
+void GPU_Math_Functions<T>::matrix_subtract_accumulate_g(  DataBlock<T>& A,const  DataBlock<T>& B,int dev,bool update_host)
+{
+    const size_t n=A.dpextents[0];
+    const size_t m=A.dpextents[1];
+
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperB(B,dev,false);
+
+    #pragma omp target teams distribute parallel for simd collapse(2)  device(dev)
+    for (size_t i = 0; i <n; ++i)
+    {
+        for (size_t j = 0; j < m; ++j)
+        A(i,j)-=B(i,j);
+    }
+
+}
+
+
+
+
 template <typename T>
 void GPU_Math_Functions<T>::matrix_multiply_vector_g( const DataBlock<T>&M, const DataBlock<T>& V, DataBlock<T>& C,int dev,bool update_host)
 {
@@ -712,6 +844,47 @@ inline void GPU_Math_Functions<T>::vector_subtract_g( const DataBlock<T>& vec1,c
 
 
 }
+
+
+template <typename T>
+inline void GPU_Math_Functions<T>::vector_add_accumulate_g(   DataBlock<T>& vec1, const DataBlock<T>& vec2,int dev,bool update_host)
+{
+    const size_t n=vec1.dpextents[0];
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+
+    #pragma omp target teams distribute parallel for simd device(dev)
+    for (size_t i = 0; i < n; ++i)
+    {
+         vec1(i)+=vec2(i);
+    }
+
+}
+
+
+template <typename T>
+inline void GPU_Math_Functions<T>::vector_subtract_accumulate_g(  DataBlock<T>& vec1,const DataBlock<T>& vec2,int dev,bool update_host)
+{
+    const size_t n=vec1.dpextents[0];
+
+
+    //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false,update_host);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+
+    #pragma omp target teams distribute parallel for simd  device(dev)
+    for (size_t i = 0; i < n; ++i)
+    {
+         vec1(i)-=vec2(i);
+    }
+
+
+
+}
+
+
 
 
 template <typename T>

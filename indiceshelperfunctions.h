@@ -126,4 +126,36 @@ inline bool is_row_major(const size_t*extents, const size_t* strides, const size
 }
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+ inline bool checkPrimeNumber(int n)
+    {
+        bool isPrime = true;
+        switch (n)
+        {
+        case 0:
+        case 1:
+            isPrime=false;
+            break;
+        case 2:
+        case 3:
+            isPrime=false;
+            break;
+        default:
+        {
+            for (int i = 2; i <= n / 2; ++i)
+            {
+                if (n % i == 0)
+                {
+                    isPrime = false;
+                    break;
+                }
+            }
+        }
+        }
+        return isPrime;
+    }
+#pragma omp end declare target
+
+
 #endif
