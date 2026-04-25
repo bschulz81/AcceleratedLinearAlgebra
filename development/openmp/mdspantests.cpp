@@ -26,16 +26,16 @@ int main()
             A.printtensor();
 
             cout<<"row 1"<<endl;
-            mdspan<double, array<size_t,2>> Aa=A.row(1);
+            mdspan<double, array<size_t,2>> Aa=A.matrix_row(1);
             Aa.printtensor();
 
 
-            mdspan<double, std::array<size_t,2>> Ab= A.subspanmatrix(1,1,2,4);
+            mdspan<double, std::array<size_t,2>> Ab= A.matrix_subspan(1,1,2,4);
             std::cout<<Ab.rank();
-            cout<<"subspanmatrixA"<<endl;
+            cout<<"matrix_subspanA"<<endl;
             Ab.printtensor();
 
-            mdspan<double, std::array<size_t,2>> Ae= A.transpose();
+            mdspan<double, std::array<size_t,2>> Ae= A.matrix_transpose();
             cout<<"transpose"<<endl;
             Ae.printtensor();
 
@@ -71,7 +71,7 @@ int main()
 
             vector<size_t> offsets   = {1,0,0};
             vector<size_t> sub_extents= {1,3,4};
-            mdspan<double, std::vector<size_t>>  subT_view =T_row.subspan(offsets, sub_extents);
+            mdspan<double, std::vector<size_t>>  subT_view =T_row.tensor_subspan(offsets, sub_extents);
 
             std::cout << "Subtensor view (row-major):\n";
             subT_view.printtensor();
@@ -108,7 +108,7 @@ int main()
             cout<<"Verify A is on device"<<A.data_is_devptr()<<endl;
 
 
-            mdspan<double, std::array<size_t,2>> subspan_of_A= A.subspanmatrix(1,1,2,2);
+            mdspan<double, std::array<size_t,2>> subspan_of_A= A.matrix_subspan(1,1,2,2);
             cout<<"this is a submatrix of A"<<endl;
             subspan_of_A.printtensor();
             cout<<"now we offload this submatrix"<<endl;
@@ -148,18 +148,18 @@ int main()
             cout<<"column"<<endl;
 
 
-            mdspan<double, std::vector<size_t>>Ba= B.column(1);
+            mdspan<double, std::vector<size_t>>Ba= B.matrix_column(1);
             Ba.printtensor();
             cout <<"Rank"<<Ba.rank()<<endl;
             cout<<"subspanmatrx B"<<endl;
-            mdspan<double, std::vector<size_t>>Bb= B.subspanmatrix(1,1,1,4);
+            mdspan<double, std::vector<size_t>>Bb= B.matrix_subspan(1,1,1,4);
             Bb.printtensor();
             cout <<"Rank"<<Bb.rank()<<endl;
 
 
 
 
-            mdspan<double, std::vector<size_t>>Be= B.transpose();
+            mdspan<double, std::vector<size_t>>Be= B.matrix_transpose();
             cout<<"transpose"<<endl;
             Be.printtensor();
 
@@ -190,7 +190,7 @@ int main()
             vector<size_t> offsetsC     = {1,0,0};
             vector<size_t> sub_extentsC = {1,3,4};
             cout <<"Rank"<<T_col.rank()<<endl;
-            mdspan<double, std::vector<size_t>> subC_view =T_col.subspan(offsetsC, sub_extentsC);
+            mdspan<double, std::vector<size_t>> subC_view =T_col.tensor_subspan(offsetsC, sub_extentsC);
             std::cout << "Subtensor view (col-major):\n";
             subC_view.printtensor();
 
@@ -227,34 +227,34 @@ int main()
             cout<<"mdspan_data matrix with the data of the Matrix A"<<endl;
             mdspan_data_matrix.printtensor();
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_data_matrix.row_copy(1);
+            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_data_matrix.matrix_row_copy(1);
             rowcopy.printtensor();
             cout <<"rank:" <<rowcopy.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopy=mdspan_data_matrix.column_copy(1);
+            mdspan_data<double,array<size_t,2>>columncopy=mdspan_data_matrix.matrix_column_copy(1);
             columncopy.printtensor();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.transpose_copy(true);
+            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.matrix_transpose_copy(true);
             transposecopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on memory"<<endl;
-            mdspan_data<double,array<size_t,2>>subspanmatrixcopy=mdspan_data_matrix.subspanmatrix_copy(1,2,2,2,false);
-            subspanmatrixcopy.printtensor();
+            cout<<"mdspan_data matrix_subspan copy on memory"<<endl;
+            mdspan_data<double,array<size_t,2>>matrix_subspancopy=mdspan_data_matrix.matrix_subspan_copy(1,2,2,2,false);
+            matrix_subspancopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            cout<<"mdspan_data matrix_subspan copy on a memmap"<<endl;
             array<size_t,2>offs= {1,2};
             array<size_t,2>sub_extents= {2,2};
-            mdspan_data<double,array<size_t,2>>subspan=mdspan_data_matrix.subspan_copy(offs,sub_extents,false);
+            mdspan_data<double,array<size_t,2>>subspan=mdspan_data_matrix.tensor_subspan_copy(offs,sub_extents,false);
             subspan.printtensor();
             cout<<"copy of mdspan on device";
             mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
 
             newcopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on device"<<endl;
+            cout<<"mdspan_data matrix_subspan copy on device"<<endl;
 
-           mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
+           mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.matrix_subspan_copy(1,2,2,2,false);
             newcopy_subspan.printtensor();
             cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
 
@@ -284,14 +284,14 @@ int main()
             vector<size_t> sub_extents1= {1,3,4};
 
             cout<<"now an mdspan_data subtensor"<<endl;
-            mdspan_data<double, std::vector<size_t>>  subtensor =Tensor.subspan_copy(offsets1, sub_extents1);
+            mdspan_data<double, std::vector<size_t>>  subtensor =Tensor.tensor_subspan_copy(offsets1, sub_extents1);
             subtensor.printtensor();
 
 
 
 
             cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
-            mdspan<double, std::vector<size_t>>  subtensor2(Tensor.subspan(offsets1, sub_extents1));
+            mdspan<double, std::vector<size_t>>  subtensor2(Tensor.tensor_subspan(offsets1, sub_extents1));
             subtensor2.printtensor();
 
             cout<<"now we offload that subtensor to gpu"<<endl;
@@ -333,15 +333,15 @@ int main()
             cout<<"mdspan_data matrix with the data of the Matrix B (A in colmajor)"<<endl;
             mdspan_data_matrixB.printtensor();
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_data_matrixB.row_copy(1);
+            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_data_matrixB.matrix_row_copy(1);
             rowcopyB.printtensor();
             cout <<"rank:" <<rowcopyB.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_data_matrixB.column_copy(1);
+            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_data_matrixB.matrix_column_copy(1);
             columncopyB.printtensor();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_data_matrixB.transpose_copy(true);
+            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_data_matrixB.matrix_transpose_copy(true);
             transposecopyB.printtensor();
 
         }
@@ -373,33 +373,33 @@ int main()
             cout<<"mdspan_data matrix with the data of the Matrix A"<<endl;
             mdspan_data_matrix.printtensor();
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_data_matrix.row_copy(1);
+            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_data_matrix.matrix_row_copy(1);
             rowcopy.printtensor();
             cout <<"rank:" <<rowcopy.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopy=mdspan_data_matrix.column_copy(1);
+            mdspan_data<double,array<size_t,2>>columncopy=mdspan_data_matrix.matrix_column_copy(1);
             columncopy.printtensor();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.transpose_copy(true);
+            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_data_matrix.matrix_transpose_copy(true);
             transposecopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on a memory"<<endl;
-            mdspan_data<double,array<size_t,2>>subspanmatrixcopy=mdspan_data_matrix.subspanmatrix_copy(1,2,2,2,false);
-            subspanmatrixcopy.printtensor();
+            cout<<"mdspan_data matrix_subspan copy on a memory"<<endl;
+            mdspan_data<double,array<size_t,2>>matrix_subspancopy=mdspan_data_matrix.matrix_subspan_copy(1,2,2,2,false);
+            matrix_subspancopy.printtensor();
 
-            cout<<"mdspan_data subspanmatrix copy on a memmap"<<endl;
+            cout<<"mdspan_data matrix_subspan copy on a memmap"<<endl;
             array<size_t,2>offs= {1,2};
             array<size_t,2>sub_extents= {2,2};
-            mdspan_data<double,array<size_t,2>>subspan=mdspan_data_matrix.subspan_copy(offs,sub_extents,false);
+            mdspan_data<double,array<size_t,2>>subspan=mdspan_data_matrix.tensor_subspan_copy(offs,sub_extents,false);
             subspan.printtensor();
             cout<<"copy of mdspan on device";
             mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
 
             newcopy.printtensor();
-          cout<<"mdspan_data subspanmatrix copy on device"<<endl;
+          cout<<"mdspan_data matrix_subspan copy on device"<<endl;
 //
-            mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.subspanmatrix_copy(1,2,2,2,false);
+            mdspan_data<double,array<size_t,2>>newcopy_subspan=newcopy.matrix_subspan_copy(1,2,2,2,false);
            newcopy_subspan.printtensor();
             cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
 
@@ -429,14 +429,14 @@ int main()
             vector<size_t> sub_extents1= {1,3,4};
 
             cout<<"now an mdspan_data subtensor"<<endl;
-            mdspan_data<double, std::vector<size_t>>  subtensor =Tensor.subspan_copy(offsets1, sub_extents1);
+            mdspan_data<double, std::vector<size_t>>  subtensor =Tensor.tensor_subspan_copy(offsets1, sub_extents1);
             subtensor.printtensor();
 
 
 
 
             cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
-            mdspan<double, std::vector<size_t>>  subtensor2(Tensor.subspan(offsets1, sub_extents1));
+            mdspan<double, std::vector<size_t>>  subtensor2(Tensor.tensor_subspan(offsets1, sub_extents1));
             subtensor2.printtensor();
 
             cout<<"now we offload that subtensor to gpu"<<endl;
@@ -473,15 +473,15 @@ int main()
             cout<<"mdspan_data matrix with the data of the Matrix B (A in colmajor)"<<endl;
             mdspan_data_matrixB.printtensor();
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_data_matrixB.row_copy(1);
+            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_data_matrixB.matrix_row_copy(1);
             rowcopyB.printtensor();
             cout <<"rank:" <<rowcopyB.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_data_matrixB.column_copy(1);
+            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_data_matrixB.matrix_column_copy(1);
             columncopyB.printtensor();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_data_matrixB.transpose_copy(true);
+            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_data_matrixB.matrix_transpose_copy(true);
             transposecopyB.printtensor();
 
         }

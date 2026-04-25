@@ -42,13 +42,13 @@ public:
 
     using DataBlock<T>::operator=;
 //
-    using DataBlock<T>::subspan_copy;
-    mdspan_data<T, Container> subspan_copy(const Container& offsets, const Container& sub_extents, bool memmap=false ) ;
-    mdspan_data<T, Container> subspanmatrix_copy( size_t row,  size_t col,  size_t tile_rows,  size_t tile_cols, bool memmap=false );
-    mdspan_data<T, Container> transpose_copy(bool memmap=false );
+    using DataBlock<T>::tensor_subspan_copy;
+    mdspan_data<T, Container> tensor_subspan_copy(const Container& offsets, const Container& sub_extents, bool memmap=false ) ;
+    mdspan_data<T, Container> matrix_subspan_copy( size_t row,  size_t col,  size_t tile_rows,  size_t tile_cols, bool memmap=false );
+    mdspan_data<T, Container> matrix_transpose_copy(bool memmap=false );
 
-    mdspan_data<T, Container> column_copy( size_t col_index,bool memmap=false );
-    mdspan_data<T, Container> row_copy( size_t row_index,bool memmap=false   );
+    mdspan_data<T, Container> matrix_column_copy( size_t col_index,bool memmap=false );
+    mdspan_data<T, Container> matrix_row_copy( size_t row_index,bool memmap=false   );
     mdspan_data<T, Container> copy( bool memmap=false, bool ondevice=false,bool defaultdevice=true,int devicenum=0);
 
     void release_all_data();
@@ -173,10 +173,10 @@ mdspan_data<T, Container>::~mdspan_data()
 }
 //
 template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::subspan_copy(const Container& offsets, const Container& sub_extents,const bool memmap)
+mdspan_data<T, Container> mdspan_data<T, Container>::tensor_subspan_copy(const Container& offsets, const Container& sub_extents,const bool memmap)
 {
     mdspan_data<T, Container>  result(  sub_extents,this->dprowmajor,memmap,this->dpdata_is_devptr,false,this->devptr_devicenum);
-    DataBlock<T> temp= this->subspan_copy(offsets.data(),sub_extents.data(), result.pextents.data(),result.pstrides.data(), result.dpdata);
+    DataBlock<T> temp= this->tensor_subspan_copy(offsets.data(),sub_extents.data(), result.pextents.data(),result.pstrides.data(), result.dpdata);
     result.dprank=temp.dprank;
 
     return result;
@@ -184,31 +184,31 @@ mdspan_data<T, Container> mdspan_data<T, Container>::subspan_copy(const Containe
 
 
 template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::subspanmatrix_copy(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,const bool memmap)
+mdspan_data<T, Container> mdspan_data<T, Container>::matrix_subspan_copy(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,const bool memmap)
 {
     mdspan_data<T, Container>  result( tile_rows,tile_cols,this->dprowmajor,memmap, this->dpdata_is_devptr,false,this->devptr_devicenum);
-    this->subspanmatrix_copy_w(row,col,tile_rows,tile_cols, result.pextents.data(),result.pstrides.data(), result.dpdata);
+    this->matrix_subspan_copy_w(row,col,tile_rows,tile_cols, result.pextents.data(),result.pstrides.data(), result.dpdata);
     result.dprank=2;
     return result;
 }
 
 
 template <typename T, typename Container>
-mdspan_data<T, Container>  mdspan_data<T, Container>::transpose_copy( bool memmap )
+mdspan_data<T, Container>  mdspan_data<T, Container>::matrix_transpose_copy( bool memmap )
 {
     mdspan_data<T, Container>  result(this->dpextents[1],this->dpextents[0],this->dprowmajor,memmap,this->dpdata_is_devptr,false,this->devptr_devicenum);
-    this->transpose_copy_w(result.pextents.data(),result.pstrides.data(), result.dpdata);
+    this->matrix_transpose_copy_w(result.pextents.data(),result.pstrides.data(), result.dpdata);
     return result;
 }
 
 
 
 template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::column_copy(const size_t col_index, const bool memmap )
+mdspan_data<T, Container> mdspan_data<T, Container>::matrix_column_copy(const size_t col_index, const bool memmap )
 {
 
     mdspan_data<T, Container>  result(this->dpextents[0],1,this->dprowmajor,memmap,this->dpdata_is_devptr,false,this->devptr_devicenum);
-    this->column_copy_w(col_index, result.pextents.data(),result.pstrides.data(), result.dpdata);
+    this->matrix_column_copy_w(col_index, result.pextents.data(),result.pstrides.data(), result.dpdata);
     result.dprank=1;
 
     return result;
@@ -216,10 +216,10 @@ mdspan_data<T, Container> mdspan_data<T, Container>::column_copy(const size_t co
 }
 
 template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::row_copy(const size_t row_index, const bool memmap  )
+mdspan_data<T, Container> mdspan_data<T, Container>::matrix_row_copy(const size_t row_index, const bool memmap  )
 {
     mdspan_data<T, Container>  result(this->dpextents[1],1,this->dprowmajor,memmap,this->dpdata_is_devptr,false,this->devptr_devicenum);
-    this->row_copy_w(row_index,result.pextents.data(),result.pstrides.data(), result.dpdata);
+    this->matrix_row_copy_w(row_index,result.pextents.data(),result.pstrides.data(), result.dpdata);
     result.dprank=1;
     return result;
 

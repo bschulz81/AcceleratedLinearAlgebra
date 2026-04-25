@@ -27,10 +27,10 @@ int main()
     DataBlock<double> Ad(A.data(), M*K, true, 2, extA.data(), stridesA.data(), false,false,false);
 
     size_t sub_ext[2],sub_strides[2];
-    DataBlock<double> A1 = Ad.subspanmatrix(0, 0, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A2 = Ad.subspanmatrix(4, 0, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A3 = Ad.subspanmatrix(0, 4, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A4 = Ad.subspanmatrix(4, 4, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A1 = Ad.matrix_subspan(0, 0, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A2 = Ad.matrix_subspan(4, 0, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A3 = Ad.matrix_subspan(0, 4, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A4 = Ad.matrix_subspan(4, 4, 4, 4, sub_ext, sub_strides);
 
 // fill some blocks (e.g., leave A3 zero)
     for(size_t i = 0; i < 4; ++i)
@@ -46,10 +46,10 @@ int main()
     size_t sub_ext2[2],sub_strides2[2];
     DataBlock<double> Bd(B.data(), K*N, true, 2, extB.data(), stridesB.data(), false,false,false);
 
-    DataBlock<double> B1 = Bd.subspanmatrix(0, 0, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B2 = Bd.subspanmatrix(4, 0, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B3 = Bd.subspanmatrix(0, 4, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B4 = Bd.subspanmatrix(4, 4, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B1 = Bd.matrix_subspan(0, 0, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B2 = Bd.matrix_subspan(4, 0, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B3 = Bd.matrix_subspan(0, 4, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B4 = Bd.matrix_subspan(4, 4, 4, 4, sub_ext2, sub_strides2);
 
 // fill some blocks (e.g., leave A3 zero)
     for(size_t i = 0; i < 4; ++i)

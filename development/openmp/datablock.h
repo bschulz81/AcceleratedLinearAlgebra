@@ -258,32 +258,32 @@ public:
         return dpdata[i*dpstrides[0]];
     };
 
-    inline DataBlock<T>subspan(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*    psub_strides)const;
+    inline DataBlock<T>tensor_subspan(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*    psub_strides)const;
 
-    inline DataBlock<T>subspan_copy(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*   psub_strides, T*    sub_data)const;
+    inline DataBlock<T>tensor_subspan_copy(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*   psub_strides, T*    sub_data)const;
 
-    inline DataBlock<T>subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides)const;
+    inline DataBlock<T>matrix_subspan( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides)const;
 
-    inline DataBlock<T>subspanmatrix_copy_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const;
-    inline DataBlock<T>subspanmatrix_copy_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const ;
-    inline DataBlock<T>subspanmatrix_copy_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const;
+    inline DataBlock<T>matrix_subspan_copy_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const;
+    inline DataBlock<T>matrix_subspan_copy_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const ;
+    inline DataBlock<T>matrix_subspan_copy_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const;
 
-    inline DataBlock<T> transpose(size_t*    newextents, size_t*    newstrides)const;
+    inline DataBlock<T> matrix_transpose(size_t*    newextents, size_t*    newstrides)const;
 
-    inline DataBlock<T> transpose_copy_v(size_t*    newextents, size_t*    newstrides,T* newdata)const;
-    inline DataBlock<T> transpose_copy_w(size_t*    newextents, size_t*    newstrides,T* newdata)const;
-    inline DataBlock<T> transpose_copy_s(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+    inline DataBlock<T> matrix_transpose_copy_v(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+    inline DataBlock<T> matrix_transpose_copy_w(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+    inline DataBlock<T> matrix_transpose_copy_s(size_t*    newextents, size_t*    newstrides,T* newdata)const;
 
-    inline DataBlock<T> row(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
-    inline DataBlock<T> column(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
+    inline DataBlock<T> matrix_row(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
+    inline DataBlock<T> matrix_column(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
 
-    inline DataBlock<T> column_copy_w(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
-    inline DataBlock<T> column_copy_v(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
-    inline DataBlock<T> column_copy_s(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_column_copy_w(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_column_copy_v(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_column_copy_s(const size_t col_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
 
-    inline DataBlock<T> row_copy_w(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
-    inline DataBlock<T> row_copy_v(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
-    inline DataBlock<T> row_copy_s(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_row_copy_w(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_row_copy_v(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
+    inline DataBlock<T> matrix_row_copy_s(const size_t row_index, size_t*    newextents,size_t *    new_strides, T* newdata)const;
 
     size_t count_noncollapsed_dims() const;
     DataBlock<T> collapsed_view(size_t num_non_collapsed_dims,size_t* extents, size_t* strides) const;
@@ -531,7 +531,7 @@ template<typename T> DataBlock<T>::DataBlock(
 
 
 #pragma omp begin declare target
-template<typename T>inline DataBlock<T> DataBlock<T>::transpose(size_t*    newextents, size_t *newstrides)const
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose(size_t*    newextents, size_t *newstrides)const
 {
 
     newextents[0]=dpextents[1];
@@ -569,7 +569,7 @@ DataBlock<T>::Type  DataBlock<T>::ObjectType() const
 
 
 #pragma omp begin declare target
-template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_w(size_t*    newextents, size_t *newstrides, T* newdata)const
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_w(size_t*    newextents, size_t *newstrides, T* newdata)const
 {
 
     newextents[0]=dpextents[1];
@@ -615,7 +615,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_w(size_t*  
 #pragma omp end declare target
 
 #pragma omp begin declare target
-template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_v(size_t*    newextents, size_t *newstrides, T* newdata)const
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_v(size_t*    newextents, size_t *newstrides, T* newdata)const
 {
 
     newextents[0]=dpextents[1];
@@ -664,7 +664,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::transpose_copy_v(size_t*  
 
 #pragma omp begin declare target
 template<typename T>
-inline DataBlock<T> DataBlock<T>::transpose_copy_s(size_t*    newextents, size_t *newstrides, T* newdata)const
+inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_s(size_t*    newextents, size_t *newstrides, T* newdata)const
 {
 
     newextents[0]=dpextents[1];
@@ -903,13 +903,13 @@ DataBlock<T> DataBlock<T>::collapsed_view(size_t num_non_collapsed_dims,size_t *
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_extents,size_t* newextents, size_t*    new_strides)const
+DataBlock<T>DataBlock<T>::tensor_subspan(const size_t * poffsets, const size_t * psub_extents,size_t* newextents, size_t*    new_strides)const
 {
     const size_t r = dprank;
     size_t offset_index = 0;
     size_t length_index = 0; // for computing total length
 
-    #pragma omp unroll partial
+    #pragma omp parallel for simd reduction(+:offset_index,length_index) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
     {
         offset_index  += poffsets[i] * dpstrides[i];
@@ -917,9 +917,10 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
     }
 
     size_t rank_out = 0;
-    #pragma omp unroll partial
+    #pragma omp parallel for simd reduction(+:rank_out) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
-        if (psub_extents[i] > 1) ++rank_out;
+        if (psub_extents[i] > 1)
+            ++rank_out;
 
     if (rank_out == 0) rank_out = 1;
 
@@ -937,6 +938,7 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
                 ++idx;
             }
         }
+
         if (idx == 0)   // scalar case
         {
             newextents[0] = 1;
@@ -960,7 +962,7 @@ DataBlock<T>DataBlock<T>::subspan(const size_t * poffsets, const size_t * psub_e
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T> DataBlock<T>::subspan_copy(
+DataBlock<T> DataBlock<T>::tensor_subspan_copy(
     const size_t* poffsets,
     const size_t* psub_extents,
     size_t* new_extents,
@@ -981,6 +983,7 @@ DataBlock<T> DataBlock<T>::subspan_copy(
     // Copy loop
     while (true)
     {
+        #pragma omp parallel for simd if(parallel:r>30)
         for (size_t i = 0; i < r; ++i)
             global_indices[i] = poffsets[i] + indices[i];
 
@@ -1002,7 +1005,9 @@ DataBlock<T> DataBlock<T>::subspan_copy(
         size_t dim = r;
         while (dim-- > 0)
         {
-            if (++indices[dim] < psub_extents[dim]) break;
+            if (++indices[dim] < psub_extents[dim])
+                break;
+
             indices[dim] = 0;
         }
         if (dim == size_t(-1)) break;
@@ -1013,8 +1018,10 @@ DataBlock<T> DataBlock<T>::subspan_copy(
 
     // Collapse trivial dimensions
     size_t rank_out = 0;
+    #pragma omp parallel for simd reduction(+:rank_out) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
         if (psub_extents[i] > 1) ++rank_out;
+
     if (rank_out == 0) rank_out = 1; // scalar
 
     size_t idx = 0;
@@ -1059,7 +1066,7 @@ DataBlock<T> DataBlock<T>::subspan_copy(
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T>  DataBlock<T>::subspanmatrix( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides)const
+DataBlock<T>  DataBlock<T>::matrix_subspan( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides)const
 {
     psub_strides[0] = dpstrides[0];
     psub_strides[1] = dpstrides[1];
@@ -1100,7 +1107,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix( const size_t row, const size_t col,co
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T>  DataBlock<T>::subspanmatrix_copy_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
+DataBlock<T>  DataBlock<T>::matrix_subspan_copy_w( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
 {
 
     const size_t s0 = dpstrides[0];
@@ -1167,7 +1174,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_w( const size_t row, const size_t
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T>  DataBlock<T>::subspanmatrix_copy_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
+DataBlock<T>  DataBlock<T>::matrix_subspan_copy_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
 {
 
 
@@ -1232,7 +1239,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_v( const size_t row, const size_t
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
+DataBlock<T>  DataBlock<T>::matrix_subspan_copy_s( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const
 {
 
 
@@ -1300,7 +1307,7 @@ DataBlock<T>  DataBlock<T>::subspanmatrix_copy_s( const size_t row, const size_t
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::row(const size_t row_index, size_t*    extents,size_t *    new_strides)const
+DataBlock<T> DataBlock<T>::matrix_row(const size_t row_index, size_t*    extents,size_t *    new_strides)const
 {
     extents[0] = dpextents[1];
     new_strides[0]=dpstrides[1];
@@ -1314,7 +1321,7 @@ DataBlock<T> DataBlock<T>::row(const size_t row_index, size_t*    extents,size_t
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::row_copy_w(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_row_copy_w(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
     const size_t pl=dpextents[1];
@@ -1345,7 +1352,7 @@ DataBlock<T> DataBlock<T>::row_copy_w(const size_t row_index, size_t*    extents
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::row_copy_v(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_row_copy_v(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
     const size_t pl=dpextents[1];
     extents[0] = pl;
@@ -1374,7 +1381,7 @@ DataBlock<T> DataBlock<T>::row_copy_v(const size_t row_index, size_t*    extents
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::row_copy_s(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_row_copy_s(const size_t row_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
     const size_t pl=dpextents[1];
     extents[0] = pl;
@@ -1405,7 +1412,7 @@ DataBlock<T> DataBlock<T>::row_copy_s(const size_t row_index, size_t*    extents
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::column_copy_v(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_column_copy_v(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
     const size_t pl=dpextents[0];
@@ -1438,7 +1445,7 @@ DataBlock<T> DataBlock<T>::column_copy_v(const size_t col_index, size_t*    exte
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::column_copy_s(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_column_copy_s(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
     const size_t pl=dpextents[0];
@@ -1469,7 +1476,7 @@ DataBlock<T> DataBlock<T>::column_copy_s(const size_t col_index, size_t*    exte
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::column_copy_w(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
+DataBlock<T> DataBlock<T>::matrix_column_copy_w(const size_t col_index, size_t*    extents,size_t *    new_strides, T* newdata)const
 {
 
     const size_t pl=dpextents[0];
@@ -1503,7 +1510,7 @@ DataBlock<T> DataBlock<T>::column_copy_w(const size_t col_index, size_t*    exte
 
 #pragma omp begin declare target
 template <typename T>
-DataBlock<T> DataBlock<T>::column(const size_t col_index, size_t*    extents,size_t *   new_strides)const
+DataBlock<T> DataBlock<T>::matrix_column(const size_t col_index, size_t*    extents,size_t *   new_strides)const
 {
     extents[0] = dpextents[0];
     new_strides[0]=dpstrides[0];

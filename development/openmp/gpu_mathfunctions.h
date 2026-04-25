@@ -1181,13 +1181,13 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
     {
         size_t pextv[1], pstrv[1];
 
-        DataBlock<T> v = M.column(c, pextv, pstrv);  // current column, updated in place
+        DataBlock<T> v = M.matrix_column(c, pextv, pstrv);  // current column, updated in place
         const size_t pextv0=pextv[0];
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1], pstru[1];
 
-            DataBlock<T> u = tQ.column(j, pextu, pstru);
+            DataBlock<T> u = tQ.matrix_column(j, pextu, pstru);
             T dot_pr = T(0);
 
             #pragma omp target teams distribute parallel for simd  map(tofrom: dot_pr) reduction(+:dot_pr) device(dev)
