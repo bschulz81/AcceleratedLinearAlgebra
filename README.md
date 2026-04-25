@@ -46,6 +46,14 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 
+### 25.04.2026
+Summa now works if C has multiple blocks per rank, on gpu and cpu. This required extensive modifications of ordinary summa.
+Added a vector scatterer.
+Added a matrix vector multiplier for gpu and cpu.
+Added a new interface for the policy classes of the scatterers, separated into mpi cart parameters and block policies, which helps to use the same communicator for scattering problems.
+fixed a problem in a test application due to a refractored constructor in the Datablock class
+
+Now the rest of the distributed blas functions are trivial to implement. 
 
 ### 10.04.2026
 Added a Summa algorithm for matrices distributed with the message passing interface that works on GPU and CPU.
