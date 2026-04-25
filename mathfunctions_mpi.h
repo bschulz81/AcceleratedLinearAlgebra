@@ -714,6 +714,7 @@ bool Math_Functions_MPI<T>::SUMMA_Distributed(
             int new_rank;
             MPI_Comm_rank(comm, &new_rank);
             MPI_Cart_coords(comm, new_rank, 2, coords);
+            MPI_Comm_free(&comm_temp);
         }
         else
         {
@@ -738,7 +739,12 @@ bool Math_Functions_MPI<T>::SUMMA_Distributed(
         const size_t grid_k = (Ktot + bk - 1) / bk;
 
         if (Pr > grid_r || Pc > grid_c)
-            return false;
+        {
+             if(minnumber==0) MPI_Comm_free(&comm);
+
+             return false;
+        }
+
 
         MPI_Comm row_comm, col_comm;
 
@@ -1092,7 +1098,8 @@ bool Math_Functions_MPI<T>::SUMMA_Distributed(
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
-
+        if(minnumber==0)
+            MPI_Comm_free(&comm);
         return true;
 
     }
