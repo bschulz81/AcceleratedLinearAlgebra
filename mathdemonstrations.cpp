@@ -56,7 +56,7 @@ int main()
         //static_tag<rank> is the same as an array container of <rank>
         mdspan_data_t<double, static_tag<2>> D(rows,rows, true,false);
         cout<<"multiplication of A and transpose of B"<<endl;
-        D=A*B.transpose();
+        D=A*B.matrix_transpose();
 
         D.printtensor();
 
@@ -278,7 +278,7 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             cout<<"We can create a transpose with the base class DataBlock, but also with mdspan"<<endl;
             size_t newext[2],newstr[2];
-            DataBlock<double>m=L.transpose(newext,newstr);
+            DataBlock<double>m=L.matrix_transpose(newext,newstr);
             Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
             verify.printtensor();
         }
@@ -303,7 +303,7 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
 
             cout<<"Here we create the transpose with mdspan"<<endl;
-            mdspan<double,std::vector<size_t>> m=L.transpose();
+            mdspan<double,std::vector<size_t>> m=L.matrix_transpose();
             Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
             verify.printtensor();
 
@@ -335,7 +335,7 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             size_t newext[2],newstr[2];
 
-            DataBlock<double>m=L.transpose(newext,newstr);
+            DataBlock<double>m=L.matrix_transpose(newext,newstr);
             Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
             verify.printtensor();
 

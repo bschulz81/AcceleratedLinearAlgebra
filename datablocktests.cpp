@@ -35,7 +35,7 @@ int main(int argc, char** argv)
         size_t exta[1];
         size_t stra[1];
 
-        DataBlock<double>Aa=A.column(1,exta,stra);
+        DataBlock<double>Aa=A.matrix_column(1,exta,stra);
         cout <<"C"<<endl<<"Rank"<<Aa.rank()<<endl;
         Aa.printtensor();
 
@@ -44,13 +44,13 @@ int main(int argc, char** argv)
         size_t exta3[2],stra3[2];
         double newda3[7];
         cout<<"column 1 of A with data c"<<endl;
-        DataBlock<double>Ac=A.column_copy_s(1, exta3,stra3,newda3);
+        DataBlock<double>Ac=A.matrix_column_copy_s(1, exta3,stra3,newda3);
         Ac.printtensor();
         cout <<"Rank: "<<Ac.rank()<<endl;
         cout<<"row"<<endl;
         size_t extar[2];
         size_t strar[2];
-        DataBlock<double>Aa1=A.row(1,extar,strar);
+        DataBlock<double>Aa1=A.matrix_row(1,extar,strar);
         cout <<"C"<<endl;
         Aa1.printtensor();
         cout <<"Rank"<<Aa1.rank()<<endl;
@@ -58,29 +58,29 @@ int main(int argc, char** argv)
         size_t exta3r[2],stra3r[2];
         double newda3r[7];
         cout<<"row 1 of A with data c"<<endl;
-        DataBlock<double>Ac2=A.row_copy_s(1, exta3r,stra3r,newda3r);
+        DataBlock<double>Ac2=A.matrix_row_copy_s(1, exta3r,stra3r,newda3r);
         Ac2.printtensor();
 
         size_t exta2[2],stra2[2];
-        DataBlock<double>Ab= A.subspanmatrix(1,1,2,4,exta2,stra2);
-        cout<<"subspanmatrixA"<<endl;
+        DataBlock<double>Ab= A.matrix_subspan(1,1,2,4,exta2,stra2);
+        cout<<"matrix_subspanA"<<endl;
         Ab.printtensor();
 
 
         size_t exta4[2],stra4[2];
         double newda4[8];
-        DataBlock<double>Ad= A.subspanmatrix_copy_s(1,1,2,4,exta4,stra4,newda4);
-        cout<<"subspanmatrixA with data copy"<<endl;
+        DataBlock<double>Ad= A.matrix_subspan_copy_s(1,1,2,4,exta4,stra4,newda4);
+        cout<<"matrix_subspanA with data copy"<<endl;
         Ad.printtensor();
 
         size_t exta5[2],stra5[2];
-        DataBlock<double>Ae= A.transpose(exta5,stra5);
+        DataBlock<double>Ae= A.matrix_transpose(exta5,stra5);
         cout<<"transpose"<<endl;
         Ae.printtensor();
 
         size_t exta6[2],stra6[2];
         double dataa6[21];
-        DataBlock<double>Af= A.transpose_copy_s(exta6,stra6,dataa6);
+        DataBlock<double>Af= A.matrix_transpose_copy_s(exta6,stra6,dataa6);
         cout<<"transpose with data copy"<<endl;
         Af.printtensor();
 
@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
 
         size_t newextT[2],newstrT[2];
-        DataBlock<double> subT_view =T_row.subspan(offsets, sub_extents, newextT,newstrT);
+        DataBlock<double> subT_view =T_row.tensor_subspan(offsets, sub_extents, newextT,newstrT);
 
         std::cout<<"now a Tensor"<<endl;
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
         double buffer1[12];
         size_t newxtCa[2],newstrCA[2];
-        DataBlock<double> subC_view2A =T_row.subspan_copy(offsets, sub_extents, newxtCa, newstrCA,buffer1);
+        DataBlock<double> subC_view2A =T_row.tensor_subspan_copy(offsets, sub_extents, newxtCa, newstrCA,buffer1);
 
         std::cout << "Subtensor view (row-major) with buffer:\n";
         subC_view2A.printtensor();
@@ -158,14 +158,14 @@ int main(int argc, char** argv)
         cout<<"B"<< B.datalength()<<endl<<endl;
         size_t extbbb[2];
         size_t strbbb[2];
-        DataBlock<double>Bbbb(B_data_colmajor.data(), false,3,7,extbbb,strbbb,true,true);
+        DataBlock<double>Bbbb(B_data_colmajor.data(), false,3,7,extbbb,strbbb,true,false);
         Bbbb.printtensor();
 
         cout<<"column 1"<<endl;
 
         size_t extb[2],strb[2];
 
-        DataBlock<double>Ba= B.column(1,extb,strb);
+        DataBlock<double>Ba= B.matrix_column(1,extb,strb);
         Ba.printtensor();
         size_t extb2[2],strb2[2];
 
@@ -174,13 +174,13 @@ int main(int argc, char** argv)
         double newdb3[7];
         cout<< "column1  of B with data copy"<<endl;
 
-        DataBlock<double> Bc1=B.column_copy_s(1, extb3,strb3,  newdb3);
+        DataBlock<double> Bc1=B.matrix_column_copy_s(1, extb3,strb3,  newdb3);
         Bc1.printtensor();
 
         cout<<"row 1"<<endl;
 
         size_t extb35[2],strb35[2];
-        DataBlock<double>Ba2= B.row(1,extb35,strb35);
+        DataBlock<double>Ba2= B.matrix_row(1,extb35,strb35);
         Ba2.printtensor();
         cout <<"Rank"<<Ba2.rank()<<endl;
 
@@ -188,29 +188,29 @@ int main(int argc, char** argv)
         double newdb3a[7];
         cout<< "row 1  of B with data copy"<<endl;
 
-        DataBlock<double> Bc3=B.row_copy_s(1, extb34,strb34,  newdb3a);
+        DataBlock<double> Bc3=B.matrix_row_copy_s(1, extb34,strb34,  newdb3a);
         Bc3.printtensor();
         cout <<"Rank"<<Bc3.rank()<<endl;
 
         cout<<"subspanmatrx B"<<endl;
-        DataBlock<double>Bb= B.subspanmatrix(1,1,2,4,extb2,strb2);
+        DataBlock<double>Bb= B.matrix_subspan(1,1,2,4,extb2,strb2);
         Bb.printtensor();
         cout <<"Rank"<<Bb.rank()<<endl;
 
         size_t extb4[2],strb4[2];
         double newdb4[8];
-        DataBlock<double>Bd= B.subspanmatrix_copy_s(1,1,2,4,extb4,strb4,newdb4);
-        cout<<"subspanmatrixB with data copy"<<endl;
+        DataBlock<double>Bd= B.matrix_subspan_copy_s(1,1,2,4,extb4,strb4,newdb4);
+        cout<<"matrix_subspanB with data copy"<<endl;
         Bd.printtensor();
 
         size_t extb5[2],strb5[2];
-        DataBlock<double>Be= B.transpose(extb5,strb5);
+        DataBlock<double>Be= B.matrix_transpose(extb5,strb5);
         cout<<"transpose"<<endl;
         Be.printtensor();
 
         size_t extb6[2],strb6[2];
         double datab6[21];
-        DataBlock<double>Bf= B.transpose_copy_s(extb6,strb6,datab6);
+        DataBlock<double>Bf= B.matrix_transpose_copy_s(extb6,strb6,datab6);
         cout<<"transpose with data copy"<<endl;
         Bf.printtensor();
 
@@ -255,13 +255,13 @@ int main(int argc, char** argv)
 
         size_t newext[2],newstr[2];
         DataBlock<double> subC_view =
-            T_col.subspan(offsetsC, sub_extentsC, newext,newstr);
+            T_col.tensor_subspan(offsetsC, sub_extentsC, newext,newstr);
         std::cout << "Subtensor view (col-major):\n";
         subC_view.printtensor();
 
         double buffer4[12];
         size_t newextC[2],sub_stridesC[2];
-        DataBlock<double> subC_view2 =T_col.subspan_copy(offsetsC, sub_extentsC,newextC, sub_stridesC,buffer4);
+        DataBlock<double> subC_view2 =T_col.tensor_subspan_copy(offsetsC, sub_extentsC,newextC, sub_stridesC,buffer4);
         std::cout << "Subtensor view (col-major) with buffer:\n";
         subC_view2.printtensor();
         cout <<"Rank"<<subC_view2.rank()<<endl;

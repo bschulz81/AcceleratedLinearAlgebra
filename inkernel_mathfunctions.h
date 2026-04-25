@@ -1346,14 +1346,14 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
     {
         size_t pextv[1];
         size_t pstrv[1];
-        DataBlock<T> v = M.column(c,pextv,pstrv);
+        DataBlock<T> v = M.matrix_column(c,pextv,pstrv);
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1];
             size_t pstru[1];
 
             T dot_pr=T(0);
-            DataBlock<T> u = Q.column(j,pextu,pstru);
+            DataBlock<T> u = Q.matrix_column(j,pextu,pstru);
             #pragma omp parallel for simd  reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {

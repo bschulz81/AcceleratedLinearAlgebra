@@ -117,13 +117,13 @@ public:
 
             return this->should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
-    return false;
-}
+        return false;
+    }
 
-template <typename T>
-bool should_use_gpu(const DataBlock<T>& v1,
-                    const DataBlock<T>& v2,
-                    const size_t threshold)const
+    template <typename T>
+    bool should_use_gpu(const DataBlock<T>& v1,
+                        const DataBlock<T>& v2,
+                        const size_t threshold)const
     {
         const size_t problem_size = v1.datalength();
 
@@ -369,7 +369,7 @@ public:
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
     inline static bool SUMMA_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-
+    inline static bool Matrix_Vector_multiply_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& x,  DistributedDataBlock<T>& y,   const Math_MPI_Functions_Policy* pol=nullptr);
 
 protected:
     inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
@@ -410,6 +410,7 @@ protected:
 };
 
 
+
 template <typename T>
 bool Math_Functions_MPI<T>::SUMMA_Distributed(
     const DistributedDataBlock<T>& A,
@@ -417,21 +418,13 @@ bool Math_Functions_MPI<T>::SUMMA_Distributed(
     DistributedDataBlock<T>& C,
     const Math_MPI_Functions_Policy* pol)
 {
-
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
     if(!policy.mpi_enabled)
         return false;
-
-    if (A.pcomm == MPI_COMM_NULL)
-        return false;
-    if (B.pcomm == MPI_COMM_NULL)
-        return false;
-    if (C.pcomm == MPI_COMM_NULL)
-        return false;
-
-    MPI_Comm comm = A.pcomm;
-
+    if (A.pctx->comm == MPI_COMM_NULL) return false;
+    if (B.pctx->comm == MPI_COMM_NULL) return false;
+    if (C.pctx->comm == MPI_COMM_NULL) return false;
     if(A.pglobal_extents[1] != B.pglobal_extents[0])
         return false;
     if(A.pglobal_extents[0] != C.pglobal_extents[0])
@@ -445,296 +438,1043 @@ bool Math_Functions_MPI<T>::SUMMA_Distributed(
     if(B.pblock_extents[1] != C.pblock_extents[1])
         return false;
 
-    int size;
-    MPI_Comm_size(comm,&size);
+
+
+    MPI_Comm comma = C.pctx->comm;
     int rank;
-
-    if(size<4)
-        return false;
-
-    if(checkPrimeNumber(size))
-        return false;
-
-    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_rank(comma, &rank);
 
 
-    const size_t Pr = A.pproc_grid[0];
-    const size_t Pc = A.pproc_grid[1];
+    size_t blocknumber=C.plocal_blocknumber;
+    size_t maxnumber,minnumber;
 
-    int my_row = rank / Pc;
-    int my_col = rank % Pc;
+    MPI_Allreduce(&blocknumber, &maxnumber, 1,
+                  mpi_get_type<size_t>(), MPI_MAX, comma);
+    MPI_Allreduce(&blocknumber, &minnumber, 1, mpi_get_type<size_t>(), MPI_MIN, comma);
 
-    const size_t br = A.pblock_extents[0];
-    const size_t bk = A.pblock_extents[1];
-    const size_t bc = B.pblock_extents[1];
-
-    const size_t M = A.pglobal_extents[0];
-    const size_t N = B.pglobal_extents[1];
-    const size_t Ktot = A.pglobal_extents[1];
-
-    const size_t grid_r = (M + br - 1) / br;
-    const size_t grid_c = (N + bc - 1) / bc;
-    const size_t grid_k = (Ktot + bk - 1) / bk;
-
-
-    MPI_Comm row_comm, col_comm;
-    MPI_Comm_split(comm, my_row, my_col, &row_comm);
-    MPI_Comm_split(comm, my_col, my_row, &col_comm);
-
-
-    size_t max_A = br * bk;
-    size_t max_B = bk * bc;
-
-    T* A_buf;
-    T* B_buf;
-    bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold);
-    bool memmap=policy.memmapped_files;
-
-    int devnum=policy.devicenum;
-
-    if(A.pdpdata_is_devptr&& A.pdevptr_devicenum!=devnum)
-        return false;
-    if(B.pdpdata_is_devptr&& B.pdevptr_devicenum!=devnum)
-        return false;
-    if(C.pdpdata_is_devptr&& C.pdevptr_devicenum!=devnum)
-        return false;
-    if(A.pdevptr_devicenum!=B.pdevptr_devicenum ||A.pdevptr_devicenum!=C.pdevptr_devicenum)
-        return false;
-
-
-    DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A,A_buf);
-    DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B,B_buf);
-
-    T* adata=nullptr;
-
-    if(ongpu)
+    if(maxnumber<=1)
     {
-        if(A.plocal_blocknumber > 0)
+        int coords[2];
+        MPI_Cart_coords(comma, rank, 2, coords);
+        int my_row = coords[0];
+        int my_col = coords[1];
+        const size_t Pr = A.pctx->dims[0];
+        const size_t Pc = A.pctx->dims[1];
+        const size_t br = A.pblock_extents[0];
+        const size_t bk = A.pblock_extents[1];
+        const size_t bc = B.pblock_extents[1];
+        const size_t M = A.pglobal_extents[0];
+        const size_t N = B.pglobal_extents[1];
+        const size_t Ktot = A.pglobal_extents[1];
+        const size_t grid_r = (M + br - 1) / br;
+        const size_t grid_c = (N + bc - 1) / bc;
+        const size_t grid_k = (Ktot + bk - 1) / bk;
+
+        MPI_Comm row_comm, col_comm;
+        MPI_Comm_split(comma, my_row, my_col, &row_comm);
+        MPI_Comm_split(comma, my_col, my_row, &col_comm);
+        size_t max_A = br * bk;
+        size_t max_B = bk * bc;
+        bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold);
+        bool memmap=policy.memmapped_files;
+        int devnum=policy.devicenum;
+        if(A.pdpdata_is_devptr&& A.pdevptr_devicenum!=devnum) return false;
+        if(B.pdpdata_is_devptr&& B.pdevptr_devicenum!=devnum) return false;
+        if(C.pdpdata_is_devptr&& C.pdevptr_devicenum!=devnum) return false;
+        if(A.pdevptr_devicenum!=B.pdevptr_devicenum ||A.pdevptr_devicenum!=C.pdevptr_devicenum) return false;
+        T* A_buf;
+        T* B_buf;
+        if(max_A>0)
+            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A,A_buf);
+        if(max_B>0)
+            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B,B_buf);
+
+        T* adata=A.pdata;
+        if(ongpu)
         {
-            if(!A.pdpdata_is_devptr)
+            if(A.plocal_blocknumber > 0)
             {
-                adata=(T*) omp_target_alloc(sizeof(T)*A.pdatalength,devnum);
-                omp_target_memcpy(adata,A.pdata,sizeof(T)*A.pdatalength,0,0,devnum,omp_get_initial_device());
-            }
-            else
-            {
-                adata=A.pdata;
-            }
-        }
-    }
-    else
-        adata=A.pdata;
-
-    T* bdata=nullptr;
-    if(ongpu)
-    {
-        if (B.plocal_blocknumber > 0)
-        {
-            if(!B.pdpdata_is_devptr)
-            {
-                bdata=(T*) omp_target_alloc(sizeof(T)*B.pdatalength,devnum);
-                omp_target_memcpy(bdata,B.pdata,sizeof(T)*B.pdatalength,0,0,devnum,omp_get_initial_device());
-            }
-            else
-            {
-            bdata=B.pdata;
-            }
-        }
-    }
-    else
-        bdata=B.pdata;
-
-    size_t *coffsets=nullptr,*cstrides=nullptr;
-    T* cdata=nullptr;
-    if(ongpu)
-    {
-        if (C.plocal_blocknumber > 0)
-        {
-            size_t length_extents_strides=sizeof(size_t)*2*C.plocal_blocknumber;
-
-            coffsets=(size_t*) omp_target_alloc(length_extents_strides,devnum);
-            omp_target_memcpy(coffsets,C.pblock_offsets,length_extents_strides,0,0,devnum,omp_get_initial_device());
-            cstrides=(size_t*) omp_target_alloc(length_extents_strides,devnum);
-            omp_target_memcpy(cstrides,C.pstridesbuffer,length_extents_strides,0,0,devnum,omp_get_initial_device());
-
-            if(!C.pdpdata_is_devptr)
-            {
-                cdata=(T*) omp_target_alloc(sizeof(T)*C.pdatalength,devnum);
-                omp_target_memcpy(cdata,C.pdata,sizeof(T)*C.pdatalength,0,0,devnum,omp_get_initial_device());
-            }
-            else
-            {
-                cdata=C.pdata;
-            }
-        }
-    }
-    else
-    {
-        if (C.plocal_blocknumber > 0)
-        {
-            cdata=C.pdata;
-            coffsets=C.pblock_offsets;
-            cstrides=C.pstridesbuffer;
-        }
-    }
-
-
-
-
-    for (size_t k = 0; k < grid_k; k++)
-    {
-        int root_col = k % Pc;
-        size_t diff1= M - my_row * br;
-
-        const size_t A_rows =(br<=diff1)?br:diff1;
-        size_t diff2=Ktot - k * bk;
-        const size_t A_cols = (bk<=diff2)? bk:diff2;
-
-        T* A_ptr = A_buf;
-
-
-        if (my_col == root_col)
-        {
-            size_t A_lin = my_row * grid_k + k;
-
-            auto it = A.pglobal_to_local_index.find(A_lin);
-            if (it != A.pglobal_to_local_index.end())
-            {
-                size_t idx = it->second;
-                size_t offset = A.pblocks[idx].dpdata - A.pdata;
-                A_ptr = adata + offset;
-
-            }
-        }
-
-
-        MPI_Bcast(A_ptr, A_rows*A_cols, mpi_get_type<T>(), root_col, row_comm);
-
-        const size_t Aext0 = A_rows;
-        const size_t Aext1 = A_cols;
-        const size_t Astr0 = A.pglobal_rowmajor ? A_cols : 1;
-        const size_t Astr1 = A.pglobal_rowmajor ? 1 : A_rows;
-
-
-        int root_row = k % Pr;
-        size_t diff3= Ktot - k * bk;
-
-        const size_t B_rows =(bk<=diff3)?bk:diff3;
-        size_t diff4=N - my_col * bc;
-
-        const size_t B_cols = (bc<=diff4)? bc:diff4;
-
-        T* B_ptr = B_buf;
-
-        if (my_row == root_row)
-        {
-            size_t B_lin = k * grid_c + my_col;
-
-            auto it = B.pglobal_to_local_index.find(B_lin);
-            if (it != B.pglobal_to_local_index.end())
-            {
-                size_t idx = it->second;
-                size_t offset = B.pblocks[idx].dpdata - B.pdata;
-                B_ptr = bdata + offset;
-            }
-        }
-
-        MPI_Bcast(B_ptr, B_rows*B_cols, mpi_get_type<T>(), root_row, col_comm);
-
-        const  size_t Bext0 = B_rows;
-        const size_t Bext1 = B_cols;
-        const size_t Bstr0 = B.pglobal_rowmajor ? B_cols : 1;
-        const size_t Bstr1 = B.pglobal_rowmajor ? 1 : B_rows;
-
-        if (C.plocal_blocknumber > 0)
-        {
-
-            if(ongpu)
-            {
-                #pragma omp target teams distribute parallel for collapse(3)device(devnum) is_device_ptr(cdata,coffsets,A_ptr,B_ptr)
-                for (size_t i = 0; i < C.plocal_blocknumber; i++)
+                if(!A.pdpdata_is_devptr)
                 {
-                    for (size_t ir = 0; ir < A_rows; ++ir)
+                    adata=(T*) omp_target_alloc(sizeof(T)*A.pdatalength,devnum);
+                    omp_target_memcpy(adata,A.pdata,sizeof(T)*A.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+        T* bdata=B.pdata;
+        if(ongpu)
+        {
+            if (B.plocal_blocknumber > 0)
+            {
+                if(!B.pdpdata_is_devptr)
+                {
+                    bdata=(T*) omp_target_alloc(sizeof(T)*B.pdatalength,devnum);
+                    omp_target_memcpy(bdata,B.pdata,sizeof(T)*B.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+        size_t *coffsets=C.pblock_offsets;
+        size_t *cstrides=C.pstridesbuffer;
+        T* cdata=C.pdata;
+        if(ongpu)
+        {
+            if (C.plocal_blocknumber > 0)
+            {
+                size_t length_extents_strides=sizeof(size_t)*2*C.plocal_blocknumber;
+                coffsets=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+                omp_target_memcpy(coffsets,C.pblock_offsets,length_extents_strides,0,0,devnum,omp_get_initial_device());
+                cstrides=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+                omp_target_memcpy(cstrides,C.pstridesbuffer,length_extents_strides,0,0,devnum,omp_get_initial_device());
+
+                if(!C.pdpdata_is_devptr)
+                {
+                    cdata=(T*) omp_target_alloc(sizeof(T)*C.pdatalength,devnum);
+                    omp_target_memcpy(cdata,C.pdata,sizeof(T)*C.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+        struct BlockMeta
+        {
+            size_t block_row;
+            size_t block_col;
+            size_t rows;
+            size_t cols;
+            size_t str0;
+            size_t str1;
+            size_t length;
+        };
+
+        for (size_t k = 0; k < grid_k; k++)
+        {
+            BlockMeta A_meta{0,0,0,0,0};
+            int root_col = k % Pc;
+            T* A_ptr = A_buf;
+            if (my_col == root_col)
+            {
+                size_t A_lin = my_row * grid_k + k;
+                auto it = A.pglobal_to_local_index.find(A_lin);
+                if (it != A.pglobal_to_local_index.end())
+                {
+                    size_t idx = it->second;
+                    A_meta.block_row = A.pblock_coords[2 * idx];
+                    A_meta.block_col = A.pblock_coords[2 * idx + 1];
+                    A_meta.rows = A.pblocks[idx].dpextents[0];
+                    A_meta.cols = A.pblocks[idx].dpextents[1];
+                    A_meta.str0 = A.pblocks[idx].dpstrides[0];
+                    A_meta.str1 = A.pblocks[idx].dpstrides[1];
+                    A_meta.length = A_meta.rows * A_meta.cols;
+                    size_t offset = A.pblocks[idx].dpdata - A.pdata;
+                    A_ptr = adata + offset;
+
+                }
+            }
+            MPI_Bcast(&A_meta, sizeof(BlockMeta), MPI_BYTE, root_col, row_comm);
+            MPI_Bcast(A_ptr, A_meta.length, mpi_get_type<T>(), root_col, row_comm);
+            int root_row = k % Pr;
+            BlockMeta B_meta{0,0,0,0,0};
+
+            T* B_ptr = B_buf;
+            if (my_row == root_row)
+            {
+                size_t B_lin = k * grid_c + my_col;
+
+                auto it = B.pglobal_to_local_index.find(B_lin);
+                if (it != B.pglobal_to_local_index.end())
+                {
+                    size_t idx = it->second;
+                    B_meta.block_row = B.pblock_coords[2 * idx];
+                    B_meta.block_col = B.pblock_coords[2 * idx + 1];
+                    B_meta.rows = B.pblocks[idx].dpextents[0];
+                    B_meta.cols = B.pblocks[idx].dpextents[1];
+                    B_meta.str0 = B.pblocks[idx].dpstrides[0];
+                    B_meta.str1 = B.pblocks[idx].dpstrides[1];
+                    B_meta.length = B_meta.rows * B_meta.cols;
+                    size_t offset = B.pblocks[idx].dpdata - B.pdata;
+                    B_ptr = bdata + offset;
+                }
+            }
+            MPI_Bcast(&B_meta, sizeof(BlockMeta), MPI_BYTE, root_row, col_comm);
+            MPI_Bcast(B_ptr, B_meta.length, mpi_get_type<T>(), root_row, col_comm);
+            const size_t A_block_rows=A_meta.rows;
+            const size_t A_block_cols=A_meta.cols;
+            const size_t B_block_cols=B_meta.cols;
+            const size_t A_block_str0=A_meta.str0;
+            const size_t A_block_str1=A_meta.str1;
+            const size_t B_block_str0=B_meta.str0;
+            const size_t B_block_str1=B_meta.str1;
+
+
+            if (C.plocal_blocknumber > 0 && A_meta.length > 0 && B_meta.length > 0)
+            {
+                if(ongpu)
+                {
+                    const size_t Cstr0=cstrides[0];
+                    const size_t Cstr1=cstrides[1];
+                    T* C_ptr=cdata+coffsets[0];
+                    #pragma omp target teams distribute parallel for collapse(2)device(devnum) is_device_ptr(cdata,A_ptr,B_ptr)
+                    for (size_t ir = 0; ir < A_block_rows; ++ir)
                     {
-                        for (size_t j = 0; j < B_cols; ++j)
+                        for (size_t j = 0; j < B_block_cols; ++j)
                         {
-                            T* C_ptr=cdata+coffsets[i];
-                            const size_t Cstr0=cstrides[2*i];
-                            const size_t Cstr1=cstrides[2*i+1];
                             T sum =T(0);
                             #pragma omp simd reduction(+:sum)
-                            for (size_t k = 0; k < A_cols; ++k)
+                            for (size_t p = 0; p < A_block_cols; ++p)
                             {
-                                sum += A_ptr[ir*Astr0+k*Astr1] *B_ptr[k*Bstr0+j*Bstr1];
+                                sum += A_ptr[ir * A_block_str0 + p * A_block_str1] *B_ptr[p  * B_block_str0 + j * B_block_str1];
+                            }
+                            C_ptr[ir*Cstr0+j*Cstr1]+= sum;
+                        }
+                    }
+                }
+                else
+                {
+
+                    T* C_ptr=cdata+coffsets[0];
+                    const size_t Cstr0=cstrides[0];
+                    const size_t Cstr1=cstrides[1];
+                    #pragma omp parallel for collapse(2)
+                    for (size_t ir = 0; ir < A_block_rows; ++ir)
+                    {
+                        for (size_t j = 0; j < B_block_cols; ++j)
+                        {
+
+                            T sum =T(0);
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t k = 0; k < A_block_cols; ++k)
+                            {
+                                sum += A_ptr[ir*A_block_str0+k*A_block_str1] *B_ptr[k*B_block_str0+j*B_block_str1];
                             }
                             C_ptr[ir*Cstr0+j*Cstr1]+= sum;
                         }
                     }
                 }
             }
+        }
+
+        if(ongpu)
+        {
+            if (A.plocal_blocknumber > 0)
+            {
+                if(!A.pdpdata_is_devptr)
+                    omp_target_free(adata,devnum);
+            }
+            if (B.plocal_blocknumber > 0)
+            {
+                if(!B.pdpdata_is_devptr)
+                    omp_target_free(bdata,devnum);
+            }
+
+            if (C.plocal_blocknumber>0)
+            {
+                if(!C.pdpdata_is_devptr)
+                {
+                    omp_target_memcpy(C.pdata,cdata,sizeof(T)*C.pdatalength,0,0,omp_get_initial_device(),devnum);
+                    omp_target_free(cdata,devnum);
+                }
+                omp_target_free(cstrides,devnum);
+                omp_target_free(coffsets,devnum);
+            }
+        }
+
+        if(max_A>0)
+            DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A,A_buf);
+        if(max_B>0)
+            DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B,B_buf);
+
+        MPI_Comm_free(&row_comm);
+        MPI_Comm_free(&col_comm);
+
+        return true;
+    }
+
+    else
+    {
+        MPI_Comm comm;
+        int Pr,Pc;
+        int coords[2];
+        if(minnumber==0)
+        {
+            int color = (C.plocal_blocknumber > 0) ? 1 : MPI_UNDEFINED;
+
+            MPI_Comm comm_temp;
+            MPI_Comm_split(comma, color, rank, &comm_temp);
+
+            if (comm_temp == MPI_COMM_NULL)
+                return true;
+
+            int active_size;
+            MPI_Comm_size(comm_temp, &active_size);
+
+            int dims[2] = {0,0};
+            MPI_Dims_create(active_size, 2, dims);
+            Pr=dims[0];
+            Pc=dims[1];
+            int periods[2] = {0,0};
+            MPI_Cart_create(comm_temp, 2, dims, periods, 1, &comm);
+            int new_rank;
+            MPI_Comm_rank(comm, &new_rank);
+            MPI_Cart_coords(comm, new_rank, 2, coords);
+        }
+        else
+        {
+            comm=comma;
+            Pr = C.pctx->dims[0];
+            Pc = C.pctx->dims[1];
+            MPI_Cart_coords(comm, rank, 2, coords);
+        }
+
+        int my_row = coords[0];
+        int my_col = coords[1];
+
+
+        const size_t br = A.pblock_extents[0];
+        const size_t bk = A.pblock_extents[1];
+        const size_t bc = B.pblock_extents[1];
+        const size_t M = A.pglobal_extents[0];
+        const size_t N = B.pglobal_extents[1];
+        const size_t Ktot = A.pglobal_extents[1];
+        const size_t grid_r = (M + br - 1) / br;
+        const size_t grid_c = (N + bc - 1) / bc;
+        const size_t grid_k = (Ktot + bk - 1) / bk;
+
+        if (Pr > grid_r || Pc > grid_c)
+            return false;
+
+        MPI_Comm row_comm, col_comm;
+
+        MPI_Comm_split(comm, my_row, my_col, &row_comm);
+        MPI_Comm_split(comm, my_col, my_row, &col_comm);
+        const size_t max_A = br * bk;
+        const size_t max_B = bk * bc;
+        bool ongpu=policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold);
+        bool memmap=policy.memmapped_files;
+        int devnum=policy.devicenum;
+        if(A.pdpdata_is_devptr&& A.pdevptr_devicenum!=devnum) return false;
+        if(B.pdpdata_is_devptr&& B.pdevptr_devicenum!=devnum) return false;
+        if(C.pdpdata_is_devptr&& C.pdevptr_devicenum!=devnum) return false;
+        if(A.pdevptr_devicenum!=B.pdevptr_devicenum ||A.pdevptr_devicenum!=C.pdevptr_devicenum) return false;
+
+
+        struct PanelPair
+        {
+            size_t a_idx;
+            size_t b_idx;
+            size_t c_idx;
+        };
+
+        size_t num_A_panels = 0;
+        size_t num_B_panels = 0;
+
+        size_t* Ci_list = new size_t[C.plocal_blocknumber];
+        size_t* Cj_list = new size_t[C.plocal_blocknumber];
+
+
+        bool* mark = new bool[grid_r > grid_c ? grid_r : grid_c];
+
+        #pragma omp parallel for simd if(parallel:grid_r>30)
+        for (size_t i = 0; i < grid_r; i++) mark[i] = false;
+
+
+        for (size_t i = 0; i < C.plocal_blocknumber; i++)
+        {
+            size_t Ci = C.pblock_coords[2*i] / br;
+
+            if (!mark[Ci])
+            {
+                mark[Ci] = true;
+                Ci_list[num_A_panels++] = Ci;
+            }
+        }
+
+        #pragma omp parallel for simd if(parallel: grid_c>30)
+        for (size_t j = 0; j < grid_c; j++) mark[j] = false;
+
+
+        for (size_t i = 0; i < C.plocal_blocknumber; i++)
+        {
+            size_t Cj = C.pblock_coords[2*i+1] / bc;
+
+            if (!mark[Cj])
+            {
+                mark[Cj] = true;
+                Cj_list[num_B_panels++] = Cj;
+            }
+        }
+
+        delete[] mark;
+
+
+
+        T* A_buf;
+        T* B_buf;
+        if(max_A>0)
+            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A*num_A_panels,A_buf);
+        if(max_B>0)
+            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B*num_B_panels,B_buf);
+
+        T* adata=A.pdata;
+        if(ongpu)
+        {
+            if(A.plocal_blocknumber > 0)
+            {
+                if(!A.pdpdata_is_devptr)
+                {
+                    adata=(T*) omp_target_alloc(sizeof(T)*A.pdatalength,devnum);
+                    omp_target_memcpy(adata,A.pdata,sizeof(T)*A.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+        T* bdata=B.pdata;
+        if(ongpu)
+        {
+            if (B.plocal_blocknumber > 0)
+            {
+                if(!B.pdpdata_is_devptr)
+                {
+                    bdata=(T*) omp_target_alloc(sizeof(T)*B.pdatalength,devnum);
+                    omp_target_memcpy(bdata,B.pdata,sizeof(T)*B.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+        size_t *coffsets=C.pblock_offsets;
+        size_t *cstrides=C.pstridesbuffer;
+        size_t *cblockcoords=C.pblock_coords;
+        T* cdata=C.pdata;
+        if(ongpu)
+        {
+            if (C.plocal_blocknumber > 0)
+            {
+                size_t length_extents_strides=sizeof(size_t)*2*C.plocal_blocknumber;
+                coffsets=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+                omp_target_memcpy(coffsets,C.pblock_offsets,length_extents_strides,0,0,devnum,omp_get_initial_device());
+                cstrides=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+                omp_target_memcpy(cstrides,C.pstridesbuffer,length_extents_strides,0,0,devnum,omp_get_initial_device());
+                cblockcoords=(size_t*) omp_target_alloc(length_extents_strides,devnum);
+                omp_target_memcpy(cblockcoords,C.pblock_coords,length_extents_strides,0,0,devnum,omp_get_initial_device());
+                if(!C.pdpdata_is_devptr)
+                {
+                    cdata=(T*) omp_target_alloc(sizeof(T)*C.pdatalength,devnum);
+                    omp_target_memcpy(cdata,C.pdata,sizeof(T)*C.pdatalength,0,0,devnum,omp_get_initial_device());
+                }
+            }
+        }
+
+        struct BlockMeta
+        {
+            size_t block_row;
+            size_t block_col;
+            size_t rows;
+            size_t cols;
+            size_t str0;
+            size_t str1;
+            size_t length;
+        };
+
+        BlockMeta* A_meta_arr = new BlockMeta[num_A_panels];
+        BlockMeta* B_meta_arr = new BlockMeta[num_B_panels];
+        T** A_panel_ptrs = new T*[num_A_panels];
+        T** B_panel_ptrs = new T*[num_B_panels];
+
+        for (size_t k = 0; k < grid_k; k++)
+        {
+            for (size_t p = 0; p < num_A_panels; p++)
+            {
+                const size_t bi = Ci_list[p];
+
+                BlockMeta& A_meta = A_meta_arr[p];
+                A_meta = {0,0,0,0,0,0,0};
+
+                const int root_col = k % Pc;
+
+                T* root_ptr = nullptr;
+                T* recv_ptr = A_buf + p * max_A;
+
+                if (my_col == root_col)
+                {
+                    const size_t A_lin = bi * grid_k + k;
+
+                    auto it = A.pglobal_to_local_index.find(A_lin);
+                    if (it != A.pglobal_to_local_index.end())
+                    {
+                        size_t idx = it->second;
+
+                        A_meta.block_row = A.pblock_coords[2 * idx];
+                        A_meta.block_col = A.pblock_coords[2 * idx + 1];
+                        A_meta.rows = A.pblocks[idx].dpextents[0];
+                        A_meta.cols = A.pblocks[idx].dpextents[1];
+                        A_meta.str0 = A.pblocks[idx].dpstrides[0];
+                        A_meta.str1 = A.pblocks[idx].dpstrides[1];
+                        A_meta.length = A_meta.rows * A_meta.cols;
+
+                        const size_t offset = A.pblocks[idx].dpdata - A.pdata;
+                        root_ptr = adata + offset;
+                    }
+                }
+
+                MPI_Bcast(&A_meta, sizeof(BlockMeta), MPI_BYTE, root_col, row_comm);
+
+
+                if (my_col == root_col)
+                    A_panel_ptrs[p] = root_ptr;
+                else
+                    A_panel_ptrs[p] = recv_ptr;
+
+                MPI_Bcast(A_panel_ptrs[p], A_meta.length, mpi_get_type<T>(), root_col, row_comm);
+            }
+
+            for (size_t p = 0; p < num_B_panels; p++)
+            {
+                const size_t bj = Cj_list[p];
+
+                BlockMeta& B_meta = B_meta_arr[p];
+                B_meta = {0,0,0,0,0,0,0};
+
+                const int root_row = k % Pr;
+
+                T* root_ptr = nullptr;
+                T* recv_ptr = B_buf + p * max_B;
+
+                if (my_row == root_row)
+                {
+                    const size_t B_lin = k * grid_c + bj;
+
+                    auto it = B.pglobal_to_local_index.find(B_lin);
+                    if (it != B.pglobal_to_local_index.end())
+                    {
+                        size_t idx = it->second;
+
+                        B_meta.block_row = B.pblock_coords[2 * idx];
+                        B_meta.block_col = B.pblock_coords[2 * idx + 1];
+                        B_meta.rows = B.pblocks[idx].dpextents[0];
+                        B_meta.cols = B.pblocks[idx].dpextents[1];
+                        B_meta.str0 = B.pblocks[idx].dpstrides[0];
+                        B_meta.str1 = B.pblocks[idx].dpstrides[1];
+                        B_meta.length = B_meta.rows * B_meta.cols;
+
+                        const size_t offset = B.pblocks[idx].dpdata - B.pdata;
+                        root_ptr = bdata + offset;
+                    }
+                }
+
+                MPI_Bcast(&B_meta, sizeof(BlockMeta), MPI_BYTE, root_row, col_comm);
+
+                if (my_row == root_row)
+                    B_panel_ptrs[p] = root_ptr;
+                else
+                    B_panel_ptrs[p] = recv_ptr;
+
+                MPI_Bcast(B_panel_ptrs[p],B_meta.length,mpi_get_type<T>(),root_row, col_comm);
+            }
+
+            if(ongpu)
+            {
+                size_t cblocknumber=C.plocal_blocknumber;
+                #pragma omp target data map(to: A_meta_arr[0:num_A_panels]) map(to: B_meta_arr[0:num_B_panels])device(devnum)
+                {
+                    #pragma omp target teams distribute collapse(2) device(devnum) is_device_ptr(cdata,coffsets,cblockcoords,A_panel_ptrs,B_panel_ptrs)
+                    for (size_t cpi = 0; cpi < num_A_panels; cpi++)
+                    {
+                        for (size_t cpj = 0; cpj < num_B_panels; cpj++)
+                        {
+                            const T* A_ptr = A_panel_ptrs[cpi];
+                            const T* B_ptr = B_panel_ptrs[cpj];
+
+                            const BlockMeta& A_meta = A_meta_arr[cpi];
+                            const BlockMeta& B_meta = B_meta_arr[cpj];
+
+                            #pragma omp parallel for collapse(3)
+                            for (size_t i = 0; i <cblocknumber; i++)
+                            {
+                                for (size_t r = 0; r < A_meta.rows; r++)
+                                {
+                                    for (size_t c = 0; c < B_meta.cols; c++)
+                                    {
+                                        if (cblockcoords[2*i] != A_meta.block_row ||
+                                                cblockcoords[2*i+1] != B_meta.block_col)
+                                            continue;
+
+                                        T* C_ptr = cdata + coffsets[i];
+
+                                        T sum = 0;
+                                        #pragma omp simd reduction(+:sum)
+                                        for (size_t k = 0; k < A_meta.cols; k++)
+                                        {
+                                            sum += A_ptr[r*A_meta.str0 + k*A_meta.str1] *
+                                                   B_ptr[k*B_meta.str0 + c*B_meta.str1];
+                                        }
+
+                                        C_ptr[r*cstrides[2*i] + c*cstrides[2*i+1]] += sum;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             else
             {
-
-                #pragma omp parallel for collapse(3)
-                for (size_t i = 0; i < C.plocal_blocknumber; i++)
+                #pragma omp parallel for collapse(2)
+                for (size_t cpi = 0; cpi < num_A_panels; cpi++)
                 {
-                    for (size_t ir = 0; ir < A_rows; ++ir)
+                    for (size_t cpj = 0; cpj < num_B_panels; cpj++)
                     {
-                        for (size_t j = 0; j < B_cols; ++j)
+                        const T* A_ptr = A_panel_ptrs[cpi];
+                        const T* B_ptr = B_panel_ptrs[cpj];
+
+                        const BlockMeta& A_meta = A_meta_arr[cpi];
+                        const BlockMeta& B_meta = B_meta_arr[cpj];
+
+                        for (size_t i = 0; i < C.plocal_blocknumber; i++)
                         {
-                            T* C_ptr=cdata+coffsets[i];
-                            const size_t Cstr0=cstrides[2*i];
-                            const size_t Cstr1=cstrides[2*i+1];
-                            T sum =T(0);
-                            #pragma omp simd reduction(+:sum)
-                            for (size_t k = 0; k < A_cols; ++k)
+                            for (size_t r = 0; r <  A_meta.rows; r++)
                             {
-                                sum += A_ptr[ir*Astr0+k*Astr1] *B_ptr[k*Bstr0+j*Bstr1];
+                                for (size_t c = 0; c < B_meta.cols; c++)
+                                {
+                                    if (cblockcoords[2*i] != A_meta.block_row ||
+                                            cblockcoords[2*i+1] != B_meta.block_col)
+                                        continue;
+
+                                    T* C_ptr = cdata + coffsets[i];
+
+                                    T sum = 0;
+                                    #pragma omp simd reduction(+:sum)
+                                    for (size_t k = 0; k < A_meta.cols; k++)
+                                    {
+                                        sum += A_ptr[r*A_meta.str0 + k*A_meta.str1] *
+                                               B_ptr[k*B_meta.str0 + c*B_meta.str1];
+                                    }
+
+                                    C_ptr[r*cstrides[2*i] + c*cstrides[2*i+1]] += sum;
+                                }
                             }
-                            C_ptr[ir*Cstr0+j*Cstr1] +=sum;
                         }
                     }
                 }
             }
         }
-    }
 
-    if(ongpu)
-    {
-        if (A.plocal_blocknumber > 0)
-        {
-            if(!A.pdpdata_is_devptr)
-                omp_target_free(adata,devnum);
-        }
-        if (B.plocal_blocknumber > 0)
-        {
-            if(!B.pdpdata_is_devptr)
-                omp_target_free(bdata,devnum);
-        }
+        delete[] A_panel_ptrs;
+        delete[] B_panel_ptrs;
+        delete[] A_meta_arr ;
+        delete[] B_meta_arr;
+        delete[] Ci_list ;
+        delete[] Cj_list ;
 
-        if (C.plocal_blocknumber>0)
+        if(ongpu)
         {
-            if(!C.pdpdata_is_devptr)
+            if (A.plocal_blocknumber > 0)
             {
-                omp_target_memcpy(C.pdata,cdata,sizeof(T)*C.pdatalength,0,0,omp_get_initial_device(),devnum);
-                omp_target_free(cdata,devnum);
+                if(!A.pdpdata_is_devptr)
+                    omp_target_free(adata,devnum);
             }
-            omp_target_free(cstrides,devnum);
-            omp_target_free(coffsets,devnum);
+            if (B.plocal_blocknumber > 0)
+            {
+                if(!B.pdpdata_is_devptr)
+                    omp_target_free(bdata,devnum);
+            }
+
+            if (C.plocal_blocknumber>0)
+            {
+                if(!C.pdpdata_is_devptr)
+                {
+                    omp_target_memcpy(C.pdata,cdata,sizeof(T)*C.pdatalength,0,0,omp_get_initial_device(),devnum);
+                    omp_target_free(cdata,devnum);
+                }
+                omp_target_free(cstrides,devnum);
+                omp_target_free(coffsets,devnum);
+                omp_target_free(cblockcoords,devnum);
+            }
         }
+        if(max_A>0)
+            DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A*num_A_panels,A_buf);
+        if(max_B>0)
+            DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B*num_B_panels,B_buf);
+
+        MPI_Comm_free(&row_comm);
+        MPI_Comm_free(&col_comm);
+
+        return true;
+
     }
-    DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A,A_buf);
-    DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B,B_buf);
-
-    MPI_Comm_free(&row_comm);
-    MPI_Comm_free(&col_comm);
-
-    return true;
 }
 
 
 
 
+template<typename T>
+inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
+    const DistributedDataBlock<T>& A,
+    const DistributedDataBlock<T>& x,
+    DistributedDataBlock<T>& y,
+    const Math_MPI_Functions_Policy*pol)
+{
+    const Math_MPI_Functions_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
+    if (A.pctx->comm == MPI_COMM_NULL)
+        return false;
+
+    int rank, size;
+    MPI_Comm_rank(A.pctx->comm, &rank);
+    MPI_Comm_size(A.pctx->comm, &size);
+
+    const size_t M = A.pglobal_extents[0];
+    const size_t K = A.pglobal_extents[1];
+
+    const size_t br = A.pblock_extents[0];
+    const size_t bc = A.pblock_extents[1];
+    const size_t bs = y.pblock_extents[0];
+
+    const size_t grid_c = (K + bc - 1) / bc;
+    const size_t grid_r = (M + bs - 1) / bs;
+    bool ongpu=policy.should_use_gpu(A,x,y,Math_Functions_Policy::default_cubic_treshold);
+    bool memmap=policy.memmapped_files;
+
+    int devnum=policy.devicenum;
+
+    if(A.pdpdata_is_devptr&& A.pdevptr_devicenum!=devnum)
+        return false;
+    if(x.pdpdata_is_devptr&& x.pdevptr_devicenum!=devnum)
+        return false;
+    if(y.pdpdata_is_devptr&& y.pdevptr_devicenum!=devnum)
+        return false;
+
+    if(ongpu)
+    {
+        if(y.pdevptr_devicenum!=x.pdevptr_devicenum ||A.pdevptr_devicenum!=y.pdevptr_devicenum)
+            return false;
+    }
+
+    T* x_global=nullptr;
+    if(K>0)
+        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,K,x_global);
+
+    if (ongpu)
+    {
+        #pragma omp target teams distribute parallel for simd device(devnum)
+        for (size_t i=0; i<K; i++)
+            x_global[i]=0;
+    }
+    else
+    {
+        #pragma omp parallel for simd
+        for (size_t i=0; i<K; i++)
+            x_global[i]=0;
+    }
+
+
+
+    if(ongpu)
+    {
+        for (size_t i = 0; i < x.plocal_blocknumber; i++)
+        {
+            size_t b = x.pblock_linear_idx[i];
+            size_t start = b * bc;
+
+            size_t diff = K - start;
+            size_t len  = (bc < diff) ? bc : diff;
+
+            size_t off = x.pblock_offsets[i];
+
+            if(x.pdpdata_is_devptr)
+            {
+                omp_target_memcpy_async(x_global,x.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,x.pdevptr_devicenum,0);
+            }
+            else
+            {
+                omp_target_memcpy_async(x_global,x.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,omp_get_initial_device(),0);
+            }
+        }
+        #pragma omp taskwait
+
+    }
+    else
+    {
+        #pragma omp parallel for if(parallel:x.plocal_blocknumber>30)
+        for (size_t i = 0; i < x.plocal_blocknumber; i++)
+        {
+            size_t b = x.pblock_linear_idx[i];
+            size_t start = b * bc;
+
+            size_t diff = K - start;
+            size_t len  = (bc < diff) ? bc : diff;
+
+            size_t off = x.pblock_offsets[i];
+
+            const T* src = x.pdata + off;
+            T* dst = x_global + start;
+            memcpy(dst, src, len * sizeof(T));
+        }
+    }
+
+    MPI_Allreduce(
+        MPI_IN_PLACE,
+        x_global,
+        K,
+        mpi_get_type<T>(),
+        MPI_SUM,
+        A.pctx->comm);
+
+    T* y_full=nullptr, *A_ptr=nullptr;
+    size_t* Aext=nullptr,*Ablockoff=nullptr,*Ablocklinindex=nullptr;
+
+    if(M>0)
+        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,M,y_full);
+
+
+    bool rowm=A.pglobal_rowmajor;
+    if(A.pdatalength>0 &&A.plocal_blocknumber>0)
+    {
+        if(ongpu)
+        {
+            if(!A.pdpdata_is_devptr)
+            {
+                A_ptr=(T*) omp_target_alloc(sizeof(T)*A.pdatalength,devnum);
+                omp_target_memcpy_async(A_ptr,A.pdata,sizeof(T)*A.pdatalength,0,0,devnum,omp_get_initial_device(),0);
+            }
+            else
+                A_ptr=A.pdata;
+
+            Ablockoff=(size_t*) omp_target_alloc(sizeof(size_t)*A.plocal_blocknumber,devnum);
+            omp_target_memcpy_async(Ablockoff,A.pblock_offsets, sizeof(size_t)*A.plocal_blocknumber,0,0,devnum,omp_get_initial_device(),0);
+
+            Aext=(size_t*) omp_target_alloc(sizeof(T)*A.plocal_blocknumber*2,devnum );
+            omp_target_memcpy_async(Aext, A.pextentsbuffer, sizeof(size_t)*A.plocal_blocknumber*2,0,0,devnum,omp_get_initial_device(),0);
+
+            Ablocklinindex=(size_t*) omp_target_alloc(sizeof(size_t)*A.plocal_blocknumber,devnum);
+            omp_target_memcpy_async(Ablocklinindex,A.pblock_linear_idx,sizeof(size_t*)*A.plocal_blocknumber,0,0,devnum, omp_get_initial_device(),0);
+
+
+            const size_t num=A.plocal_blocknumber;
+            #pragma omp taskwait
+
+            #pragma omp target teams distribute parallel for \
+            is_device_ptr(Ablocklinindex,Aext,Ablockoff,A_ptr,y_full) \
+            device(devnum)
+            for (size_t global_row = 0; global_row < M; global_row++)
+            {
+                T total = T(0);
+
+                for (size_t bi_local = 0; bi_local < num; bi_local++)
+                {
+                    const size_t b = Ablocklinindex[bi_local];
+
+                    const size_t bi = b / grid_c;
+                    const size_t bj = b % grid_c;
+
+                    const size_t row0 = bi * br;
+                    const size_t col0 = bj * bc;
+
+                    const size_t rows = Aext[bi_local * 2 + 0];
+
+                    if (global_row >= row0 && global_row < row0 + rows)
+                    {
+                        const size_t r = global_row - row0;
+
+                        const size_t a_off = Ablockoff[bi_local];
+                        const size_t cols  = Aext[bi_local * 2 + 1];
+
+                        T sum = T(0);
+
+                        if (rowm)
+                        {
+                            const size_t a_row_off = a_off + r * cols;
+
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t c = 0; c < cols; c++)
+                            {
+                                sum += A_ptr[a_row_off + c] * x_global[col0 + c];
+                            }
+                        }
+                        else
+                        {
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t c = 0; c < cols; c++)
+                            {
+                                const size_t a_idx = a_off + c * rows + r;
+                                sum += A_ptr[a_idx] * x_global[col0 + c];
+                            }
+                        }
+
+                        total += sum;
+                    }
+                }
+                y_full[global_row] = total;
+            }
+        }
+        else
+        {
+            Aext= A.pextentsbuffer;
+            Ablockoff=A.pblock_offsets;
+            Ablocklinindex=A.pblock_linear_idx;
+            A_ptr=A.pdata;
+            const size_t num=A.plocal_blocknumber;
+            #pragma omp parallel for
+            for (size_t global_row = 0; global_row < M; global_row++)
+            {
+                T total = T(0);
+
+                for (size_t bi_local = 0; bi_local < num; bi_local++)
+                {
+                    const size_t b = Ablocklinindex[bi_local];
+
+                    const size_t bi = b / grid_c;
+                    const size_t bj = b % grid_c;
+
+                    const size_t row0 = bi * br;
+                    const size_t col0 = bj * bc;
+
+                    const size_t rows = Aext[bi_local * 2 + 0];
+
+                    if (global_row >= row0 && global_row < row0 + rows)
+                    {
+                        const size_t r = global_row - row0;
+
+                        const size_t a_off = Ablockoff[bi_local];
+                        const  size_t cols  = Aext[bi_local * 2 + 1];
+
+                        T sum = T(0);
+
+                        if (rowm)
+                        {
+                            const size_t a_row_off = a_off + r * cols;
+
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t c = 0; c < cols; c++)
+                            {
+                                sum += A_ptr[a_row_off + c] * x_global[col0 + c];
+                            }
+                        }
+                        else
+                        {
+                            #pragma omp simd reduction(+:sum)
+                            for (size_t c = 0; c < cols; c++)
+                            {
+                                const size_t a_idx = a_off + c * rows + r;
+                                sum += A_ptr[a_idx] * x_global[col0 + c];
+                            }
+                        }
+
+                        total += sum;
+                    }
+                }
+                y_full[global_row] = total;
+            }
+        }
+    }
+
+    if(K>0)
+        DataBlock_MPI_Functions<double>::free_helper2(memmap,ongpu, devnum,  K,x_global);
+
+    int* recvcounts = new int[size];
+
+    #pragma omp parallel for simd if(parallel:size>30)
+    for (size_t i=0; i<size; i++)
+        recvcounts[i]=0;
+
+    int ndims;
+    MPI_Cartdim_get(y.pctx->comm, &ndims);
+    size_t gridrank=(size_t) ndims;
+    size_t *gridcoords=new size_t [gridrank];
+    int* tempcoords=new int[gridrank];
+
+    for (size_t b = 0; b < grid_r; b++)
+    {
+        size_t diff= M - b * bs;
+        size_t len = bs<diff? bs:diff;
+
+        size_t bcoords[1] = { b };
+
+        y.ppolicy->create_coords( bcoords,gridcoords,  y.pglobalrank);
+        int owner = y.ppolicy->owner(gridcoords, *y.pctx, tempcoords);
+
+        recvcounts[owner] += (int)len;
+    }
+    delete[] gridcoords;
+    delete[] tempcoords;
+
+    T* y_local=nullptr;
+
+    if(recvcounts[rank]>0)
+        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,recvcounts[rank],y_local);
+
+
+    MPI_Reduce_scatter(
+        y_full,
+        y_local,
+        recvcounts,
+        mpi_get_type<T>(),
+        MPI_SUM,
+        y.pctx->comm);
+
+    if(M>0)
+        DataBlock_MPI_Functions<double>::free_helper2(memmap,ongpu, devnum,  M,y_full);
+
+    if(ongpu)
+    {
+        if(!A.pdpdata_is_devptr)
+            omp_target_free(A_ptr,devnum);
+
+        omp_target_free(Ablockoff,devnum);
+        omp_target_free(Aext,devnum);
+        omp_target_free(Ablocklinindex,devnum);
+    }
+
+
+    size_t offset = 0;
+    #pragma omp parallel for simd reduction(+:offset)if(parallel:rank>30)
+    for (int i = 0; i < rank; i++)
+        offset += recvcounts[i];
+
+    if(ongpu)
+    {
+        for (size_t i = 0; i < y.plocal_blocknumber; i++)
+        {
+            size_t b = y.pblock_linear_idx[i];
+
+            size_t start = b * bs;
+            size_t diff  = M - start;
+            size_t len   = (bs < diff) ? bs : diff;
+
+            size_t global_offset = start;
+
+            size_t local_offset = global_offset - offset;
+
+            size_t dst = y.pblock_offsets[i];
+            if(!y.pdpdata_is_devptr)
+                omp_target_memcpy_async( y.pdata,y_local,len * sizeof(T),dst*sizeof(T),local_offset*sizeof(T), omp_get_initial_device(),devnum,0);
+            else
+                omp_target_memcpy_async(    y.pdata,    y_local,len * sizeof(T   ),dst*sizeof(T),local_offset*sizeof(T),y.pdevptr_devicenum,devnum,0);
+
+        }
+        #pragma omp taskwait
+
+    }
+
+    else
+    {
+        for (size_t i = 0; i < y.plocal_blocknumber; i++)
+        {
+            size_t b = y.pblock_linear_idx[i];
+
+            size_t start = b * bs;
+            size_t diff  = M - start;
+            size_t len   = (bs < diff) ? bs : diff;
+
+            size_t global_offset = start;
+
+            size_t local_offset = global_offset - offset;
+
+            size_t dst = y.pblock_offsets[i];
+            memcpy(    y.pdata + dst,    y_local + local_offset,len * sizeof(T   ));
+
+        }
+    }
+    if(recvcounts[rank]>0)
+        DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu,devnum,recvcounts[rank],y_local);
+
+    delete[] recvcounts;
+
+    return true;
+}
 
 template <typename T>
 void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
@@ -951,16 +1691,16 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
               M7(M7d,s,true,2,ext1,str1,false,false,separate_device_memory);
 
 
-    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,a11str),
-                  A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,a12str),
-                  A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,a21str),
-                  A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,a22str);
+    DataBlock<T>  A11 = A.matrix_subspan(0, 0, half_n, half_m,psext1,a11str),
+                  A12 = A.matrix_subspan(0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = A.matrix_subspan(half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = A.matrix_subspan(half_n, half_m, half_n, half_m,psext4,a22str);
 
 // Submatrices of B
-    DataBlock<T>   B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,b11str),
-                   B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,b12str),
-                   B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,b21str),
-                   B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,b22str);
+    DataBlock<T>   B11 = B.matrix_subspan(0, 0, half_m, half_p,psext5,b11str),
+                   B12 = B.matrix_subspan(0, half_p, half_m, half_p,psext6,b12str),
+                   B21 = B.matrix_subspan(half_m, 0, half_m, half_p,psext7,b21str),
+                   B22 = B.matrix_subspan(half_m, half_p, half_m, half_p,psext8,b22str);
 
     const size_t str20=str2[0];
     const size_t str21=str2[1];
@@ -1199,10 +1939,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
 // Submatrices of C
 
-    DataBlock<T>   C11 = C.subspanmatrix(0, 0, half_n, half_p,ext11a,cstr11),
-                   C12 = C.subspanmatrix(0, half_p, half_n, half_p,ext12a,cstr12),
-                   C21 = C.subspanmatrix(half_n, 0, half_n, half_p,ext13a,cstr21),
-                   C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,ext14a,cstr22);
+    DataBlock<T>   C11 = C.matrix_subspan(0, 0, half_n, half_p,ext11a,cstr11),
+                   C12 = C.matrix_subspan(0, half_p, half_n, half_p,ext12a,cstr12),
+                   C21 = C.matrix_subspan(half_n, 0, half_n, half_p,ext13a,cstr21),
+                   C22 = C.matrix_subspan(half_n, half_p, half_n, half_p,ext14a,cstr22);
 
     const size_t cstr110=cstr11[0];
     const size_t cstr111=cstr11[1];
@@ -1559,16 +2299,16 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 
 
 
-    DataBlock<T>  A11 = A.subspanmatrix(0, 0, half_n, half_m,psext1,a11str),
-                  A12 = A.subspanmatrix(0, half_m, half_n, half_m,psext2,a12str),
-                  A21 = A.subspanmatrix(half_n, 0, half_n, half_m,psext3,a21str),
-                  A22 = A.subspanmatrix(half_n, half_m, half_n, half_m,psext4,a22str);
+    DataBlock<T>  A11 = A.matrix_subspan(0, 0, half_n, half_m,psext1,a11str),
+                  A12 = A.matrix_subspan(0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = A.matrix_subspan(half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = A.matrix_subspan(half_n, half_m, half_n, half_m,psext4,a22str);
 
     // Submatrices of B
-    DataBlock<T>  B11 = B.subspanmatrix(0, 0, half_m, half_p,psext5,b11str),
-                  B12 = B.subspanmatrix(0, half_p, half_m, half_p,psext6,b12str),
-                  B21 = B.subspanmatrix(half_m, 0, half_m, half_p,psext7,b21str),
-                  B22 = B.subspanmatrix(half_m, half_p, half_m, half_p,psext8,b22str);
+    DataBlock<T>  B11 = B.matrix_subspan(0, 0, half_m, half_p,psext5,b11str),
+                  B12 = B.matrix_subspan(0, half_p, half_m, half_p,psext6,b12str),
+                  B21 = B.matrix_subspan(half_m, 0, half_m, half_p,psext7,b21str),
+                  B22 = B.matrix_subspan(half_m, half_p, half_m, half_p,psext8,b22str);
 
 
     const size_t a11str0=a11str[0];
@@ -1814,10 +2554,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 
     size_t pext10a[2],cstr11[2],pext11a[2],cstr12[2],pext12a[2],cstr21[2],pext13a[2],cstr22[2];
 
-    DataBlock<T>  C11 = C.subspanmatrix(0, 0, half_n, half_p,pext10a,cstr11),
-                  C12 = C.subspanmatrix(0, half_p, half_n, half_p,pext11a,cstr12),
-                  C21 = C.subspanmatrix(half_n, 0, half_n, half_p,pext12a,cstr21),
-                  C22 = C.subspanmatrix(half_n, half_p, half_n, half_p,pext13a,cstr22);
+    DataBlock<T>  C11 = C.matrix_subspan(0, 0, half_n, half_p,pext10a,cstr11),
+                  C12 = C.matrix_subspan(0, half_p, half_n, half_p,pext11a,cstr12),
+                  C21 = C.matrix_subspan(half_n, 0, half_n, half_p,pext12a,cstr21),
+                  C22 = C.matrix_subspan(half_n, half_p, half_n, half_p,pext13a,cstr22);
 
     const size_t cstr110=cstr11[0];
     const size_t cstr111=cstr11[1];
@@ -2082,7 +2822,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> R = tL.subspanmatrix(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = tL.matrix_subspan(c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
@@ -2090,7 +2830,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 
                 size_t rtext[2],strtext[2];
 
-                DataBlock<T> RT=R.transpose(rtext,strtext);
+                DataBlock<T> RT=R.matrix_transpose(rtext,strtext);
 
                 switch (policy.algorithm_version)
                 {
@@ -2215,7 +2955,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> R = L.subspanmatrix(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = L.matrix_subspan(c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
@@ -2223,7 +2963,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 
                 size_t rtext[2],strtext[2];
 
-                DataBlock<T> RT=R.transpose(rtext,strtext);
+                DataBlock<T> RT=R.matrix_transpose(rtext,strtext);
 
 
                 switch (policy.algorithm_version)
@@ -2416,10 +3156,10 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> RL = tL.subspanmatrix(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = tL.matrix_subspan(c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                DataBlock<T> RU = tU.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = tU.matrix_subspan(z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
@@ -2564,10 +3304,10 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> RL = L.subspanmatrix(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = L.matrix_subspan(c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                DataBlock<T> RU = U.subspanmatrix(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = U.matrix_subspan(z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
@@ -2797,8 +3537,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t extBM[2],strBM[2];
 
-                DataBlock<T> BQ = tQ.subspanmatrix(0, z, n, cz,extBQ,strBQ);
-                DataBlock<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = tQ.matrix_subspan(0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = M.matrix_subspan(0, c, n,mc,extBM,strBM);
 
                 size_t tempCextt[2]= {cz,mc};
                 size_t tempCstrt[2]= {mc,1};
@@ -2807,7 +3547,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
 
                 size_t extBQT[2],strBQT[2];
-                DataBlock<T> BQT=BQ.transpose(extBQT,strBQT);
+                DataBlock<T> BQT=BQ.matrix_transpose(extBQT,strBQT);
 
 
                 GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
@@ -2843,12 +3583,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 //            // Extract column c of M
 
             size_t vext[1],vstr[1];
-            DataBlock<T> v = M.column(c,vext,vstr);
+            DataBlock<T> v = M.matrix_column(c,vext,vstr);
             const size_t pextv0=vext[0];
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                DataBlock<T>  u = tQ.column(j,uext,ustr);
+                DataBlock<T>  u = tQ.matrix_column(j,uext,ustr);
 
                 T dot_pr=T(0);
 
@@ -2886,7 +3626,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         // Compute R = Q^T * A
         size_t extQT[2],strQT[2];
 
-        DataBlock<T> QT=tQ.transpose(extQT,strQT);
+        DataBlock<T> QT=tQ.matrix_transpose(extQT,strQT);
 
 
         switch (policy.algorithm_version)
@@ -2991,8 +3731,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t extBM[2],strBM[2];
 
-                DataBlock<T> BQ = Q.subspanmatrix(0, z, n, cz,extBQ,strBQ);
-                DataBlock<T> BM = M.subspanmatrix(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = Q.matrix_subspan(0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = M.matrix_subspan(0, c, n,mc,extBM,strBM);
 
                 size_t Cextt[2]= {cz,mc};
                 size_t Cstrt[2]= {mc,1};
@@ -3001,7 +3741,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
 
                 size_t extBQT[2],strBQT[2];
-                DataBlock<T> BQT=BQ.transpose(extBQT,strBQT);
+                DataBlock<T> BQT=BQ.matrix_transpose(extBQT,strBQT);
 
 
                 if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
@@ -3044,12 +3784,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
 
             size_t vext[1],vstr[1];
-            DataBlock<T> v = M.column(c,vext,vstr);
+            DataBlock<T> v = M.matrix_column(c,vext,vstr);
 
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                DataBlock<T>  u = Q.column(j,uext,ustr);
+                DataBlock<T>  u = Q.matrix_column(j,uext,ustr);
                 const T dot_pr =Math_Functions<T>::dot_product(u,v,&policy);
 
                 #pragma omp parallel for simd
@@ -3075,7 +3815,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         // Compute R = Q^T * A
         size_t extQT[2],strQT[2];
 
-        DataBlock<T> QT=Q.transpose(extQT,strQT);
+        DataBlock<T> QT=Q.matrix_transpose(extQT,strQT);
 
         switch (policy.algorithm_version)
         {

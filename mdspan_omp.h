@@ -193,18 +193,18 @@ public:
     using DataBlock<T>::operator=;
 
     // Subspan methods
-    using DataBlock<T>::subspan;
-    mdspan<T, Container> subspan(const Container& offsets,  Container& sub_extents) const;
-    using DataBlock<T>::subspanmatrix;
-    mdspan<T, Container> subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-    using DataBlock<T>::column;
-    mdspan<T, Container>column(const size_t col_index);
+    using DataBlock<T>::tensor_subspan;
+    mdspan<T, Container>tensor_subspan(const Container& offsets,  Container& sub_extents) const;
+    using DataBlock<T>::matrix_subspan;
+    mdspan<T, Container>matrix_subspan(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
+    using DataBlock<T>::matrix_column;
+    mdspan<T, Container>matrix_column(const size_t col_index);
 
-    using DataBlock<T>::row;
-    mdspan<T, Container>row(const size_t row_index);
+    using DataBlock<T>::matrix_row;
+    mdspan<T, Container>matrix_row(const size_t row_index);
 
-    using DataBlock<T>::transpose;
-    mdspan<T, Container>transpose();
+    using DataBlock<T>::matrix_transpose;
+    mdspan<T, Container>matrix_transpose();
 
     using DataBlock<T>::collapsed_view;
     mdspan<T, std::vector<size_t>> collapsed_view();
@@ -920,46 +920,46 @@ mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
 
 
 template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::subspan(const Container&offsets,  Container &sub_extents)const
+mdspan<T, Container> mdspan<T, Container>::tensor_subspan(const Container&offsets,  Container &sub_extents)const
 {
     size_t *tempstr=new size_t[offsets.size()];
     size_t *tempext=new size_t[offsets.size()];
-    mdspan<T,Container> result( this->subspan(offsets.data(),sub_extents.data(),tempext, tempstr),mapping_manager);
+    mdspan<T,Container> result( this->tensor_subspan(offsets.data(),sub_extents.data(),tempext, tempstr),mapping_manager);
     delete [] tempstr;
     delete [] tempext;
     return result;
 }
 
 template <typename T, typename Container>inline
-mdspan<T, Container> mdspan<T, Container>::subspanmatrix(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols )const
+mdspan<T, Container> mdspan<T, Container>::matrix_subspan(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols )const
 {
     size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(this->subspanmatrix(row,col,tile_rows,tile_cols, tempext, tempstr),mapping_manager);
+    mdspan<T,Container> result(this->matrix_subspan(row,col,tile_rows,tile_cols, tempext, tempstr),mapping_manager);
     return result;
 }
 
 template <typename T, typename Container>
-mdspan<T,Container> mdspan<T, Container>:: row(const size_t row_index)
+mdspan<T,Container> mdspan<T, Container>:: matrix_row(const size_t row_index)
 {
     size_t tempext[1], tempstr[1];
-    mdspan<T,Container> result(this->row(row_index,tempext, tempstr),mapping_manager);
+    mdspan<T,Container> result(this->matrix_row(row_index,tempext, tempstr),mapping_manager);
     return result;
 }
 
 template <typename T, typename Container>
-mdspan<T,Container> mdspan<T, Container>::column(const size_t column_index)
+mdspan<T,Container> mdspan<T, Container>::matrix_column(const size_t column_index)
 {
     size_t tempext[1], tempstr[1];
-    mdspan<T,Container> result(this->column(column_index,tempext, tempstr),mapping_manager);
+    mdspan<T,Container> result(this->matrix_column(column_index,tempext, tempstr),mapping_manager);
     return result;
 }
 
 
 template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>::transpose()
+mdspan<T, Container>mdspan<T, Container>::matrix_transpose()
 {
     size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(transpose(tempext,tempstr),mapping_manager);
+    mdspan<T,Container> result(matrix_transpose(tempext,tempstr),mapping_manager);
     return result;
 }
 
