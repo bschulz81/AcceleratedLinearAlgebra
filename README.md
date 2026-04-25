@@ -45,7 +45,11 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 25.04.2026
+Fix: Freed a temporary  MPI communicator in the Summa algorithm that was used for the case of distributions where ranks recieve several blocks while other ranks recieve no data..
+Something like this may occur for scatterers with distribution policies that are different from the default cyclick block.
 
+Note that currently, the Summa implementation is not adapted for to such arbitrary distribution schemes that deviate from block-cyclic, even if the scatterers supports them.
 ### 25.04.2026
 Summa now works if C has multiple blocks per rank, on gpu and cpu. It also works if some blocks recieved no data. This required extensive modifications of the simple Summa algorithm.
 Added a vector scatterer.
