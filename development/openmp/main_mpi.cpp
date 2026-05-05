@@ -200,7 +200,7 @@ int main(int argc, char** argv)
 
 
 
-    Math_Functions_MPI<double>::SUMMA_Distributed(block1,block2,block3);
+    Math_Functions_MPI<double>::matrix_multiply_dot_Distributed(block1,block2,block3);
 
     DataBlock<double> A1copy;
 
