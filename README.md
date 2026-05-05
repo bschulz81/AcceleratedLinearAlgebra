@@ -46,7 +46,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 ### 05:05.2026
-Added more distributed blas functions for gpu and cpu but i have yet to test them. 
+Added more distributed blas functions for gpu and cpu clusters but i have yet to test them. 
 I also need to put the offload code into a class to avoid repetition. Therefore, i added this into the development folder until I tested this sufficiently.
 
 ### 25.04.2026
