@@ -6,6 +6,13 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+05.05.2026
+Added more distributed blas functions for gpu and cpu clusters but i have yet to test them. 
+
+I also need to put the offload code into a class to avoid repetition. Therefore, i added this into the development folder until I tested this sufficiently.
+
+The Summa algorithm now works also for the case where some nodes recieved multiple blocks.
+
 10.04.2026
 Added a summa algorithm for distributed matrix multiplication with MPI on GPU and CPU.
 
