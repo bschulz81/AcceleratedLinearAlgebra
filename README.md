@@ -45,6 +45,10 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 05:05.2026
+Added more distributed blas functions for gpu and cpu but i have yet to test them. 
+I also need to put the offload code into a class to avoid repetition. Therefore, i added this into the development folder until I tested this sufficiently.
+
 ### 25.04.2026
 Fix: Freed a temporary  MPI communicator in the Summa algorithm that was used for the case of distributions where ranks recieve several blocks while other ranks recieve no data..
 Something like this may occur for scatterers with distribution policies that are different from the default cyclick block.
