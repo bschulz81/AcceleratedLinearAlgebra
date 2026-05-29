@@ -68,6 +68,7 @@ Reorganized the structure of distributeddatablock such that one can outsource re
 Rewrote the printing function for tensors of distributeddatablock such that the output does not get mixed between the different openmpi tasks on several nodes.
 Now, all nodes send the data which they have to print to the root process in an orderly way.
 
+Updated the test programs for the message passing interface that demonstrate basic calculations on distributed gpu/cpu systems.
 
 ### 05.05.2026
 Added more distributed blas functions for gpu and cpu clusters but i have yet to test them. 
