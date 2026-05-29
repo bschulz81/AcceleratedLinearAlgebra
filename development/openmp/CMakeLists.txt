@@ -9,7 +9,7 @@ set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build/)
 set (LANGUAGES "C;CXX")
 
 #GCC compiler flags.
-SET (CMAKE_CXX_COMPILER "/usr/bin/g++-16" CACHE STRING "C++ compiler" FORCE)
+SET (CMAKE_CXX_COMPILER "/usr/bin/g++" CACHE STRING "C++ compiler" FORCE)
 SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none -fno-stack-protector -O1 -Wall")
 
 #mpicc compiler flags.
