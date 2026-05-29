@@ -6,6 +6,16 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+29.05.2026
+
+fixed a bug in the tensor scatterer that occured for some distribution ranks,
+made the tensor scatterer compatible with the matrix scatterer
+cleaned redundant fields in the distributeddatablock class and made them more self explanatory
+reorganized the structure of distributeddatablock such that one can outsource repeated offloading code into classes (which are still not implemented)
+fixed bugs in the  summa algorithm for gpu and optimized its performance a bit
+rewrote the printing function of distributeddatablock such that the output does not get mixed between the different openmpi tasks
+added a function that creates a communicator which is compatible with the summa algorithm. The summa algorithm in this implementation can handle the situation where some nodes get one block and some nodes get no data, and also the situation where each nodes get one or more blocks. The current implementation cant handle the situation that some blocks get no data while other nodes get several blocks. A function was added that creates a communicator for this requirement based on mpi rank and matrix dimensions.
+
 05.05.2026
 Added more distributed blas functions for gpu and cpu clusters but i have yet to test them. 
 
