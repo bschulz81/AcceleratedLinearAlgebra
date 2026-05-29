@@ -51,7 +51,6 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
 
 
 
-
 #pragma omp begin declare target
 inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
 {

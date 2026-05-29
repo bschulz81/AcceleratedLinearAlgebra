@@ -13,7 +13,6 @@
 #endif
 
 
-
 #pragma omp begin declare target
 inline void fill_strides(const size_t*    extents,size_t*    strides, const size_t rank, const bool rowmajor)
 {
@@ -289,6 +288,10 @@ public:
     DataBlock<T> collapsed_view(size_t num_non_collapsed_dims,size_t* extents, size_t* strides) const;
     inline bool is_contiguous()const;
     inline void printtensor()const;
+    size_t printtensor_to_buffer( char* buffer,   size_t capacity) const;
+
+    size_t printtensor_required_size() const;
+
 
 
     template <typename Expr>
@@ -342,6 +345,9 @@ public:
 
 protected:
     void printtensor_recursive(size_t* indices, size_t depth,bool ondevice) const;
+
+    void printtensor_recursive_buffer( char*& cur, char* end,size_t* indices,size_t depth, bool ondevice) const;
+    void printtensor_required_size_recursive(size_t& count, size_t* indices, size_t depth,  bool ondevice) const;
 
     T*          dpdata = nullptr;
     size_t*     dpextents = nullptr;
@@ -779,6 +785,299 @@ bool DataBlock<T>::is_contiguous() const
 }
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+template<typename T>
+size_t DataBlock<T>::printtensor_to_buffer(
+    char* buffer,
+    size_t capacity) const
+{
+    if(capacity == 0)
+        return 0;
+
+    char* cur = buffer;
+    char* end = buffer + capacity - 1; // reserve space for '\0'
+
+    if(dpdata == nullptr ||
+       dpextents == nullptr ||
+       dpstrides == nullptr ||
+       dpdatalength == 0)
+    {
+        int n = snprintf(cur,end-cur+1,"\n[]\n");
+
+        if(n > 0)
+            cur += (n < (end-cur+1)) ? n : (end-cur);
+
+        *cur = '\0';
+
+        return (size_t)(cur-buffer);
+    }
+
+    int n = snprintf(cur,end-cur+1,"\n");
+
+    if(n > 0)
+        cur += (n < (end-cur+1)) ? n : (end-cur);
+
+    size_t* indices = new size_t[dprank];
+
+    #pragma omp simd
+    for(size_t i=0;i<dprank;i++)
+        indices[i]=0;
+
+    bool ondevice =
+        omp_is_initial_device() &&
+        dpdata_is_devptr;
+
+    printtensor_recursive_buffer(
+        cur,
+        end,
+        indices,
+        0,
+        ondevice);
+
+    delete[] indices;
+
+    if(cur < end)
+        *cur++ = '\n';
+
+    *cur = '\0';
+
+    return (size_t)(cur-buffer);
+}
+
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+
+template<typename T>
+void DataBlock<T>::printtensor_recursive_buffer(
+    char*& cur,
+    char* end,
+    size_t* indices,
+    size_t depth,
+    bool ondevice) const
+{
+    if(cur >= end)
+        return;
+
+    if(depth == dprank)
+    {
+        size_t offset =
+            compute_offset_s(
+                indices,
+                dpstrides,
+                dprank);
+
+        T value;
+
+        if(ondevice)
+        {
+            omp_target_memcpy(
+                &value,
+                dpdata,
+                sizeof(T),
+                0,
+                sizeof(T)*offset,
+                omp_get_initial_device(),
+                devptr_devicenum);
+        }
+        else
+        {
+            value = dpdata[offset];
+        }
+
+        int n =
+            snprintf(
+                cur,
+                end-cur+1,
+                "%g",
+                (double)value);
+
+        if(n > 0)
+        {
+            size_t avail = end-cur;
+
+            cur += ((size_t)n < avail)
+                   ? n
+                   : avail;
+        }
+
+        return;
+    }
+
+    if(cur < end)
+        *cur++ = '[';
+
+    for(size_t i=0;i<dpextents[depth];i++)
+    {
+        indices[depth] = i;
+
+        printtensor_recursive_buffer(
+            cur,
+            end,
+            indices,
+            depth+1,
+            ondevice);
+
+        if(i+1 < dpextents[depth])
+        {
+            int n =
+                snprintf(
+                    cur,
+                    end-cur+1,
+                    ", ");
+
+            if(n > 0)
+            {
+                size_t avail = end-cur;
+
+                cur += ((size_t)n < avail)
+                       ? n
+                       : avail;
+            }
+
+            if(depth < dprank-1)
+            {
+                if(cur < end)
+                    *cur++ = '\n';
+
+                for(size_t k=0;k<depth+1;k++)
+                {
+                    if(cur < end)
+                        *cur++ = ' ';
+                }
+            }
+        }
+
+        if(cur >= end)
+            break;
+    }
+
+    if(cur < end)
+        *cur++ = ']';
+}
+
+#pragma omp end declare target
+
+
+
+
+#pragma omp begin declare target
+
+template<typename T>
+void DataBlock<T>::printtensor_required_size_recursive(
+    size_t& count,
+    size_t* indices,
+    size_t depth,
+    bool ondevice) const
+{
+    if(depth == dprank)
+    {
+        size_t offset =
+            compute_offset_s(
+                indices,
+                dpstrides,
+                dprank);
+
+        T value;
+
+        if(ondevice)
+        {
+            omp_target_memcpy(
+                &value,
+                dpdata,
+                sizeof(T),
+                0,
+                sizeof(T)*offset,
+                omp_get_initial_device(),
+                devptr_devicenum);
+        }
+        else
+        {
+            value = dpdata[offset];
+        }
+
+        int n =
+            snprintf(
+                nullptr,
+                0,
+                "%g",
+                (double)value);
+
+        if(n > 0)
+            count += (size_t)n;
+
+        return;
+    }
+
+    count += 1; // '['
+
+    for(size_t i=0;i<dpextents[depth];i++)
+    {
+        indices[depth] = i;
+
+        printtensor_required_size_recursive(
+            count,
+            indices,
+            depth+1,
+            ondevice);
+
+        if(i + 1 < dpextents[depth])
+        {
+            count += 2; // ", "
+
+            if(depth < dprank - 1)
+            {
+                count += 1;           // '\n'
+                count += depth + 1;   // indentation spaces
+            }
+        }
+    }
+
+    count += 1; // ']'
+}
+
+#pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template<typename T>
+size_t DataBlock<T>::printtensor_required_size() const
+{
+    if(dpdata == nullptr ||
+       dpextents == nullptr ||
+       dpstrides == nullptr ||
+       dpdatalength == 0)
+    {
+        return 4; // "\n[]\n"
+    }
+
+    size_t count = 2; // leading and trailing '\n'
+
+    size_t* indices = new size_t[dprank];
+
+    #pragma omp simd
+    for(size_t i=0;i<dprank;i++)
+        indices[i] = 0;
+
+    bool ondevice =
+        omp_is_initial_device() &&
+        dpdata_is_devptr;
+
+    printtensor_required_size_recursive(
+        count,
+        indices,
+        0,
+        ondevice);
+
+    delete[] indices;
+
+    return count;
+}
+
+#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -1518,7 +1817,37 @@ DataBlock<T> DataBlock<T>::matrix_column(const size_t col_index, size_t*    exte
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+template <typename T>
+class DataBlockArray
+{
+public:
+    T* pdata=nullptr;
+    size_t pdatalength=0;
+    bool prowm=true;
+    size_t ptensor_rank=0;
+    size_t *pblock_offsets=nullptr;
+    size_t* pextentsbuffer=nullptr;
+    size_t* pstridesbuffer=nullptr;
+    size_t pnumblocks=0;
+    bool pdata_is_devptr=false;
+    int pdevnum=-1;
+};
+#pragma omp end declare target
 
+#pragma omp begin declare target
+template <typename T>
+inline DataBlock<T>get_datablock_from_arrays(const size_t i, const DataBlockArray<T> &arr)
+{
+
+    size_t len =(i + 1 <arr.pnumblocks)? arr.pblock_offsets[i+1] - arr.pblock_offsets[i]: arr.pdatalength - arr.pblock_offsets[i];
+    return DataBlock<T>(arr.pdata + arr.pblock_offsets[i],
+                        len, arr.prowm, arr.ptensor_rank,
+                        arr.pextentsbuffer + i*arr.ptensor_rank,
+                        arr.pstridesbuffer + i*arr.ptensor_rank,
+                        false, false,arr.pdata_is_devptr,arr.pdevnum);
+}
+#pragma omp end declare target
 
 
 #endif
