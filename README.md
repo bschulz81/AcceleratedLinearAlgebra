@@ -45,6 +45,30 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+
+### 29.05.2026
+
+Added basic linear algebra functions for distributed linear algebra on gpu/cpu clusters and tested these successfully with small data.
+
+fixed memory bugs in the summa algorithm for gpu and optimized its performance a bit.
+
+Added an exit criteria for certain grid configurations where the implementation of the summa algorithm is not compatible with yet.
+Added a function that creates a communicator which is compatible with the summa algorithm. 
+
+The summa algorithm in this implementation can handle the sparse situation where some nodes get one block and other nodes get no data. It can also handle the dense situation where each node gets one or more blocks. 
+The current implementation can not handle the situation that some blocks get no data while other nodes get several blocks. A function was added that creates a communicator for this requirement based on mpi rank and matrix dimensions.
+
+Fixed a bug in the tensor scatterer that occured for some distribution ranks,
+
+Made the tensor scatterer compatible with the matrix scatterer
+cleaned redundant fields in the distributeddatablock class and made them more self explanatory.
+
+Reorganized the structure of distributeddatablock such that one can outsource repeated offloading code into classes (which are still not implemented)
+
+Rewrote the printing function for tensors of distributeddatablock such that the output does not get mixed between the different openmpi tasks on several nodes.
+Now, all nodes send the data which they have to print to the root process in an orderly way.
+
+
 ### 05.05.2026
 Added more distributed blas functions for gpu and cpu clusters but i have yet to test them. 
 I also need to put the offload code into a class to avoid repetition. Therefore, i added this into the development folder until I tested this sufficiently.
