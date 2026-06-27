@@ -117,10 +117,14 @@ int main()
         C =vecA-vecB;
         C.printtensor();
         mdspan_data_t<std::complex<double>, dynamic_tag> D(3, true,false);
-     Math_Functions_Policy mypol(Math_Functions_Policy::GPU_ONLY);
+     Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
         auto expr=vecA-vecB;
         expr.assign_to(D,&mypol);
         D.printtensor();
+
+//   Careful:; this will work if compiled with clang, gcc will run into a compiler error instead..
+     std::complex<double> d=dot(vecA,vecB);
+        cout<< d;
 
     }
     //

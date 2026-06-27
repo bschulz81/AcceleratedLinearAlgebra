@@ -951,22 +951,28 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
     if constexpr (is_complex<T>::value)
     {
-        using ScalarT = typename T::value_type; // 'double'
+        using ScalarT = typename T::value_type;
         ScalarT real_res = 0;
         ScalarT imag_res = 0;
 
-        #pragma omp target teams distribute parallel for simd map(tofrom:result)reduction(+:real_res, imag_res) device(dev)
+        #pragma omp target teams distribute parallel for simd reduction(+:real_res) device(dev)
         for (size_t i = 0; i < n; ++i)
         {
             auto c1 = std::conj(vec1(i));
             auto c2 = vec2(i);
-            T term = c1 * c2;
-            real_res += term.real();
-            imag_res += term.imag();
+            real_res += (c1 * c2).real();
+        }
+
+        #pragma omp target teams distribute parallel for simd reduction(+:imag_res) device(dev)
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            imag_res += (c1 * c2).imag();
         }
 
 
-        return T(real_res, imag_res);
+        return std::complex<ScalarT>(real_res, imag_res);
     }
     else
     {
@@ -1098,8 +1104,8 @@ inline T GPU_Math_Functions<T>::dot_product_g_kahan(const DataBlock<T> &vec1, co
             c_final = z2 - y2;
             result = t2;
         }
-        delete host_sums;
-        delete host_cs;
+        delete[]host_sums;
+        delete[] host_cs;
         return result;
     }
 }
