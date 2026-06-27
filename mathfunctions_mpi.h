@@ -1569,14 +1569,13 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
             if(x.Dblockarray.pdata_is_devptr)
             {
-                omp_target_memcpy_async(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,x.Dblockarray.pdevnum,0);
+                omp_target_memcpy(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,x.Dblockarray.pdevnum);
             }
             else
             {
-                omp_target_memcpy_async(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,omp_get_initial_device(),0);
+                omp_target_memcpy(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,omp_get_initial_device());
             }
         }
-        #pragma omp taskwait
 
     }
     else
@@ -1621,23 +1620,22 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
             if(!A.Dblockarray.pdata_is_devptr)
             {
                 A_ptr=(T*) omp_target_alloc(sizeof(T)*A.Dblockarray.pdatalength,devnum);
-                omp_target_memcpy_async(A_ptr,A.Dblockarray.pdata,sizeof(T)*A.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device(),0);
+                omp_target_memcpy(A_ptr,A.Dblockarray.pdata,sizeof(T)*A.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
             }
             else
                 A_ptr=A.Dblockarray.pdata;
 
             Ablockoff=(size_t*) omp_target_alloc(sizeof(size_t)*A.Dblockarray.pnumblocks,devnum);
-            omp_target_memcpy_async(Ablockoff,A.Dblockarray.pblock_offsets, sizeof(size_t)*A.Dblockarray.pnumblocks,0,0,devnum,omp_get_initial_device(),0);
+            omp_target_memcpy(Ablockoff,A.Dblockarray.pblock_offsets, sizeof(size_t)*A.Dblockarray.pnumblocks,0,0,devnum,omp_get_initial_device());
 
             Aext=(size_t*) omp_target_alloc(sizeof(T)*A.Dblockarray.pnumblocks*2,devnum );
-            omp_target_memcpy_async(Aext, A.Dblockarray.pextentsbuffer, sizeof(size_t)*A.Dblockarray.pnumblocks*2,0,0,devnum,omp_get_initial_device(),0);
+            omp_target_memcpy(Aext, A.Dblockarray.pextentsbuffer, sizeof(size_t)*A.Dblockarray.pnumblocks*2,0,0,devnum,omp_get_initial_device());
 
             Ablocklinindex=(size_t*) omp_target_alloc(sizeof(size_t)*A.Dblockarray.pnumblocks,devnum);
-            omp_target_memcpy_async(Ablocklinindex,A.pblock_linear_idx,sizeof(size_t*)*A.Dblockarray.pnumblocks,0,0,devnum, omp_get_initial_device(),0);
+            omp_target_memcpy(Ablocklinindex,A.pblock_linear_idx,sizeof(size_t*)*A.Dblockarray.pnumblocks,0,0,devnum, omp_get_initial_device());
 
 
             const size_t num=A.Dblockarray.pnumblocks;
-            #pragma omp taskwait
 
             #pragma omp target teams distribute parallel for \
             is_device_ptr(Ablocklinindex,Aext,Ablockoff,A_ptr,y_full) \
@@ -1831,12 +1829,11 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
             size_t dst = y.Dblockarray.pblock_offsets[i];
             if(!y.Dblockarray.pdata_is_devptr)
-                omp_target_memcpy_async( y.Dblockarray.pdata,y_local,len * sizeof(T),dst*sizeof(T),local_offset*sizeof(T), omp_get_initial_device(),devnum,0);
+                omp_target_memcpy( y.Dblockarray.pdata,y_local,len * sizeof(T),dst*sizeof(T),local_offset*sizeof(T), omp_get_initial_device(),devnum);
             else
-                omp_target_memcpy_async(    y.Dblockarray.pdata,    y_local,len * sizeof(T   ),dst*sizeof(T),local_offset*sizeof(T),y.Dblockarray.pdevnum,devnum,0);
+                omp_target_memcpy(    y.Dblockarray.pdata,    y_local,len * sizeof(T   ),dst*sizeof(T),local_offset*sizeof(T),y.Dblockarray.pdevnum,devnum);
 
         }
-        #pragma omp taskwait
     }
 
     else
@@ -3327,22 +3324,43 @@ inline bool Math_Functions_MPI<T>::dot_product_Distributed(
             }
 
             const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum, imag_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
 
-                #pragma omp parallel for simd reduction(+:real_sum, imag_sum)
-                for (size_t i = 0; i < n; ++i)
+            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
+            {
+
+                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum)
+                for (size_t b = 0; b < cblocknum; b++)
                 {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    real_sum += term.real();
-                    imag_sum += term.imag();
+                    T* aptr = adata + aoffsets[b];
+                    T* bptr = bdata + boffsets[b];
+                    const size_t n = aextents[b];
+                    const size_t astride0 = astrides[b];
+                    const size_t bstride0 = bstrides[b];
+
+                    #pragma omp parallel for simd reduction(+:real_sum)
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
+                        real_sum += term.real();
+                    }
+                }
+
+
+                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:imag_sum)
+                for (size_t b = 0; b < cblocknum; b++)
+                {
+                    T* aptr = adata + aoffsets[b];
+                    T* bptr = bdata + boffsets[b];
+                    const size_t n = aextents[b];
+                    const size_t astride0 = astrides[b];
+                    const size_t bstride0 = bstrides[b];
+
+                    #pragma omp parallel for simd reduction(+:imag_sum)
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
+                        imag_sum += term.imag();
+                    }
                 }
             }
 
@@ -3356,7 +3374,8 @@ inline bool Math_Functions_MPI<T>::dot_product_Distributed(
         else
         {
             const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp parallel for reduction(+:real_sum, imag_sum)
+
+            #pragma omp parallel for reduction(+:real_sum)
             for (size_t b = 0; b < cblocknum; b++)
             {
                 T* aptr = adata + aoffsets[b];
@@ -3369,12 +3388,28 @@ inline bool Math_Functions_MPI<T>::dot_product_Distributed(
                 {
                     T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
                     real_sum += term.real();
+                }
+            }
+
+            #pragma omp parallel for reduction(+:imag_sum)
+            for (size_t b = 0; b < cblocknum; b++)
+            {
+                T* aptr = adata + aoffsets[b];
+                const T* bptr = bdata + boffsets[b];
+                const size_t n = aextents[b];
+                const size_t astride0 = astrides[b];
+                const size_t bstride0 = bstrides[b];
+
+                for (size_t i = 0; i < n; ++i)
+                {
+                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
                     imag_sum += term.imag();
                 }
             }
+
         }
 
-        T local_final_sum = T(real_sum, imag_sum); // Safe here!
+        T local_final_sum =std::complex<ScalarT>(real_sum, imag_sum);
         MPI_Reduce(&local_final_sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->comm);
     }
 
@@ -3468,9 +3503,7 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
     size_t *bstrides = B.Dblockarray.pstridesbuffer;
     T* bdata = B.Dblockarray.pdata;
 
-    // ========================================================================
-    // 1. COMPLEX NUMBER BRANCH
-    // ========================================================================
+
     if constexpr (is_complex<T>::value)
     {
         using ScalarT = typename T::value_type;
@@ -3489,24 +3522,44 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
                 bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
                 omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
             }
-
             const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum, imag_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
 
-                #pragma omp parallel for simd reduction(+:real_sum, imag_sum)
-                for (size_t i = 0; i < n; ++i)
+            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
+            {
+
+                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum)
+                for (size_t b = 0; b < cblocknum; b++)
                 {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    real_sum += term.real();
-                    imag_sum += term.imag();
+                    T* aptr = adata + aoffsets[b];
+                    T* bptr = bdata + boffsets[b];
+                    const size_t n = aextents[b];
+                    const size_t astride0 = astrides[b];
+                    const size_t bstride0 = bstrides[b];
+
+                    #pragma omp parallel for simd reduction(+:real_sum)
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
+                        real_sum += term.real();
+                    }
+                }
+
+
+                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:imag_sum)
+                for (size_t b = 0; b < cblocknum; b++)
+                {
+                    T* aptr = adata + aoffsets[b];
+                    T* bptr = bdata + boffsets[b];
+                    const size_t n = aextents[b];
+                    const size_t astride0 = astrides[b];
+                    const size_t bstride0 = bstrides[b];
+
+                    #pragma omp parallel for simd reduction(+:imag_sum)
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
+                        imag_sum += term.imag();
+                    }
                 }
             }
             if (!A.Dblockarray.pdata_is_devptr)
@@ -3519,7 +3572,9 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
         else
         {
             const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp parallel for reduction(+:real_sum, imag_sum)
+
+
+            #pragma omp parallel for reduction(+:real_sum)
             for (size_t b = 0; b < cblocknum; b++)
             {
                 T* aptr = adata + aoffsets[b];
@@ -3527,15 +3582,33 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
                 const size_t n = aextents[b];
                 const size_t astride0 = astrides[b];
                 const size_t bstride0 = bstrides[b];
+
                 for (size_t i = 0; i < n; ++i)
                 {
                     T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
                     real_sum += term.real();
+                }
+            }
+
+
+            #pragma omp parallel for reduction(+:imag_sum)
+            for (size_t b = 0; b < cblocknum; b++)
+            {
+                T* aptr = adata + aoffsets[b];
+                const T* bptr = bdata + boffsets[b];
+                const size_t n = aextents[b];
+                const size_t astride0 = astrides[b];
+                const size_t bstride0 = bstrides[b];
+
+                for (size_t i = 0; i < n; ++i)
+                {
+                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
                     imag_sum += term.imag();
                 }
             }
+
         }
-        T local_final_sum = T(real_sum, imag_sum);
+        T local_final_sum =std::complex<ScalarT>(real_sum, imag_sum);
         T global_result = T(0);
         MPI_Allreduce(&local_final_sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
         return global_result;

@@ -1200,8 +1200,7 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A,
     for (size_t c = 0; c < n; ++c)
     {
         T tmp=T(0);
-        #pragma omp metadirective \
-        when(construct={target}: parallel for simd  reduction(+:tmp)) otherwise(parallel for reduction(+:tmp))
+        #pragma omp parallel for simd  reduction(+:tmp)
                 for (size_t k = 0; k < c; ++k)
                 {
                     const T tmp3=L(c,k);
@@ -1357,7 +1356,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
 
             T dot_pr=T(0);
             DataBlock<T> u = Q.matrix_column(j,pextu,pstru);
-            #pragma omp metadirective when(construct={target}: parallel for simd reduction(+:dot_pr))  otherwise(parallel for reduction(+:dot_pr))
+            #pragma omp parallel for simd reduction(+:dot_pr)
             for (size_t i = 0; i < pext0; ++i)
             {
                 dot_pr += u(i) * v(i);
@@ -1372,7 +1371,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
         }
         // Normalize v
         T norm=T(0);
-        #pragma omp metadirective when(construct={target}: parallel for simd reduction(+:norm))  otherwise(parallel for reduction(+:norm))
+        #pragma omp parallel for simd reduction(+:norm)
         for (size_t i = 0; i < pext0; ++i)
         {
             norm += v(i) * v(i);
@@ -2283,7 +2282,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_v(const  DataBlock<T> &vec1, const Dat
 
     if constexpr (is_complex<T>::value)
     {
-        using ScalarT = typename T::value_type; // 'double'
+        using ScalarT = typename T::value_type;
         ScalarT real_res = 0;
         ScalarT imag_res = 0;
 
@@ -2296,7 +2295,7 @@ T In_Kernel_Mathfunctions<T>::dot_product_v(const  DataBlock<T> &vec1, const Dat
             real_res += term.real();
             imag_res += term.imag();
         }
-        return T(real_res, imag_res);
+        return  std::complex<double>(real_res, imag_res);
     }
     else
     {
@@ -2322,25 +2321,29 @@ T In_Kernel_Mathfunctions<T>::dot_product_w(const  DataBlock<T> &vec1, const Dat
         ScalarT real_res = 0;
         ScalarT imag_res = 0;
 
-        #pragma omp metadirective \
-        when(construct={target}: parallel for simd reduction(+:real_res, imag_res)) \
-            otherwise(parallel for reduction(+:real_res, imag_res))
-                for (size_t i = 0; i < n; ++i)
-                {
-                    auto c1 = std::conj(vec1(i));
-                    auto c2 = vec2(i);
-                    T term = c1 * c2;
-                    real_res += term.real();
-                    imag_res += term.imag();
-                }
-        return T(real_res, imag_res);
+        #pragma omp parallel for simd reduction(+:real_res)
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            real_res += (c1 * c2).real();
+        }
+
+        #pragma omp parallel for simd reduction(+:imag_res)
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            imag_res += (c1 * c2).imag();
+        }
+
+
+        return std::complex<ScalarT>(real_res, imag_res);
     }
     else
     {
         T result = T(0);
-        #pragma omp metadirective \
-        when(construct={target}: parallel for simd reduction(+:result)) \
-            otherwise(parallel for reduction(+:result))
+        #pragma omp parallel for reduction(+:result)
                 for (size_t i = 0; i < n; ++i)
                 {
                     result += vec1(i) * vec2(i);
