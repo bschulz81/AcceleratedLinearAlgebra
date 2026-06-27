@@ -784,20 +784,22 @@ template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum)
     :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
 {
-    const size_t r=1;
+    const size_t s=1;
     if constexpr (StaticContainer<Container>)
     {
         pextents = {}; // Default-initialize static container
+        pstrides={};
     }
 
     if constexpr (DynamicContainer<Container>)
     {
-        pextents.resize(r); // Resize dynamic container
+        pextents.resize(s);
+        pstrides.resize(s);
     }
     // Resize and copy extents from container
 
     pextents[0]=rows;
-    pstrides[0]=1;
+    pstrides[0]=s;
 
 
     this->dpextents = pextents.data();

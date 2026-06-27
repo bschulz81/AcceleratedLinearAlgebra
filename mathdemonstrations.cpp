@@ -99,6 +99,28 @@ int main()
         double d=dot(vecA,vecB);
         cout<< d;
 
+    }
+    {
+  using namespace expr;
+        cout<<"now we test complex numbers"<<endl;
+    std::vector<std::complex<double>> vectorA_data = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+       std::vector<std::complex<double>> vectorB_data= {{5.0, 2.0}, {3.0, 4.0}, {1.0, 6.0} };
+    mdspan<std::complex<double>, std::array<size_t,1>> vecA(vectorA_data.data(), 3, true);
+    mdspan<std::complex<double>, std::array<size_t,1>> vecB(vectorB_data.data(), 3, true);
+    vecA.printtensor();
+    vecB.printtensor();
+//
+//
+    mdspan_data_t <std::complex<double>, dynamic_tag> C(3, true,false);
+//
+        cout<<"addition of A and B"<<endl;
+        C =vecA-vecB;
+        C.printtensor();
+        mdspan_data_t<std::complex<double>, dynamic_tag> D(3, true,false);
+     Math_Functions_Policy mypol(Math_Functions_Policy::GPU_ONLY);
+        auto expr=vecA-vecB;
+        expr.assign_to(D,&mypol);
+        D.printtensor();
 
     }
     //
@@ -166,6 +188,7 @@ int main()
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
 
         C1.printtensor();
+
 
 
 

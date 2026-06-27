@@ -4,7 +4,8 @@
 #include "cmath"
 #include "datablock.h"
 #include "datablockcontainer.h"
-
+#include <complex>
+#include <type_traits>
 using namespace std;
 
 
@@ -85,6 +86,7 @@ public:
     inline static T dot_product_v( const DataBlock<T> &vec1, const DataBlock<T> &vec2);
     inline static T dot_product_w( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
     inline static T dot_product_w_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2);
+    inline static T dot_product_s_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2);
 
     inline static void matrix_multiply_scalar_s( const  DataBlock<T>& M, const T V, DataBlock<T>& C);
     inline static void matrix_multiply_scalar_v( const  DataBlock<T>& M,const  T V, DataBlock<T>& C);
@@ -149,8 +151,8 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
     if(initialize_to_zero)
     {
         #pragma omp parallel for simd
-        for(size_t i=0; i<y.dpextents[0]; i++)
-            y.dpdata[i*ystr0]=T(0);
+            for(size_t i=0; i<y.dpextents[0]; i++)
+                y.dpdata[i*ystr0]=T(0);
     }
 
 
@@ -190,7 +192,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
             {
                 const size_t global_i = a_row_off + ii;
                 T sum = 0;
-                #pragma omp simd reduction(+:sum)
+                #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
                     const size_t a_index = global_i * Astr0 + kk * Astr1;
@@ -269,7 +271,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
             {
                 const size_t global_i = a_row_off + ii;
                 T sum = 0;
-                #pragma omp simd reduction(+:sum)
+                #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
                     const size_t a_index = global_i * Astr0 + kk * Astr1;
@@ -382,8 +384,8 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
     if(initialize_to_zero)
     {
         #pragma omp parallel for simd
-        for(size_t i=0; i<y.dpextents[0]; i++)
-            y.dpdata[i*ystr0]=T(0);
+            for(size_t i=0; i<y.dpextents[0]; i++)
+                y.dpdata[i*ystr0]=T(0);
     }
 
 
@@ -408,7 +410,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
         {
             const size_t global_i = a_row_off + ii;
             T sum = 0;
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
@@ -468,7 +470,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
         {
             const size_t global_i = a_row_off + ii;
             T sum =T(0);  // accumulate
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
@@ -560,11 +562,11 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
     if(initialize_to_zero)
     {
         #pragma omp parallel for simd collapse(2)
-        for(size_t i=0; i<C.dpextents[0]; i++)
-        {
-            for(size_t j=0; j<C.dpextents[1]; j++)
-                C.dpdata[i*Cstr0+j*Cstr1]=T(0);
-        }
+                for(size_t i=0; i<C.dpextents[0]; i++)
+                {
+                    for(size_t j=0; j<C.dpextents[1]; j++)
+                        C.dpdata[i*Cstr0+j*Cstr1]=T(0);
+                }
     }
     #pragma omp parallel for
     for (size_t ia = 0; ia < mblocks; ++ia)
@@ -588,7 +590,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
                 T sum = T(0);
-                #pragma omp simd reduction(+:sum)
+                #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
                     const size_t global_k = a_col_off + kk;
@@ -656,7 +658,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
             for (size_t jj = 0; jj < bext1; ++jj)  // loop over all columns of B
             {
                 T sum = T(0);
-                #pragma omp simd reduction(+:sum)
+                #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
                     const size_t global_k = a_col_off + kk;
@@ -766,11 +768,11 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
     if(initialize_to_zero)
     {
         #pragma omp parallel for simd collapse(2)
-        for(size_t i=0; i<C.dpextents[0]; i++)
-        {
-            for(size_t j=0; j<C.dpextents[1]; j++)
-                C.dpdata[i*str0+j*str1]=T(0);
-        }
+                for(size_t i=0; i<C.dpextents[0]; i++)
+                {
+                    for(size_t j=0; j<C.dpextents[1]; j++)
+                        C.dpdata[i*str0+j*str1]=T(0);
+                }
     }
     #pragma omp parallel for collapse(2)
     for (size_t ia = 0; ia < mblocks; ++ia)
@@ -823,7 +825,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
                 {
                     const  size_t global_j = b_col_off + jj;
                     T sum = T(0);
-                    #pragma omp simd reduction(+:sum)
+                    #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
                         const size_t a_index = (global_i *Astr0) +  (kk * Astr1);
@@ -924,7 +926,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(  const BlockedDat
                 {
                     const size_t global_j = b_col_off + jj;
                     T sum = T(0);
-                    #pragma omp simd reduction(+:sum)
+                    #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
                         const size_t a_index = (global_i *Astr0) +  (kk * Astr1);
@@ -1198,13 +1200,13 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A,
     for (size_t c = 0; c < n; ++c)
     {
         T tmp=T(0);
-
-        #pragma omp parallel for simd reduction(+:tmp)
-        for (size_t k = 0; k < c; ++k)
-        {
-            const T tmp3=L(c,k);
-            tmp+= tmp3 * tmp3;
-        }
+        #pragma omp metadirective \
+        when(construct={target}: parallel for simd  reduction(+:tmp)) otherwise(parallel for reduction(+:tmp))
+                for (size_t k = 0; k < c; ++k)
+                {
+                    const T tmp3=L(c,k);
+                    tmp+= tmp3 * tmp3;
+                }
 
         tmp=A(c, c)-tmp;
         const T tmp4=sqrt(tmp);
@@ -1214,7 +1216,8 @@ void In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(const DataBlock<T>& A,
         for (size_t i = c + 1; i < n; ++i)
         {
             T tmp2 =0;
-            #pragma omp simd reduction(+:tmp2)
+            #pragma omp metadirective \
+            when(construct={target}: simd  reduction(+:tmp2))
             for (size_t k = 0; k < c; ++k)
             {
                 tmp2 += L(i, k) * L(c, k);
@@ -1241,7 +1244,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, Data
 
     if(initialize_to_zero)
     {
-        #pragma omp parallel for simd collapse(2)
+        #pragma omp  parallel for simd collapse(2)
         for (size_t i = 0; i < n; ++i)
         {
             for (size_t j = 0; j <n; ++j)
@@ -1258,7 +1261,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, Data
         for (size_t i = c; i < n; ++i)
         {
             T temp=T(0);
-            #pragma omp simd reduction(+:temp)
+            #pragma omp metadirective when(construct={target}:  simd reduction(+:temp))
             for (size_t k = 0; k < c; ++k)
             {
                 temp += U( k,i) * L( c,k);
@@ -1272,7 +1275,7 @@ void In_Kernel_Mathfunctions<T>::lu_decomposition_w(const  DataBlock<T>& A, Data
         for (size_t i = c; i < n; ++i)
         {
             T temp =T(0);
-            #pragma omp simd reduction (+:temp)
+            #pragma omp metadirective when(construct={target}:  simd reduction(+:temp))
             for (size_t k = 0; k < c; ++k)
             {
                 temp += U(k,c) * L( i,k);
@@ -1320,7 +1323,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
             #pragma omp simd
             for (size_t j = 0; j < n; ++j)
                 Q(i,j) = 0;
-            #pragma omp simd
+            #pragma omp  simd
             for (size_t j = 0; j < m; ++j)
             {
                 M(i,j)=A(i,j);
@@ -1330,7 +1333,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
     }
     else
     {
-        #pragma omp parallel for simd collapse(2)
+        #pragma omp  parallel for simd collapse(2)
         for (size_t i = 0; i < n; ++i)
         {
             for (size_t j = 0; j < m; ++j)
@@ -1354,14 +1357,14 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
 
             T dot_pr=T(0);
             DataBlock<T> u = Q.matrix_column(j,pextu,pstru);
-            #pragma omp parallel for simd  reduction(+:dot_pr)
+            #pragma omp metadirective when(construct={target}: parallel for simd reduction(+:dot_pr))  otherwise(parallel for reduction(+:dot_pr))
             for (size_t i = 0; i < pext0; ++i)
             {
                 dot_pr += u(i) * v(i);
             }
 
             const T cdot_pr=dot_pr;
-            #pragma omp  parallel for simd
+            #pragma omp parallel for simd
             for (size_t i = 0; i < pext0; ++i)
             {
                 v(i) -= cdot_pr * u(i);
@@ -1369,7 +1372,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
         }
         // Normalize v
         T norm=T(0);
-        #pragma omp parallel for simd reduction(+: norm)
+        #pragma omp metadirective when(construct={target}: parallel for simd reduction(+:norm))  otherwise(parallel for reduction(+:norm))
         for (size_t i = 0; i < pext0; ++i)
         {
             norm += v(i) * v(i);
@@ -1393,7 +1396,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
         for (size_t j = 0; j < cols; ++j)
         {
             T sum = 0;
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}:  simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += Q(k,i) *A(k,j);
@@ -1445,7 +1448,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
         for (size_t j = 0; j < cols; ++j)
         {
             T sum =T(0);
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
@@ -1480,7 +1483,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_w( const DataBlo
         for (size_t j = 0; j < cols; ++j)
         {
             T sum =T(0);
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
@@ -1516,7 +1519,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const DataBlock<T>& A, c
         for (size_t j = 0; j < cols; ++j)
         {
             T sum =T(0);
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
@@ -1550,7 +1553,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_v( const DataBlo
         for (size_t j = 0; j < cols; ++j)
         {
             T sum =T(0);
-            #pragma omp simd reduction(+:sum)
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
                 sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
@@ -1632,15 +1635,14 @@ void In_Kernel_Mathfunctions<T>::matrix_add_w(const DataBlock<T>& A,const DataBl
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i < n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j <m ; ++j)
-        {
-            C(i,j) =A(i,j)+B(i,j);
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i < n; ++i)
+            {
+                for (size_t j = 0; j <m ; ++j)
+                {
+                    C(i,j) =A(i,j)+B(i,j);
+                }
+            }
 }
 #pragma omp end declare target
 
@@ -1696,15 +1698,14 @@ void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_w( DataBlock<T>& A,const 
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i < n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j <m ; ++j)
-        {
-            A(i,j)+=B(i,j);
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i < n; ++i)
+            {
+                for (size_t j = 0; j <m ; ++j)
+                {
+                    A(i,j)+=B(i,j);
+                }
+            }
 }
 #pragma omp end declare target
 
@@ -1715,7 +1716,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_v( DataBlock<T>& A,const 
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp simd collapse(2)
+    #pragma omp  simd collapse(2)
     for (size_t i = 0; i < n; ++i)
     {
         for (size_t j = 0; j <m ; ++j)
@@ -1739,7 +1740,7 @@ void In_Kernel_Mathfunctions<T>::matrix_add_accumulate_s( DataBlock<T>& A,const 
     {
         for (size_t j = 0; j <m ; ++j)
         {
-           A(i,j)+=B(i,j);
+            A(i,j)+=B(i,j);
         }
     }
 
@@ -1757,15 +1758,14 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_w(const DataBlock<T>& A,const  
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j < m; ++j)
-        {
-            C(i,j) =A(i,j)-B(i,j);
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i <n; ++i)
+            {
+                for (size_t j = 0; j < m; ++j)
+                {
+                    C(i,j) =A(i,j)-B(i,j);
+                }
+            }
 
 }
 #pragma omp end declare target
@@ -1815,15 +1815,14 @@ void In_Kernel_Mathfunctions<T>::matrix_subtract_accumulate_w( DataBlock<T>& A,c
 {
     const size_t n=A.dpextents[0];
     const size_t m=A.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j < m; ++j)
-        {
-            A(i,j)-=B(i,j);
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i <n; ++i)
+            {
+                for (size_t j = 0; j < m; ++j)
+                {
+                    A(i,j)-=B(i,j);
+                }
+            }
 
 }
 #pragma omp end declare target
@@ -1880,7 +1879,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M,
     for (size_t i = 0; i <n; ++i)
     {
         T sum=T(0);
-        #pragma omp simd reduction(+: sum)
+        #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V(j);
@@ -1903,7 +1902,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M,
     for (size_t i = 0; i <n; ++i)
     {
         T sum=T(0);
-        #pragma omp simd reduction(+: sum)
+        #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V(j);
@@ -2079,7 +2078,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_v( const DataBlock<T>&M,
     for (size_t i = 0; i <n; ++i)
     {
         T sum=T(0);
-        #pragma omp simd reduction(+:sum)
+        #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V[j];
@@ -2101,7 +2100,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w( const DataBlock<T>&M,
     for (size_t i = 0; i <n; ++i)
     {
         T sum=T(0);
-        #pragma omp simd reduction(+:sum)
+        #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
         for (size_t j = 0; j <  m; ++j)
         {
             sum+= M(i, j) * V[j];
@@ -2146,12 +2145,16 @@ void In_Kernel_Mathfunctions<T>::vector_add_v( const DataBlock<T>& vec1,const  D
 template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_add_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
+
     const size_t n=vec1.dpextents[0];
+    const size_t resstr0=res.dpstrides[0];
+    const size_t vec1str0=vec1.dpstrides[0];
+    const size_t vec2str0=vec2.dpstrides[0];
     #pragma omp parallel for simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i) = vec1(i)+vec2(i);
-    }
+        for (size_t i = 0; i < n; ++i)
+        {
+            res.dpdata[i*resstr0] = vec1.dpdata[i*vec1str0]+vec2.dpdata[i*vec2str0];
+        }
 
 }
 #pragma omp end declare target
@@ -2192,10 +2195,10 @@ void In_Kernel_Mathfunctions<T>::vector_add_accumulate_w( DataBlock<T>& vec1,con
 {
     const size_t n=vec1.dpextents[0];
     #pragma omp parallel for simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        vec1(i)+=vec2(i);
-    }
+        for (size_t i = 0; i < n; ++i)
+        {
+            vec1(i)+=vec2(i);
+        }
 
 }
 #pragma omp end declare target
@@ -2209,11 +2212,11 @@ template <typename T>
 void In_Kernel_Mathfunctions<T>::vector_subtract_w( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
     const size_t n=vec1.dpextents[0];
-    #pragma omp parallel for simd
-    for (size_t i = 0; i < n; ++i)
-    {
-        res(i) = vec1(i)-vec2(i);
-    }
+   #pragma omp parallel for simd
+        for (size_t i = 0; i < n; ++i)
+        {
+            res(i) = vec1(i)-vec2(i);
+        }
 
 }
 #pragma omp end declare target
@@ -2253,10 +2256,19 @@ T In_Kernel_Mathfunctions<T>::dot_product_s(const  DataBlock<T> &vec1, const Dat
 {
     const size_t n=vec1.dpextents[0];
     T result=T(0);
-
-    for (size_t i = 0; i < n; ++i)
+    if constexpr (is_complex<T>::value)
     {
-        result += vec1(i) * vec2(i);
+        for (size_t i = 0; i < n; ++i)
+        {
+            result += std::conj(vec1(i)) * vec2(i);
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < n; ++i)
+        {
+            result += vec1(i) * vec2(i);
+        }
     }
     return result;
 }
@@ -2269,13 +2281,33 @@ T In_Kernel_Mathfunctions<T>::dot_product_v(const  DataBlock<T> &vec1, const Dat
 {
     const size_t n=vec1.dpextents[0];
 
-    T result=T(0);
-    #pragma omp simd reduction(+: result)
-    for (size_t i = 0; i < n; ++i)
+    if constexpr (is_complex<T>::value)
     {
-        result += vec1(i) * vec2(i);
+        using ScalarT = typename T::value_type; // 'double'
+        ScalarT real_res = 0;
+        ScalarT imag_res = 0;
+
+        #pragma omp metadirective when(construct={target}: simd reduction(+:real_res, imag_res))
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            T term = c1 * c2;
+            real_res += term.real();
+            imag_res += term.imag();
+        }
+        return T(real_res, imag_res);
     }
-    return result;
+    else
+    {
+        T result = T(0);
+        #pragma omp metadirective when(construct={target}: simd reduction(+:result))
+        for (size_t i = 0; i < n; ++i)
+        {
+            result += vec1(i) * vec2(i);
+        }
+        return result;
+    }
 }
 #pragma omp end declare target
 
@@ -2284,31 +2316,65 @@ template <typename T>
 T In_Kernel_Mathfunctions<T>::dot_product_w(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const size_t n=vec1.dpextents[0];
-    T result=T(0);
-    #pragma omp parallel for simd reduction(+:result)
-    for (size_t i = 0; i < n; ++i)
+    if constexpr (is_complex<T>::value)
     {
-        result += vec1(i) * vec2(i);
+        using ScalarT = typename T::value_type;
+        ScalarT real_res = 0;
+        ScalarT imag_res = 0;
+
+        #pragma omp metadirective \
+        when(construct={target}: parallel for simd reduction(+:real_res, imag_res)) \
+            otherwise(parallel for reduction(+:real_res, imag_res))
+                for (size_t i = 0; i < n; ++i)
+                {
+                    auto c1 = std::conj(vec1(i));
+                    auto c2 = vec2(i);
+                    T term = c1 * c2;
+                    real_res += term.real();
+                    imag_res += term.imag();
+                }
+        return T(real_res, imag_res);
     }
-    return result;
+    else
+    {
+        T result = T(0);
+        #pragma omp metadirective \
+        when(construct={target}: parallel for simd reduction(+:result)) \
+            otherwise(parallel for reduction(+:result))
+                for (size_t i = 0; i < n; ++i)
+                {
+                    result += vec1(i) * vec2(i);
+                }
+        return result;
+    }
 }
 #pragma omp end declare target
 
 
-
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
+T In_Kernel_Mathfunctions<T>::dot_product_s_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
 
     const size_t n=vec1.dpextents[0];
-
-    int total_threads =   omp_get_max_threads();
-
-    if(n < (size_t)total_threads)
+    T result = T(0);
+    T c_final = T(0);
+    if constexpr (is_complex<T>::value)
     {
-        T result = T(0);
-        T c_final = T(0);
+
+
+        for (int i = 0; i < n; ++i)
+        {
+            T y = std::conj(vec1(i)) * vec2(i)- c_final;
+            volatile T t = result + y;
+            volatile T z = t - result;
+            c_final=z-y;
+            result = t;
+        }
+    }
+    else
+    {
+
         for (int i = 0; i < n; ++i)
         {
             T y = vec1(i) * vec2(i)- c_final;
@@ -2317,61 +2383,98 @@ T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const  DataBlock<T> &vec1, con
             c_final=z-y;
             result = t;
         }
-        return result;
+    }
+    return result;
+
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+T In_Kernel_Mathfunctions<T>::dot_product_w_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2)
+{
+    const size_t n = vec1.dpextents[0];
+    const int total_threads = omp_get_max_threads();
+
+    if (n < (size_t)total_threads)
+    {
+        return dot_product_s_kahan(vec1, vec2);
     }
     else
     {
 
+        constexpr int MAX_STATIC_THREADS = 256;
+        T thread_sums[MAX_STATIC_THREADS];
+        T thread_cs[MAX_STATIC_THREADS];
 
-        // Each thread gets its own local sum/compensation
-        T* thread_sums = new T[total_threads];
-        T* thread_cs   = new T[total_threads];
+
+        const int actual_workers = (total_threads > MAX_STATIC_THREADS) ? MAX_STATIC_THREADS : total_threads;
 
         #pragma omp parallel for simd
-        for (int idx = 0; idx < total_threads; ++idx)
+        for (int idx = 0; idx < actual_workers; ++idx)
         {
             thread_sums[idx] = T(0);
             thread_cs[idx] = T(0);
         }
 
-        #pragma omp parallel for
-        for (int tid = 0; tid < total_threads; ++tid)
+        #pragma omp parallel
         {
-            T local_sum = T(0);
-            T c = T(0);
-
-            for (size_t i = tid; i < n; i += total_threads)
+            int tid = omp_get_thread_num();
+            if (tid < actual_workers)
             {
-                T y = vec1(i) * vec2(i);
-                volatile T t = local_sum + y;
-                volatile T z = t - local_sum;
-                c = z - y;
-                local_sum = t;
-            }
+                T local_sum = T(0);
+                T c = T(0);
 
-            thread_sums[tid] = local_sum;
-            thread_cs[tid]   = c;
+                for (size_t i = tid; i < n; i += actual_workers)
+                {
+
+                    T term;
+                    if constexpr (is_complex<T>::value)
+                    {
+                        term = std::conj(vec1(i)) * vec2(i);
+                    }
+                    else
+                    {
+                        term = vec1(i) * vec2(i);
+                    }
+
+                    T y = term - c;
+                    volatile T t = local_sum + y;
+                    volatile T z = t - local_sum;
+                    c = z - y;
+                    local_sum = t;
+                }
+
+                thread_sums[tid] = local_sum;
+                thread_cs[tid]   = c;
+            }
         }
+
 
         T result = T(0);
         T c_final = T(0);
 
-        for (int tid = 0; tid < total_threads; ++tid)
+        for (int tid = 0; tid < actual_workers; ++tid)
         {
-            T y = thread_sums[tid] - c_final;
-            volatile T t = result + y;
-            volatile T z = t - result;
-            c_final=z-y;
-            result = t;
+
+            T y1 = thread_sums[tid] - c_final;
+            volatile T t1 = result + y1;
+            volatile T z1 = t1 - result;
+            c_final = z1 - y1;
+            result = t1;
+
+
+            T y2 = thread_cs[tid] - c_final;
+            volatile T t2 = result + y2;
+            volatile T z2 = t2 - result;
+            c_final = z2 - y2;
+            result = t2;
         }
-        delete[] thread_sums;
-        delete[] thread_cs;
 
         return result;
     }
 }
 #pragma omp end declare target
-
 
 
 #pragma omp begin declare target
@@ -2423,15 +2526,14 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(  const DataBlock<T>& 
 
     const size_t n=C.dpextents[0];
     const size_t m= C.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j <  m; ++j)
-        {
-            C(i,j)= M(i, j) * V;
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i <n; ++i)
+            {
+                for (size_t j = 0; j <  m; ++j)
+                {
+                    C(i,j)= M(i, j) * V;
+                }
+            }
 
 }
 #pragma omp end declare target
@@ -2488,15 +2590,14 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_w(   DataBloc
 
     const size_t n=M.dpextents[0];
     const size_t m= M.dpextents[1];
-    #pragma omp parallel for
-    for (size_t i = 0; i <n; ++i)
-    {
-        #pragma omp simd
-        for (size_t j = 0; j <  m; ++j)
-        {
-             M(i, j) *= V;
-        }
-    }
+    #pragma omp parallel for simd collapse(2)
+            for (size_t i = 0; i <n; ++i)
+            {
+                for (size_t j = 0; j <  m; ++j)
+                {
+                    M(i, j) *= V;
+                }
+            }
 
 }
 #pragma omp end declare target
@@ -2542,10 +2643,10 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_w( DataBlock<
 {
     const size_t n=vec.dpextents[0];
     #pragma omp parallel for simd
-    for (size_t i = 0; i < n; ++i)
-    {
-         vec(i)*=scalar;
-    }
+        for (size_t i = 0; i < n; ++i)
+        {
+            vec(i)*=scalar;
+        }
 }
 
 #pragma omp end declare target
@@ -2561,7 +2662,7 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_s( DataBlock<
     const size_t n=vec.dpextents[0];
     for (size_t i = 0; i < n; ++i)
     {
-         vec(i)*=scalar;
+        vec(i)*=scalar;
     }
 }
 
@@ -2576,7 +2677,7 @@ void In_Kernel_Mathfunctions<T>::vector_multiply_scalar_accumulate_v(  DataBlock
     #pragma omp simd
     for (size_t i = 0; i < n; ++i)
     {
-         vec(i)*=scalar;
+        vec(i)*=scalar;
     }
 }
 
