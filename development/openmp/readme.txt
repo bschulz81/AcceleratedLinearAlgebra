@@ -2,8 +2,8 @@ Todo:
 Version History:
 
 Todo:
-
-2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
+1) restructure the library to make additions of new functions more easy. Add more functions for tensors.
+2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 
