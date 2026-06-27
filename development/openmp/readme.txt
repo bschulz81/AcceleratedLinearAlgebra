@@ -6,6 +6,10 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+27.06.2026, 18:17
+clang doesnt support the otherwise clause in omp metadirective and omp_target_memcpy_async is also not supported. I removed these, even if gcc would work with that
+The dot product for complex vectors unfortunately needed an  __atomic_compare_exchange_16 for gcc. 
+Since atomics are expensive, i  separated the computation into two loops where this is then not needed anymore.
 
 27.06.2026
 
