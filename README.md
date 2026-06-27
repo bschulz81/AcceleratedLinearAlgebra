@@ -47,6 +47,13 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+
+### 28.06.2026, 00:30 
+On GCC and for complex matrices, the Cholesky, LU and QR decompositions still fail due to this gcc bug for reductions with complex variables in loops that I just filed: 
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126015 
+Clang does not show this problem and can reduce complex variables in test examples. 
+The decompositions should then work for complex valued matrices but I haven't tested them for complex valued data yet.
+
 ### 27.06.2026, 18:17
 
 clang doesnt support the otherwise clause in omp metadirective and omp_target_memcpy_async is also not supported. I removed these to allow compilation with clang, even if gcc would work with that
