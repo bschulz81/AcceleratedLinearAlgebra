@@ -45,6 +45,22 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 27.06.2026
+the library can now work with std:complex
+
+the printer functions for tensors were adapted to work with integers, double values, complex values and objects with a print function.
+
+the dot product was adapted to work with complex functions
+
+fixes in the constructors of mdspan_data
+
+fixes of the kahan sum for the dot product on gpu.
+
+fixes for the mpi test application for some node numbers
+
+the test application for the linear algebra now tests complex vectors too
+
+simd reductions turned out to be slower than the compiler generated code on cpu. Removed these for loops on cpu to increase speed
 
 ### 29.05.2026
 
