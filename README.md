@@ -47,6 +47,12 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 27.06.2026, 18:17
+
+clang doesnt support the otherwise clause in omp metadirective and omp_target_memcpy_async is also not supported. I removed these to allow compilation with clang, even if gcc would work with that
+The dot product for complex vectors unfortunately needed an  __atomic_compare_exchange_16 for gcc. 
+Since atomics are expensive and would need an extra gcc compile option on target, I  separated the computation into two loops where this is then not needed anymore.
+
 ### 27.06.2026
 the library can now work with std:complex
 
