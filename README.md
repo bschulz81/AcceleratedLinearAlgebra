@@ -40,8 +40,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-1) Add options for linear algebra and tensor functions such that most or all of them can use the message passing interface as well as the gpu for local work.
-2) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+1) restructure the library to make additions of new functions more easy. Add more functions for tensors.
+2) add functions for expression handling with more than one operator, add an autodiff mechanism
+3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 
 # Version history
