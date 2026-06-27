@@ -40,9 +40,10 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-1) restructure the library to make additions of new functions more easy. Add more functions for tensors.
-2) add functions for expression handling with more than one operator, add an autodiff mechanism
-3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+1) restructure the library to make additions of new functions more easy.
+2) Add more functions for tensors.
+3) add functions for expression handling with more than one operator, add an autodiff mechanism
+4) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 
 # Version history
