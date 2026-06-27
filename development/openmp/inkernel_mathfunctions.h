@@ -2286,16 +2286,23 @@ T In_Kernel_Mathfunctions<T>::dot_product_v(const  DataBlock<T> &vec1, const Dat
         ScalarT real_res = 0;
         ScalarT imag_res = 0;
 
-        #pragma omp metadirective when(construct={target}: simd reduction(+:real_res, imag_res))
+
+       #pragma omp metadirective when(construct={target}: simd reduction(+:real_res))
         for (size_t i = 0; i < n; ++i)
         {
             auto c1 = std::conj(vec1(i));
             auto c2 = vec2(i);
-            T term = c1 * c2;
-            real_res += term.real();
-            imag_res += term.imag();
+            real_res += (c1 * c2).real();
         }
-        return  std::complex<double>(real_res, imag_res);
+
+        #pragma omp metadirective when(construct={target}: simd reduction(+:imag_res))
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            imag_res += (c1 * c2).imag();
+        }
+         return std::complex<ScalarT>(real_res, imag_res);
     }
     else
     {
