@@ -50,7 +50,7 @@ the library can now work with std:complex
 
 the printer functions for tensors were adapted to work with integers, double values, complex values and objects with a print function.
 
-the dot product was adapted to work with complex functions
+the non-distributed dot product was adapted to work with complex functions
 
 fixes in the constructors of mdspan_data
 
