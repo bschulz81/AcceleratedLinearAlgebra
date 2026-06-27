@@ -12,7 +12,7 @@ Todo:
 The library can now work with std:complex
 
 the printer functions for tensors were adapted to work with integers, double values, complex values and objects with a print function.
-the non-distributed dot product was adapted to work with complex datatypes
+the dot product was adapted to work with complex datatypes
 fixes in the constructors of mdspan_data
 fixes of the kahan sum for the dot product on gpu.
 fixes for the mpi test application for some node numbers.
