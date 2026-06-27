@@ -2,8 +2,11 @@
 #define GPUMATHFUNCTIONS
 
 #include "datablock.h"
+#include <complex>
+#include <type_traits>
 #include "datablock_host_memory_functions.h"
 #include "datablock_gpu_memory_functions.h"
+
 
 
 
@@ -844,7 +847,7 @@ void GPU_Math_Functions<T>::vector_multiply_scalar_accumulate_g(  DataBlock<T>& 
     #pragma omp target teams distribute parallel for simd device(dev)
     for (size_t i = 0; i < n; ++i)
     {
-         vec(i)*=scalar;
+        vec(i)*=scalar;
     }
 
 
@@ -857,8 +860,9 @@ template <typename T>
 inline void GPU_Math_Functions<T>::vector_add_g(const   DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,int dev,bool update_host)
 {
     const size_t n=vec1.dpextents[0];
-
-
+    const size_t resstr0=res.dpstrides[0];
+    const size_t vec1str0=vec1.dpstrides[0];
+    const size_t vec2str0=vec2.dpstrides[0];
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
@@ -867,7 +871,7 @@ inline void GPU_Math_Functions<T>::vector_add_g(const   DataBlock<T>& vec1, cons
     #pragma omp target teams distribute parallel for simd device(dev)
     for (size_t i = 0; i < n; ++i)
     {
-        res(i) = vec1(i)+vec2(i);
+        res.dpdata[i*resstr0] = vec1.dpdata[i*vec1str0]+vec2.dpdata[i*vec2str0];
     }
 
 }
@@ -907,7 +911,7 @@ inline void GPU_Math_Functions<T>::vector_add_accumulate_g(   DataBlock<T>& vec1
     #pragma omp target teams distribute parallel for simd device(dev)
     for (size_t i = 0; i < n; ++i)
     {
-         vec1(i)+=vec2(i);
+        vec1(i)+=vec2(i);
     }
 
 }
@@ -926,7 +930,7 @@ inline void GPU_Math_Functions<T>::vector_subtract_accumulate_g(  DataBlock<T>& 
     #pragma omp target teams distribute parallel for simd  device(dev)
     for (size_t i = 0; i < n; ++i)
     {
-         vec1(i)-=vec2(i);
+        vec1(i)-=vec2(i);
     }
 
 
@@ -942,17 +946,35 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
     const size_t n=vec1.dpextents[0];
 
     T result=T(0);
-
-
-
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
-
-    #pragma omp target teams distribute parallel for simd map(tofrom:result) reduction(+:result) device(dev)
-    for (size_t i = 0; i < n; ++i)
+    if constexpr (is_complex<T>::value)
     {
-        result += vec1(i) * vec2(i);
+        using ScalarT = typename T::value_type; // 'double'
+        ScalarT real_res = 0;
+        ScalarT imag_res = 0;
+
+        #pragma omp target teams distribute parallel for simd map(tofrom:result)reduction(+:real_res, imag_res) device(dev)
+        for (size_t i = 0; i < n; ++i)
+        {
+            auto c1 = std::conj(vec1(i));
+            auto c2 = vec2(i);
+            T term = c1 * c2;
+            real_res += term.real();
+            imag_res += term.imag();
+        }
+
+
+        return T(real_res, imag_res);
+    }
+    else
+    {
+        #pragma omp target teams distribute parallel for simd map(tofrom:result) reduction(+:result) device(dev)
+        for (size_t i = 0; i < n; ++i)
+        {
+            result += vec1(i) * vec2(i);
+        }
     }
 
     return result;
@@ -960,76 +982,124 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
 
 
 template <typename T>
-inline T GPU_Math_Functions<T>::dot_product_g_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2,int dev, int nteams, int nthreads_per_team)
+inline T GPU_Math_Functions<T>::dot_product_g_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2, int dev, int nteams, int nthreads_per_team)
 {
-    const size_t n=vec1.dpextents[0];
+    const size_t n = vec1.dpextents[0];
+    const int total_threads = nteams * nthreads_per_team;
 
-    int total_threads = nteams * nthreads_per_team;
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1, dev, false);
+    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(dev, dev, false);
 
-    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
-    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
-
-    if(n < (size_t)total_threads)
+    if (n < (size_t)total_threads)
     {
         T result = T(0);
-        T c_final = T(0);
-        for (int i = 0; i < n; ++i)
+
+        #pragma omp target device(dev) map(tofrom: result)
         {
-            T y = vec1(i) * vec2(i)- c_final;
-            volatile T t = result + y;
-            volatile T z = t - result;
-            c_final=z-y;
-            result = t;
+            T c_local = T(0);
+            for (size_t i = 0; i < n; ++i)
+            {
+                T term;
+                if constexpr (is_complex<T>::value) {
+                    term = std::conj(vec1(i)) * vec2(i);
+                } else {
+                    term = vec1(i) * vec2(i);
+                }
+
+                T y = term - c_local;
+                volatile T t = result + y;
+                volatile T z = t - result;
+                c_local = z - y;
+                result = t;
+            }
         }
         return result;
     }
+
     else
     {
-        // Each thread gets its own local sum/compensation
-        T* thread_sums = new T[total_threads];
-        T* thread_cs   = new T[total_threads];
+        // Allocate raw target space
+        T* thread_sums_dev = (T*)omp_target_alloc(sizeof(T) * total_threads, dev);
+        T* thread_cs_dev   = (T*)omp_target_alloc(sizeof(T) * total_threads, dev);
 
-
-        #pragma omp parallel for simd
+        // Zero out the target buffers directly on the device using team mapping
+        #pragma omp target teams distribute parallel for simd device(dev) is_device_ptr(thread_sums_dev, thread_cs_dev)
         for (int idx = 0; idx < total_threads; ++idx)
         {
-            thread_sums[idx] = T(0);
-            thread_cs[idx] = T(0);
+            thread_sums_dev[idx] = T(0);
+            thread_cs_dev[idx]   = T(0);
         }
 
-
-        #pragma omp target teams distribute parallel for map(tofrom: thread_sums[0:total_threads], thread_cs[0:total_threads]) device(dev)
-        for (int tid = 0; tid < total_threads; ++tid)
+        // Execute the parallel strided chunk loops across GPU thread groups
+        #pragma omp target teams num_teams(nteams) thread_limit(nthreads_per_team) device(dev) is_device_ptr(thread_sums_dev, thread_cs_dev)
         {
-            T local_sum = T(0);
-            T c = T(0);
-
-            for (size_t i = tid; i < n; i += total_threads)
+            #pragma omp parallel
             {
-                T y = vec1(i) * vec2(i);
-                volatile T t = local_sum + y;
-                volatile T z = t - local_sum;
-                c = z - y;
-                local_sum = t;
-            }
+                // Explicitly discover global thread workspace positioning across block barriers
+                int tid = omp_get_team_num() * omp_get_num_threads() + omp_get_thread_num();
 
-            thread_sums[tid] = local_sum;
-            thread_cs[tid]   = c;
+                if (tid < total_threads)
+                {
+                    T local_sum = T(0);
+                    T c = T(0);
+
+                    // Strided loop across global workspace
+                    for (size_t i = tid; i < n; i += total_threads)
+                    {
+                        T term;
+                        if constexpr (is_complex<T>::value) {
+                            term = std::conj(vec1(i)) * vec2(i);
+                        } else {
+                            term = vec1(i) * vec2(i);
+                        }
+
+                        T y = term - c;
+                        volatile T t = local_sum + y;
+                        volatile T z = t - local_sum;
+                        c = z - y;
+                        local_sum = t;
+                    }
+
+                    thread_sums_dev[tid] = local_sum;
+                    thread_cs_dev[tid]   = c;
+                }
+            }
         }
 
+        // Allocate local host memory to grab the partial chunks back
+       T* host_sums=new T[total_threads];
+        T* host_cs=new T[total_threads];
+
+        // Copy chunk results back to the Host efficiently via device API pointers
+        omp_target_memcpy(host_sums, thread_sums_dev, sizeof(T) * total_threads, 0, 0, omp_get_initial_device(), dev);
+        omp_target_memcpy(host_cs, thread_cs_dev, sizeof(T) * total_threads, 0, 0, omp_get_initial_device(), dev);
+
+        // Free device allocations safely
+        omp_target_free(thread_sums_dev, dev);
+        omp_target_free(thread_cs_dev, dev);
+
+        // 3. Final Master Host Kahan Consolidation
         T result = T(0);
         T c_final = T(0);
 
         for (int tid = 0; tid < total_threads; ++tid)
         {
-            T y = thread_sums[tid] - c_final;
-            volatile T t = result + y;
-            volatile T z = t - result;
-            c_final=z-y;
-            result = t;
+            // Process chunk accumulation
+            T y1 = host_sums[tid] - c_final;
+            volatile T t1 = result + y1;
+            volatile T z1 = t1 - result;
+            c_final = z1 - y1;
+            result = t1;
+
+            // Process associated chunk bit loss residual
+            T y2 = host_cs[tid] - c_final;
+            volatile T t2 = result + y2;
+            volatile T z2 = t2 - result;
+            c_final = z2 - y2;
+            result = t2;
         }
-        delete[] thread_sums;
-        delete[] thread_cs;
+        delete host_sums;
+        delete host_cs;
         return result;
     }
 }
@@ -1194,24 +1264,24 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
 
     if(initialize_output_to_zero)
     {
-            #pragma omp target teams distribute parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+        #pragma omp target teams distribute parallel for simd collapse(2)
+        for (size_t i = 0; i < n; ++i)
+        {
+            for (size_t j = 0; j < n; ++j)
             {
-                for (size_t j = 0; j < n; ++j)
-                {
-                    tQ.dpdata[i*qstr0 + j*qstr1] = T(0);
-                }
+                tQ.dpdata[i*qstr0 + j*qstr1] = T(0);
             }
+        }
 
-            #pragma omp target teams distribute parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+        #pragma omp target teams distribute parallel for simd collapse(2)
+        for (size_t i = 0; i < n; ++i)
+        {
+            for (size_t j = 0; j < m; ++j)
             {
-                for (size_t j = 0; j < m; ++j)
-                {
-                  M.dpdata[i*Astr0+j*Astr1]=A.dpdata[i*Astr0+j*Astr1];
-                  R.dpdata[i*Rstr0+j*Rstr1] = T(0);
-                }
+                M.dpdata[i*Astr0+j*Astr1]=A.dpdata[i*Astr0+j*Astr1];
+                R.dpdata[i*Rstr0+j*Rstr1] = T(0);
             }
+        }
 
     }
     else
@@ -1221,7 +1291,7 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
         {
             for (size_t j = 0; j < m; ++j)
             {
-                 M.dpdata[i*Astr0+j*Astr1]=A.dpdata[i*Astr0+j*Astr1];
+                M.dpdata[i*Astr0+j*Astr1]=A.dpdata[i*Astr0+j*Astr1];
             }
         }
     }

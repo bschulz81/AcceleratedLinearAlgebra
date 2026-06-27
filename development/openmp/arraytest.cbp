@@ -280,7 +280,6 @@
 		<Unit filename="datablocktests.cpp">
 			<Option target="datablocktests" />
 		</Unit>
-		<Unit filename="distributeddatablock_gpu_memory_functions" />
 		<Unit filename="main_mpi.cpp">
 			<Option target="arraytest_mpi" />
 		</Unit>

@@ -1,8 +1,11 @@
 #ifndef DATABLOCK
 #define DATABLOCK
-
+#include <complex>
 #include <omp.h>
 #include <stdio.h>
+#include <print>
+#include<iostream>
+
 #include "indiceshelperfunctions.h"
 
 
@@ -42,6 +45,73 @@ inline void fill_strides(const size_t*    extents,size_t*    strides, const size
 }
 
 #pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+struct is_complex : std::false_type {};
+#pragma omp end declare target
+
+
+
+
+#pragma omp begin declare target
+template <typename T>
+struct is_complex<std::complex<T>> : std::true_type {};
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T, typename = std::void_t<>>
+struct has_print : std::false_type {};
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+struct has_print<T, std::void_t<decltype(std::declval<T>().print())>> : std::true_type {};
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T, typename = std::void_t<>>
+struct has_buffer_print : std::false_type {};
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+struct has_buffer_print<T, std::void_t<
+    decltype(std::declval<T>().print_to_buffer(std::declval<char*>(), std::declval<size_t>())),
+    decltype(std::declval<T>().required_buffer_size())
+>> : std::true_type {};
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+void print_variable(const T& var) {
+
+    if constexpr (is_complex<T>::value) {
+        double real_part = static_cast<double>(var.real());
+        double imag_part = static_cast<double>(var.imag());
+        printf("(%g, %g)", real_part, imag_part);
+    }
+
+    else if constexpr (std::is_floating_point_v<T>) {
+        printf("%g", static_cast<double>(var));
+    }
+
+    else if constexpr (std::is_integral_v<T>) {
+        printf("%lld", static_cast<long long>(var));
+    }
+
+    else if constexpr (has_print<T>::value) {
+        var.print();
+    }
+    else {
+        printf("[Unknown Object]");
+    }
+}
+#pragma omp end declare target
+
+
 
 
 
@@ -223,14 +293,12 @@ public:
 
     inline float sparsity()const;
 
-
-    // Operator overloads
-    inline T& operator()(const size_t* indices)
+   inline T& operator()(const size_t* indices)
     {
         return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
 
-    inline const T operator()(const size_t*    indices) const
+    inline const T& operator()(const size_t* indices) const  // <-- Added &
     {
         return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
@@ -241,7 +309,7 @@ public:
         return dpdata[row*dpstrides[0]+col*dpstrides[1]];
     };
 
-    inline const T operator()( const size_t row, const size_t col) const
+    inline const T& operator()(const size_t row, const size_t col) const  // <-- Added &
     {
         return dpdata[row*dpstrides[0]+col*dpstrides[1]];
     };
@@ -252,10 +320,11 @@ public:
         return dpdata[i*dpstrides[0]];
     };
 
-    inline const T operator()(const size_t i) const
+    inline const T& operator()(const size_t i) const  // <-- Added &
     {
         return dpdata[i*dpstrides[0]];
     };
+
 
     inline DataBlock<T>tensor_subspan(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*    psub_strides)const;
 
@@ -736,7 +805,7 @@ inline  float DataBlock<T>::sparsity()const
     }
     else
     {
-        #pragma omp parallel for simd shared(count)
+        #pragma omp parallel for  shared(count)
         for(size_t i=0; i<dpdatalength; i++)
         {
             if(dpdata[i]==0)
@@ -887,12 +956,30 @@ void DataBlock<T>::printtensor_recursive_buffer(
             value = dpdata[offset];
         }
 
-        int n =
-            snprintf(
-                cur,
-                end-cur+1,
-                "%g",
-                (double)value);
+ int n = 0;
+        size_t max_avail = (end - cur) + 1;
+
+        // --- TYPE-GENERIC BUFFER WRITER ---
+        if constexpr (is_complex<T>::value) {
+            double r = static_cast<double>(value.real());
+            double i = static_cast<double>(value.imag());
+            n = snprintf(cur, max_avail, "(%g, %g)", r, i);
+        }
+        else if constexpr (std::is_floating_point_v<T>) {
+            n = snprintf(cur, max_avail, "%g", static_cast<double>(value));
+        }
+        else if constexpr (std::is_integral_v<T>) {
+            n = snprintf(cur, max_avail, "%lld", static_cast<long long>(value));
+        }
+        else if constexpr (has_buffer_print<T>::value) {
+            // Let the custom object dump its own bytes directly into our current buffer slice
+            size_t written = value.print_to_buffer(cur, max_avail);
+            cur += (written < max_avail) ? written : (max_avail - 1);
+            return;
+        }
+        else {
+            n = snprintf(cur, max_avail, "[Unknown Object]");
+        }
 
         if(n > 0)
         {
@@ -998,16 +1085,27 @@ void DataBlock<T>::printtensor_required_size_recursive(
             value = dpdata[offset];
         }
 
-        int n =
-            snprintf(
-                nullptr,
-                0,
-                "%g",
-                (double)value);
-
-        if(n > 0)
-            count += (size_t)n;
-
+        // --- TYPE-GENERIC SIZE DETECTOR ---
+        if constexpr (is_complex<T>::value) {
+            double r = static_cast<double>(value.real());
+            double i = static_cast<double>(value.imag());
+            int n = snprintf(nullptr, 0, "(%g, %g)", r, i);
+            if(n > 0) count += (size_t)n;
+        }
+        else if constexpr (std::is_floating_point_v<T>) {
+            int n = snprintf(nullptr, 0, "%g", static_cast<double>(value));
+            if(n > 0) count += (size_t)n;
+        }
+        else if constexpr (std::is_integral_v<T>) {
+            int n = snprintf(nullptr, 0, "%lld", static_cast<long long>(value));
+            if(n > 0) count += (size_t)n;
+        }
+        else if constexpr (has_buffer_print<T>::value) {
+            count += value.required_buffer_size();
+        }
+        else {
+            count += 16; // "[Unknown Object]"
+        }
         return;
     }
 
@@ -1119,7 +1217,7 @@ void DataBlock<T>::printtensor_recursive(size_t* indices, size_t depth,bool onde
         else
             d= dpdata[offset];
 
-        printf("%g",d); // element access via operator()(size_t*)
+        print_variable(d);
         return;
     }
 
@@ -1208,7 +1306,7 @@ DataBlock<T>DataBlock<T>::tensor_subspan(const size_t * poffsets, const size_t *
     size_t offset_index = 0;
     size_t length_index = 0; // for computing total length
 
-    #pragma omp parallel for simd reduction(+:offset_index,length_index) if(parallel:r>30)
+    #pragma omp parallel for reduction(+:offset_index,length_index) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
     {
         offset_index  += poffsets[i] * dpstrides[i];
@@ -1216,7 +1314,7 @@ DataBlock<T>DataBlock<T>::tensor_subspan(const size_t * poffsets, const size_t *
     }
 
     size_t rank_out = 0;
-    #pragma omp parallel for simd reduction(+:rank_out) if(parallel:r>30)
+    #pragma omp parallel for reduction(+:rank_out) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
         if (psub_extents[i] > 1)
             ++rank_out;
@@ -1317,7 +1415,7 @@ DataBlock<T> DataBlock<T>::tensor_subspan_copy(
 
     // Collapse trivial dimensions
     size_t rank_out = 0;
-    #pragma omp parallel for simd reduction(+:rank_out) if(parallel:r>30)
+    #pragma omp parallel for  reduction(+:rank_out) if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
         if (psub_extents[i] > 1) ++rank_out;
 

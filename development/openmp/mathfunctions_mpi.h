@@ -990,7 +990,6 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
                         {
 
                             T sum =T(0);
-                            #pragma omp simd reduction(+:sum)
                             for (size_t k = 0; k < A_block_cols; ++k)
                             {
                                 sum += A_ptr[ir*A_block_str0+k*A_block_str1] *B_ptr[k*B_block_str0+j*B_block_str1];
@@ -1373,7 +1372,6 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
                                     T* C_ptr = cdata + coffsets[i];
 
                                     T sum = 0;
-                                    #pragma omp simd reduction(+:sum)
                                     for (size_t k = 0; k < A_meta.cols; k++)
                                     {
                                         sum += A_ptr[r*A_meta.str0 + k*A_meta.str1] *
@@ -1415,7 +1413,6 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
                                     T* C_ptr = cdata + coffsets[i];
 
                                     T sum = 0;
-                                    #pragma omp simd reduction(+:sum)
                                     for (size_t k = 0; k < A_meta.cols; k++)
                                     {
                                         sum += A_ptr[r*A_meta.str0 + k*A_meta.str1] *
@@ -1674,7 +1671,6 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         {
                             const size_t a_row_off = a_off + r * cols;
 
-                            #pragma omp simd reduction(+:sum)
                             for (size_t c = 0; c < cols; c++)
                             {
                                 sum += A_ptr[a_row_off + c] * x_global[col0 + c];
@@ -1682,7 +1678,6 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         }
                         else
                         {
-                            #pragma omp simd reduction(+:sum)
                             for (size_t c = 0; c < cols; c++)
                             {
                                 const size_t a_idx = a_off + c * rows + r;
@@ -1733,7 +1728,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         {
                             const size_t a_row_off = a_off + r * cols;
 
-                            #pragma omp simd reduction(+:sum)
+
                             for (size_t c = 0; c < cols; c++)
                             {
                                 sum += A_ptr[a_row_off + c] * x_global[col0 + c];
@@ -1741,7 +1736,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         }
                         else
                         {
-                            #pragma omp simd reduction(+:sum)
+
                             for (size_t c = 0; c < cols; c++)
                             {
                                 const size_t a_idx = a_off + c * rows + r;
@@ -1762,7 +1757,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
     int* recvcounts = new int[size];
 
-    #pragma omp parallel for simd if(parallel:size>30)
+    #pragma omp parallel for  if(parallel:size>30)
     for (size_t i=0; i<size; i++)
         recvcounts[i]=0;
 
@@ -1816,7 +1811,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
 
     size_t offset = 0;
-    #pragma omp parallel for simd reduction(+:offset)if(parallel:rank>30)
+    #pragma omp parallel for reduction(+:offset)if(parallel:rank>30)
     for (int i = 0; i < rank; i++)
         offset += recvcounts[i];
 
@@ -1955,7 +1950,7 @@ inline bool Math_Functions_MPI<T>::matrix_add_Distributed(const DistributedDataB
             const size_t astride1=astrides[2*b+1];
             const size_t bstride0=bstrides[2*b];
             const size_t bstride1=bstrides[2*b+1];
-            #pragma omp parallel for simd collapse(2)
+            #pragma omp parallel for collapse(2)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j <m ; ++j)

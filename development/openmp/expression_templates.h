@@ -3,12 +3,19 @@
 
 #include <optional>
 #include <type_traits>
+#include <complex>
 #include "mathfunctions.h"
 #include "mdspan_omp.h"
 #include "datablock.h"
-
+// 1. Scalar Validation Traits
 namespace expr
 {
+
+template<typename T>
+inline constexpr bool is_complex_v = is_complex<T>::value;
+
+template<typename T>
+concept ValidNumericType = std::is_arithmetic_v<T> || is_complex_v<T>;
 
 
 template<typename LHS, typename RHS>
@@ -26,31 +33,34 @@ struct ScaleExpr;
 template<typename LHS, typename RHS>
 struct DotExpr;
 
-template<typename U>
-concept HasObjectType = requires(const std::remove_cvref_t<U>& x)
-{
-    { x.ObjectType() };
+
+// 3. Structural Type Identification Helpers
+template<typename T>
+struct is_datablock_type {
+private:
+    template <typename U> static std::true_type  test(const DataBlock<U>*);
+    static std::false_type test(...);
+public:
+    static constexpr bool value = decltype(test(std::declval<const T*>()))::value;
 };
 
-template<typename U>
-concept HasAssignTo = requires(const std::remove_cvref_t<U>& x, DataBlock<double>& C)
-{
-    { x.assign_to(C) };
-};
+template<typename T>
+inline constexpr bool is_datablock_type_v = is_datablock_type<std::remove_cvref_t<T>>::value;
 
-template<typename U>
-concept ExprOrDataBlock = HasObjectType<U> || HasAssignTo<U>;
+// Catch-all trait to identify our expression structures or data containers safely
+template<typename T>
+struct is_expr_type : std::false_type {};
+template<typename L, typename R> struct is_expr_type<AddExpr<L, R>> : std::true_type {};
+template<typename L, typename R> struct is_expr_type<SubtrExpr<L, R>> : std::true_type {};
+template<typename L, typename R> struct is_expr_type<MulExpr<L, R>> : std::true_type {};
+template<typename L, typename S> struct is_expr_type<ScaleExpr<L, S>> : std::true_type {};
+template<typename L, typename R> struct is_expr_type<DotExpr<L, R>> : std::true_type {};
 
-template<typename Expr>
-concept Expression = requires(const Expr& e, DataBlock<double>& C)
-{
-    { e.assign_to(C) };
-} || requires(const Expr& e)
-{
-    { e.template eval_scalar<double>() };
-};
+template<typename T>
+concept IsValidMathOperand = is_datablock_type_v<T> || is_expr_type<std::remove_cvref_t<T>>::value;
 
 
+// 4. Expression Structures
 template<typename LHS, typename RHS>
 struct AddExpr
 {
@@ -61,14 +71,20 @@ struct AddExpr
     template<typename T>
     void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
-        auto pol = override ? override : policy;  // pick override if given
+        auto pol = override ? override : policy;
 
         if (lhs.ObjectType() == DataBlock<T>::Matrix)
+        {
             Math_Functions<T>::matrix_add(lhs, rhs, C, pol);
+        }
         else if (lhs.ObjectType() == DataBlock<T>::Vector)
+        {
             Math_Functions<T>::vector_add(lhs, rhs, C, pol);
+        }
         else
+        {
             throw std::runtime_error("Unsupported type for addition");
+        }
     }
 };
 
@@ -82,7 +98,7 @@ struct SubtrExpr
     template<typename T>
     void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
-        auto pol = override ? override : policy;  // pick override if given
+        auto pol = override ? override : policy;
 
         if (lhs.ObjectType() == DataBlock<T>::Matrix)
             Math_Functions<T>::matrix_subtract(lhs, rhs, C, pol);
@@ -99,28 +115,22 @@ struct ScaleExpr
     const LHS& lhs;
     const Scalar scalar;
     const Math_Functions_Policy* policy = nullptr;
+
     template<typename T>
     void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
-        auto pol = override ? override : policy;  // pick override if given
+        auto pol = override ? override : policy;
 
-        if constexpr (requires { lhs.ObjectType(); })
+        switch(lhs.ObjectType())
         {
-            switch(lhs.ObjectType())
-            {
-                case DataBlock<T>::Vector:
-                    Math_Functions<T>::vector_multiply_scalar(lhs, scalar, C, pol);
-                    break;
-                case DataBlock<T>::Matrix:
-                    Math_Functions<T>::matrix_multiply_scalar(lhs, scalar, C, pol);
-                    break;
-                default:
-                    throw std::runtime_error("Unsupported type for scalar multiplication");
-            }
-        }
-        else
-        {
-            static_assert(std::is_same_v<LHS, void>, "ScaleExpr::assign_to: lhs must be DataBlock-like");
+            case DataBlock<T>::Vector:
+                Math_Functions<T>::vector_multiply_scalar(lhs, scalar, C, pol);
+                break;
+            case DataBlock<T>::Matrix:
+                Math_Functions<T>::matrix_multiply_scalar(lhs, scalar, C, pol);
+                break;
+            default:
+                throw std::runtime_error("Unsupported type for scalar multiplication");
         }
     }
 };
@@ -131,6 +141,7 @@ struct MulExpr
     const LHS& lhs;
     const RHS& rhs;
     const Math_Functions_Policy* policy = nullptr;
+
     template<typename T>
     void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
     {
@@ -179,47 +190,51 @@ struct DotExpr {
     }
 };
 
-template<ExprOrDataBlock LHS, typename Scalar>
-requires std::is_arithmetic_v<std::remove_cvref_t<Scalar>>
+
+// 5. Global Clean Operator Overloads (Constrained via robust SFINAE/Traits)
+template<typename LHS, typename Scalar>
+requires IsValidMathOperand<LHS> && ValidNumericType<std::remove_cvref_t<Scalar>>
 auto operator*(const LHS& lhs, Scalar scalar)
 {
     return ScaleExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<Scalar>> {lhs, scalar};
 }
 
-template<typename Scalar, ExprOrDataBlock RHS>
-requires std::is_arithmetic_v<std::remove_cvref_t<Scalar>>
+template<typename Scalar, typename RHS>
+requires ValidNumericType<std::remove_cvref_t<Scalar>> && IsValidMathOperand<RHS>
 auto operator*(Scalar scalar, const RHS& rhs)
 {
     return ScaleExpr<std::remove_cvref_t<RHS>, std::remove_cvref_t<Scalar>> {rhs, scalar};
 }
 
-template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
+template<typename LHS, typename RHS>
+requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator*(const LHS& lhs, const RHS& rhs)
 {
     return MulExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
+template<typename LHS, typename RHS>
+requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator+(const LHS& lhs, const RHS& rhs)
 {
     return AddExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
+template<typename LHS, typename RHS>
+requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator-(const LHS& lhs, const RHS& rhs)
 {
     return SubtrExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-
-template<ExprOrDataBlock LHS, ExprOrDataBlock RHS>
+template<typename LHS, typename RHS>
+requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto dot(const LHS& lhs, const RHS& rhs)
 {
     return DotExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>>{lhs, rhs};
 }
 
 }
-
 template<typename Expr>
 auto with_policy(const Expr& expr, const Math_Functions_Policy* policy) {
     auto e = expr;
@@ -228,4 +243,4 @@ auto with_policy(const Expr& expr, const Math_Functions_Policy* policy) {
 }
 
 
-#endif
+#endif // EXPRESSION_TEMPLATES
