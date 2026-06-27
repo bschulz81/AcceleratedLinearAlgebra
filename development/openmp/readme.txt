@@ -6,6 +6,19 @@ Todo:
 2) Add options for the linear algebra functions such that most of them can use the message passing interface as well as the gpu then for local work.
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+
+27.06.2026
+
+The library can now work with std:complex
+
+the printer functions for tensors were adapted to work with integers, double values, complex values and objects with a print function.
+the dot product was adapted to work with complex datatypes
+fixes in the constructors of mdspan_data
+fixes of the kahan sum for the dot product on gpu.
+fixes for the mpi test application for some node numbers.
+the test application for the linear algebra now tests complex vectors too
+simd reductions turned out to be slower than the compiler generated code on cpu. Removed these for loops on cpu to increase speed
+
 29.05.2026
 
 fixed a bug in the tensor scatterer that occured for some distribution ranks,
