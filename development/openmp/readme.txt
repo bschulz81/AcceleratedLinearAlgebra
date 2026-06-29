@@ -6,6 +6,15 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+29.06.2026
+added a small helperfunction that can conjugate a number at compile time if its complex. 
+added a custom reduction operator and used it in the scalar products and the Cholesky and QR decompositions. 
+The downside is that once you use complex numbers with these, it wont compile with gcc anymore and clang has to be used, but they should first fix their bug at gcc.
+fixed the Cholesky and QR decomposition if complex numbers are used, and a missing devicenumber in the initialization. But they are still untested for complex data.
+
+Unfortunately, the linear algebra operations dont have an option to automatically conjugate the first or second arguments.
+Perhaps I should make a template type that determines whether to conjugate the first or second argument in all operations?
+
 27.06.2026, 18:17
 clang doesnt support the otherwise clause in omp metadirective and omp_target_memcpy_async is also not supported. I removed these, even if gcc would work with that
 The dot product for complex vectors unfortunately needed an  __atomic_compare_exchange_16 for gcc. 
