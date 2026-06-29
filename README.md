@@ -48,6 +48,18 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 
+### 29.06.2026
+
+Added a small helperfunction that can conjugate a number at compile time if its complex. 
+Added a custom reduction operator for complex data types and used it in the scalar products and the Cholesky and QR decompositions. 
+The downside is that once you use complex numbers with reductions, it won't compile with gcc anymore and clang has to be used, but they should first fix their bug at gcc.
+
+fixed the Cholesky and QR decomposition if complex numbers are used, and a missing devicenumber in the initialization. 
+But they are still untested for complex data.
+
+Unfortunately, the linear algebra operations don't have an option to automatically conjugate the first or second arguments.
+Perhaps I should make a template type that determines whether to conjugate the first or second argument in some operations or make several versions for these functions?
+
 ### 28.06.2026, 00:30 
 On GCC and for complex matrices, the Cholesky, LU and QR decompositions should fail due to this GCC bug for reductions with complex variables that I just filed: 
 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126015 a workaround may be to link the offload compiler with -latomic, if its available.
