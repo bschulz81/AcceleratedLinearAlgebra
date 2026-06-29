@@ -53,6 +53,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 Added a small helperfunction that can conjugate a number at compile time if its complex. 
 Added a custom reduction operator for complex data types and used it in the scalar products and the Cholesky and QR decompositions. 
 The downside is that once you use complex numbers with reductions, it won't compile with gcc anymore and clang has to be used, but they should first fix their bug at gcc.
+Clang likely has still an incompatibility with OpenMPI and cuda. This problem should just lead to a warning message in any code that uses Cuda and OpenMPI. The program executes correctly. 
+To suppress this, i provide a patch to OpenMPI in this repository. 
+The alternative is to use gcc, which doesn't have this error message for OpenMPI. But gcc cant be used currently for reductions of complex numbers on gpu.
 
 fixed the Cholesky and QR decomposition if complex numbers are used, and a missing devicenumber in the initialization. 
 But they are still untested for complex data.
