@@ -60,6 +60,19 @@ template <typename T>
 struct is_complex<std::complex<T>> : std::true_type {};
 #pragma omp end declare target
 
+
+
+#pragma omp begin declare target
+template <typename T>
+inline constexpr auto cond_conj(const T& val) {
+    if constexpr (is_complex<T>::value) {
+        return std::conj(val);
+    } else {
+        return val;
+    }
+}
+#pragma omp end declare target
+
 #pragma omp begin declare target
 template <typename T, typename = std::void_t<>>
 struct has_print : std::false_type {};
@@ -82,6 +95,22 @@ struct has_buffer_print<T, std::void_t<
     decltype(std::declval<T>().required_buffer_size())
 >> : std::true_type {};
 #pragma omp end declare target
+
+
+
+
+
+#pragma omp declare reduction(+: std::complex<double>: \
+    omp_out += omp_in) \
+    initializer(omp_priv(0.0, 0.0))
+
+#pragma omp declare reduction(+: std::complex<float>: \
+    omp_out += omp_in) \
+    initializer(omp_priv(0.0f, 0.0f))
+
+#pragma omp declare reduction(+: std::complex<long double>: \
+    omp_out += omp_in) \
+    initializer(omp_priv(0, 0))
 
 
 #pragma omp begin declare target
