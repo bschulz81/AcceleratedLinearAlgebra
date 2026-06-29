@@ -74,6 +74,15 @@ inline constexpr auto cond_conj(const T& val) {
 #pragma omp end declare target
 
 #pragma omp begin declare target
+enum class ConjOp {
+    None,
+    First,
+    Second,
+    Both
+};
+#pragma omp end declare target
+
+#pragma omp begin declare target
 template <typename T, typename = std::void_t<>>
 struct has_print : std::false_type {};
 #pragma omp end declare target

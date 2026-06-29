@@ -123,8 +123,8 @@ int main()
         D.printtensor();
 
 //   Careful:; this will work if compiled with clang, gcc will run into a compiler error instead..
-//     std::complex<double> d=dot(vecA,vecB);
- //       cout<< d;
+  //   std::complex<double> d=dot(vecA,vecB);
+  //      cout<< d;
 
     }
     //
