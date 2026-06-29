@@ -11,38 +11,37 @@ public:
 public:
     mdspan_data() {};
 
-    // 1. Full Explicit Container Setup
+
     mdspan_data(size_t datalength, const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
 
-    // Fixed: Matches (size_t, Container, Container, bool, bool, bool, bool, int)
+
     mdspan_data(size_t datalength, std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
         mdspan_data(datalength, Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum) {}
 
-    // 2. Extents & Strides Setup
+
     mdspan_data(const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
 
-    // Fixed: Matches (Container, Container, bool, bool, bool, bool, int)
     mdspan_data(std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
         mdspan_data(Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum) {}
 
-    // 3. Shape Only Setup (Vector/Tensor fallback)
+
     mdspan_data(const Container& extents, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
 
-    // Fixed: Matches (Container, bool, bool, bool, bool, int)
+
     mdspan_data(std::initializer_list<size_t> ext, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
         mdspan_data(Container(ext), rowm, memmap, ondevice, default_device, devicenum) {}
 
-  // 2-Dimension Matrix Setup
+
     template<typename B1 = bool, typename B2 = bool, typename B3 = bool, typename B4 = bool>
     requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
     mdspan_data(size_t rows, size_t cols, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0);
 
-    // 1-Dimension Vector Setup
+
     template<typename B1 = bool, typename B2 = bool, typename B3 = bool, typename B4 = bool>
     requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
     mdspan_data(size_t rows, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0);
 
-    // 5. Rule of Three/Five Lifecycles
+
     mdspan_data(const mdspan<T, Container>& base);
     mdspan_data(mdspan_data<T, Container>&& other) noexcept;
     mdspan_data(const mdspan_data<T, Container>& other);
@@ -195,7 +194,7 @@ mdspan_data<T, Container>::~mdspan_data()
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::tensor_subspan_copy(const Container& offsets, const Container& sub_extents, const bool memmap)
 {
-    // Fix: Explicitly invoke the exact signature matching your single-container initialization model
+
     mdspan_data<T, Container> result(sub_extents, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
     DataBlock<T> temp = this->mdspan<T,Container>::tensor_subspan_copy(offsets.data(), sub_extents.data(), result.pextents.data(), result.pstrides.data(), result.dpdata);
     result.dprank = temp.dprank;
@@ -353,7 +352,6 @@ template<typename T, typename Container>
 mdspan_data<T, Container>::mdspan_data(mdspan_data<T, Container>&& other) noexcept
     : mdspan<T, Container>() // Call default base constructor safely
 {
-    // REMOVED release_all_data() - Prevents uninitialized pointer cleanup crashes!
 
     this->dpdata = other.dpdata;
     this->dpdatalength = other.dpdatalength;

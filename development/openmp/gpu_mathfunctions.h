@@ -2,8 +2,7 @@
 #define GPUMATHFUNCTIONS
 
 #include "datablock.h"
-#include <complex>
-#include <type_traits>
+
 #include "datablock_host_memory_functions.h"
 #include "datablock_gpu_memory_functions.h"
 
@@ -949,31 +948,23 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec1(vec1,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelpervec2(vec2,dev,false);
+
+
     if constexpr (is_complex<T>::value)
     {
-        using ScalarT = typename T::value_type;
-        ScalarT real_res = 0;
-        ScalarT imag_res = 0;
 
-        #pragma omp target teams distribute parallel for simd reduction(+:real_res) device(dev)
+        T result = T(0);
+        #pragma omp target teams distribute parallel for simd map(tofrom:result)  reduction(+:result) device(dev)
         for (size_t i = 0; i < n; ++i)
         {
-            auto c1 = std::conj(vec1(i));
-            auto c2 = vec2(i);
-            real_res += (c1 * c2).real();
+            T term = std::conj(vec1(i)) * vec2(i);
+            result+=term;
         }
 
-        #pragma omp target teams distribute parallel for simd reduction(+:imag_res) device(dev)
-        for (size_t i = 0; i < n; ++i)
-        {
-            auto c1 = std::conj(vec1(i));
-            auto c2 = vec2(i);
-            imag_res += (c1 * c2).imag();
-        }
-
-
-        return std::complex<ScalarT>(real_res, imag_res);
+        return result;
     }
+
+
     else
     {
         #pragma omp target teams distribute parallel for simd map(tofrom:result) reduction(+:result) device(dev)
@@ -981,10 +972,11 @@ inline T GPU_Math_Functions<T>::dot_product_g(const  DataBlock<T> &vec1, const D
         {
             result += vec1(i) * vec2(i);
         }
-    }
 
-    return result;
+        return result;
+    }
 }
+
 
 
 template <typename T>
@@ -1006,9 +998,12 @@ inline T GPU_Math_Functions<T>::dot_product_g_kahan(const DataBlock<T> &vec1, co
             for (size_t i = 0; i < n; ++i)
             {
                 T term;
-                if constexpr (is_complex<T>::value) {
+                if constexpr (is_complex<T>::value)
+                {
                     term = std::conj(vec1(i)) * vec2(i);
-                } else {
+                }
+                else
+                {
                     term = vec1(i) * vec2(i);
                 }
 
@@ -1053,9 +1048,12 @@ inline T GPU_Math_Functions<T>::dot_product_g_kahan(const DataBlock<T> &vec1, co
                     for (size_t i = tid; i < n; i += total_threads)
                     {
                         T term;
-                        if constexpr (is_complex<T>::value) {
+                        if constexpr (is_complex<T>::value)
+                        {
                             term = std::conj(vec1(i)) * vec2(i);
-                        } else {
+                        }
+                        else
+                        {
                             term = vec1(i) * vec2(i);
                         }
 
@@ -1073,7 +1071,7 @@ inline T GPU_Math_Functions<T>::dot_product_g_kahan(const DataBlock<T> &vec1, co
         }
 
         // Allocate local host memory to grab the partial chunks back
-       T* host_sums=new T[total_threads];
+        T* host_sums=new T[total_threads];
         T* host_cs=new T[total_threads];
 
         // Copy chunk results back to the Host efficiently via device API pointers
@@ -1141,12 +1139,11 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
     {
 
         T tmp=T(0);
-
         #pragma omp target teams distribute  parallel for simd map(tofrom:tmp) reduction(+:tmp)  device(dev)
         for (size_t k = 0; k < c; ++k)
         {
             const T tmp3=L(c,k);
-            tmp+= tmp3 * tmp3;
+            tmp+= tmp3 * cond_conj( tmp3);
         }
 
         T tmp2;
@@ -1155,7 +1152,6 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
         const T temp4=sqrt(tmp2-tmp);
 
         omp_target_memcpy(dataL,&temp4,sizeof(T),sizeof(T)*(L.dpstrides[0]*c+L.dpstrides[1]*c),0,dev,omp_get_initial_device());
-
         #pragma omp target teams distribute parallel for map(to:temp4) device(dev)
         for (size_t i = c + 1; i < n; ++i)
         {
@@ -1163,33 +1159,23 @@ void GPU_Math_Functions<T>::cholesky_decomposition_g(const DataBlock<T> & A,Data
             #pragma omp simd reduction(+:tmp3)
             for (size_t k = 0; k < c; ++k)
             {
-                tmp3 += L(i, k) * L(c, k);
+                tmp3 += L(i, k) * cond_conj( L(c, k));
             }
             tmp3=A(i, c)-tmp3;
             L(i, c)=tmp3/temp4;
         }
-
-
     }
-
-
-
 }
 
 template <typename T>
 void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,int dev, bool update_host,bool initialize_output_to_zero)
 {
-
-
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperL(L,dev,true,update_host);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperU(U,dev,true,update_host);
 
     size_t n = A.dpextents[0];
-
-
-
     if(initialize_output_to_zero)
     {
         #pragma omp target teams distribute parallel for simd collapse(2) device(dev)
@@ -1204,7 +1190,6 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
     }
 
     T* udata=(T*)omp_get_mapped_ptr(U.dpdata,dev);
-
     size_t z=0;
     for (size_t c = 0; c < n; ++c)
     {
@@ -1236,41 +1221,33 @@ void GPU_Math_Functions<T>::lu_decomposition_g(const DataBlock<T>& A, DataBlock<
             L(i,c)= temp/temp4;
         }
     }
-
-
 }
-// Fast QR Decomposition Algorithm for mdspan
+
 template <typename T>
 void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,  int dev,bool update_host,bool initialize_output_to_zero, bool memmap_tempfiles)
 {
     const size_t n = A.dpextents[0];
     const size_t m = A.dpextents[1];
-
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadhelperA(A,dev,false);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperQ(Q,dev,true,update_host);
     typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadhelperR(R,dev,true,update_host);
-
     DataBlock<T> tQ=Q;
     if(!tQ.dpdata_is_devptr)
     {
         tQ.dpdata=(T*) omp_get_mapped_ptr(Q.dpdata,dev);
         tQ.dpdata_is_devptr=true;
     }
-
     const size_t qstr0=tQ.dpstrides[0];
     const size_t qstr1=tQ.dpstrides[1];
-
     DataBlock<T> M=DataBlock_GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(A.dpdatalength,A.dprowmajor,2,A.dpextents,A.dpstrides,memmap_tempfiles,dev);
-
     const size_t Astr0=A.dpstrides[0];
     const size_t Astr1=A.dpstrides[1];
     const size_t Rstr0=R.dpstrides[0];
     const size_t Rstr1=R.dpstrides[1];
 
-
     if(initialize_output_to_zero)
     {
-        #pragma omp target teams distribute parallel for simd collapse(2)
+        #pragma omp target teams distribute parallel for simd collapse(2)device(dev)
         for (size_t i = 0; i < n; ++i)
         {
             for (size_t j = 0; j < n; ++j)
@@ -1279,7 +1256,7 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
             }
         }
 
-        #pragma omp target teams distribute parallel for simd collapse(2)
+        #pragma omp target teams distribute parallel for simd collapse(2)device(dev)
         for (size_t i = 0; i < n; ++i)
         {
             for (size_t j = 0; j < m; ++j)
@@ -1288,7 +1265,6 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
                 R.dpdata[i*Rstr0+j*Rstr1] = T(0);
             }
         }
-
     }
     else
     {
@@ -1301,26 +1277,21 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
             }
         }
     }
-
     for (size_t c = 0; c < m; ++c)
     {
         size_t pextv[1], pstrv[1];
-
-        DataBlock<T> v = M.matrix_column(c, pextv, pstrv);  // current column, updated in place
+        DataBlock<T> v = M.matrix_column(c, pextv, pstrv);
         const size_t pextv0=pextv[0];
         for (size_t j = 0; j < c; ++j)
         {
             size_t pextu[1], pstru[1];
-
             DataBlock<T> u = tQ.matrix_column(j, pextu, pstru);
             T dot_pr = T(0);
-
             #pragma omp target teams distribute parallel for simd  map(tofrom: dot_pr) reduction(+:dot_pr) device(dev)
             for (size_t i = 0; i < pextv0; ++i)
             {
-                dot_pr += u.dpdata[i*pstru[0]] * v.dpdata[i*pstrv[0]];
+                dot_pr +=cond_conj( u.dpdata[i*pstru[0]]) * v.dpdata[i*pstrv[0]];
             }
-
             const T cdot_pr = dot_pr;
             #pragma omp target teams distribute parallel for simd device(dev)
             for (size_t i = 0; i < pextv0; ++i)
@@ -1328,27 +1299,23 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
                 v.dpdata[i*pstrv[0]] -= cdot_pr * u.dpdata[i*pstru[0]];
             }
         }
-
         T norm = T(0);
         #pragma omp target  teams distribute parallel for simd map(tofrom:norm) reduction(+:norm)device(dev)
         for (size_t i = 0; i < pextv0; ++i)
         {
-            norm += v.dpdata[i*pstrv[0]] * v.dpdata[i*pstrv[0]];
+            T val=v.dpdata[i*pstrv[0]];
+            norm += cond_conj(val) * v.dpdata[i*pstrv[0]];
         }
-
         const T normc = sqrt(norm);
-
         #pragma omp target teams distribute parallel for simd device(dev)
         for (size_t i = 0; i < pextv0; ++i)
         {
             tQ.dpdata[i*qstr0+c*qstr1] = v.dpdata[i*pstrv[0]]/normc;
         }
     }
-
     const size_t rows = tQ.dpextents[0];
     const size_t cols = A.dpextents[1];
     const  size_t inner_dim = tQ.dpextents[1];
-
     #pragma omp target teams distribute parallel for collapse(2)  device(dev)
     for (size_t i = 0; i < rows; ++i)
     {
@@ -1358,14 +1325,12 @@ void GPU_Math_Functions<T>::qr_decomposition_g(const DataBlock<T>& A, DataBlock<
             #pragma omp simd reduction(+:sum)
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += tQ.dpdata[k*qstr0+i*qstr1] *A.dpdata[k*Astr0+j*Astr1];
+                sum += cond_conj(tQ.dpdata[k*qstr0+i*qstr1]) *A.dpdata[k*Astr0+j*Astr1];
             }
             R.dpdata[i*Rstr0+j*Rstr1]= sum;
         }
     }
-
     DataBlock_GPU_Memory_Functions<T>::free_copy_device(M,memmap_tempfiles,dev);
-
 }
 
 

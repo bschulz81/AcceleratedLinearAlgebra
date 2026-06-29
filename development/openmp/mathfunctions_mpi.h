@@ -6,12 +6,10 @@
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
 #include <math.h>
-#include <complex>
 #include "datablock_host_memory_functions.h"
 #include "datablock_gpu_memory_functions.h"
 #include "datablock_mpifunctions.h"
 #include "inkernel_mathfunctions.h"
-#include <type_traits>
 
 
 class Math_MPI_Functions_Policy : public Math_Functions_Policy, public MPI_Policy
@@ -1668,7 +1666,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         if (rowm)
                         {
                             const size_t a_row_off = a_off + r * cols;
-
+                            #pragma omp simd reduction(+:sum)
                             for (size_t c = 0; c < cols; c++)
                             {
                                 sum += A_ptr[a_row_off + c] * x_global[col0 + c];
@@ -1676,6 +1674,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
                         }
                         else
                         {
+                            #pragma omp simd reduction(+:sum)
                             for (size_t c = 0; c < cols; c++)
                             {
                                 const size_t a_idx = a_off + c * rows + r;
@@ -1755,7 +1754,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
     int* recvcounts = new int[size];
 
-    #pragma omp parallel for  if(parallel:size>30)
+    #pragma omp parallel for simd  if(parallel:size>30)
     for (size_t i=0; i<size; i++)
         recvcounts[i]=0;
 
@@ -1809,7 +1808,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
 
     size_t offset = 0;
-    #pragma omp parallel for reduction(+:offset)if(parallel:rank>30)
+    #pragma omp parallel for simd reduction(+:offset)if(parallel:rank>30)
     for (int i = 0; i < rank; i++)
         offset += recvcounts[i];
 
@@ -3304,179 +3303,68 @@ inline bool Math_Functions_MPI<T>::dot_product_Distributed(
     size_t *bstrides = B.Dblockarray.pstridesbuffer;
     T* bdata = B.Dblockarray.pdata;
 
-    if constexpr (is_complex<T>::value)
+
+
+    T sum = T(0);
+
+    if (ongpu)
     {
-        using ScalarT = typename T::value_type; // Safe here! Deduces to 'double'
-        ScalarT real_sum = 0;
-        ScalarT imag_sum = 0;
-
-        if (ongpu)
+        if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
         {
-            if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
-            {
-                adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
-            {
-                bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            {
-
-                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum)
-                for (size_t b = 0; b < cblocknum; b++)
-                {
-                    T* aptr = adata + aoffsets[b];
-                    T* bptr = bdata + boffsets[b];
-                    const size_t n = aextents[b];
-                    const size_t astride0 = astrides[b];
-                    const size_t bstride0 = bstrides[b];
-
-                    #pragma omp parallel for simd reduction(+:real_sum)
-                    for (size_t i = 0; i < n; ++i)
-                    {
-                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                        real_sum += term.real();
-                    }
-                }
-
-
-                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:imag_sum)
-                for (size_t b = 0; b < cblocknum; b++)
-                {
-                    T* aptr = adata + aoffsets[b];
-                    T* bptr = bdata + boffsets[b];
-                    const size_t n = aextents[b];
-                    const size_t astride0 = astrides[b];
-                    const size_t bstride0 = bstrides[b];
-
-                    #pragma omp parallel for simd reduction(+:imag_sum)
-                    for (size_t i = 0; i < n; ++i)
-                    {
-                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                        imag_sum += term.imag();
-                    }
-                }
-            }
-
-            if (!A.Dblockarray.pdata_is_devptr)
-            {
-                omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
-                omp_target_free(adata, devnum);
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
+            adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
+            omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
         }
-        else
+        if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
         {
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-
-            #pragma omp parallel for reduction(+:real_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                for (size_t i = 0; i < n; ++i)
-                {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    real_sum += term.real();
-                }
-            }
-
-            #pragma omp parallel for reduction(+:imag_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                for (size_t i = 0; i < n; ++i)
-                {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    imag_sum += term.imag();
-                }
-            }
-
+            bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
+            omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
         }
 
-        T local_final_sum =std::complex<ScalarT>(real_sum, imag_sum);
-        MPI_Reduce(&local_final_sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->comm);
+        const size_t cblocknum = A.Dblockarray.pnumblocks;
+        #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum]) map(tofrom:sum)
+        #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:sum)
+        for (size_t b = 0; b < cblocknum; b++)
+        {
+            T* aptr = adata + aoffsets[b];
+            T* bptr = bdata + boffsets[b];
+            const size_t n = aextents[b];
+            const size_t astride0 = astrides[b];
+            const size_t bstride0 = bstrides[b];
+
+            #pragma omp parallel for simd reduction(+:sum)
+            for (size_t i = 0; i < n; ++i)
+            {
+                sum += cond_conj(aptr[i * astride0]) * bptr[i * bstride0];
+            }
+        }
+
+        if (!A.Dblockarray.pdata_is_devptr)
+        {
+            omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
+            omp_target_free(adata, devnum);
+        }
+        if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
     }
-
-
     else
     {
-        T sum = T(0);
-
-        if (ongpu)
+        const size_t cblocknum = A.Dblockarray.pnumblocks;
+        #pragma omp parallel for reduction(+:sum)
+        for (size_t b = 0; b < cblocknum; b++)
         {
-            if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
-            {
-                adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
-            {
-                bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
+            T* aptr = adata + aoffsets[b];
+            const T* bptr = bdata + boffsets[b];
+            const size_t n = aextents[b];
+            const size_t astride0 = astrides[b];
+            const size_t bstride0 = bstrides[b];
 
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:sum)
-            for (size_t b = 0; b < cblocknum; b++)
+            for (size_t i = 0; i < n; ++i)
             {
-                T* aptr = adata + aoffsets[b];
-                T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                #pragma omp parallel for simd reduction(+:sum)
-                for (size_t i = 0; i < n; ++i)
-                {
-                    sum += aptr[i * astride0] * bptr[i * bstride0];
-                }
-            }
-
-            if (!A.Dblockarray.pdata_is_devptr)
-            {
-                omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
-                omp_target_free(adata, devnum);
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
-        }
-        else
-        {
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp parallel for reduction(+:sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                for (size_t i = 0; i < n; ++i)
-                {
-                    sum += aptr[i * astride0] * bptr[i * bstride0];
-                }
+                sum += cond_conj(aptr[i * astride0]) * bptr[i * bstride0];
             }
         }
-
-        MPI_Reduce(&sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->comm);
     }
+
+    MPI_Reduce(&sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->comm);
 
     return true;
 }
@@ -3504,175 +3392,64 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
     T* bdata = B.Dblockarray.pdata;
 
 
-    if constexpr (is_complex<T>::value)
+    T sum = T(0);
+    if (ongpu)
     {
-        using ScalarT = typename T::value_type;
-        ScalarT real_sum = 0;
-        ScalarT imag_sum = 0;
-
-        if (ongpu)
+        if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
         {
-            if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
-            {
-                adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
-            {
-                bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            {
-
-                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:real_sum)
-                for (size_t b = 0; b < cblocknum; b++)
-                {
-                    T* aptr = adata + aoffsets[b];
-                    T* bptr = bdata + boffsets[b];
-                    const size_t n = aextents[b];
-                    const size_t astride0 = astrides[b];
-                    const size_t bstride0 = bstrides[b];
-
-                    #pragma omp parallel for simd reduction(+:real_sum)
-                    for (size_t i = 0; i < n; ++i)
-                    {
-                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                        real_sum += term.real();
-                    }
-                }
-
-
-                #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:imag_sum)
-                for (size_t b = 0; b < cblocknum; b++)
-                {
-                    T* aptr = adata + aoffsets[b];
-                    T* bptr = bdata + boffsets[b];
-                    const size_t n = aextents[b];
-                    const size_t astride0 = astrides[b];
-                    const size_t bstride0 = bstrides[b];
-
-                    #pragma omp parallel for simd reduction(+:imag_sum)
-                    for (size_t i = 0; i < n; ++i)
-                    {
-                        T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                        imag_sum += term.imag();
-                    }
-                }
-            }
-            if (!A.Dblockarray.pdata_is_devptr)
-            {
-                omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
-                omp_target_free(adata, devnum);
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
+            adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
+            omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
         }
-        else
+        if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
         {
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-
-
-            #pragma omp parallel for reduction(+:real_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                for (size_t i = 0; i < n; ++i)
-                {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    real_sum += term.real();
-                }
-            }
-
-
-            #pragma omp parallel for reduction(+:imag_sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-
-                for (size_t i = 0; i < n; ++i)
-                {
-                    T term = std::conj(aptr[i * astride0]) * bptr[i * bstride0];
-                    imag_sum += term.imag();
-                }
-            }
-
+            bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
+            omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
         }
-        T local_final_sum =std::complex<ScalarT>(real_sum, imag_sum);
-        T global_result = T(0);
-        MPI_Allreduce(&local_final_sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
-        return global_result;
+        const size_t cblocknum = A.Dblockarray.pnumblocks;
+        #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
+        #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:sum)
+        for (size_t b = 0; b < cblocknum; b++)
+        {
+            T* aptr = adata + aoffsets[b];
+            T* bptr = bdata + boffsets[b];
+            const size_t n = aextents[b];
+            const size_t astride0 = astrides[b];
+            const size_t bstride0 = bstrides[b];
+            #pragma omp parallel for simd reduction(+:sum)
+            for (size_t i = 0; i < n; ++i)
+            {
+                sum +=cond_conj( aptr[i * astride0])* bptr[i * bstride0];
+            }
+        }
+        if (!A.Dblockarray.pdata_is_devptr)
+        {
+            omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
+            omp_target_free(adata, devnum);
+        }
+        if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
     }
     else
     {
-        T sum = T(0);
-        if (ongpu)
+        const size_t cblocknum = A.Dblockarray.pnumblocks;
+        #pragma omp parallel for reduction(+:sum)
+        for (size_t b = 0; b < cblocknum; b++)
         {
-            if (A.Dblockarray.pnumblocks > 0 && !A.Dblockarray.pdata_is_devptr)
+            T* aptr = adata + aoffsets[b];
+            const T* bptr = bdata + boffsets[b];
+            const size_t n = aextents[b];
+            const size_t astride0 = astrides[b];
+            const size_t bstride0 = bstrides[b];
+            for (size_t i = 0; i < n; ++i)
             {
-                adata = (T*)omp_target_alloc(sizeof(T) * A.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(adata, A.Dblockarray.pdata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr)
-            {
-                bdata = (T*)omp_target_alloc(sizeof(T) * B.Dblockarray.pdatalength, devnum);
-                omp_target_memcpy(bdata, B.Dblockarray.pdata, sizeof(T) * B.Dblockarray.pdatalength, 0, 0, devnum, omp_get_initial_device());
-            }
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp target data map(to: aextents[0:cblocknum], astrides[0:cblocknum], bstrides[0:cblocknum], aoffsets[0:cblocknum], boffsets[0:cblocknum])
-            #pragma omp target teams distribute is_device_ptr(adata, bdata) device(devnum) reduction(+:sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-                #pragma omp parallel for simd reduction(+:sum)
-                for (size_t i = 0; i < n; ++i)
-                {
-                    sum += aptr[i * astride0] * bptr[i * bstride0];
-                }
-            }
-            if (!A.Dblockarray.pdata_is_devptr)
-            {
-                omp_target_memcpy(A.Dblockarray.pdata, adata, sizeof(T) * A.Dblockarray.pdatalength, 0, 0, omp_get_initial_device(), devnum);
-                omp_target_free(adata, devnum);
-            }
-            if (B.Dblockarray.pnumblocks > 0 && !B.Dblockarray.pdata_is_devptr) omp_target_free(bdata, devnum);
-        }
-        else
-        {
-            const size_t cblocknum = A.Dblockarray.pnumblocks;
-            #pragma omp parallel for reduction(+:sum)
-            for (size_t b = 0; b < cblocknum; b++)
-            {
-                T* aptr = adata + aoffsets[b];
-                const T* bptr = bdata + boffsets[b];
-                const size_t n = aextents[b];
-                const size_t astride0 = astrides[b];
-                const size_t bstride0 = bstrides[b];
-                for (size_t i = 0; i < n; ++i)
-                {
-                    sum += aptr[i * astride0] * bptr[i * bstride0];
-                }
+                sum += cond_conj(aptr[i * astride0]) * bptr[i * bstride0];
             }
         }
-        T global_result = T(0);
-        MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
-        return global_result;
     }
+    T global_result = T(0);
+    MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
+    return global_result;
 }
+
 
 
 
@@ -5059,13 +4836,13 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 
 
             T tmp=T(0);
-
             #pragma omp target teams distribute parallel for simd map(tofrom:tmp) reduction(+:tmp)  device(policy.devicenum)
             for (size_t k = z; k < c; ++k)
             {
                 const T tmp3=tL.dpdata[c*Lstr0+k*Lstr1];
-                tmp+= tmp3 * tmp3;
+                tmp+= tmp3 *  cond_conj(tmp3);
             }
+
             T tmp42=T(0);
             omp_target_memcpy(&tmp42,&tempA.dpdata[0],sizeof(T),0,sizeof(T)*(Astr0*c+Astr1*c),omp_get_initial_device(),policy.devicenum);
             tmp=tmp42-tmp;
@@ -5081,12 +4858,13 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 #pragma omp simd reduction(+:tmp2)
                 for (size_t k = z; k < c; ++k)
                 {
-                    tmp2 += tL.dpdata[i*Lstr0+k*Lstr1] * tL.dpdata[c*Lstr0+k*Lstr1];
+                    tmp2 += tL.dpdata[i*Lstr0+k*Lstr1] *  cond_conj(tL.dpdata[c*Lstr0+k*Lstr1]);
                 }
                 tmp2=tempA.dpdata[i*Astr0+c*Astr1]-tmp2;
                 tL.dpdata[i*Lstr0+ c*Lstr1]=tmp2/temp4;
             }
         }
+
 
         if(separate_device_memory)
         {
@@ -5165,7 +4943,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 
                 DataBlock<T> RT=R.matrix_transpose(rtext,strtext);
 
-
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
@@ -5180,8 +4957,6 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 case Math_MPI_Decomposition_Policy::WinogradVariant:
                     winograd_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
                 }
-
-
                 #pragma omp parallel for simd collapse(2)
                 for (size_t i = c; i < n; ++i)
                 {
@@ -5190,20 +4965,16 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                         tempA(i, j) -= S(i - c, j - c);
                     }
                 }
-
-
                 z = c;
             }
-
-
             T tmp=T(0);
-
             #pragma omp parallel for simd  reduction(+: tmp)
             for (size_t k = z; k < c; ++k)
             {
                 const T tmp3=L(c,k);
-                tmp+= tmp3 * tmp3;
+                tmp+= tmp3 * cond_conj( tmp3);
             }
+
             tmp=tempA(c, c)-tmp;
             T tmp4=sqrt(tmp);
             L(c, c)=tmp4;
@@ -5214,7 +4985,7 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 T tmp2 = T(0);
                 for (size_t k = z; k < c; ++k)
                 {
-                    tmp2 += L(i, k) * L(c, k);
+                    tmp2 += L(i, k) *cond_conj(  L(c, k));
                 }
 
                 tmp2=tempA(i, c)-tmp2;
@@ -5684,7 +5455,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         if(policy.initialize_output_to_zeros)
         {
 
-            #pragma omp target teams distribute parallel for simd collapse(2)
+            #pragma omp target teams distribute parallel for simd collapse(2)device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j < n; ++j)
@@ -5693,7 +5464,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                 }
             }
 
-            #pragma omp target teams distribute parallel for simd collapse(2)
+            #pragma omp target teams distribute parallel for simd collapse(2)device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j < m; ++j)
@@ -5792,7 +5563,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                 #pragma omp target teams distribute parallel for simd  map(tofrom: dot_pr) reduction(+:dot_pr) device(policy.devicenum)
                 for (size_t i = 0; i < pextv0; ++i)
                 {
-                    dot_pr += u.dpdata[i*ustr[0]] * v.dpdata[i*vstr[0]];
+                    dot_pr +=cond_conj( u.dpdata[i*ustr[0]]) * v.dpdata[i*vstr[0]];
                 }
 
                 const T cdot_pr = dot_pr;
@@ -5808,7 +5579,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             #pragma omp target  teams distribute parallel for simd map(tofrom:norm) reduction(+:norm)device(policy.devicenum)
             for (size_t i = 0; i < pextv0; ++i)
             {
-                norm += v.dpdata[i*vstr[0]] * v.dpdata[i*vstr[0]];
+                T val=v.dpdata[i*vstr[0]] ;
+                norm += cond_conj(val) * v.dpdata[i*vstr[0]];
             }
 
             const T normc = sqrt(norm);
@@ -5820,24 +5592,54 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
 
         }
-        // Compute R = Q^T * A
+        // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
+        // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
+
         size_t extQT[2],strQT[2];
 
-        DataBlock<T> QT=tQ.matrix_transpose(extQT,strQT);
-
-
-        switch (policy.algorithm_version)
+        if constexpr (is_complex<T>::value)
         {
-        case Math_MPI_Decomposition_Policy::Naive:
-            GPU_Math_Functions<T>::matrix_multiply_dot_g(QT,tA,tR,policy.devicenum,false);
-            break;
-        case Math_MPI_Decomposition_Policy::Strassen:
-            strassen_multiply_h(QT,tA,tR,ongpu,separate_device_memory,policy);
-            break;
-        case Math_MPI_Decomposition_Policy::WinogradVariant:
-            winograd_multiply_h(QT,tA,tR,ongpu,separate_device_memory,policy);
-            break;
+            const size_t qstr0=tQ.dpstrides[0];
+            const size_t qstr1=tQ.dpstrides[1];
+            const size_t Astr0=A.dpstrides[0];
+            const size_t Astr1=A.dpstrides[1];
+            const size_t Rstr0=R.dpstrides[0];
+            const size_t Rstr1=R.dpstrides[1];
+            const size_t rows = tQ.dpextents[0];
+            const size_t cols = tA.dpextents[1];
+            const  size_t inner_dim = tQ.dpextents[1];
+            #pragma omp target teams distribute parallel for collapse(2)  device(policy.devicenum)
+            for (size_t i = 0; i < rows; ++i)
+            {
+                for (size_t j = 0; j < cols; ++j)
+                {
+                    T sum = T(0);
+                    #pragma omp simd reduction(+:sum)
+                    for (size_t k = 0; k < inner_dim; ++k)
+                    {
+                        sum += cond_conj(tQ.dpdata[k*qstr0+i*qstr1]) *tA.dpdata[k*Astr0+j*Astr1];
+                    }
+                    tR.dpdata[i*Rstr0+j*Rstr1]= sum;
+                }
+            }
         }
+        else
+        {
+            DataBlock<T> QT=tQ.matrix_transpose(extQT,strQT);
+            switch (policy.algorithm_version)
+            {
+            case Math_MPI_Decomposition_Policy::Naive:
+                GPU_Math_Functions<T>::matrix_multiply_dot_g(QT,tA,tR,policy.devicenum,false);
+                break;
+            case Math_MPI_Decomposition_Policy::Strassen:
+                strassen_multiply_h(QT,tA,tR,ongpu,separate_device_memory,policy);
+                break;
+            case Math_MPI_Decomposition_Policy::WinogradVariant:
+                winograd_multiply_h(QT,tA,tR,ongpu,separate_device_memory,policy);
+                break;
+            }
+        }
+
 
         if(separate_device_memory)
         {
@@ -6009,7 +5811,36 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         }
 
 
-        // Compute R = Q^T * A
+      // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
+        // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
+        if constexpr (is_complex<T>::value)
+        {
+            const size_t qstr0=Q.dpstrides[0];
+            const size_t qstr1=Q.dpstrides[1];
+            const size_t Astr0=A.dpstrides[0];
+            const size_t Astr1=A.dpstrides[1];
+            const size_t Rstr0=R.dpstrides[0];
+            const size_t Rstr1=R.dpstrides[1];
+            const size_t rows = Q.dpextents[0];
+            const size_t cols = A.dpextents[1];
+            const  size_t inner_dim = Q.dpextents[1];
+            #pragma omp target teams distribute parallel for collapse(2)  device(policy.devicenum)
+            for (size_t i = 0; i < rows; ++i)
+            {
+                for (size_t j = 0; j < cols; ++j)
+                {
+                    T sum = T(0);
+                    #pragma omp simd reduction(+:sum)
+                    for (size_t k = 0; k < inner_dim; ++k)
+                    {
+                        sum += cond_conj(Q.dpdata[k*qstr0+i*qstr1]) *A.dpdata[k*Astr0+j*Astr1];
+                    }
+                    R.dpdata[i*Rstr0+j*Rstr1]= sum;
+                }
+            }
+        }
+        else
+        {
         size_t extQT[2],strQT[2];
 
         DataBlock<T> QT=Q.matrix_transpose(extQT,strQT);
@@ -6024,6 +5855,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             break;
         case Math_MPI_Decomposition_Policy::WinogradVariant:
             winograd_multiply_h(QT,A,R,false,false,policy);
+        }
         }
 
         DataBlock_Host_Memory_Functions<T>::free_data_ptr(tempC,mm,policy.memmapped_files);
