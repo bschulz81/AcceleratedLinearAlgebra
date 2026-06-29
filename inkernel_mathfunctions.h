@@ -21,6 +21,9 @@ public:
     inline static void cross_product( const DataBlock<T>& vec1,const   DataBlock<T>& vec2, DataBlock<T>& res);
 
     inline static void matrix_multiply_dot_w( const DataBlock<T>& A,  const DataBlock<T>& B, DataBlock<T>& C);
+    template <ConjOp ConjugateMode = ConjOp::None>
+    inline static void matrix_multiply_conjugate_dot_accumulate_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
+
     inline static void matrix_multiply_dot_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_multiply_dot_s(const  DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
 
@@ -1462,6 +1465,57 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
 #pragma omp end declare target
 
 
+
+#pragma omp begin declare target
+template <typename T>
+template<ConjOp ConjugateMode >
+void In_Kernel_Mathfunctions<T>::matrix_multiply_conjugate_dot_accumulate_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
+{
+    const size_t rows=A.dpextents[0];
+    const size_t cols=B.dpextents[1];
+    const size_t inner_dim=A.dpextents[1];
+
+    const size_t Astr0=A.dpstrides[0];
+    const size_t Astr1=A.dpstrides[1];
+    const size_t Bstr0=B.dpstrides[0];
+    const size_t Bstr1=B.dpstrides[1];
+    const size_t Cstr0=C.dpstrides[0];
+    const size_t Cstr1=C.dpstrides[1];
+
+    #pragma omp parallel for collapse(2)
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            T sum =T(0);
+            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
+            for (size_t k = 0; k < inner_dim; ++k)
+            {
+                const T valA = A.dpdata[i * Astr0 + k * Astr1];
+                const T valB = B.dpdata[k * Bstr0 + j * Bstr1];
+                if constexpr (ConjugateMode == ConjOp::First)
+                {
+                    sum += cond_conj(valA) * valB;
+                }
+                else if constexpr (ConjugateMode == ConjOp::Second)
+                {
+                    sum += valA * cond_conj(valB);
+                }
+                else if constexpr (ConjugateMode == ConjOp::Both)
+                {
+                    sum += cond_conj(valA) * cond_conj(valB);
+                }
+                else
+                {
+                    sum += valA * valB;
+                }
+
+            }
+            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+        }
+    }
+}
+#pragma omp end declare target
 
 
 #pragma omp begin declare target

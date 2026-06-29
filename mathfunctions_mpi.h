@@ -4808,18 +4808,24 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t rtext[2],strtext[2];
 
                 DataBlock<T> RT=R.matrix_transpose(rtext,strtext);
-
-                switch (policy.algorithm_version)
+                if constexpr(is_complex<T>::value)
                 {
-                case Math_MPI_Decomposition_Policy::Naive:
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,false);
-                    break;
-                case Math_MPI_Decomposition_Policy::Strassen:
-                    strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
-                    break;
-                case Math_MPI_Decomposition_Policy::WinogradVariant:
-                    winograd_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
-                    break;
+                    GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::Second>(R,RT,S,policy.devicenum,true);
+                }
+                else
+                {
+                    switch (policy.algorithm_version)
+                    {
+                    case Math_MPI_Decomposition_Policy::Naive:
+                        GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,false);
+                        break;
+                    case Math_MPI_Decomposition_Policy::Strassen:
+                        strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
+                        break;
+                    case Math_MPI_Decomposition_Policy::WinogradVariant:
+                        winograd_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
+                        break;
+                    }
                 }
 
                 #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
@@ -4942,21 +4948,32 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t rtext[2],strtext[2];
 
                 DataBlock<T> RT=R.matrix_transpose(rtext,strtext);
-
-                switch (policy.algorithm_version)
+                if constexpr (is_complex<T>::value)
                 {
-                case Math_MPI_Decomposition_Policy::Naive:
                     if(policy.should_use_gpu(R,RT,S,Math_Functions_Policy::default_cubic_treshold,1))
-                        GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,true);
+                        GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::Second>(R,RT,S,policy.devicenum,true);
                     else
-                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(R,RT,S);
-                    break;
-                case Math_MPI_Decomposition_Policy::Strassen:
-                    strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
-                    break;
-                case Math_MPI_Decomposition_Policy::WinogradVariant:
-                    winograd_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
+                        In_Kernel_Mathfunctions<T>::template matrix_multiply_conjugate_dot_w<ConjOp::Second>(R,RT,S);
                 }
+                else
+                {
+                    switch (policy.algorithm_version)
+                    {
+                    case Math_MPI_Decomposition_Policy::Naive:
+                        if(policy.should_use_gpu(R,RT,S,Math_Functions_Policy::default_cubic_treshold,1))
+                            GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,true);
+                        else
+                            In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(R,RT,S);
+                        break;
+                    case Math_MPI_Decomposition_Policy::Strassen:
+                        strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
+                        break;
+                    case Math_MPI_Decomposition_Policy::WinogradVariant:
+                        winograd_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
+                    }
+
+                }
+
                 #pragma omp parallel for simd collapse(2)
                 for (size_t i = c; i < n; ++i)
                 {
@@ -5517,8 +5534,15 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                 size_t extBQT[2],strBQT[2];
                 DataBlock<T> BQT=BQ.matrix_transpose(extBQT,strBQT);
 
+                if constexpr (is_complex<T>::value)
+                {
+                    GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::First>(BQT,BM,C,policy.devicenum,false);
+                }
+                else
+                {
+                    GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
+                }
 
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
 
                 size_t sextt[2]= {n,mc};
                 size_t sstrt[2]= {mc,1};
@@ -5596,32 +5620,10 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
 
         size_t extQT[2],strQT[2];
-
+        DataBlock<T> QT=tQ.matrix_transpose(extQT,strQT);
         if constexpr (is_complex<T>::value)
         {
-            const size_t qstr0=tQ.dpstrides[0];
-            const size_t qstr1=tQ.dpstrides[1];
-            const size_t Astr0=A.dpstrides[0];
-            const size_t Astr1=A.dpstrides[1];
-            const size_t Rstr0=R.dpstrides[0];
-            const size_t Rstr1=R.dpstrides[1];
-            const size_t rows = tQ.dpextents[0];
-            const size_t cols = tA.dpextents[1];
-            const  size_t inner_dim = tQ.dpextents[1];
-            #pragma omp target teams distribute parallel for collapse(2)  device(policy.devicenum)
-            for (size_t i = 0; i < rows; ++i)
-            {
-                for (size_t j = 0; j < cols; ++j)
-                {
-                    T sum = T(0);
-                    #pragma omp simd reduction(+:sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum += cond_conj(tQ.dpdata[k*qstr0+i*qstr1]) *tA.dpdata[k*Astr0+j*Astr1];
-                    }
-                    tR.dpdata[i*Rstr0+j*Rstr1]= sum;
-                }
-            }
+                GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::First>(QT,tA,tR,policy.devicenum,true);
         }
         else
         {
@@ -5742,11 +5744,21 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                 size_t extBQT[2],strBQT[2];
                 DataBlock<T> BQT=BQ.matrix_transpose(extBQT,strBQT);
 
-
-                if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,true);
+                if constexpr (is_complex<T>::value)
+                {
+                    if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
+                        GPU_Math_Functions<T>::template matrix_multiply_conjugate_dot_g<ConjOp::First>(BQT,BM,C,policy.devicenum,true);
+                    else
+                        In_Kernel_Mathfunctions<T>::template matrix_multiply_conjugate_dot_w<ConjOp::First>(BQT,BM,C);
+                }
                 else
-                    In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(BQT,BM,C);
+                {
+                    if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
+                        GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,true);
+                    else
+                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(BQT,BM,C);
+                }
+
 
                 size_t sexttt[2]= {n,mc};
                 size_t sstrtt[2]= {mc,1};
@@ -5761,7 +5773,6 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                         GPU_Math_Functions<T>::matrix_multiply_dot_g(BQ,C,S,policy.devicenum,true);
                     else
                         In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(BQ,C,S);
-
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
                     strassen_multiply_h(BQ,C,S,false,false,policy);
@@ -5811,51 +5822,32 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         }
 
 
-      // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
+        // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
         // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
+
+        size_t extQT[2],strQT[2];
+        DataBlock<T> QT=Q.matrix_transpose(extQT,strQT);
+
         if constexpr (is_complex<T>::value)
         {
-            const size_t qstr0=Q.dpstrides[0];
-            const size_t qstr1=Q.dpstrides[1];
-            const size_t Astr0=A.dpstrides[0];
-            const size_t Astr1=A.dpstrides[1];
-            const size_t Rstr0=R.dpstrides[0];
-            const size_t Rstr1=R.dpstrides[1];
-            const size_t rows = Q.dpextents[0];
-            const size_t cols = A.dpextents[1];
-            const  size_t inner_dim = Q.dpextents[1];
-            #pragma omp target teams distribute parallel for collapse(2)  device(policy.devicenum)
-            for (size_t i = 0; i < rows; ++i)
-            {
-                for (size_t j = 0; j < cols; ++j)
-                {
-                    T sum = T(0);
-                    #pragma omp simd reduction(+:sum)
-                    for (size_t k = 0; k < inner_dim; ++k)
-                    {
-                        sum += cond_conj(Q.dpdata[k*qstr0+i*qstr1]) *A.dpdata[k*Astr0+j*Astr1];
-                    }
-                    R.dpdata[i*Rstr0+j*Rstr1]= sum;
-                }
-            }
+            if(policy.should_use_gpu(QT,A,R,Math_Functions_Policy::default_cubic_treshold,1))
+                GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::First>(QT,A,R,policy.devicenum,true);
+            else
+                In_Kernel_Mathfunctions<T>:: template matrix_multiply_conjugate_dot_w<ConjOp::First>(QT,A,R);
         }
         else
         {
-        size_t extQT[2],strQT[2];
-
-        DataBlock<T> QT=Q.matrix_transpose(extQT,strQT);
-
-        switch (policy.algorithm_version)
-        {
-        case Math_MPI_Decomposition_Policy::Naive:
-            In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(QT,A,R);
-            break;
-        case Math_MPI_Decomposition_Policy::Strassen:
-            strassen_multiply_h(QT,A,R,false,false,policy);
-            break;
-        case Math_MPI_Decomposition_Policy::WinogradVariant:
-            winograd_multiply_h(QT,A,R,false,false,policy);
-        }
+            switch (policy.algorithm_version)
+            {
+            case Math_MPI_Decomposition_Policy::Naive:
+                In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(QT,A,R);
+                break;
+            case Math_MPI_Decomposition_Policy::Strassen:
+                strassen_multiply_h(QT,A,R,false,false,policy);
+                break;
+            case Math_MPI_Decomposition_Policy::WinogradVariant:
+                winograd_multiply_h(QT,A,R,false,false,policy);
+            }
         }
 
         DataBlock_Host_Memory_Functions<T>::free_data_ptr(tempC,mm,policy.memmapped_files);
