@@ -15,9 +15,6 @@ class GPU_Math_Functions
 public:
     inline static void matrix_multiply_dot_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
 
-    template <ConjOp ConjugateMode = ConjOp::None>
-    inline static void matrix_multiply_conjugate_dot_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, int dev, bool update_host);
-
     inline static void matrix_multiply_dot_kahan_g( const DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,int dev,bool update_host=true);
 
     inline static void matrix_add_g(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,int dev,bool update_host=true);
@@ -117,12 +114,10 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
-                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
-                const size_t x_index  = global_k * Xstr0;
-                sum += A.dpdata[a_index] * x.dpdata[x_index];
+                sum += A(global_i,global_k) * x(global_k);
             }
             #pragma omp atomic update
-            y.dpdata[global_i * ystr0]  +=sum;
+            y(global_i)  +=sum;
         }
 
     }
@@ -202,10 +197,10 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
                 {
                     const size_t a_index = global_i * Astr0 + kk * Astr1;
                     const size_t x_index = kk * Xstr0;
-                    sum += A.dpdata[a_index] * x.dpdata[x_index];
+                    sum += A(global_i,kk)* x(kk);
                 }
                 #pragma omp atomic update
-                y.dpdata[global_i * ystr0] += sum;
+                y(global_i ) += sum;
             }
         }
     }
@@ -275,10 +270,10 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
                     const size_t a_index = global_i * Astr0 + global_k * Astr1;
                     const size_t b_index = global_k * Bstr0 + jj * Bstr1;
 
-                    sum += A.dpdata[a_index] * B.dpdata[b_index];
+                    sum += A(global_i,global_k) * B(global_k,jj);
                 }
                 #pragma omp atomic update
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] +=sum;
+                C(global_i, jj) +=sum;
             }
         }
     }
@@ -379,72 +374,12 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
                     #pragma omp simd reduction(+:sum)
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
-                        const size_t a_index = (global_i * Astr0) +  (kk * Astr1);
-                        const size_t b_index = (kk *Bstr0) +        (global_j *Bstr1);
-                        sum += A.dpdata[a_index] * B.dpdata[b_index];
+                        sum += A(global_i,kk) * B(kk,global_j);
                     }
                     #pragma omp atomic update
-                    C.dpdata[global_i*str0+global_j*str1] += sum;
+                    C(global_i,global_j) += sum;
                 }
             }
-        }
-    }
-}
-
-
-
-
-template <typename T>
-template<ConjOp ConjugateMode>
-void GPU_Math_Functions<T>::matrix_multiply_conjugate_dot_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, int dev, bool update_host)
-{
-    const size_t rows = A.dpextents[0];
-    const size_t cols = B.dpextents[1];
-    const size_t inner_dim = A.dpextents[1];
-
-    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, dev, false);
-    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
-    typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
-
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Bstr0 = B.dpstrides[0];
-    const size_t Bstr1 = B.dpstrides[1];
-    const size_t Cstr0 = C.dpstrides[0];
-    const size_t Cstr1 = C.dpstrides[1];
-
-    #pragma omp target teams distribute parallel for collapse(2) device(dev)
-    for (size_t i = 0; i < rows; ++i)
-    {
-        for (size_t j = 0; j < cols; ++j)
-        {
-            T sum = T(0);
-            #pragma omp simd reduction(+:sum)
-            for (size_t k = 0; k < inner_dim; ++k)
-            {
-
-                const T valA = A.dpdata[i * Astr0 + k * Astr1];
-                const T valB = B.dpdata[k * Bstr0 + j * Bstr1];
-
-                if constexpr (ConjugateMode == ConjOp::First)
-                {
-                    sum += cond_conj(valA) * valB;
-                }
-                else if constexpr (ConjugateMode == ConjOp::Second)
-                {
-                    sum += valA * cond_conj(valB);
-                }
-                else if constexpr (ConjugateMode == ConjOp::Both)
-                {
-                    sum += cond_conj(valA) * cond_conj(valB);
-                }
-                else
-                {
-                    sum += valA * valB;
-                }
-
-            }
-            C.dpdata[i * Cstr0 + j * Cstr1] = sum;
         }
     }
 }
@@ -465,12 +400,6 @@ void GPU_Math_Functions<T>::matrix_multiply_conjugate_dot_g(const DataBlock<T>& 
         typename DataBlock_GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B, dev, false);
         typename DataBlock_GPU_Memory_Functions<T>::OffloadHelper offloadC(C, dev, true, update_host);
 
-        const size_t Astr0=A.dpstrides[0];
-        const size_t Astr1=A.dpstrides[1];
-        const size_t Bstr0=B.dpstrides[0];
-        const size_t Bstr1=B.dpstrides[1];
-        const size_t Cstr0=C.dpstrides[0];
-        const size_t Cstr1=C.dpstrides[1];
 
         #pragma omp target teams distribute parallel for collapse(2)  device(dev)
         for (size_t i = 0; i < rows; ++i)
@@ -481,9 +410,9 @@ void GPU_Math_Functions<T>::matrix_multiply_conjugate_dot_g(const DataBlock<T>& 
                 #pragma omp simd reduction(+:sum)
                 for (size_t k = 0; k < inner_dim; ++k)
                 {
-                    sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                    sum += A(i,k)*B(k,j);
                 }
-                C.dpdata[i*Cstr0+j*Cstr1]= sum;
+                C(i,j)= sum;
             }
         }
     }

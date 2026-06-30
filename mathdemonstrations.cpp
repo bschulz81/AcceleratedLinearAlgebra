@@ -109,16 +109,24 @@ int main()
     mdspan<std::complex<double>, std::array<size_t,1>> vecB(vectorB_data.data(), 3, true);
     vecA.printtensor();
     vecB.printtensor();
+
+     cout<<"conjugate of A"<<endl;
+        DataBlock<std::complex<double>>con=vecA.conjugate();
+        con.printtensor();
+
 //
 //
     mdspan_data_t <std::complex<double>, dynamic_tag> C(3, true,false);
 //
         cout<<"addition of A and B"<<endl;
-        C =vecA-vecB;
+        C =vecA+vecB;
         C.printtensor();
         mdspan_data_t<std::complex<double>, dynamic_tag> D(3, true,false);
      Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
+     cout<<"subtraction"<<endl;
         auto expr=vecA-vecB;
+
+
         expr.assign_to(D,&mypol);
         D.printtensor();
 
