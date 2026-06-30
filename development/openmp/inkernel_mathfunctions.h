@@ -138,9 +138,6 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
     const size_t Ablock_cols = A.block_shape[1];
     const size_t Xblock_size = x.block_shape[0];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -195,8 +192,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
                 #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
-                    const size_t a_index = global_i * Astr0 + kk * Astr1;
-                    const size_t x_index = kk * Xstr0;
+
                     sum += A(global_i,kk)* x(kk);
                 }
                 #pragma omp atomic update
@@ -219,9 +215,6 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
     const size_t Ablock_cols = A.block_shape[1];
     const size_t Xblock_size = x.block_shape[0];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -274,7 +267,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
                 #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
-                    const size_t x_index = kk * Xstr0;
+
                     sum += A(global_i,kk) * x(kk);
                 }
                 y(global_i) +=sum;
@@ -296,9 +289,6 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
     const size_t Ablock_cols = A.block_shape[1];
     const size_t Xblock_size = x.block_shape[0];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -351,8 +341,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
 
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
-                    const size_t a_index = global_i * Astr0 + kk * Astr1;
-                    const size_t x_index = kk * Xstr0;
+
                     sum += A(global_i,kk) * x.dpdata(kk);
                 }
                 y.dpdata(global_i)+= sum;
@@ -371,9 +360,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
+
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -413,8 +400,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
-                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
-                const size_t x_index  = global_k * Xstr0;
+
                 sum += A(global_i,global_k) * x(global_k);
             }
             #pragma omp atomic update
@@ -435,9 +421,6 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -473,8 +456,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
-                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
-                const size_t x_index  = global_k * Xstr0;
+
                 sum += A(global_i) * x(global_k);
             }
 
@@ -493,9 +475,7 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(  const Blocked
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
+
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -545,10 +525,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Bstr0 = B.dpstrides[0];
-    const size_t Bstr1 = B.dpstrides[1];
+
     const size_t Cstr0 = C.dpstrides[0];
     const size_t Cstr1 = C.dpstrides[1];
 
@@ -609,10 +586,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Bstr0 = B.dpstrides[0];
-    const size_t Bstr1 = B.dpstrides[1];
+
     const size_t Cstr0 = C.dpstrides[0];
     const size_t Cstr1 = C.dpstrides[1];
 
@@ -673,10 +647,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedData
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Bstr0 = B.dpstrides[0];
-    const size_t Bstr1 = B.dpstrides[1];
     const size_t Cstr0 = C.dpstrides[0];
     const size_t Cstr1 = C.dpstrides[1];
 
@@ -747,10 +717,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
     const size_t bext0=B.dpextents[0];
     const size_t bext1=B.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
+
     if(initialize_to_zero)
     {
         #pragma omp parallel for simd collapse(2)
@@ -838,10 +805,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(  const BlockedDat
     const size_t Bblock_rows = B.block_shape[0];
     const size_t Bblock_cols = B.block_shape[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
 
     const size_t str0=C.dpstrides[0];
     const size_t str1=C.dpstrides[1];
@@ -1441,12 +1404,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_w( const DataBlo
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
 
     #pragma omp parallel for collapse(2)
     for (size_t i = 0; i < rows; ++i)
@@ -1477,12 +1434,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const DataBlock<T>& A, c
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
 
 
     for (size_t i = 0; i < rows; ++i)
@@ -1511,12 +1462,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_v( const DataBlo
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
+
 
 
     for (size_t i = 0; i < rows; ++i)
@@ -1571,12 +1517,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_s( const DataBlo
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
+
 
     for (size_t i = 0; i < rows; ++i)
     {

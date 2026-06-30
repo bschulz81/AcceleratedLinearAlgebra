@@ -72,9 +72,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
+
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -134,9 +132,6 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
     const size_t Ablock_cols = A.block_shape[1];
     const size_t Xblock_size = x.block_shape[0];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Xstr0 = x.dpstrides[0];
 
     const size_t aext0 = A.dpextents[0];
     const size_t aext1 = A.dpextents[1];
@@ -195,8 +190,7 @@ void GPU_Math_Functions<T>::matrix_vector_multiply_sparse_g( const BlockedDataVi
                 #pragma omp simd reduction(+:sum)
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
-                    const size_t a_index = global_i * Astr0 + kk * Astr1;
-                    const size_t x_index = kk * Xstr0;
+
                     sum += A(global_i,kk)* x(kk);
                 }
                 #pragma omp atomic update
@@ -216,10 +210,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
     const size_t Ablock_rows = A.block_shape[0];
     const size_t Ablock_cols = A.block_shape[1];
 
-    const size_t Astr0 = A.dpstrides[0];
-    const size_t Astr1 = A.dpstrides[1];
-    const size_t Bstr0 = B.dpstrides[0];
-    const size_t Bstr1 = B.dpstrides[1];
+
     const size_t Cstr0 = C.dpstrides[0];
     const size_t Cstr1 = C.dpstrides[1];
 
@@ -267,8 +258,7 @@ void GPU_Math_Functions<T>::matrix_multiply_dot_sparse_g( const BlockedDataView<
                 {
                     const size_t global_k = a_col_off + kk;
 
-                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
-                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
+
 
                     sum += A(global_i,global_k) * B(global_k,jj);
                 }
