@@ -173,17 +173,17 @@ public:
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
 
 
-    mdspan(T* data, const size_t datalength, const Container& extents, const Container& strides,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data, const size_t datalength, const Container& extents, const Container& strides,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
 
 
-    mdspan(T* data,  const Container& extents, const Container& strides,const bool rowm=true, bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data,  const Container& extents, const Container& strides,const bool rowm=true, bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
 
 
-    mdspan(T* data, const Container& extents, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data, const Container& extents, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
 
 
-    mdspan(T* data, const size_t rows,const size_t cols,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
-    mdspan(T* data,const size_t rows, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0);
+    mdspan(T* data, const size_t rows,const size_t cols,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
+    mdspan(T* data,const size_t rows, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
     virtual ~mdspan();
 
     using DataBlock<T>::operator();
@@ -205,6 +205,10 @@ public:
 
     using DataBlock<T>::matrix_transpose;
     mdspan<T, Container>matrix_transpose();
+
+    using DataBlock<T>::matrix_hermitian_transpose;
+    mdspan<T, Container>matrix_hermitian_transpose();
+
 
     using DataBlock<T>::collapsed_view;
     mdspan<T, std::vector<size_t>> collapsed_view();
@@ -306,6 +310,7 @@ mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> 
 
     this->devptr_devicenum=other.devptr_devicenum;
     this->devptr_former_hostptr=other.devptr_former_hostptr;
+    this->pconjugate=other.pconjugate;
     return *this;
 }
 
@@ -328,7 +333,7 @@ mdspan<T, Container>&mdspan<T, Container>::operator=(const DataBlock<T> & other)
     this->dpdata_is_devptr = other.dpdata_is_devptr;
 
     this->dprank=other.dprank;
-
+this->pconjugate=other.pconjugate;
 
     if(pextents.size()!=other.dprank)
         if constexpr (DynamicContainer<Container>)
@@ -365,7 +370,7 @@ mdspan<T, Container>& mdspan<T, Container>::operator=( mdspan<T, Container>&& ot
     this->dpdatalength      =other.dpdatalength;
     this->dprowmajor       = other.dprowmajor;
     this->dpdata_is_devptr = other.dpdata_is_devptr;
-
+    this->pconjugate=other.pconjugate;
     this->dprank=other.dprank;
 
     if constexpr (DynamicContainer<Container>)
@@ -387,14 +392,6 @@ mdspan<T, Container>& mdspan<T, Container>::operator=( mdspan<T, Container>&& ot
 
 
     mapping_manager=std::move(other.mapping_manager);
-
-
-    // Move other raw pointers and flags
-    this->dpdata           = other.dpdata;
-    this->dprowmajor       = other.dprowmajor;
-    this->dprank           = other.dprank;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->dpdatalength     = other.dpdatalength;
 
     p_has_offloaded_host_data  = other.p_has_offloaded_host_data;
     this->devptr_devicenum    = other.devptr_devicenum;
@@ -448,6 +445,7 @@ mdspan<T, Container>::mdspan(const mdspan<T, Container>& other)
     this->dpdata_is_devptr = other.dpdata_is_devptr;
     this->devptr_devicenum=other.devptr_devicenum;
     this->devptr_former_hostptr=other.devptr_former_hostptr;
+    this->pconjugate=other.pconjugate;
 
 }
 
@@ -461,7 +459,7 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
     this->dpdatalength      =other.dpdatalength;
     this->dprowmajor       = other.dprowmajor;
     this->dpdata_is_devptr = other.dpdata_is_devptr;
-
+    this->pconjugate=other.pconjugate;
     this->dprank=other.dprank;
 
     if constexpr (DynamicContainer<Container>)
@@ -484,13 +482,6 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
 
-
-    // Move other raw pointers and flags
-    this->dpdata           = other.dpdata;
-    this->dprowmajor       = other.dprowmajor;
-    this->dprank           = other.dprank;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->dpdatalength     = other.dpdatalength;
 
     p_has_offloaded_host_data  = other.p_has_offloaded_host_data;
     this->devptr_devicenum    = other.devptr_devicenum;
@@ -521,7 +512,7 @@ mdspan<T, Container>::mdspan(const DataBlock<T>&other,const shared_ptr<mdspan<T,
     this->dpdata_is_devptr = other.dpdata_is_devptr;
 
     this->dprank=other.dprank;
-
+this->pconjugate=other.pconjugate;
 
     if(pextents.size()!=other.dprank)
         if constexpr (DynamicContainer<Container>)
@@ -547,13 +538,6 @@ mdspan<T, Container>::mdspan(const DataBlock<T>&other,const shared_ptr<mdspan<T,
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
 
-
-    // Move other raw pointers and flags
-    this->dpdata           = other.dpdata;
-    this->dprowmajor       = other.dprowmajor;
-    this->dprank           = other.dprank;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->dpdatalength     = other.dpdatalength;
 
     p_has_offloaded_host_data  = false;
 
@@ -717,8 +701,8 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum)
-    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
+    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum,conjugate)
 {
     initialize_extents_and_strides(extents,strides);
 }
@@ -726,8 +710,8 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container&
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum)
-    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
+    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
 
 {
     initialize_extents_and_strides(extents,strides);
@@ -737,8 +721,8 @@ mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container&
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
+    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
@@ -753,8 +737,8 @@ mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum, bool conjugate)
+    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
 {
 
     const size_t r=2;
@@ -781,8 +765,8 @@ mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,cons
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum)
-    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum)
+mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
+    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum,conjugate)
 {
     const size_t s=1;
     if constexpr (StaticContainer<Container>)
@@ -962,6 +946,14 @@ mdspan<T, Container>mdspan<T, Container>::matrix_transpose()
 {
     size_t tempext[2], tempstr[2];
     mdspan<T,Container> result(matrix_transpose(tempext,tempstr),mapping_manager);
+    return result;
+}
+
+template <typename T, typename Container>
+mdspan<T, Container>mdspan<T, Container>::matrix_hermitian_transpose()
+{
+    size_t tempext[2], tempstr[2];
+    mdspan<T,Container> result(matrix_hermitian_transpose(tempext,tempstr),mapping_manager);
     return result;
 }
 
