@@ -222,7 +222,7 @@ mdspan_data<T, Container> mdspan_data<T, Container>::matrix_transpose_copy(bool 
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::matrix_hermitian_transpose_copy(bool memmap)
 {
-    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
+    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, !this->pconjugate);
     this->matrix_hermitian_transpose_copy_w(result.pextents.data(), result.pstrides.data(), result.dpdata);
     return result;
 }
