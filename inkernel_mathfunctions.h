@@ -936,10 +936,7 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(   const BlockedDa
     const size_t Bblock_rows = B.block_shape[0];
     const size_t Bblock_cols = B.block_shape[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
+
 
     const size_t str0=C.dpstrides[0];
     const size_t str1=C.dpstrides[1];

@@ -12,34 +12,34 @@ public:
     mdspan_data() {};
 
 
-    mdspan_data(size_t datalength, const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
+    mdspan_data(size_t datalength, const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false);
 
 
-    mdspan_data(size_t datalength, std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
-        mdspan_data(datalength, Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum) {}
+    mdspan_data(size_t datalength, std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false) :
+        mdspan_data(datalength, Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum,conjugate) {}
 
 
-    mdspan_data(const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
+    mdspan_data(const Container& extents, const Container& strides, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false);
 
-    mdspan_data(std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
-        mdspan_data(Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum) {}
-
-
-    mdspan_data(const Container& extents, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0);
+    mdspan_data(std::initializer_list<size_t> ext, std::initializer_list<size_t> str, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false) :
+        mdspan_data(Container(ext), Container(str), rowm, memmap, ondevice, default_device, devicenum,conjugate) {}
 
 
-    mdspan_data(std::initializer_list<size_t> ext, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0) :
-        mdspan_data(Container(ext), rowm, memmap, ondevice, default_device, devicenum) {}
+    mdspan_data(const Container& extents, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false);
 
 
-    template<typename B1 = bool, typename B2 = bool, typename B3 = bool, typename B4 = bool>
-    requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
-    mdspan_data(size_t rows, size_t cols, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0);
+    mdspan_data(std::initializer_list<size_t> ext, bool rowm=true, bool memmap=false, bool ondevice=false, bool default_device=true, int devicenum=0,bool conjugate=false) :
+        mdspan_data(Container(ext), rowm, memmap, ondevice, default_device, devicenum, conjugate) {}
 
 
     template<typename B1 = bool, typename B2 = bool, typename B3 = bool, typename B4 = bool>
     requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
-    mdspan_data(size_t rows, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0);
+    mdspan_data(size_t rows, size_t cols, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0,bool conjugate=false);
+
+
+    template<typename B1 = bool, typename B2 = bool, typename B3 = bool, typename B4 = bool>
+    requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
+    mdspan_data(size_t rows, B1 rowm=true, B2 memmap=false, B3 ondevice=false, B4 default_device=true, int devicenum=0,bool conjugate=false);
 
 
     mdspan_data(const mdspan<T, Container>& base);
@@ -59,8 +59,9 @@ public:
     using DataBlock<T>::tensor_subspan_copy;
     mdspan_data<T, Container> tensor_subspan_copy(const Container& offsets, const Container& sub_extents, bool memmap=false ) ;
     mdspan_data<T, Container> matrix_subspan_copy( size_t row,  size_t col,  size_t tile_rows,  size_t tile_cols, bool memmap=false );
-    mdspan_data<T, Container> matrix_transpose_copy(bool memmap=false );
 
+    mdspan_data<T, Container> matrix_transpose_copy(bool memmap=false );
+    mdspan_data<T, Container> matrix_hermitian_transpose_copy(bool memmap=false);
     mdspan_data<T, Container> matrix_column_copy( size_t col_index,bool memmap=false );
     mdspan_data<T, Container> matrix_row_copy( size_t row_index,bool memmap=false   );
     mdspan_data<T, Container> copy( bool memmap=false, bool ondevice=false,bool defaultdevice=true,int devicenum=0);
@@ -115,8 +116,8 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data( size_t datalength, const Container& extents, const Container& strides, bool rowm, bool memmap,
-                                       bool ondevice, bool default_device, int devicenum )
-    : mdspan<T,Container>(nullptr, extents, strides, rowm)
+                                       bool ondevice, bool default_device, int devicenum,bool conjugate )
+    : mdspan<T,Container>(nullptr, extents, strides, rowm,conjugate)
 {
 
     initialization_helper(ondevice, default_device, devicenum, memmap);
@@ -124,16 +125,16 @@ mdspan_data<T,Container>::mdspan_data( size_t datalength, const Container& exten
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data( const Container& extents, const Container& strides, bool rowm, bool memmap,
-                                       bool ondevice, bool default_device, int devicenum)
-    : mdspan<T,Container>(nullptr, extents, strides, rowm)
+                                       bool ondevice, bool default_device, int devicenum,bool conjugate)
+    : mdspan<T,Container>(nullptr, extents, strides, rowm,conjugate)
 {
     initialization_helper(ondevice, default_device, devicenum, memmap);
 }
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data( const Container& extents, bool rowm, bool memmap,
-                                       bool ondevice, bool default_device, int devicenum ):
-    mdspan<T,Container>(nullptr, extents, rowm)
+                                       bool ondevice, bool default_device, int devicenum , bool conjugate):
+    mdspan<T,Container>(nullptr, extents, rowm,conjugate)
 {
     initialization_helper(ondevice, default_device, devicenum, memmap);
 }
@@ -141,8 +142,8 @@ mdspan_data<T,Container>::mdspan_data( const Container& extents, bool rowm, bool
 template <typename T, typename Container>
 template <typename B1, typename B2, typename B3, typename B4>
 requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
-mdspan_data<T,Container>::mdspan_data(size_t rows, size_t cols, B1 rowm, B2 memmap, B3 ondevice, B4 default_device, int devicenum)
-    : mdspan<T,Container>(nullptr, rows, cols, rowm)
+mdspan_data<T,Container>::mdspan_data(size_t rows, size_t cols, B1 rowm, B2 memmap, B3 ondevice, B4 default_device, int devicenum,bool conjugate)
+    : mdspan<T,Container>(nullptr, rows, cols, rowm,conjugate)
 {
     initialization_helper(ondevice, default_device, devicenum, memmap);
 }
@@ -150,8 +151,8 @@ mdspan_data<T,Container>::mdspan_data(size_t rows, size_t cols, B1 rowm, B2 memm
 template <typename T, typename Container>
 template <typename B1, typename B2, typename B3, typename B4>
 requires std::is_same_v<B1, bool> && std::is_same_v<B2, bool> && std::is_same_v<B3, bool> && std::is_same_v<B4, bool>
-mdspan_data<T,Container>::mdspan_data(size_t rows, B1 rowm, B2 memmap, B3 ondevice, B4 default_device, int devicenum)
-    : mdspan<T,Container>(nullptr, rows, rowm)
+mdspan_data<T,Container>::mdspan_data(size_t rows, B1 rowm, B2 memmap, B3 ondevice, B4 default_device, int devicenum,bool conjugate)
+    : mdspan<T,Container>(nullptr, rows, rowm,conjugate)
 {
     initialization_helper(ondevice, default_device, devicenum, memmap);
 }
@@ -195,7 +196,7 @@ template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::tensor_subspan_copy(const Container& offsets, const Container& sub_extents, const bool memmap)
 {
 
-    mdspan_data<T, Container> result(sub_extents, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
+    mdspan_data<T, Container> result(sub_extents, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
     DataBlock<T> temp = this->mdspan<T,Container>::tensor_subspan_copy(offsets.data(), sub_extents.data(), result.pextents.data(), result.pstrides.data(), result.dpdata);
     result.dprank = temp.dprank;
     return result;
@@ -204,7 +205,7 @@ mdspan_data<T, Container> mdspan_data<T, Container>::tensor_subspan_copy(const C
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::matrix_subspan_copy(const size_t row, const size_t col, const size_t tile_rows, const size_t tile_cols, const bool memmap)
 {
-    mdspan_data<T, Container> result(tile_rows, tile_cols, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
+    mdspan_data<T, Container> result(tile_rows, tile_cols, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
     this->matrix_subspan_copy_w(row, col, tile_rows, tile_cols, result.pextents.data(), result.pstrides.data(), result.dpdata);
     result.dprank = 2;
     return result;
@@ -213,15 +214,23 @@ mdspan_data<T, Container> mdspan_data<T, Container>::matrix_subspan_copy(const s
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::matrix_transpose_copy(bool memmap)
 {
-    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
+    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
     this->matrix_transpose_copy_w(result.pextents.data(), result.pstrides.data(), result.dpdata);
+    return result;
+}
+
+template <typename T, typename Container>
+mdspan_data<T, Container> mdspan_data<T, Container>::matrix_hermitian_transpose_copy(bool memmap)
+{
+    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
+    this->matrix_hermitian_transpose_copy_w(result.pextents.data(), result.pstrides.data(), result.dpdata);
     return result;
 }
 
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::matrix_column_copy(const size_t col_index, const bool memmap)
 {
-    mdspan_data<T, Container> result(this->dpextents[0], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
+    mdspan_data<T, Container> result(this->dpextents[0], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
     this->matrix_column_copy_w(col_index, result.pextents.data(), result.pstrides.data(), result.dpdata);
     result.dprank = 1;
     return result;
@@ -230,7 +239,7 @@ mdspan_data<T, Container> mdspan_data<T, Container>::matrix_column_copy(const si
 template <typename T, typename Container>
 mdspan_data<T, Container> mdspan_data<T, Container>::matrix_row_copy(const size_t row_index, const bool memmap)
 {
-    mdspan_data<T, Container> result(this->dpextents[1], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum);
+    mdspan_data<T, Container> result(this->dpextents[1], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
     this->matrix_row_copy_w(row_index, result.pextents.data(), result.pstrides.data(), result.dpdata);
     result.dprank = 1;
     return result;
@@ -251,7 +260,7 @@ mdspan_data<T, Container> mdspan_data<T, Container>::copy(bool memmap, bool onde
     if(defaultdevice)
         devicenum = omp_get_default_device();
 
-    mdspan_data<T, Container> result(this->pextents, this->pstrides, this->dprowmajor, memmap, ondevice, false, devicenum);
+    mdspan_data<T, Container> result(this->pextents, this->pstrides, this->dprowmajor, memmap, ondevice, false, devicenum, this->pconjugate);
     int targetdev, sourcedev;
     bool useomptargetmemcpy = false;
 
@@ -309,6 +318,7 @@ mdspan<T,Container>& mdspan_data<T, Container>::operator=(const mdspan_data<T,Co
     this->dpdata_is_devptr = other.dpdata_is_devptr;
     this->devptr_devicenum = other.devptr_devicenum;
     this->devptr_former_hostptr = other.devptr_former_hostptr;
+     this->conjugate=other.pconjugate;
     return *this;
 }
 
@@ -329,7 +339,7 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
     this->dpextents = this->pextents.data();
     this->dpstrides = this->pstrides.data();
     this->dpdatalength = other.dpdatalength;
-
+this->pconjugate= other.pconjugate;
     if (other.dpdata_is_devptr)
     {
         this->dpdata = DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
@@ -377,7 +387,7 @@ mdspan_data<T, Container>::mdspan_data(mdspan_data<T, Container>&& other) noexce
     this->p_has_offloaded_host_data = other.p_has_offloaded_host_data;
     this->mapping_manager = std::move(other.mapping_manager);
     this->pmemmap = other.pmemmap;
-
+this->pconjugate=other.pconjugate;
     // Reset old object instances safely
     other.dpdata = nullptr;
     other.dpdatalength = 0;
@@ -401,7 +411,7 @@ mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, C
         this->dpdatalength = other.dpdatalength;
         this->dprowmajor = other.dprowmajor;
         this->dprank = other.dprank;
-
+this->pconjugate=other.pconjugate;
         if constexpr (DynamicContainer<Container>)
         {
             this->pextents = std::move(other.pextents);
