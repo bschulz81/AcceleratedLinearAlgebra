@@ -21,8 +21,6 @@ public:
     inline static void cross_product( const DataBlock<T>& vec1,const   DataBlock<T>& vec2, DataBlock<T>& res);
 
     inline static void matrix_multiply_dot_w( const DataBlock<T>& A,  const DataBlock<T>& B, DataBlock<T>& C);
-    template <ConjOp ConjugateMode = ConjOp::None>
-    inline static void matrix_multiply_conjugate_dot_accumulate_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
 
     inline static void matrix_multiply_dot_v( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
     inline static void matrix_multiply_dot_s(const  DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C);
@@ -199,10 +197,10 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w(  const Blocked
                 {
                     const size_t a_index = global_i * Astr0 + kk * Astr1;
                     const size_t x_index = kk * Xstr0;
-                    sum += A.dpdata[a_index] * x.dpdata[x_index];
+                    sum += A(global_i,kk)* x(kk);
                 }
                 #pragma omp atomic update
-                y.dpdata[global_i * ystr0] += sum;
+                y(global_i) += sum;
             }
         }
     }
@@ -276,11 +274,10 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(
                 #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                 for (size_t kk = k_start; kk < k_end; ++kk)
                 {
-                    const size_t a_index = global_i * Astr0 + kk * Astr1;
                     const size_t x_index = kk * Xstr0;
-                    sum += A.dpdata[a_index] * x.dpdata[x_index];
+                    sum += A(global_i,kk) * x(kk);
                 }
-                y.dpdata[global_i * ystr0] +=sum;
+                y(global_i) +=sum;
             }
         }
     }
@@ -356,9 +353,9 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(
                 {
                     const size_t a_index = global_i * Astr0 + kk * Astr1;
                     const size_t x_index = kk * Xstr0;
-                    sum += A.dpdata[a_index] * x.dpdata[x_index];
+                    sum += A(global_i,kk) * x.dpdata(kk);
                 }
-                y.dpdata[global_i * ystr0]+= sum;
+                y.dpdata(global_i)+= sum;
             }
         }
     }
@@ -418,10 +415,10 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_w( const BlockedD
                 const size_t global_k = a_col_off + kk;
                 const size_t a_index  = global_i * Astr0 + global_k * Astr1;
                 const size_t x_index  = global_k * Xstr0;
-                sum += A.dpdata[a_index] * x.dpdata[x_index];
+                sum += A(global_i,global_k) * x(global_k);
             }
             #pragma omp atomic update
-            y.dpdata[global_i * ystr0] += sum;
+            y(global_i) += sum;
         }
     }
 }
@@ -478,10 +475,10 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_v(const BlockedDa
                 const size_t global_k = a_col_off + kk;
                 const size_t a_index  = global_i * Astr0 + global_k * Astr1;
                 const size_t x_index  = global_k * Xstr0;
-                sum += A.dpdata[a_index] * x.dpdata[x_index];
+                sum += A(global_i) * x(global_k);
             }
 
-            y.dpdata[global_i * ystr0] += sum;
+            y(global_i) += sum;
         }
     }
 }
@@ -531,12 +528,10 @@ void In_Kernel_Mathfunctions<T>::matrix_vector_multiply_sparse_s(  const Blocked
             for (size_t kk = 0; kk < a_tile_cols; ++kk)
             {
                 const size_t global_k = a_col_off + kk;
-                const size_t a_index  = global_i * Astr0 + global_k * Astr1;
-                const size_t x_index  = global_k * Xstr0;
-                sum += A.dpdata[a_index] * x.dpdata[x_index];
+                sum += A(global_i,global_k) * x(global_k);
             }
 
-            y.dpdata[global_i * ystr0] += sum;
+            y(global_i) += sum;
         }
     }
 }
@@ -596,14 +591,10 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
                     const size_t global_k = a_col_off + kk;
-
-                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
-                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
-
-                    sum += A.dpdata[a_index] * B.dpdata[b_index];
+                    sum += A(global_i,global_k) * B(global_k,jj);
                 }
                 #pragma omp atomic update
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
+                C.dpdata(global_i,jj) += sum;
             }
         }
     }
@@ -664,14 +655,10 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v( const BlockedData
                 for (size_t kk = 0; kk < a_tile_cols; ++kk)
                 {
                     const size_t global_k = a_col_off + kk;
-
-                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
-                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
-
-                    sum += A.dpdata[a_index] * B.dpdata[b_index];
+                    sum += A(global_i,global_k) * B(global_k,jj);
                 }
 
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
+                C.dpdata(global_i, jj) += sum;
             }
         }
     }
@@ -730,12 +717,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s( const BlockedData
                 {
                     const size_t global_k = a_col_off + kk;
 
-                    const size_t a_index = global_i * Astr0 + global_k * Astr1;
-                    const size_t b_index = global_k * Bstr0 + jj * Bstr1;
-
-                    sum += A.dpdata[a_index] * B.dpdata[b_index];
+                    sum += A(global_i,global_k) * B(global_k,jj);
                 }
-                C.dpdata[global_i * Cstr0 + jj * Cstr1] += sum;
+                C.dpdata(global_i, jj) += sum;
             }
         }
     }
@@ -830,13 +814,10 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_w( const BlockedData
                     #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
-                        const size_t a_index = (global_i *Astr0) +  (kk * Astr1);
-                        const size_t b_index = (kk * Bstr0) +        (global_j * Bstr1);
-
-                        sum += A.dpdata[a_index] * B.dpdata[b_index];
+                        sum += A(global_i,kk)* B(kk,global_j);
                     }
                     #pragma omp atomic update
-                    C.dpdata[global_i*str0+ global_j*str1] += sum;
+                    C(global_i, global_j) += sum;
                 }
             }
         }
@@ -931,13 +912,10 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_v(  const BlockedDat
                     #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
-                        const size_t a_index = (global_i *Astr0) +  (kk * Astr1);
-                        const size_t b_index = (kk *Bstr0) +        (global_j * Bstr1);
-
-                        sum += A.dpdata[a_index] * B.dpdata[b_index];
+                        sum += A(global_i,kk)*B(kk,global_j);
                     }
 
-                    C.dpdata[global_i*str0+ global_j*str1] += sum;
+                    C(global_i,global_j) += sum;
                 }
             }
         }
@@ -1030,13 +1008,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_sparse_s(   const BlockedDa
 
                     for (size_t kk = k_start; kk < k_end; ++kk)
                     {
-                        const size_t a_index = (global_i * Astr0) +  (kk * Astr1);
-                        const size_t b_index = (kk *Bstr0) +        (global_j * Bstr1);
-
-                        sum += A.dpdata[a_index] * B.dpdata[b_index];
+                        sum += A(global_i,kk) * B(kk,global_j);
                     }
-
-                    C.dpdata[global_i*str0+global_j*str1] += sum;
+                    C(global_i,global_j) += sum;
                 }
             }
         }
@@ -1440,12 +1414,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
 
     #pragma omp parallel for collapse(2)
     for (size_t i = 0; i < rows; ++i)
@@ -1456,9 +1424,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
             #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,k) *B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -1466,56 +1434,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( const DataBlock<T>& A, c
 
 
 
-#pragma omp begin declare target
-template <typename T>
-template<ConjOp ConjugateMode >
-void In_Kernel_Mathfunctions<T>::matrix_multiply_conjugate_dot_accumulate_w( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
-{
-    const size_t rows=A.dpextents[0];
-    const size_t cols=B.dpextents[1];
-    const size_t inner_dim=A.dpextents[1];
-
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
-
-    #pragma omp parallel for collapse(2)
-    for (size_t i = 0; i < rows; ++i)
-    {
-        for (size_t j = 0; j < cols; ++j)
-        {
-            T sum =T(0);
-            #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
-            for (size_t k = 0; k < inner_dim; ++k)
-            {
-                const T valA = A.dpdata[i * Astr0 + k * Astr1];
-                const T valB = B.dpdata[k * Bstr0 + j * Bstr1];
-                if constexpr (ConjugateMode == ConjOp::First)
-                {
-                    sum += cond_conj(valA) * valB;
-                }
-                else if constexpr (ConjugateMode == ConjOp::Second)
-                {
-                    sum += valA * cond_conj(valB);
-                }
-                else if constexpr (ConjugateMode == ConjOp::Both)
-                {
-                    sum += cond_conj(valA) * cond_conj(valB);
-                }
-                else
-                {
-                    sum += valA * valB;
-                }
-
-            }
-            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
-        }
-    }
-}
-#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -1542,9 +1460,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_w( const DataBlo
             #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,k)*B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+            C(i,j)+= sum;
         }
     }
 }
@@ -1578,9 +1496,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_v( const DataBlock<T>& A, c
             #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,k) *B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -1612,9 +1530,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_v( const DataBlo
             #pragma omp metadirective when(construct={target}: simd reduction(+:sum))
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,k) *B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+            C(i,j)+= sum;
         }
     }
 }
@@ -1631,12 +1549,6 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const DataBlock<T>& A, c
     const size_t cols=B.dpextents[1];
     const size_t inner_dim=A.dpextents[1];
 
-    const size_t Astr0=A.dpstrides[0];
-    const size_t Astr1=A.dpstrides[1];
-    const size_t Bstr0=B.dpstrides[0];
-    const size_t Bstr1=B.dpstrides[1];
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
 
     for (size_t i = 0; i < rows; ++i)
     {
@@ -1645,9 +1557,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_s( const DataBlock<T>& A, c
             T sum =T(0);
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,k)*B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]= sum;
+            C(i,j)= sum;
         }
     }
 }
@@ -1676,9 +1588,9 @@ void In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_s( const DataBlo
             T sum =T(0);
             for (size_t k = 0; k < inner_dim; ++k)
             {
-                sum += A.dpdata[i*Astr0+k*Astr1] *B.dpdata[k*Bstr0+j*Bstr1];
+                sum += A(i,j) *B(k,j);
             }
-            C.dpdata[i*Cstr0+j*Cstr1]+= sum;
+            C(i,j)+= sum;
         }
     }
 }

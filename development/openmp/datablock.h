@@ -64,21 +64,24 @@ struct is_complex<std::complex<T>> : std::true_type {};
 
 #pragma omp begin declare target
 template <typename T>
-inline constexpr auto cond_conj(const T& val) {
-    if constexpr (is_complex<T>::value) {
+inline constexpr auto cond_conj(const T& val)
+{
+    if constexpr (is_complex<T>::value)
+    {
         return std::conj(val);
-    } else {
+    }
+    else
+    {
         return val;
     }
 }
 #pragma omp end declare target
 
 #pragma omp begin declare target
-enum class ConjOp {
-    None,
+enum class ConjOp
+{
     First,
     Second,
-    Both
 };
 #pragma omp end declare target
 
@@ -100,8 +103,8 @@ struct has_buffer_print : std::false_type {};
 #pragma omp begin declare target
 template <typename T>
 struct has_buffer_print<T, std::void_t<
-    decltype(std::declval<T>().print_to_buffer(std::declval<char*>(), std::declval<size_t>())),
-    decltype(std::declval<T>().required_buffer_size())
+decltype(std::declval<T>().print_to_buffer(std::declval<char*>(), std::declval<size_t>())),
+decltype(std::declval<T>().required_buffer_size())
 >> : std::true_type {};
 #pragma omp end declare target
 
@@ -110,40 +113,50 @@ struct has_buffer_print<T, std::void_t<
 
 
 #pragma omp declare reduction(+: std::complex<double>: \
-    omp_out += omp_in) \
-    initializer(omp_priv(0.0, 0.0))
+omp_out += omp_in) \
+initializer(omp_priv(0.0, 0.0))
 
 #pragma omp declare reduction(+: std::complex<float>: \
-    omp_out += omp_in) \
-    initializer(omp_priv(0.0f, 0.0f))
+omp_out += omp_in) \
+initializer(omp_priv(0.0f, 0.0f))
 
 #pragma omp declare reduction(+: std::complex<long double>: \
-    omp_out += omp_in) \
-    initializer(omp_priv(0, 0))
+omp_out += omp_in) \
+initializer(omp_priv(0, 0))
 
 
 #pragma omp begin declare target
 template <typename T>
-void print_variable(const T& var) {
+void print_variable(const T& var,bool conjugate)
+{
 
-    if constexpr (is_complex<T>::value) {
+    if constexpr (is_complex<T>::value)
+    {
         double real_part = static_cast<double>(var.real());
         double imag_part = static_cast<double>(var.imag());
-        printf("(%g, %g)", real_part, imag_part);
+        if(conjugate)
+            printf("(%g, %g)", real_part, -imag_part);
+        else
+            printf("(%g, %g)", real_part, imag_part);
+
     }
 
-    else if constexpr (std::is_floating_point_v<T>) {
+    else if constexpr (std::is_floating_point_v<T>)
+    {
         printf("%g", static_cast<double>(var));
     }
 
-    else if constexpr (std::is_integral_v<T>) {
+    else if constexpr (std::is_integral_v<T>)
+    {
         printf("%lld", static_cast<long long>(var));
     }
 
-    else if constexpr (has_print<T>::value) {
+    else if constexpr (has_print<T>::value)
+    {
         var.print();
     }
-    else {
+    else
+    {
         printf("[Unknown Object]");
     }
 }
@@ -190,11 +203,11 @@ class DistributedDataBlock;
 class Math_Functions_Policy;
 
 enum class DataBlockObject
-{
+ {
     Scalar,
-    Vector,
+     Vector,
     Matrix,
-    Tensor
+   Tensor
 };
 
 
@@ -225,12 +238,12 @@ public:
 
     // Constructors
     DataBlock(T*  data, size_t datalength, bool rowm, size_t rank,size_t*   extents, size_t*   strides,
-              bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1 );
+              bool compute_datalength,    bool compute_strides_from_extents,bool data_is_devptr,int devicenum=-1, bool conjugateflag=false );
 
     DataBlock(T*  data,bool rowm,size_t rows, size_t cols,  size_t*  extents, size_t*  strides,
-              bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1);
+              bool compute_strides_from_extents,  bool data_is_devptr,int devicenum=-1, bool conjugateflag=false);
 
-    DataBlock(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr,int devicenum=-1 );
+    DataBlock(T*  data, size_t datalength, bool rowm,  size_t rank, size_t*  extents, size_t*  strides, bool data_is_devptr,int devicenum=-1, bool conjugateflag=false );
 
     inline size_t datalength() const
     {
@@ -331,12 +344,7 @@ public:
 
     inline float sparsity()const;
 
-   inline T& operator()(const size_t* indices)
-    {
-        return dpdata[compute_offset_s(indices, dpstrides, dprank)];
-    };
-
-    inline const T& operator()(const size_t* indices) const  // <-- Added &
+    inline T& operator()(const size_t* indices)
     {
         return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
@@ -347,22 +355,37 @@ public:
         return dpdata[row*dpstrides[0]+col*dpstrides[1]];
     };
 
-    inline const T& operator()(const size_t row, const size_t col) const  // <-- Added &
-    {
-        return dpdata[row*dpstrides[0]+col*dpstrides[1]];
-    };
-
     // Operator overloads
     inline T& operator()(const size_t i)
     {
         return dpdata[i*dpstrides[0]];
     };
 
-    inline const T& operator()(const size_t i) const  // <-- Added &
+    inline T operator()(const size_t row, const size_t col) const
     {
-        return dpdata[i*dpstrides[0]];
-    };
+        if constexpr (is_complex<T>::value)
+            if (pconjugate)return std::conj(dpdata[row * dpstrides[0] + col * dpstrides[1]]);
 
+        return dpdata[row * dpstrides[0] + col * dpstrides[1]];
+    }
+
+
+    inline T operator()(const size_t i) const
+    {
+        if constexpr (is_complex<T>::value)
+            if (pconjugate)return std::conj(dpdata[i * dpstrides[0]]);
+
+        return  dpdata[i * dpstrides[0]];;
+    }
+
+    inline T operator()(const size_t* indices) const
+    {
+        if constexpr (is_complex<T>::value)
+            if (pconjugate)
+                return std::conj( dpdata[compute_offset_s(indices, dpstrides, dprank)]);
+
+        return  dpdata[compute_offset_s(indices, dpstrides, dprank)];
+    }
 
     inline DataBlock<T>tensor_subspan(const size_t *    poffsets,const size_t *   psub_extents, size_t* new_extents, size_t*    psub_strides)const;
 
@@ -375,10 +398,16 @@ public:
     inline DataBlock<T>matrix_subspan_copy_v( const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols,  size_t *    psub_extents,  size_t *   psub_strides, T*    sub_data)const;
 
     inline DataBlock<T> matrix_transpose(size_t*    newextents, size_t*    newstrides)const;
+    inline DataBlock<T> matrix_hermitian_transpose(size_t*    newextents, size_t*    newstrides)const;
+    inline DataBlock<T> conjugate() const;
 
     inline DataBlock<T> matrix_transpose_copy_v(size_t*    newextents, size_t*    newstrides,T* newdata)const;
     inline DataBlock<T> matrix_transpose_copy_w(size_t*    newextents, size_t*    newstrides,T* newdata)const;
     inline DataBlock<T> matrix_transpose_copy_s(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+
+    inline DataBlock<T> matrix_hermitian_transpose_copy_v(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+    inline DataBlock<T> matrix_hermitian_transpose_copy_w(size_t*    newextents, size_t*    newstrides,T* newdata)const;
+    inline DataBlock<T> matrix_hermitian_transpose_copy_s(size_t*    newextents, size_t*    newstrides,T* newdata)const;
 
     inline DataBlock<T> matrix_row(const size_t row_index, size_t*    newextents, size_t*    newstrides)const;
     inline DataBlock<T> matrix_column(const size_t col_index, size_t*    newextents, size_t*    newstrides)const;
@@ -450,6 +479,14 @@ public:
         return ObjectType() == Type::Tensor;
     }
 
+
+
+    bool is_conjugate() const
+    {
+        return this->pconjugate;
+    }
+
+
 protected:
     void printtensor_recursive(size_t* indices, size_t depth,bool ondevice) const;
 
@@ -465,6 +502,7 @@ protected:
     int         devptr_devicenum=-1;
     bool        dpdata_is_devptr=false;
     T*          devptr_former_hostptr=nullptr;
+    bool        pconjugate=false;
 };
 #pragma omp end declare target
 
@@ -484,8 +522,8 @@ DataBlock<T>::DataBlock(
     bool compute_datalength,
     bool compute_strides_from_extents,
     bool data_is_devptr,
-    int devicenum
-
+    int devicenum,
+    bool conj_flag
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
@@ -493,11 +531,13 @@ DataBlock<T>::DataBlock(
     dprank(rank),
     dprowmajor(rowm),
     devptr_devicenum( devicenum),
+
 #if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false)
+    dpdata_is_devptr(false),
 #else
-    dpdata_is_devptr(data_is_devptr)
+    dpdata_is_devptr(data_is_devptr),
 #endif
+pconjugate(conj_flag)
 
 {
     if(compute_strides_from_extents==true && extents!=nullptr && strides!=nullptr && rank !=0)
@@ -543,7 +583,8 @@ template<typename T> DataBlock<T>::DataBlock(
     size_t*    extents,
     size_t*    strides,
     bool data_is_devptr,
-    int devicenum
+    int devicenum,
+    bool    conj_flag
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
@@ -552,10 +593,11 @@ template<typename T> DataBlock<T>::DataBlock(
     dprowmajor(rowm),
     devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false)
+    dpdata_is_devptr(false),
 #else
-    dpdata_is_devptr(data_is_devptr)
+    dpdata_is_devptr(data_is_devptr),
 #endif
+pconjugate(conj_flag)
 {}
 #pragma omp end declare target
 
@@ -573,17 +615,19 @@ template<typename T> DataBlock<T>::DataBlock(
     size_t*    strides,
     bool compute_strides_from_extents,
     bool data_is_devptr,
-    int devicenum
+    int devicenum,
+    bool    conj_flag
 ) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
     dprowmajor(rowm),
     devptr_devicenum( devicenum),
 #if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false)
+    dpdata_is_devptr(false),
 #else
-    dpdata_is_devptr(data_is_devptr)
+    dpdata_is_devptr(data_is_devptr),
 #endif
+pconjugate(conj_flag)
 {
     if((rows>1) && (cols>1))
     {
@@ -640,22 +684,27 @@ template<typename T> DataBlock<T>::DataBlock(
 
 
 
-
-
-
 #pragma omp begin declare target
-template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose(size_t*    newextents, size_t *newstrides)const
+template<typename T>
+DataBlock<T> DataBlock<T>::conjugate() const
 {
-
-    newextents[0]=dpextents[1];
-    newextents[1]=dpextents[0];
-    newstrides[0]=dpstrides[1];
-    newstrides[1]=dpstrides[0];
-
-    return DataBlock(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
-
+    return DataBlock<T>(
+               this->dpdata,
+               this->dpdatalength,
+               this->dprowmajor,
+               this->dprank,
+               this->dpextents,
+               this->dpstrides,
+               this->dpdata_is_devptr,
+               this->devptr_devicenum,
+               !this->pconjugate
+           );
 }
 #pragma omp end declare target
+
+
+
+
 
 #pragma omp begin declare target
 template <typename T>
@@ -679,7 +728,34 @@ DataBlock<T>::Type  DataBlock<T>::ObjectType() const
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose(size_t*    newextents, size_t *newstrides)const
+{
 
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+
+    return DataBlock(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,this->pconjugate);
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_hermitian_transpose(size_t*    newextents, size_t *newstrides)const
+{
+
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+
+    return DataBlock(dpdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum, pconjugate);
+
+}
+#pragma omp end declare target
 
 #pragma omp begin declare target
 template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_w(size_t*    newextents, size_t *newstrides, T* newdata)const
@@ -722,7 +798,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_w(si
             }
     }
 
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 }
 #pragma omp end declare target
@@ -769,7 +845,7 @@ template<typename T>inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_v(si
                 newdata[dst_index] = pd[src_index];
             }
     }
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 }
 #pragma omp end declare target
@@ -819,10 +895,158 @@ inline DataBlock<T> DataBlock<T>::matrix_transpose_copy_s(size_t*    newextents,
 
 
 
-    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum);
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 }
 #pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_hermitian_transpose_copy_w(size_t*    newextents, size_t *newstrides, T* newdata)const
+{
+
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
+
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+    T* pd=this->dpdata;
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+
+        #pragma omp target parallel for simd collapse(2) device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp parallel for simd collapse(2)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
+
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template<typename T>inline DataBlock<T> DataBlock<T>::matrix_hermitian_transpose_copy_v(size_t*    newextents, size_t *newstrides, T* newdata)const
+{
+
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
+
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+
+    T* pd=this->dpdata;
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target simd collapse(2) device(devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp simd collapse(2)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template<typename T>
+inline DataBlock<T> DataBlock<T>::matrix_hermitian_transpose_copy_s(size_t*    newextents, size_t *newstrides, T* newdata)const
+{
+
+    newextents[0]=dpextents[1];
+    newextents[1]=dpextents[0];
+
+    newstrides[0]=dpstrides[1];
+    newstrides[1]=dpstrides[0];
+    T* pd=this->dpdata;
+
+    const size_t rows=dpextents[0];
+    const size_t cols=dpextents[1];
+    const size_t old_s0=dpstrides[0];
+    const size_t old_s1=dpstrides[1];
+    const size_t new_s0=newstrides[0];
+    const size_t new_s1=newstrides[1];
+
+    if(omp_is_initial_device()&&dpdata_is_devptr)
+    {
+        #pragma omp target  device(devptr_devicenum) is_device_ptr(newdata) is_device_ptr(pd)
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (size_t i=0; i<rows; i++)
+            for (size_t j=0; j<cols; j++)
+            {
+                size_t dst_index = j*new_s0+i*new_s1;
+                size_t src_index = i*old_s0+ j*old_s1;
+                newdata[dst_index] = pd[src_index];
+            }
+    }
+
+
+
+    return DataBlock(newdata,dpdatalength,dprowmajor,2,newextents,newstrides,dpdata_is_devptr,devptr_devicenum,pconjugate);
+
+}
+#pragma omp end declare target
+
+
+
 
 #pragma omp begin declare target
 template<typename T>
@@ -906,9 +1130,9 @@ size_t DataBlock<T>::printtensor_to_buffer(
     char* end = buffer + capacity - 1; // reserve space for '\0'
 
     if(dpdata == nullptr ||
-       dpextents == nullptr ||
-       dpstrides == nullptr ||
-       dpdatalength == 0)
+            dpextents == nullptr ||
+            dpstrides == nullptr ||
+            dpdatalength == 0)
     {
         int n = snprintf(cur,end-cur+1,"\n[]\n");
 
@@ -928,7 +1152,7 @@ size_t DataBlock<T>::printtensor_to_buffer(
     size_t* indices = new size_t[dprank];
 
     #pragma omp simd
-    for(size_t i=0;i<dprank;i++)
+    for(size_t i=0; i<dprank; i++)
         indices[i]=0;
 
     bool ondevice =
@@ -994,28 +1218,36 @@ void DataBlock<T>::printtensor_recursive_buffer(
             value = dpdata[offset];
         }
 
- int n = 0;
+        int n = 0;
         size_t max_avail = (end - cur) + 1;
 
         // --- TYPE-GENERIC BUFFER WRITER ---
-        if constexpr (is_complex<T>::value) {
+        if constexpr (is_complex<T>::value)
+        {
             double r = static_cast<double>(value.real());
             double i = static_cast<double>(value.imag());
-            n = snprintf(cur, max_avail, "(%g, %g)", r, i);
+            if(this->pconjugate)
+                n = snprintf(cur, max_avail, "(%g, %g)", r, -i);
+            else
+                n = snprintf(cur, max_avail, "(%g, %g)", r, i);
         }
-        else if constexpr (std::is_floating_point_v<T>) {
+        else if constexpr (std::is_floating_point_v<T>)
+        {
             n = snprintf(cur, max_avail, "%g", static_cast<double>(value));
         }
-        else if constexpr (std::is_integral_v<T>) {
+        else if constexpr (std::is_integral_v<T>)
+        {
             n = snprintf(cur, max_avail, "%lld", static_cast<long long>(value));
         }
-        else if constexpr (has_buffer_print<T>::value) {
+        else if constexpr (has_buffer_print<T>::value)
+        {
             // Let the custom object dump its own bytes directly into our current buffer slice
             size_t written = value.print_to_buffer(cur, max_avail);
             cur += (written < max_avail) ? written : (max_avail - 1);
             return;
         }
-        else {
+        else
+        {
             n = snprintf(cur, max_avail, "[Unknown Object]");
         }
 
@@ -1034,7 +1266,7 @@ void DataBlock<T>::printtensor_recursive_buffer(
     if(cur < end)
         *cur++ = '[';
 
-    for(size_t i=0;i<dpextents[depth];i++)
+    for(size_t i=0; i<dpextents[depth]; i++)
     {
         indices[depth] = i;
 
@@ -1067,7 +1299,7 @@ void DataBlock<T>::printtensor_recursive_buffer(
                 if(cur < end)
                     *cur++ = '\n';
 
-                for(size_t k=0;k<depth+1;k++)
+                for(size_t k=0; k<depth+1; k++)
                 {
                     if(cur < end)
                         *cur++ = ' ';
@@ -1124,24 +1356,33 @@ void DataBlock<T>::printtensor_required_size_recursive(
         }
 
         // --- TYPE-GENERIC SIZE DETECTOR ---
-        if constexpr (is_complex<T>::value) {
+        if constexpr (is_complex<T>::value)
+        {
             double r = static_cast<double>(value.real());
             double i = static_cast<double>(value.imag());
-            int n = snprintf(nullptr, 0, "(%g, %g)", r, i);
+            int n=0;
+            if(this->pconjugate)
+                n= snprintf(nullptr, 0, "(%g, %g)", r, -i);
+            else
+                n = snprintf(nullptr, 0, "(%g, %g)", r, i);
             if(n > 0) count += (size_t)n;
         }
-        else if constexpr (std::is_floating_point_v<T>) {
+        else if constexpr (std::is_floating_point_v<T>)
+        {
             int n = snprintf(nullptr, 0, "%g", static_cast<double>(value));
             if(n > 0) count += (size_t)n;
         }
-        else if constexpr (std::is_integral_v<T>) {
+        else if constexpr (std::is_integral_v<T>)
+        {
             int n = snprintf(nullptr, 0, "%lld", static_cast<long long>(value));
             if(n > 0) count += (size_t)n;
         }
-        else if constexpr (has_buffer_print<T>::value) {
+        else if constexpr (has_buffer_print<T>::value)
+        {
             count += value.required_buffer_size();
         }
-        else {
+        else
+        {
             count += 16; // "[Unknown Object]"
         }
         return;
@@ -1149,7 +1390,7 @@ void DataBlock<T>::printtensor_required_size_recursive(
 
     count += 1; // '['
 
-    for(size_t i=0;i<dpextents[depth];i++)
+    for(size_t i=0; i<dpextents[depth]; i++)
     {
         indices[depth] = i;
 
@@ -1183,9 +1424,9 @@ template<typename T>
 size_t DataBlock<T>::printtensor_required_size() const
 {
     if(dpdata == nullptr ||
-       dpextents == nullptr ||
-       dpstrides == nullptr ||
-       dpdatalength == 0)
+            dpextents == nullptr ||
+            dpstrides == nullptr ||
+            dpdatalength == 0)
     {
         return 4; // "\n[]\n"
     }
@@ -1195,7 +1436,7 @@ size_t DataBlock<T>::printtensor_required_size() const
     size_t* indices = new size_t[dprank];
 
     #pragma omp simd
-    for(size_t i=0;i<dprank;i++)
+    for(size_t i=0; i<dprank; i++)
         indices[i] = 0;
 
     bool ondevice =
@@ -1255,7 +1496,7 @@ void DataBlock<T>::printtensor_recursive(size_t* indices, size_t depth,bool onde
         else
             d= dpdata[offset];
 
-        print_variable(d);
+        print_variable(d,pconjugate);
         return;
     }
 
@@ -1326,7 +1567,7 @@ DataBlock<T> DataBlock<T>::collapsed_view(size_t num_non_collapsed_dims,size_t *
         extents,
         strides,
         dpdata_is_devptr,
-        devptr_devicenum
+        devptr_devicenum,pconjugate
     );
 
     // User must manage extents/strides memory if needed
@@ -1389,7 +1630,8 @@ DataBlock<T>DataBlock<T>::tensor_subspan(const size_t * poffsets, const size_t *
                newextents,
                new_strides,
                dpdata_is_devptr,
-               devptr_devicenum
+               devptr_devicenum,
+               pconjugate
            );
 }
 #pragma omp end  declare target
@@ -1488,7 +1730,8 @@ DataBlock<T> DataBlock<T>::tensor_subspan_copy(
                new_extents,
                new_strides,
                dpdata_is_devptr,
-               devptr_devicenum
+               devptr_devicenum,
+               pconjugate
            );
 }
 #pragma omp end declare target
@@ -1515,24 +1758,24 @@ DataBlock<T>  DataBlock<T>::matrix_subspan( const size_t row, const size_t col,c
     {
         psub_extents[0] = 1;
         psub_strides[0]=1;
-        return DataBlock<T>(data_ptr, 1, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr);
+        return DataBlock<T>(data_ptr, 1, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
     }
     else if (tile_rows == 1)
     {
         psub_extents[0] = tile_cols;
         psub_strides[0] = dpstrides[1];
-        return DataBlock<T>(data_ptr, tile_cols, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+        return DataBlock<T>(data_ptr, tile_cols, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
     }
     else if (tile_cols == 1)
     {
         psub_extents[0] = tile_rows;
         psub_strides[0] = dpstrides[0];
-        return DataBlock<T>(data_ptr, tile_rows, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+        return DataBlock<T>(data_ptr, tile_rows, dprowmajor, 1, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
     }
     else
     {
         size_t pl = (tile_rows-1) * dpstrides[0] + (tile_cols-1) * dpstrides[1] + 1;
-        return DataBlock<T>(data_ptr, pl, dprowmajor, 2, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+        return DataBlock<T>(data_ptr, pl, dprowmajor, 2, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
     }
 }
 #pragma omp end declare target
@@ -1595,7 +1838,7 @@ DataBlock<T>  DataBlock<T>::matrix_subspan_copy_w( const size_t row, const size_
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 }
 #pragma omp end declare target
@@ -1664,7 +1907,7 @@ DataBlock<T>  DataBlock<T>::matrix_subspan_copy_v( const size_t row, const size_
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 }
 #pragma omp end declare target
@@ -1729,7 +1972,7 @@ DataBlock<T>  DataBlock<T>::matrix_subspan_copy_s( const size_t row, const size_
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(sub_data, length, dprowmajor, rank_out, psub_extents, psub_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 
 
 }
@@ -1747,7 +1990,7 @@ DataBlock<T> DataBlock<T>::matrix_row(const size_t row_index, size_t*    extents
     extents[0] = dpextents[1];
     new_strides[0]=dpstrides[1];
 
-    return DataBlock<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>( dpdata + row_index * dpstrides[0],  dpstrides[1] * extents[0],dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1780,7 +2023,7 @@ DataBlock<T> DataBlock<T>::matrix_row_copy_w(const size_t row_index, size_t*    
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1809,7 +2052,7 @@ DataBlock<T> DataBlock<T>::matrix_row_copy_v(const size_t row_index, size_t*    
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1838,7 +2081,7 @@ DataBlock<T> DataBlock<T>::matrix_row_copy_s(const size_t row_index, size_t*    
             newdata[j] = pd[row_index*s0+j*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1872,7 +2115,7 @@ DataBlock<T> DataBlock<T>::matrix_column_copy_v(const size_t col_index, size_t* 
     }
 
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1904,7 +2147,7 @@ DataBlock<T> DataBlock<T>::matrix_column_copy_s(const size_t col_index, size_t* 
             newdata[i] = pd[ i*s0+col_index*s1];
     }
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1936,7 +2179,7 @@ DataBlock<T> DataBlock<T>::matrix_column_copy_w(const size_t col_index, size_t* 
     }
 
 
-    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum);
+    return DataBlock<T>(newdata,  pl,dprowmajor,   1, extents,    new_strides, dpdata_is_devptr,devptr_devicenum,pconjugate);
 }
 #pragma omp end declare target
 
@@ -1949,7 +2192,7 @@ DataBlock<T> DataBlock<T>::matrix_column(const size_t col_index, size_t*    exte
 {
     extents[0] = dpextents[0];
     new_strides[0]=dpstrides[0];
-    return DataBlock(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  1, extents,   new_strides,dpdata_is_devptr,devptr_devicenum );
+    return DataBlock(dpdata + col_index * dpstrides[1], dpstrides[0] * extents[0],dprowmajor,  1, extents,   new_strides,dpdata_is_devptr,devptr_devicenum,pconjugate );
 }
 #pragma omp end declare target
 
@@ -1968,6 +2211,7 @@ public:
     size_t pnumblocks=0;
     bool pdata_is_devptr=false;
     int pdevnum=-1;
+    bool conjugate=false;
 };
 #pragma omp end declare target
 
@@ -1981,7 +2225,7 @@ inline DataBlock<T>get_datablock_from_arrays(const size_t i, const DataBlockArra
                         len, arr.prowm, arr.ptensor_rank,
                         arr.pextentsbuffer + i*arr.ptensor_rank,
                         arr.pstridesbuffer + i*arr.ptensor_rank,
-                        false, false,arr.pdata_is_devptr,arr.pdevnum);
+                        false, false,arr.pdata_is_devptr,arr.pdevnum,arr.conjugate);
 }
 #pragma omp end declare target
 
