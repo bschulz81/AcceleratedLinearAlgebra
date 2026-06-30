@@ -49,7 +49,8 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 
 ### 30.06.2026
-Added a better handling for complex conjugate variables with an additional flag in the datablock class. Conjugated tensors have this flag set to true, and then the accessor operator makes the conjugation on the fly if the datatype is std::complex.
+Added a better handling for complex conjugate variables with an additional flag in the datablock, mdspan,mdspan_data classes. 
+Conjugated tensors have this flag set to true, and then the accessor operator makes the conjugation on the fly if the datatype is std::complex.
 The printer was adapted to this. Unfortunately, this is not yet in the class DistributedDatablock that that distributes data over MPI, but it is fast to implement...
 
 ### 29.06.2026
