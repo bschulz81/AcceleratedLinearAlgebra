@@ -48,6 +48,11 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 
+### 02.07.2026
+The class distributeddatablock, which describes tensors that are distributed over several mpi nodes, now contains a conjugate flag. the methods in mathfunctions_mpi were adapted to work with complex data.
+Created an offload class for distributeddatablock, to simplify the gpu code.
+The mpi test application now test distributed operations on complex matrices on gpu
+
 ### 30.06.2026
 Added a better handling for complex conjugate variables with an additional flag in the datablock, mdspan,mdspan_data classes. 
 Conjugated tensors have this flag set to true, and then the accessor operator makes the conjugation on the fly if the datatype is std::complex.
