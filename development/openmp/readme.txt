@@ -6,6 +6,11 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+02.07.2026
+The class distributeddatablock now contains a conjugate flag. the methods in mathfunctions_mpi were adapted to work with complex data.
+Created an offload class for distributeddatablock, to simplify the gpu code.
+The mpi test application now test distributed operations on complex matrices on gpu
+
 29.06.2026
 added a small helperfunction that can conjugate a number at compile time if its complex. 
 added a custom reduction operator and used it in the scalar products and the Cholesky and QR decompositions. 
