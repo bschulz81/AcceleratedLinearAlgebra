@@ -5,8 +5,8 @@
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
 
-#include "datablock_host_memory_functions.h"
-#include "datablock_gpu_memory_functions.h"
+#include "host_memory_functions.h"
+#include "gpu_memory_functions.h"
 
 #include "gpu_mathfunctions.h"
 #include "inkernel_mathfunctions.h"
@@ -107,9 +107,9 @@ class Math_Functions_Policy
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-            const bool B_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-            const bool C_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+            const bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
+            const bool B_on_dev = GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
+            const bool C_on_dev = GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
 
@@ -131,8 +131,8 @@ class Math_Functions_Policy
 
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-            bool B_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+            bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            bool B_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev);
 
         }
@@ -152,7 +152,7 @@ class Math_Functions_Policy
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            bool A_on_dev = DataBlock_GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev);
 
         }

@@ -78,6 +78,22 @@ inline constexpr auto cond_conj(const T& val)
 #pragma omp end declare target
 
 #pragma omp begin declare target
+template <typename T>
+inline constexpr auto returnval(const T& val,bool conj)
+{
+    if constexpr (is_complex<T>::value)
+    {
+        return conj? std::conj(val):val;
+    }
+    else
+    {
+        return val;
+    }
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
 enum class ConjOp
 {
     First,
@@ -167,10 +183,10 @@ void print_variable(const T& var,bool conjugate)
 
 
 template<typename T>
-class DataBlock_GPU_Memory_Functions;
+class GPU_Memory_Functions;
 
 template<typename T>
-class DataBlock_Host_Memory_Functions;
+class Host_Memory_Functions;
 
 template<typename T>
 class DataBlock_MPI_Functions;
@@ -217,8 +233,8 @@ template <typename T>
 class DataBlock
 {
 public:
-    friend class DataBlock_GPU_Memory_Functions<T>;
-    friend class DataBlock_Host_Memory_Functions<T>;
+    friend class GPU_Memory_Functions<T>;
+    friend class Host_Memory_Functions<T>;
     friend class DataBlock_MPI_Functions<T>;
     friend class In_Kernel_Mathfunctions<T>;
     friend class GPU_Math_Functions<T>;
@@ -349,13 +365,12 @@ public:
         return dpdata[compute_offset_s(indices, dpstrides, dprank)];
     };
 
-    // Operator overloads
+
     inline T& operator()(const size_t row,  const size_t col)
     {
         return dpdata[row*dpstrides[0]+col*dpstrides[1]];
     };
 
-    // Operator overloads
     inline T& operator()(const size_t i)
     {
         return dpdata[i*dpstrides[0]];
@@ -364,7 +379,11 @@ public:
     inline T operator()(const size_t row, const size_t col) const
     {
         if constexpr (is_complex<T>::value)
-            if (pconjugate)return std::conj(dpdata[row * dpstrides[0] + col * dpstrides[1]]);
+        {
+            if (pconjugate){
+                    return std::conj(dpdata[row * dpstrides[0] + col * dpstrides[1]]);
+            }
+        }
 
         return dpdata[row * dpstrides[0] + col * dpstrides[1]];
     }
@@ -373,16 +392,22 @@ public:
     inline T operator()(const size_t i) const
     {
         if constexpr (is_complex<T>::value)
-            if (pconjugate)return std::conj(dpdata[i * dpstrides[0]]);
+        {
+            if (pconjugate){
+                    return std::conj(dpdata[i * dpstrides[0]]);
+            }
+        }
 
         return  dpdata[i * dpstrides[0]];;
     }
 
     inline T operator()(const size_t* indices) const
     {
-        if constexpr (is_complex<T>::value)
-            if (pconjugate)
+        if constexpr (is_complex<T>::value){
+            if (pconjugate){
                 return std::conj( dpdata[compute_offset_s(indices, dpstrides, dprank)]);
+            }
+        }
 
         return  dpdata[compute_offset_s(indices, dpstrides, dprank)];
     }
@@ -2211,8 +2236,74 @@ public:
     size_t pnumblocks=0;
     bool pdata_is_devptr=false;
     int pdevnum=-1;
-    bool conjugate=false;
+    bool pconjugate=false;
+
+    inline T& operator()(const size_t* indices,const size_t blocknumber)
+    {
+        return pdata[compute_offset_s(indices, pstridesbuffer, ptensor_rank,blocknumber)];
+    };
+
+    inline T operator()(const size_t* indices,const size_t blocknumber) const
+    {
+        if constexpr (is_complex<T>::value){
+            if (pconjugate) {
+                    return std::conj( pdata[compute_offset_s(indices, pstridesbuffer, ptensor_rank,blocknumber)]);
+            }
+        }
+
+        return  pdata[compute_offset_s(indices, pstridesbuffer, ptensor_rank,blocknumber)];
+    }
+
+
+    inline T& operator()(const size_t row,  const size_t col,const size_t blocknumber)
+    {
+        T* const data_ptr=pdata+pblock_offsets[blocknumber];
+        const size_t stride0=pstridesbuffer[2*blocknumber];
+        const size_t stride1=pstridesbuffer[2*blocknumber+1];
+
+        return data_ptr[row*stride0+col*stride1];
+    };
+
+    inline T operator()(const size_t row, const size_t col, const size_t blocknumber) const
+    {
+        const T* data_ptr=pdata+pblock_offsets[blocknumber];
+        const size_t stride0=pstridesbuffer[2*blocknumber];
+        const size_t stride1=pstridesbuffer[2*blocknumber+1];
+
+        if constexpr (is_complex<T>::value){
+            if (pconjugate){
+                    return std::conj(data_ptr[row*stride0+col*stride1]);
+            }
+        }
+
+        return data_ptr[row*stride0+col*stride1];
+    }
+
+    inline T& operator()(const size_t i,const size_t blocknumber)
+    {
+        T* const data_ptr=pdata+pblock_offsets[blocknumber];
+        const size_t stride0=pstridesbuffer[blocknumber];
+        return data_ptr[i*stride0];
+    };
+
+   inline T operator()(const size_t i,const size_t blocknumber) const
+    {
+        const T* data_ptr=pdata+pblock_offsets[blocknumber];
+        const size_t stride0=pstridesbuffer[blocknumber];
+        if constexpr (is_complex<T>::value){
+            if (pconjugate){
+                    return std::conj(data_ptr[i*stride0]);
+            }
+        }
+
+        return  data_ptr[i*stride0];
+    }
+
+
+
 };
+
+
 #pragma omp end declare target
 
 #pragma omp begin declare target
@@ -2225,7 +2316,7 @@ inline DataBlock<T>get_datablock_from_arrays(const size_t i, const DataBlockArra
                         len, arr.prowm, arr.ptensor_rank,
                         arr.pextentsbuffer + i*arr.ptensor_rank,
                         arr.pstridesbuffer + i*arr.ptensor_rank,
-                        false, false,arr.pdata_is_devptr,arr.pdevnum,arr.conjugate);
+                        false, false,arr.pdata_is_devptr,arr.pdevnum,arr.pconjugate);
 }
 #pragma omp end declare target
 

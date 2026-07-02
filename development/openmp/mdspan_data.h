@@ -83,7 +83,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
     {
 #if defined(Unified_Shared_Memory)
         if (memmap)
-            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
 
@@ -93,7 +93,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
 #else
         if(default_device)
             devicenum=omp_get_default_device();
-        this->dpdata=DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength,devicenum);
+        this->dpdata=GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength,devicenum);
         this->devptr_devicenum=devicenum;
         this->dpdata_is_devptr=true;
         this->devptr_former_hostptr=nullptr;
@@ -103,7 +103,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
     else
     {
         if (memmap)
-            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
         pmemmap=memmap;
@@ -164,18 +164,18 @@ void mdspan_data<T, Container>::release_all_data()
     {
         this->device_data_release();
         if (pmemmap)
-            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+            Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
         else
             delete[] this->dpdata;
     }
     else
     {
         if(this->dpdata_is_devptr)
-            DataBlock_GPU_Memory_Functions<T>::free_device_ptr(this->dpdata,this->devptr_devicenum);
+            GPU_Memory_Functions<T>::free_device_ptr(this->dpdata,this->devptr_devicenum);
         else
         {
             if (pmemmap)
-                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+                Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
             else
                 delete[] this->dpdata;
         }
@@ -342,14 +342,14 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
 this->pconjugate= other.pconjugate;
     if (other.dpdata_is_devptr)
     {
-        this->dpdata = DataBlock_GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
+        this->dpdata = GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
         omp_target_memcpy(this->dpdata, other.dpdata, sizeof(T) * this->dpdatalength, 0, 0,
                           other.devptr_devicenum, other.devptr_devicenum);
     }
     else
     {
         if (other.pmemmap)
-            this->dpdata = DataBlock_Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
 

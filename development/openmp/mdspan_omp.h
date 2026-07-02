@@ -22,7 +22,7 @@
 #include <set>
 
 #include "datablock.h"
-#include "datablock_gpu_memory_functions.h"
+#include "gpu_memory_functions.h"
 
 using namespace std;
 
@@ -810,7 +810,7 @@ bool mdspan<T, Container>:: device_data_upload(bool default_device,int devicenum
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(*this,devicenum);
+    GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(*this,devicenum);
 
     p_has_offloaded_host_data=true;
     return true;
@@ -830,7 +830,7 @@ bool mdspan<T, Container>:: device_data_alloc(bool default_device,int devicenum)
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    DataBlock_GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(*this,devicenum);
+    GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(*this,devicenum);
     p_has_offloaded_host_data=true;
 
     return true;
@@ -845,7 +845,7 @@ bool mdspan<T, Container>:: device_data_download_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(*this);
+    GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
 
     return true;
@@ -864,7 +864,7 @@ bool mdspan<T, Container>:: device_data_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    DataBlock_GPU_Memory_Functions<T>::free_device_data_set_host_ptr(*this);
+    GPU_Memory_Functions<T>::free_device_data_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
     return true;
 
@@ -876,7 +876,7 @@ bool mdspan<T, Container>:: host_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    DataBlock_GPU_Memory_Functions<T>::copy_data_to_host_ptr(*this);
+    GPU_Memory_Functions<T>::copy_data_to_host_ptr(*this);
     return true;
 
 }
@@ -886,7 +886,7 @@ bool mdspan<T, Container>:: device_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    DataBlock_GPU_Memory_Functions<T>::copy_data_to_device_ptr(*this);
+    GPU_Memory_Functions<T>::copy_data_to_device_ptr(*this);
     return true;
 
 }
