@@ -5,10 +5,10 @@
 #include "datablock.h"
 #include<iostream>
 template<typename T>
-class DataBlock_GPU_Memory_Functions;
+class GPU_Memory_Functions;
 
 template<typename T>
-class DataBlock_Host_Memory_Functions;
+class Host_Memory_Functions;
 
 template<typename T>
 class DataBlock_MPI_Functions;
@@ -47,8 +47,8 @@ class BlockedDataView:
 
 
 public:
-    friend class DataBlock_GPU_Memory_Functions<T>;
-    friend class DataBlock_Host_Memory_Functions<T>;
+    friend class GPU_Memory_Functions<T>;
+    friend class Host_Memory_Functions<T>;
     friend class DataBlock_MPI_Functions<T>;
     friend class In_Kernel_Mathfunctions<T>;
     friend class GPU_Math_Functions<T>;

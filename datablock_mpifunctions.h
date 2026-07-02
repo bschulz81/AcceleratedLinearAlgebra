@@ -11,8 +11,8 @@
 #include <cstring>
 #include <cmath>
 #include "datablock.h"
-#include "datablock_host_memory_functions.h"
-#include "datablock_gpu_memory_functions.h"
+#include "host_memory_functions.h"
+#include "gpu_memory_functions.h"
 
 
 
@@ -618,7 +618,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
 #if defined(Unified_Shared_Memory)
             if (m.pmemmap)
             {
-                DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata, m.Dblockarray.pdatalength);
+                Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata, m.Dblockarray.pdatalength);
             }
             else
             {
@@ -635,7 +635,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
             {
                 if (m.pmemmap)
                 {
-                    DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata,m.Dblockarray.pdatalength);
+                    Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata,m.Dblockarray.pdatalength);
                 }
                 else
                 {
@@ -712,7 +712,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
     devicenum=-1;
     if(with_memmap)
     {
-        pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
+        pdata=Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
     }
     else
     {
@@ -730,7 +730,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
         devicenum=-1;
         if(memmap)
         {
-            pdata=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(datalength);
+            pdata=Host_Memory_Functions<T>::create_temp_mmap(datalength);
         }
         else
         {
@@ -763,7 +763,7 @@ void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int dev
 #if defined(Unified_Shared_Memory)
     if(with_memmap)
     {
-        DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(pdata,pdatalength)
+        Host_Memory_Functions<T>::delete_temp_mmap(pdata,pdatalength)
     }
     else
     {
@@ -778,7 +778,7 @@ void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int dev
     {
         if(memmap)
         {
-            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
+            Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
         }
         else
         {
@@ -997,13 +997,16 @@ MPI_Scatter_matrix_to_submatrices_alloc(
         recv_db.pglobal_strides[0]=send_db->dpstrides[0];
         recv_db.pglobal_strides[1]=send_db->dpstrides[1];
         recv_db.Dblockarray.prowm=send_db->dprowmajor;
+        recv_db.Dblockarray.pconjugate = send_db->pconjugate;
         recv_db.pblock_extents[0]=br;
         recv_db.pblock_extents[1]=bc;
+
     }
 
     MPI_Bcast(recv_db.pglobal_extents,2,mpi_get_type<size_t>(),rootrank,ctx->comm);
     MPI_Bcast(recv_db.pglobal_strides,2,mpi_get_type<size_t>(),rootrank,ctx->comm);
     MPI_Bcast(&recv_db.Dblockarray.prowm,1,mpi_get_type<bool>(),rootrank,ctx->comm);
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate,1,mpi_get_type<bool>(),rootrank,ctx->comm);
     MPI_Bcast(recv_db.pblock_extents,2,mpi_get_type<size_t>(),rootrank,ctx->comm);
 
 
@@ -1321,7 +1324,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
                        ext,
                        str,
                        ongpu,
-                       devicenum);
+                       devicenum,send_db.Dblockarray.pconjugate);
     }
 
 
@@ -1482,6 +1485,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
 
         recv_db.Dblockarray.ptensor_rank = send_db->dprank;
         recv_db.Dblockarray.prowm = send_db->dprowmajor;
+        recv_db.Dblockarray.pconjugate = send_db->pconjugate;
         recv_db.pglobal_extents = (size_t*)malloc(sizeof(size_t)*recv_db.Dblockarray.ptensor_rank);
         recv_db.pglobal_strides = (size_t*)malloc(sizeof(size_t)*recv_db.Dblockarray.ptensor_rank);
         recv_db.pblock_extents = (size_t*)malloc(sizeof(size_t)*recv_db.pblock_rank);
@@ -1498,7 +1502,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
     MPI_Bcast(&recv_db.Dblockarray.ptensor_rank, 1, mpi_get_type<size_t>(), rootrank, ctx->comm );
     MPI_Bcast(&recv_db.pblock_rank, 1, mpi_get_type<size_t>(), rootrank, ctx->comm );
     MPI_Bcast(&recv_db.Dblockarray.prowm, 1, mpi_get_type<bool>(), rootrank, ctx->comm );
-
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate, 1, mpi_get_type<bool>(), rootrank, ctx->comm );
 
     if(rank != rootrank)
     {
@@ -1898,7 +1902,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
                        ext,
                        str,
                        ongpu,
-                       devicenum);
+                       devicenum, send_db.Dblockarray.pconjugate);
     }
 
 
@@ -2081,6 +2085,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_vector_to_subvectors_alloc(
         recv_db.pglobal_extents[0] = send_db->dpextents[0];
         recv_db.pglobal_strides[0] = send_db->dpstrides[0];
         recv_db.pblock_extents[0] = blocksize;
+        recv_db.Dblockarray.pconjugate = send_db->pconjugate;
     }
 
 
@@ -2088,6 +2093,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_vector_to_subvectors_alloc(
     MPI_Bcast(recv_db.pglobal_strides, 1, mpi_get_type<size_t>(), rootrank, ctx->comm);
     MPI_Bcast(recv_db.pblock_extents, 1, mpi_get_type<size_t>(), rootrank, ctx->comm);
 
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate, 1, mpi_get_type<bool>(), rootrank, ctx->comm);
     size_t N  = recv_db.pglobal_extents[0];
     size_t bs = recv_db.pblock_extents[0];
 
@@ -2346,7 +2352,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_vector_from_subvectors_alloc(
                        ext,
                        str,
                        ongpu,
-                       devicenum);
+                       devicenum,send_db.Dblockarray.pconjugate);
     }
 
 
@@ -2498,7 +2504,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(DataBlock<T>&m, bool with_me
     {
 #if defined(Unified_Shared_Memory)
         if(with_memmap)
-            DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(m.dpdata,size);
+            Host_Memory_Functions<T>::delete_temp_mmap(m.dpdata,size);
         else;
         free(m.dpdata);
 #else

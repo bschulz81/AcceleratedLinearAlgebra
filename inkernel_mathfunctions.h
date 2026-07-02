@@ -1243,7 +1243,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
     T* tempM;
 
     if(with_memmaps)
-        tempM=DataBlock_Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+        tempM=Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
     else
         tempM=(T*)malloc(sizeof(T)*A.dpdatalength);
 
@@ -1345,7 +1345,7 @@ void In_Kernel_Mathfunctions<T>::qr_decomposition_w( const DataBlock<T>&A, DataB
     }
 
     if(with_memmaps)
-        DataBlock_Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
+        Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
     else
         free(tempM);
 }

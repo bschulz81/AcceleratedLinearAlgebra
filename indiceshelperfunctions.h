@@ -24,8 +24,7 @@ inline size_t compute_offset(const size_t row, const size_t col, const size_t ma
 inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
 {
     size_t offset = 0;
-    // Row-major layout: iterate outermost to innermost
-    #pragma omp parallel for simd reduction(+ : offset)
+    #pragma omp parallel for simd reduction(+ : offset)if(parallel:r>30)
     for (size_t i = 0; i < r; ++i)
     {
         offset += indices[i] * strides[i];
@@ -36,12 +35,30 @@ inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* 
 #pragma omp end declare target
 
 #pragma omp begin declare target
-inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
+inline size_t compute_offset_w(const size_t* __restrict indices,
+                               const size_t* __restrict strides_buffer,
+                               const size_t rank,
+                               const size_t blocknumber)
+{
+    // Find the starting point of the strides for this specific block
+    const size_t* block_strides = strides_buffer + (blocknumber * rank);
+
+    size_t offset = 0;
+    #pragma omp parallel for simd reduction(+ : offset)if(parallel:rank>30)
+    for (size_t i = 0; i < rank; ++i)
+    {
+        offset += indices[i] * block_strides[i];
+    }
+    return offset;
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t rank)
 {
     size_t offset = 0;
-    // Row-major layout: iterate outermost to innermost
     #pragma omp unroll partial
-    for (size_t i = 0; i < r; ++i)
+    for (size_t i = 0; i < rank; ++i)
     {
         offset += indices[i] * strides[i];
     }
@@ -49,16 +66,34 @@ inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* 
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+inline size_t compute_offset_s(const size_t* __restrict indices,
+                               const size_t* __restrict strides_buffer,
+                               const size_t rank,
+                               const size_t blocknumber)
+{
+    // Find the starting point of the strides for this specific block
+    const size_t* block_strides = strides_buffer + (blocknumber * rank);
+
+    size_t offset = 0;
+    #pragma omp unroll partial
+    for (size_t i = 0; i < rank; ++i)
+    {
+        offset += indices[i] * block_strides[i];
+    }
+    return offset;
+}
+#pragma omp end declare target
 
 
 #pragma omp begin declare target
-inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
+inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t rank)
 {
     size_t offset = 0;
 
     // Row-major layout: iterate outermost to innermost
-    #pragma omp simd reduction(+ : offset)
-    for (size_t i = 0; i < r; ++i)
+    #pragma omp simd reduction(+ : offset)if(simd:rank>10)
+    for (size_t i = 0; i < rank; ++i)
     {
         offset += indices[i] * strides[i];
     }
@@ -66,7 +101,24 @@ inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* 
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+inline size_t compute_offset_v(const size_t* __restrict indices,
+                               const size_t* __restrict strides_buffer,
+                               const size_t rank,
+                               const size_t blocknumber)
+{
+    // Find the starting point of the strides for this specific block
+    const size_t* block_strides = strides_buffer + (blocknumber * rank);
 
+    size_t offset = 0;
+    #pragma omp  simd reduction(+ : offset)if(simd:rank>30)
+    for (size_t i = 0; i < rank; ++i)
+    {
+        offset += indices[i] * block_strides[i];
+    }
+    return offset;
+}
+#pragma omp end declare target
 
 #pragma omp begin declare target
 inline size_t compute_data_length_w(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
