@@ -6,6 +6,11 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+08.06.2026
+added a utilities class for the modification of matrices and tensors, made the syntax of the classes simpler. note that there are changes in the arguments of the datablock constructor. This structure should now allow it to add more functions to the library more easily.
+added fixes that the lu,qr and cholesky decomposition, as well as the strassen algorithm variants check if the input matrices were conjugated
+broadcast and send functions also transmit the conjugate flag
+
 02.07.2026
 The class distributeddatablock now contains a conjugate flag. the methods in mathfunctions_mpi were adapted to work with complex data.
 Created an offload class for distributeddatablock, to simplify the gpu code.
