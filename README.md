@@ -48,6 +48,16 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 
+### 08.07.2026
+
+Added a utilities class for the modification of matrices and tensors. I also made the syntax of the classes simpler. Only the classes that store types must now have a template <T> in front of them, the other functions deduce T from the arguments. The parallelization level of the algorithms that can work within a kernel can now be choosen with a template parameter. Default is using parallel for simd. For the gpu functions, all parallelization levels are used.  Note that there are changes in the arguments of the datablock constructor.
+
+The structure of the library, with factory functions in utillities classes should now allow it to add more functions to the library relatively easily. 
+The datastructures that contain data are now left simple. If desired, one can now add several classes for various factory functions...
+
+added fixes that the Lu,Qr and Cholesky decomposition, as well as the Strassen algorithm variants check whether the input matrices were conjugated if the template type is complex.
+The MPI Broadcast, Send and Recieve functions now also transmit the conjugate flag to indicate whether the tensor is to be read with conjugate values.
+
 ### 02.07.2026
 The class distributeddatablock, which describes tensors that are distributed over several mpi nodes, now contains a conjugate flag. the methods in mathfunctions_mpi were adapted to work with complex data.
 Created an offload class for distributeddatablock, to simplify the gpu code.
