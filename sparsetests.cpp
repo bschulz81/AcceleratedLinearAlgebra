@@ -5,7 +5,7 @@
 #include "gpu_mathfunctions.h"
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
-
+#include "datablockutilities.h"
 using namespace std;
 
 int main()
@@ -27,10 +27,10 @@ int main()
     DataBlock<double> Ad(A.data(), M*K, true, 2, extA.data(), stridesA.data(), false,false,false);
 
     size_t sub_ext[2],sub_strides[2];
-    DataBlock<double> A1 = Ad.matrix_subspan(0, 0, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A2 = Ad.matrix_subspan(4, 0, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A3 = Ad.matrix_subspan(0, 4, 4, 4, sub_ext, sub_strides);
-    DataBlock<double> A4 = Ad.matrix_subspan(4, 4, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A1 = DataBlockUtilities::matrix_subspan(Ad,0, 0, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A2 = DataBlockUtilities::matrix_subspan(Ad,4, 0, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A3 = DataBlockUtilities::matrix_subspan(Ad,0, 4, 4, 4, sub_ext, sub_strides);
+    DataBlock<double> A4 = DataBlockUtilities::matrix_subspan(Ad,4, 4, 4, 4, sub_ext, sub_strides);
 
 // fill some blocks (e.g., leave A3 zero)
     for(size_t i = 0; i < 4; ++i)
@@ -46,10 +46,10 @@ int main()
     size_t sub_ext2[2],sub_strides2[2];
     DataBlock<double> Bd(B.data(), K*N, true, 2, extB.data(), stridesB.data(), false,false,false);
 
-    DataBlock<double> B1 = Bd.matrix_subspan(0, 0, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B2 = Bd.matrix_subspan(4, 0, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B3 = Bd.matrix_subspan(0, 4, 4, 4, sub_ext2, sub_strides2);
-    DataBlock<double> B4 = Bd.matrix_subspan(4, 4, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B1 =  DataBlockUtilities::matrix_subspan(Bd,0, 0, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B2 =  DataBlockUtilities::matrix_subspan(Bd,4, 0, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B3 =  DataBlockUtilities::matrix_subspan(Bd,0, 4, 4, 4, sub_ext2, sub_strides2);
+    DataBlock<double> B4 =  DataBlockUtilities::matrix_subspan(Bd,4, 4, 4, 4, sub_ext2, sub_strides2);
 
 // fill some blocks (e.g., leave A3 zero)
     for(size_t i = 0; i < 4; ++i)
@@ -63,14 +63,14 @@ int main()
 
 
 
-    Bd.printtensor();
-cout <<"sparsity "<<Bd.sparsity()<<endl;
+    Bd.print();
+cout <<"sparsity "<< DataBlockUtilities::sparsity(Bd)<<endl;
 
     DataBlock<double> C1d(C1.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
     DataBlock<double> C2d(C2.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
 cout<<"naive matrix multiplication"<<endl;
-    In_Kernel_Mathfunctions<double>::matrix_multiply_dot_s(Ad, Bd, C1d);
-    C1d.printtensor();
+    In_Kernel_Mathfunctions::matrix_multiply_dot(Ad, Bd, C1d);
+    C1d.print();
 
     size_t block_shape[2]={2,2};
     BlockedDataView<double> Ablocks(Ad, block_shape,true);
@@ -79,11 +79,11 @@ cout<<"naive matrix multiplication"<<endl;
 
 
 cout<<"We now do a sparse multiplication"<<endl;
-   In_Kernel_Mathfunctions<double>::matrix_multiply_dot_sparse_s(Ablocks, Bblocks, C2d);
+   In_Kernel_Mathfunctions::matrix_multiply_dot_sparse(Ablocks, Bblocks, C2d);
    //would also work on device
     //GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks,Bblocks,C2d,omp_get_default_device(),true,true);
 
-    C2d.printtensor();
+    C2d.print();
 
 cout<<"now an example with sparse matrx multiplication and the mdspan class"<<endl;
 
@@ -104,9 +104,9 @@ BlockedDataView<double> Ablocks1(Aspan, block_shape3,true);
 BlockedDataView<double> Bblocks2(Bspan, block_shape4,true);
 
 
-GPU_Math_Functions<double>::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
+GPU_Math_Functions::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
 
-Cspan.printtensor();
+Cspan.print();
 
 Aspan.device_data_release();
 Bspan.device_data_release();

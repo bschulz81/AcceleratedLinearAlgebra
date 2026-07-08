@@ -278,10 +278,10 @@ public:
 
 
 
-template<typename T>
+
 class DataBlock_MPI_Functions;
 
-template<typename T>
+
 class Math_Functions_MPI;
 
 class Math_MPI_Functions_Policy;
@@ -290,8 +290,8 @@ class Math_MPI_Functions_Policy;
 template<typename T>
 class DistributedDataBlock
 {
-    friend class DataBlock_MPI_Functions<T>;
-    friend class Math_Functions_MPI<T>;
+    friend class DataBlock_MPI_Functions;
+    friend class Math_Functions_MPI;
     friend class Math_MPI_Functions_Policy;
 public:
 
@@ -324,9 +324,7 @@ public:
 
 
 
-
-
-    void printtensors(int rootrank=0)const
+    void print(int rootrank=0)const
     {
         int rank, size;
         MPI_Comm_rank(pctx->comm,&rank);
@@ -362,7 +360,7 @@ public:
                 if(Dblockarray.pdata != nullptr)
                 {
                     DataBlock<T> block =get_datablock_from_arrays(i,Dblockarray);
-                    len += block.printtensor_required_size();
+                    len += block.print_required_size();
                 }
                 else
                 {
@@ -420,9 +418,9 @@ public:
                         get_datablock_from_arrays(i,Dblockarray);
 
                     size_t tensor_len =
-                        block.printtensor_required_size();
+                        block.print_required_size();
 
-                    block.printtensor_to_buffer(cur, tensor_len + 1);
+                    block.print_to_buffer(cur, tensor_len + 1);
 
                     cur += tensor_len;
                     remaining -= tensor_len;
@@ -495,72 +493,98 @@ protected:
     std::unordered_map<size_t, size_t> pglobal_to_local_index;
 };
 
-template<typename T>
+
 class DataBlock_MPI_Functions
 {
 public:
-
+    template<typename T>
     inline static void MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    template<typename T>
     inline static void MPI_Bcast_DataBlock_meta (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    template<typename T>
     inline static void MPI_Bcast_DataBlock_extents_strides (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    template<typename T>
     inline static void MPI_Bcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com, int rootrank);
+    template<typename T>
     inline static void MPI_IBcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com,MPI_Request*req, int rootrank);
 
+    template<typename T>
     inline static void MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool with_memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank);
 
+    template<typename T>
     inline static void MPI_Scatter_vector_to_subvectors_alloc(  size_t blocksize,    DistributedDataBlock<T>& recv_db,
             bool memmap,      bool ondevice,    int devicenum,    MPI_CartesianContext *ctx,    BlockMappingPolicy* policy,   int rootrank,    const DataBlock<T>* send_db);
 
+    template<typename T>
     inline static void MPI_Gather_vector_from_subvectors_alloc(    const DistributedDataBlock<T>& send_db,    int rootrank,
             DataBlock<T>* recv_db=nullptr,    bool memmap=false,    bool ongpu=false,
             int devicenum=-1);
 
+    template<typename T>
     inline static void MPI_Scatter_matrix_to_rows_alloc( DistributedDataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
             MPI_CartesianContext* ctx,  BlockMappingPolicy* policy,  int rootrank,   const DataBlock<T>* send_db);
 
+    template<typename T>
     inline static void MPI_Gather_matrix_from_rows_alloc( const DistributedDataBlock<T>& send_db,
             int rootrank,    DataBlock<T>* recv_db=nullptr,    bool memmap=false,    bool ondevice=false,    int devicenum=-1);
 
+    template<typename T>
     inline static void MPI_Scatter_matrix_to_columns_alloc( DistributedDataBlock<T>& recv_db, bool memmap, bool ondevice, int devicenum,
             MPI_CartesianContext* ctx,  BlockMappingPolicy* policy,  int rootrank,   const DataBlock<T>* send_db=nullptr);
 
+    template<typename T>
     inline static void MPI_Gather_matrix_from_columns_alloc(   const DistributedDataBlock<T>& send_db,      int rootrank,DataBlock<T>* recv_db = nullptr,
             bool memmap=false, bool ongpu=false, int devicenum=-1);
 
-
+    template<typename T>
     inline static void MPI_Scatter_matrix_to_submatrices_alloc(    size_t br,    size_t bc,    DistributedDataBlock<T>& recv_db,    bool memmap,
             bool ondevice,    int devicenum,     MPI_CartesianContext *ctx,    BlockMappingPolicy* policy, int rootrank,     const DataBlock<T>* send_db=nullptr  );
 
 
-
+    template<typename T>
     inline static void MPI_Gather_matrix_from_submatrices_alloc( const DistributedDataBlock<T>& send_db,
             int rootrank,DataBlock<T>* recv_db = nullptr,bool memmap=false, bool ongpu=false, int devicenum=-1 );
 
+    template<typename T>
     inline static void MPI_Scatter_tensor_to_subtensors_alloc(    size_t blockrank,    const size_t* block_extents,
             DistributedDataBlock<T>& recv_db,    bool memmap,    bool ondevice,    int devicenum,    MPI_CartesianContext *ctx,    BlockMappingPolicy* policy, int rootrank,
             const DataBlock<T>* send_db=nullptr);
 
-
+    template<typename T>
     inline static void MPI_Gather_tensor_from_subtensors_alloc(  const DistributedDataBlock<T>& send_db,  int rootrank,
             DataBlock<T>* recv_db = nullptr, bool memmap=false, bool ongpu=false, int devicenum=-1);
 
+    template<typename T>
     inline static DataBlock<T> MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm);
 
+    template<typename T>
     inline static void MPI_Free_DataBlock(DataBlock<T>&m, bool with_memmap=false);
+
+    template<typename T>
     inline static void MPI_Free_DistributedDataBlock(DistributedDataBlock<T>&m);
 
+    template<typename T>
     inline static void MPI_Send_DataBlock(DataBlock<T> &m,const int dest, const int tag, MPI_Comm pcomm);
+
+    template<typename T>
     inline static void MPI_Recv_DataBlock(DataBlock<T>& m, const int source,const  int tag, MPI_Comm pcomm);
 
+    template<typename T>
     inline static void MPI_Send_DataBlock_meta(DataBlock<T> &m,const int dest, const int tag, MPI_Comm pcomm);
+
+    template<typename T>
     inline static void MPI_Recv_DataBlock_meta(DataBlock<T>& m, const int source,const  int tag, MPI_Comm pcomm);
 
-
+    template<typename T>
     inline static void MPI_Recv_DataBlock_pdata(DataBlock<T>& mds,const int source, const int tag,const  MPI_Comm pcomm);
+
+    template<typename T>
     inline static void MPI_Send_DataBlock_pdata(DataBlock<T> &m,const int dest,const int tag,const MPI_Comm pcomm);
 
-
+    template<typename T>
     inline static void MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm,MPI_Request *request);
+
+    template<typename T>
     inline static void MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,MPI_Request *request);
 
 
@@ -578,20 +602,25 @@ public:
         return *default_policy;
     }
 
+    template<typename T>
     inline static void alloc_helper(bool &memmap,bool& ondevice, int& devnum, size_t rank,size_t datalength,size_t* &pextents,size_t *&pstrides,T *&pdata);
+    template<typename T>
     inline static void alloc_helper2(bool &memmap,bool &ondevice, int& devicenum, size_t datalength,T *&pdata);
 
+    template<typename T>
     inline static void free_helper(bool memmap,bool ondevice, int devnum,size_t datalength,size_t* &pextents,size_t *&pstrides,T *&pdata);
 
+    template<typename T>
     inline static void free_helper2(bool memmap,bool ondevice, int devicenum, size_t datalength,T *&pdata);
 
+    template<typename T>
     inline static int compute_owner(const size_t* bcoords,const size_t* proc_grid, const size_t* cyclic_block,size_t gridrank);
 };
 
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
+void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
     DistributedDataBlock<T>& m)
 {
     if(m.Dblockarray.pnumblocks > 0)
@@ -618,7 +647,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
 #if defined(Unified_Shared_Memory)
             if (m.pmemmap)
             {
-                Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata, m.Dblockarray.pdatalength);
+                Host_Memory_Functions::delete_temp_mmap<T>(m.Dblockarray.pdata, m.Dblockarray.pdatalength);
             }
             else
             {
@@ -635,7 +664,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
             {
                 if (m.pmemmap)
                 {
-                    Host_Memory_Functions<T>::delete_temp_mmap(m.Dblockarray.pdata,m.Dblockarray.pdatalength);
+                    Host_Memory_Functions::delete_temp_mmap<T>(m.Dblockarray.pdata,m.Dblockarray.pdatalength);
                 }
                 else
                 {
@@ -694,7 +723,7 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DistributedDataBlock(
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::alloc_helper(bool &memmap,bool &ondevice, int& devicenum, size_t rank,size_t datalength,size_t*& pextents,size_t *&pstrides,T *&pdata)
+void DataBlock_MPI_Functions::alloc_helper(bool &memmap,bool &ondevice, int& devicenum, size_t rank,size_t datalength,size_t*& pextents,size_t *&pstrides,T *&pdata)
 {
     pextents= (size_t*)malloc(sizeof(size_t)*rank);
     pstrides= (size_t*)malloc(sizeof(size_t)*rank);
@@ -704,7 +733,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper(bool &memmap,bool &ondevice, int& 
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int& devicenum,size_t datalength,T *&pdata)
+void DataBlock_MPI_Functions::alloc_helper2(bool &memmap,bool &ondevice, int& devicenum,size_t datalength,T *&pdata)
 {
 
 #if defined(Unified_Shared_Memory)
@@ -712,7 +741,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
     devicenum=-1;
     if(with_memmap)
     {
-        pdata=Host_Memory_Functions<T>::create_temp_mmap(pdatalength);
+        pdata=Host_Memory_Functions::create_temp_mmap<T>(pdatalength);
     }
     else
     {
@@ -730,7 +759,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
         devicenum=-1;
         if(memmap)
         {
-            pdata=Host_Memory_Functions<T>::create_temp_mmap(datalength);
+            pdata=Host_Memory_Functions::create_temp_mmap<T>(datalength);
         }
         else
         {
@@ -744,7 +773,7 @@ void DataBlock_MPI_Functions<T>::alloc_helper2(bool &memmap,bool &ondevice, int&
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::free_helper(bool memmap,bool ondevice, int devicenum, size_t datalength,size_t*& pextents,size_t *&pstrides,T *&pdata)
+void DataBlock_MPI_Functions::free_helper(bool memmap,bool ondevice, int devicenum, size_t datalength,size_t*& pextents,size_t *&pstrides,T *&pdata)
 {
     free_helper2(memmap,ondevice,devicenum,datalength,pdata);
 
@@ -757,13 +786,13 @@ void DataBlock_MPI_Functions<T>::free_helper(bool memmap,bool ondevice, int devi
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int devicenum, size_t datalength,T *&pdata)
+void DataBlock_MPI_Functions::free_helper2(bool memmap,bool ondevice, int devicenum, size_t datalength,T *&pdata)
 {
 
 #if defined(Unified_Shared_Memory)
     if(with_memmap)
     {
-        Host_Memory_Functions<T>::delete_temp_mmap(pdata,pdatalength)
+        Host_Memory_Functions::delete_temp_mmap<T>(pdata,pdatalength)
     }
     else
     {
@@ -778,7 +807,7 @@ void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int dev
     {
         if(memmap)
         {
-            Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
+            Host_Memory_Functions::delete_temp_mmap<T>(pdata,datalength);
         }
         else
         {
@@ -793,7 +822,7 @@ void DataBlock_MPI_Functions<T>::free_helper2(bool memmap,bool ondevice, int dev
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -802,6 +831,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock (DataBlock<T> &db,MP
     MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
+    MPI_Bcast(&db.pconjugate, 1, mpi_get_type<bool>(), rootrank,com);
     MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, com);
@@ -810,7 +840,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock (DataBlock<T> &db,MP
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock_pdata (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -823,7 +853,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_pdata (DataBlock<T> 
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_meta (DataBlock<T> &db,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock_meta (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -832,12 +862,13 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_meta (DataBlock<T> &
     MPI_Bcast (&db.dpdatalength, 1,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprank,1,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
+    MPI_Bcast(&db.pconjugate, 1, mpi_get_type<bool>(), rootrank,com);
 }
 
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_extents_strides (DataBlock<T> &db,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock_extents_strides (DataBlock<T> &db,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -850,7 +881,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_DataBlock_extents_strides (Dat
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,bool memmap,bool ondevice, int devicenum,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -862,7 +893,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> 
     MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprank,    1,    mpi_get_type<size_t>(), rootrank, com);
     MPI_Bcast (&db.dprowmajor,1,  mpi_get_type<bool>(), rootrank, com);
-
+    MPI_Bcast(&db.pconjugate, 1, mpi_get_type<bool>(), rootrank,com);
     if (rank != rootrank)
     {
         alloc_helper(memmap,ondevice,devicenum,db.dprank,db.dpdatalength,db.dpextents,db.dpstrides,db.dpdata);
@@ -877,7 +908,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Bcast_alloc_DataBlock (DataBlock<T> 
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_rows_alloc(
+inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_rows_alloc(
     DistributedDataBlock<T>& recv_db,
     bool memmap, bool ondevice, int devicenum,
     MPI_CartesianContext* ctx,
@@ -898,7 +929,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_rows_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(
+inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_columns_alloc(
     DistributedDataBlock<T>& recv_db,
     bool memmap,
     bool ondevice,
@@ -920,7 +951,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_matrix_to_columns_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
+inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_rows_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,
     DataBlock<T>* recv_db,
@@ -933,7 +964,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_rows_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
+inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_columns_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,
     DataBlock<T>* recv_db,
@@ -947,7 +978,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_columns_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::
+inline void DataBlock_MPI_Functions::
 MPI_Scatter_matrix_to_submatrices_alloc(
     size_t br,
     size_t bc,
@@ -1256,7 +1287,7 @@ MPI_Scatter_matrix_to_submatrices_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc(
+inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,
     DataBlock<T>* recv_db,
@@ -1454,7 +1485,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_matrix_from_submatrices_alloc
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
+inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
     size_t blockrank,
     const size_t* block_extents,
     DistributedDataBlock<T>& recv_db,
@@ -1810,7 +1841,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_tensor_to_subtensors_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
+inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,
     DataBlock<T>* recv_db,
@@ -2048,7 +2079,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_tensor_from_subtensors_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Scatter_vector_to_subvectors_alloc(
+inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
     size_t blocksize,
     DistributedDataBlock<T>& recv_db,
     bool memmap,
@@ -2299,7 +2330,7 @@ inline void DataBlock_MPI_Functions<T>::MPI_Scatter_vector_to_subvectors_alloc(
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions<T>::MPI_Gather_vector_from_subvectors_alloc(
+inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,
     DataBlock<T>* recv_db,
@@ -2431,12 +2462,13 @@ inline void DataBlock_MPI_Functions<T>::MPI_Gather_vector_from_subvectors_alloc(
 
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
 {
 
     MPI_Send(&m.dpdatalength, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprank, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprowmajor, 1, mpi_get_type<bool>(), dest, tag, pcomm);
+    MPI_Send(&m.pconjugate, 1, mpi_get_type<bool>(), dest, tag, pcomm);
     MPI_Send(m.dpextents, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(m.dpstrides, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
@@ -2444,11 +2476,12 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(DataBlock<T> &m, int
 
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_meta(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock_meta(DataBlock<T> &m, int dest, int tag, MPI_Comm pcomm)
 {
     MPI_Send(&m.dpdatalength, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprank, 1, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(&m.dprowmajor, 1, mpi_get_type<bool>(), dest, tag, pcomm);
+    MPI_Send(&m.pconjugate, 1, mpi_get_type<bool>(), dest, tag, pcomm);
     MPI_Send(m.dpextents, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
     MPI_Send(m.dpstrides, m.dprank, mpi_get_type<size_t>(), dest, tag, pcomm);
 }
@@ -2456,27 +2489,28 @@ inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_meta(DataBlock<T> &m
 
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm,MPI_Request *request)
+inline  void DataBlock_MPI_Functions::MPI_Isend_DataBlock_pdata(DataBlock<T> &m,const int dest,const  int tag,const MPI_Comm pcomm,MPI_Request *request)
 {
     MPI_Isend(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm,request);
 }
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(DataBlock<T> &m,const int dest,const int tag,const MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock_pdata(DataBlock<T> &m,const int dest,const int tag,const MPI_Comm pcomm)
 {
     MPI_Send(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
 }
 
 template<typename T>
-inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm)
+inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(bool with_memmap,bool ondevice, int devicenum, const int source,const  int tag, MPI_Comm pcomm)
 {
     MPI_Status status;
     size_t pdatalength, prank;
     bool prowmajor;
-
+    bool pconjugate;
     MPI_Recv(&pdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&prank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&prowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
+    MPI_Recv(&pconjugate, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
 
     size_t *pextents=nullptr,
             *pstrides=nullptr;
@@ -2490,14 +2524,14 @@ inline  DataBlock<T> DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(bool w
 
     MPI_Recv(pdata,sizeof(T)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
 
-    return DataBlock<T>(pdata,pdatalength,prowmajor,prank,pextents,pstrides,ondevice, devicenum);
+    return DataBlock<T>(pdata,pdatalength,prowmajor,prank,pextents,pstrides,ondevice,ondevice? devicenum:-1,pconjugate);
 
 }
 
 
 
 template <typename T>
-void DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(DataBlock<T>&m, bool with_memmap)
+void DataBlock_MPI_Functions::MPI_Free_DataBlock(DataBlock<T>&m, bool with_memmap)
 {
 
     if(m.dpdata!=nullptr)
@@ -2520,14 +2554,14 @@ void DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(DataBlock<T>&m, bool with_me
 
 
 template<typename T>
-void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
+void DataBlock_MPI_Functions::MPI_Recv_DataBlock(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
 {
     MPI_Status status;
 
     MPI_Recv(&m.dpdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
-
+    MPI_Recv(&m.pconjugate, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
 
     MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
@@ -2538,29 +2572,28 @@ void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock(DataBlock<T>& m,const int so
 
 
 template<typename T>
-void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_meta(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
+void DataBlock_MPI_Functions::MPI_Recv_DataBlock_meta(DataBlock<T>& m,const int source,const  int tag, MPI_Comm pcomm)
 {
     MPI_Status status;
 
     MPI_Recv(&m.dpdatalength, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprank, 1, mpi_get_type<size_t>(), source, tag, pcomm, &status);
     MPI_Recv(&m.dprowmajor, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
-
+    MPI_Recv(&m.pconjugate, 1, mpi_get_type<bool>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
-
     MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<size_t>(), source, tag, pcomm, &status);
 }
 
 
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,  MPI_Request *request)
+inline  void DataBlock_MPI_Functions::MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,  MPI_Request *request)
 {
     MPI_Irecv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, request);
 }
 
 template<typename T>
-inline  void DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(DataBlock<T>& mds,const int source, const int tag,const  MPI_Comm pcomm)
+inline  void DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(DataBlock<T>& mds,const int source, const int tag,const  MPI_Comm pcomm)
 {
     MPI_Status status;
     MPI_Recv(mds.dpdata,sizeof(T)* mds.dpdatalength, MPI_BYTE, source, tag, pcomm, &status);

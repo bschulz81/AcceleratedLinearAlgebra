@@ -5,12 +5,12 @@
 #include "host_memory_functions.h"
 #include "datablockcontainer.h"
 
-template<typename T>
+
 class GPU_Memory_Functions
 {
 public:
 
-
+    template<typename T>
     class OffloadHelper
     {
     protected:
@@ -54,7 +54,7 @@ public:
         OffloadHelper& operator=(const OffloadHelper&) = delete;
     };
 
-
+    template<typename T>
     class OffloadHelperConst
     {
     protected:
@@ -80,8 +80,75 @@ public:
         OffloadHelperConst& operator=(const OffloadHelperConst&) = delete;
     };
 
+    template <typename T>
+    class DataBlockdpdataoffloader
+    {
+    public:
+        DataBlockdpdataoffloader(const DataBlock<T>& block, int devicenum, bool is_output = false):
+            m_block(block), m_copied(false), m_is_output(is_output)
+        {
+            if (!m_block.dpdata_is_devptr)
+            {
+                if (m_is_output)
+                {
+                    m_copied = GPU_Memory_Functions::alloc_data_to_device_set_devptr(m_block, devicenum);
+                }
+                else
+                {
+                    m_copied = GPU_Memory_Functions::copy_data_to_device_set_devptr(m_block, devicenum);
+                }
+            }
+        }
+        DataBlockdpdataoffloader(DataBlock<T>& block, int devicenum, bool is_output = false)
+            : m_block(block), m_copied(false), m_is_output(is_output)
+        {
+            if (!m_block.dpdata_is_devptr)
+            {
+                if (m_is_output)
+                {
+                    m_copied = GPU_Memory_Functions::alloc_data_to_device_set_devptr(m_block, devicenum);
+                }
+                else
+                {
+                    m_copied = GPU_Memory_Functions::copy_data_to_device_set_devptr(m_block, devicenum);
+                }
+            }
+        }
+
+        ~DataBlockdpdataoffloader()
+        {
+            if (m_copied)
+            {
+                if (m_is_output)
+                {
+                    GPU_Memory_Functions::copy_data_to_host_set_host_ptr(m_block);
+                }
+                else
+                {
+                    GPU_Memory_Functions::free_device_data_set_host_ptr(m_block);
+                }
+            }
+        }
 
 
+    const DataBlock<T>& get() const { return m_block; }
+
+
+    DataBlock<T>& get_mutable() { return m_block; }
+
+
+        DataBlockdpdataoffloader(const DataBlockdpdataoffloader&) = delete;
+        DataBlockdpdataoffloader& operator=(const DataBlockdpdataoffloader&) = delete;
+
+    private:
+        DataBlock<T> m_block;
+        bool m_copied;
+        bool m_is_output;
+    };
+
+
+
+    template<typename T>
     class BlockedDataViewOffloadHelper
     {
     protected:
@@ -109,125 +176,157 @@ public:
 
     };
 
+    template<typename T>
     class DataBlockArrayOffloadHelper
     {
-        protected:
-            bool pupdate_host;
-            DataBlockArray<T> &pArr;
-            int pdevicenum;
-        public:
-            inline DataBlockArrayOffloadHelper(DataBlockArray<T>& arr, int devicenum, bool just_alloc, bool update_host_on_exit)
-                : pupdate_host(update_host_on_exit), pArr(arr), pdevicenum(devicenum)
-            {
-#if !defined(Unified_Shared_Memory)
-                if (just_alloc)
-                    GPU_Memory_Functions::create_out(arr, devicenum);
-                else
-                    GPU_Memory_Functions::create_in(arr, devicenum);
-#endif
-            }
-            inline ~DataBlockArrayOffloadHelper()
-            {
-#if !defined(Unified_Shared_Memory)
-                if (pupdate_host && !pArr.pdata_is_devptr)
-                {
-                    GPU_Memory_Functions::update_host(pArr, pdevicenum);
-                }
-                GPU_Memory_Functions::release(pArr, pdevicenum);
-#endif
-            }
-
-            DataBlockArrayOffloadHelper(const DataBlockArrayOffloadHelper&) = delete;
-            DataBlockArrayOffloadHelper& operator=(const DataBlockArrayOffloadHelper&) = delete;
-        };
-
-        class DataBlockArrayOffloadHelperConst
+    protected:
+        bool pupdate_host;
+        DataBlockArray<T> &pArr;
+        int pdevicenum;
+    public:
+        inline DataBlockArrayOffloadHelper(DataBlockArray<T>& arr, int devicenum, bool just_alloc, bool update_host_on_exit)
+            : pupdate_host(update_host_on_exit), pArr(arr), pdevicenum(devicenum)
         {
-        protected:
-            const DataBlockArray<T> &pArr;
-            int pdevicenum;
-        public:
-            inline DataBlockArrayOffloadHelperConst(const DataBlockArray<T>& arr, int devicenum)
-                : pArr(arr), pdevicenum(devicenum)
-            {
 #if !defined(Unified_Shared_Memory)
+            if (just_alloc)
+                GPU_Memory_Functions::create_out(arr, devicenum);
+            else
                 GPU_Memory_Functions::create_in(arr, devicenum);
 #endif
-            }
-            inline ~DataBlockArrayOffloadHelperConst()
-            {
+        }
+        inline ~DataBlockArrayOffloadHelper()
+        {
 #if !defined(Unified_Shared_Memory)
-                GPU_Memory_Functions::release(pArr, pdevicenum);
-#endif
+            if (pupdate_host && !pArr.pdata_is_devptr)
+            {
+                GPU_Memory_Functions::update_host(pArr, pdevicenum);
             }
+            GPU_Memory_Functions::release(pArr, pdevicenum);
+#endif
+        }
 
-            DataBlockArrayOffloadHelperConst(const DataBlockArrayOffloadHelperConst&) = delete;
-            DataBlockArrayOffloadHelperConst& operator=(const DataBlockArrayOffloadHelperConst&) = delete;
-        };
-
-
-            inline static void create_out(DataBlockArray<T>& arr, int devicenum);
-            inline static void create_in(DataBlockArray<T>& arr, int devicenum);
-            inline static void create_in(const DataBlockArray<T>& arr, int devicenum);
-            inline static void update_host(DataBlockArray<T>& arr, int devicenum);
-            inline static void release(const DataBlockArray<T>& arr, int devicenum);
-
-
-
-
-
-        inline static bool update_device(DataBlock<T>& dL,int devicenum);
-        inline static bool update_host(DataBlock<T>& dL,int devicenum);
-        inline static bool update_device_data(DataBlock<T>& dL,int devicenum);
-        inline static void update_device_metadata(DataBlock<T>& dL,int devicenum);
-        inline static bool update_host_data(DataBlock<T>& dL,int devicenum);
-        inline static void update_host_metadata(DataBlock<T>& dL,int devicenum);
-
-        inline static void set_data_to_device_ptr(DataBlock<T>& dL,int devicenum);
-        inline static void set_data_to_host_ptr(DataBlock<T>& dL,int devicenum);
-        inline static void create_out(DataBlock<T>& dA,int devicenum);
-        inline static void create_in(DataBlock<T>& dA,int devicenum);
-        inline static void exit(DataBlock<T> &dA,int devicenum);
-        inline static void release(DataBlock<T> &dA,int devicenum);
-
-        inline static void create_in(const DataBlock<T>& dA,int devicenum);
-        inline static void exit(const DataBlock<T> &dA,int devicenum);
-        inline static void release(const DataBlock<T> &dA,int devicenum);
-
-
-        inline static void create_in_blocked(const BlockedDataView<T>& dA,int devicenum);
-        inline static void exit_blocked(const BlockedDataView<T> &dA,int devicenum);
-        inline static void release_blocked(const BlockedDataView<T> &dA,int devicenum);
-
-
-        inline static void copy_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum);
-        inline static void alloc_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum);
-        inline static void copy_data_to_host_set_host_ptr(DataBlock<T>&dL);
-        inline static void free_device_data_set_host_ptr(DataBlock<T>&dL);
-
-
-        inline static void copy_data_to_host_ptr(DataBlock<T>& dL);
-        inline static void copy_data_to_device_ptr(DataBlock<T>& dL);
-        inline static T* alloc_device_ptr(size_t length, int devicenum);
-        inline static void free_device_ptr(T* &deviceptr, int devicenum);
-
-
-        inline static T* alloc_data_device_ptr(size_t datalength,bool with_memmap, int devicenum);
-        inline static void free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum);
-
-        inline static DataBlock<T> alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum);
-        inline static void free_copy_device(DataBlock<T>&m, bool with_memmap, int devicenum);
-
-        inline static bool is_on_gpu(const DataBlock<T>&m,const int devicenum);
-        inline static bool is_on_gpu_ptr(const T* pdata,const int devicenum);
-        inline static bool is_on_gpu_ptr(const size_t* p,const int devicenum);
-
+        DataBlockArrayOffloadHelper(const DataBlockArrayOffloadHelper&) = delete;
+        DataBlockArrayOffloadHelper& operator=(const DataBlockArrayOffloadHelper&) = delete;
     };
+
+    template<typename T>
+    class DataBlockArrayOffloadHelperConst
+    {
+    protected:
+        const DataBlockArray<T> &pArr;
+        int pdevicenum;
+    public:
+        inline DataBlockArrayOffloadHelperConst(const DataBlockArray<T>& arr, int devicenum)
+            : pArr(arr), pdevicenum(devicenum)
+        {
+#if !defined(Unified_Shared_Memory)
+            GPU_Memory_Functions::create_in(arr, devicenum);
+#endif
+        }
+        inline ~DataBlockArrayOffloadHelperConst()
+        {
+#if !defined(Unified_Shared_Memory)
+            GPU_Memory_Functions::release(pArr, pdevicenum);
+#endif
+        }
+
+        DataBlockArrayOffloadHelperConst(const DataBlockArrayOffloadHelperConst&) = delete;
+        DataBlockArrayOffloadHelperConst& operator=(const DataBlockArrayOffloadHelperConst&) = delete;
+    };
+
+    template<typename T>
+    inline static void create_out(DataBlockArray<T>& arr, int devicenum);
+    template<typename T>
+    inline static void create_in(DataBlockArray<T>& arr, int devicenum);
+    template<typename T>
+    inline static void create_in(const DataBlockArray<T>& arr, int devicenum);
+    template<typename T>
+    inline static void update_host(DataBlockArray<T>& arr, int devicenum);
+    template<typename T>
+    inline static void release(const DataBlockArray<T>& arr, int devicenum);
+
+
+
+
+    template<typename T>
+    inline static bool update_device(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static bool update_host(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static bool update_device_data(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static void update_device_metadata(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static bool update_host_data(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static void update_host_metadata(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static void set_data_to_device_ptr(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static void set_data_to_host_ptr(DataBlock<T>& dL,int devicenum);
+    template<typename T>
+    inline static void create_out(DataBlock<T>& dA,int devicenum);
+    template<typename T>
+    inline static void create_in(DataBlock<T>& dA,int devicenum);
+    template<typename T>
+    inline static void exit(DataBlock<T> &dA,int devicenum);
+    template<typename T>
+    inline static void release(DataBlock<T> &dA,int devicenum);
+    template<typename T>
+    inline static void create_in(const DataBlock<T>& dA,int devicenum);
+    template<typename T>
+    inline static void exit(const DataBlock<T> &dA,int devicenum);
+    template<typename T>
+    inline static void release(const DataBlock<T> &dA,int devicenum);
+
+    template<typename T>
+    inline static void create_in_blocked(const BlockedDataView<T>& dA,int devicenum);
+    template<typename T>
+    inline static void exit_blocked(const BlockedDataView<T> &dA,int devicenum);
+    template<typename T>
+    inline static void release_blocked(const BlockedDataView<T> &dA,int devicenum);
+
+    template<typename T>
+    inline static bool copy_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum);
+    template<typename T>
+    inline static bool alloc_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum);
+    template<typename T>
+    inline static bool copy_data_to_host_set_host_ptr(DataBlock<T>&dL);
+    template<typename T>
+    inline static bool free_device_data_set_host_ptr(DataBlock<T>&dL);
+
+    template<typename T>
+    inline static void copy_data_to_host_ptr(DataBlock<T>& dL);
+    template<typename T>
+    inline static void copy_data_to_device_ptr(DataBlock<T>& dL);
+    template<typename T>
+    inline static T* alloc_device_ptr(size_t length, int devicenum);
+    template<typename T>
+    inline static void free_device_ptr(T* &deviceptr, int devicenum);
+
+    template<typename T>
+    inline static T* alloc_data_device_ptr(size_t datalength,bool with_memmap, int devicenum);
+    template<typename T>
+    inline static void free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum);
+
+    template<typename T>
+    inline static DataBlock<T> alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum,bool conjugate);
+    template<typename T>
+    inline static void free_copy_device(DataBlock<T>&m, bool with_memmap, int devicenum);
+
+    template<typename T>
+    inline static bool is_on_gpu(const DataBlock<T>&m,const int devicenum);
+    template<typename T>
+    inline static bool is_on_gpu_ptr(const T* pdata,const int devicenum);
+    template<typename T>
+    inline static bool is_on_gpu_ptr(const size_t* p,const int devicenum);
+
+};
 
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_out(DataBlockArray<T>& arr, int devicenum)
+void GPU_Memory_Functions::create_out(DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
     if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
@@ -260,7 +359,7 @@ void GPU_Memory_Functions<T>::create_out(DataBlockArray<T>& arr, int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_in(DataBlockArray<T>& arr, int devicenum)
+void GPU_Memory_Functions::create_in(DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
     if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
@@ -289,7 +388,7 @@ void GPU_Memory_Functions<T>::create_in(DataBlockArray<T>& arr, int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_in(const DataBlockArray<T>& arr, int devicenum)
+void GPU_Memory_Functions::create_in(const DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
     if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
@@ -318,7 +417,7 @@ void GPU_Memory_Functions<T>::create_in(const DataBlockArray<T>& arr, int device
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::update_host(DataBlockArray<T>& arr, int devicenum)
+void GPU_Memory_Functions::update_host(DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0 || arr.pdata_is_devptr || arr.pdata == nullptr) return;
     size_t l = arr.pdatalength;
@@ -326,7 +425,7 @@ void GPU_Memory_Functions<T>::update_host(DataBlockArray<T>& arr, int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::release(const DataBlockArray<T>& arr, int devicenum)
+void GPU_Memory_Functions::release(const DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
     if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
@@ -357,7 +456,7 @@ void GPU_Memory_Functions<T>::release(const DataBlockArray<T>& arr, int devicenu
 
 
 template<typename T>
-bool GPU_Memory_Functions<T>::is_on_gpu(const DataBlock<T> &m,const int devicenum)
+bool GPU_Memory_Functions::is_on_gpu(const DataBlock<T> &m,const int devicenum)
 {
     if(m.dpdata_is_devptr)
         return true;
@@ -367,14 +466,14 @@ bool GPU_Memory_Functions<T>::is_on_gpu(const DataBlock<T> &m,const int devicenu
 }
 
 template<typename T>
-bool GPU_Memory_Functions<T>::is_on_gpu_ptr(const T* pdata,const int devicenum)
+bool GPU_Memory_Functions::is_on_gpu_ptr(const T* pdata,const int devicenum)
 {
     if (omp_target_is_present(pdata,devicenum))
         return true;
     return false;
 }
 template<typename T>
-bool GPU_Memory_Functions<T>::is_on_gpu_ptr(const size_t* p,const int devicenum)
+bool GPU_Memory_Functions::is_on_gpu_ptr(const size_t* p,const int devicenum)
 {
     if (omp_target_is_present(p,devicenum))
         return true;
@@ -382,7 +481,7 @@ bool GPU_Memory_Functions<T>::is_on_gpu_ptr(const size_t* p,const int devicenum)
 }
 
 template<typename T>
-T* GPU_Memory_Functions<T>::alloc_data_device_ptr(size_t datalength,bool with_memmap, int devicenum)
+T* GPU_Memory_Functions::alloc_data_device_ptr(size_t datalength,bool with_memmap, int devicenum)
 {
 
 #if defined(Unified_Shared_Memory)
@@ -395,7 +494,7 @@ T* GPU_Memory_Functions<T>::alloc_data_device_ptr(size_t datalength,bool with_me
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum)
+void GPU_Memory_Functions::free_data_device_ptr(T*&pdata,size_t datalength,bool with_memmap, int devicenum)
 {
 #if defined(Unified_Shared_Memory)
     if(pdata!=nullptr)
@@ -413,7 +512,7 @@ void GPU_Memory_Functions<T>::free_data_device_ptr(T*&pdata,size_t datalength,bo
 
 
 template<typename T>
-bool GPU_Memory_Functions<T>::update_device_data(DataBlock<T>& dL,int devicenum)
+bool GPU_Memory_Functions::update_device_data(DataBlock<T>& dL,int devicenum)
 {
 
     if (dL.dpdata==nullptr)
@@ -436,7 +535,7 @@ bool GPU_Memory_Functions<T>::update_device_data(DataBlock<T>& dL,int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::update_device_metadata(DataBlock<T>& dL,int devicenum)
+void GPU_Memory_Functions::update_device_metadata(DataBlock<T>& dL,int devicenum)
 {
     if (dL.dpextents==nullptr)
         return;
@@ -453,7 +552,7 @@ void GPU_Memory_Functions<T>::update_device_metadata(DataBlock<T>& dL,int device
 
 
 template<typename T>
-bool GPU_Memory_Functions<T>::update_host_data(DataBlock<T>& dL,int devicenum)
+bool GPU_Memory_Functions::update_host_data(DataBlock<T>& dL,int devicenum)
 {
 
     if (dL.dpdata==nullptr)
@@ -474,7 +573,7 @@ bool GPU_Memory_Functions<T>::update_host_data(DataBlock<T>& dL,int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::update_host_metadata(DataBlock<T>& dL,int devicenum)
+void GPU_Memory_Functions::update_host_metadata(DataBlock<T>& dL,int devicenum)
 {
     if (dL.dpextents==nullptr)
         return;
@@ -490,44 +589,48 @@ void GPU_Memory_Functions<T>::update_host_metadata(DataBlock<T>& dL,int devicenu
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum)
+bool GPU_Memory_Functions::copy_data_to_device_set_devptr(DataBlock<T>&dL,int devicenum)
 {
 
 #if !defined(Unified_Shared_Memory)
     if(!dL.dpdata_is_devptr)
     {
         dL.devptr_former_hostptr=dL.dpdata;
-        dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
+        dL.dpdata=GPU_Memory_Functions::alloc_device_ptr<T>(dL.dpdatalength,devicenum);
         dL.devptr_devicenum=devicenum;
         dL.dpdata_is_devptr=true;
         omp_target_memcpy(dL.dpdata,dL.devptr_former_hostptr,sizeof(T)* dL.dpdatalength,0,0,dL.devptr_devicenum, omp_get_initial_device());
+        return true;
     }
 #endif
+    return false;
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(DataBlock<T>&dL, int devicenum)
+bool GPU_Memory_Functions::alloc_data_to_device_set_devptr(DataBlock<T>&dL, int devicenum)
 {
 
 #if !defined(Unified_Shared_Memory)
     if(!dL.dpdata_is_devptr)
     {
         dL.devptr_former_hostptr=dL.dpdata;
-        dL.dpdata=alloc_device_ptr(dL.dpdatalength,devicenum);
+        dL.dpdata=alloc_device_ptr<T>(dL.dpdatalength,devicenum);
         dL.dpdata_is_devptr=true;
         dL.devptr_devicenum=devicenum;
+        return true;
     }
 #endif
+    return false;
 }
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(DataBlock<T>&dL)
+bool GPU_Memory_Functions::copy_data_to_host_set_host_ptr(DataBlock<T>&dL)
 {
     if (dL.dpdata==nullptr)
-        return;
+        return false;
     if (dL.devptr_former_hostptr==nullptr)
-        return;
+        return false;
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata_is_devptr)
     {
@@ -537,16 +640,20 @@ void GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(DataBlock<T>&dL)
         dL.dpdata_is_devptr=false;
         dL.devptr_devicenum=-1;
         dL.devptr_former_hostptr=nullptr;
+        return true;
     }
 #endif
+    return false;
 }
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::free_device_data_set_host_ptr(DataBlock<T>&dL)
+bool GPU_Memory_Functions::free_device_data_set_host_ptr(DataBlock<T>&dL)
 {
     if (dL.dpdata==nullptr)
-        return;
+        return false;
+    if (dL.devptr_former_hostptr==nullptr)
+        return false;
 #if !defined(Unified_Shared_Memory)
     if(dL.dpdata_is_devptr)
     {
@@ -555,12 +662,14 @@ void GPU_Memory_Functions<T>::free_device_data_set_host_ptr(DataBlock<T>&dL)
         dL.dpdata_is_devptr=false;
         dL.devptr_devicenum=-1;
         dL.devptr_former_hostptr=nullptr;
+        return true;
     }
 #endif
+    return false;
 }
 
 template<typename T>
-T* GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int devicenum)
+T* GPU_Memory_Functions::alloc_device_ptr(size_t length, int devicenum)
 {
 #if !defined(Unified_Shared_Memory)
     return (T*)omp_target_alloc(sizeof(T)*length, devicenum);
@@ -570,7 +679,7 @@ T* GPU_Memory_Functions<T>::alloc_device_ptr(size_t length, int devicenum)
 
 }
 template<typename T>
-void GPU_Memory_Functions<T>::free_device_ptr(T* &deviceptr, int devicenum)
+void GPU_Memory_Functions::free_device_ptr(T* &deviceptr, int devicenum)
 {
     if (deviceptr==nullptr)
         return;
@@ -584,7 +693,7 @@ void GPU_Memory_Functions<T>::free_device_ptr(T* &deviceptr, int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::copy_data_to_device_ptr(DataBlock<T>& dL)
+void GPU_Memory_Functions::copy_data_to_device_ptr(DataBlock<T>& dL)
 {
     if (dL.dpdata==nullptr)
         return;
@@ -602,7 +711,7 @@ void GPU_Memory_Functions<T>::copy_data_to_device_ptr(DataBlock<T>& dL)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::copy_data_to_host_ptr(DataBlock<T>& dL)
+void GPU_Memory_Functions::copy_data_to_host_ptr(DataBlock<T>& dL)
 {
     if (dL.dpdata==nullptr)
         return;
@@ -620,7 +729,7 @@ void GPU_Memory_Functions<T>::copy_data_to_host_ptr(DataBlock<T>& dL)
 
 
 template<typename T>
-bool GPU_Memory_Functions<T>::update_device(DataBlock<T>& dL,int devicenum)
+bool GPU_Memory_Functions::update_device(DataBlock<T>& dL,int devicenum)
 {
 
     if (dL.dpdata==nullptr)
@@ -650,7 +759,7 @@ bool GPU_Memory_Functions<T>::update_device(DataBlock<T>& dL,int devicenum)
 
 
 template<typename T>
-bool GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicenum)
+bool GPU_Memory_Functions::update_host(DataBlock<T>& dL,int devicenum)
 {
     if (dL.dpdata==nullptr)
         return false;
@@ -684,7 +793,7 @@ bool GPU_Memory_Functions<T>::update_host(DataBlock<T>& dL,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_out(DataBlock<T>& dA,int devicenum)
+void GPU_Memory_Functions::create_out(DataBlock<T>& dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -714,7 +823,7 @@ void GPU_Memory_Functions<T>::create_out(DataBlock<T>& dA,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_in(DataBlock<T>& dA,int devicenum)
+void GPU_Memory_Functions::create_in(DataBlock<T>& dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -747,7 +856,7 @@ void GPU_Memory_Functions<T>::create_in(DataBlock<T>& dA,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int devicenum)
+void GPU_Memory_Functions::create_in(const DataBlock<T>& dA,int devicenum)
 {
 
     if (dA.dpdata==nullptr)
@@ -777,7 +886,7 @@ void GPU_Memory_Functions<T>::create_in(const DataBlock<T>& dA,int devicenum)
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView<T>& dA,int devicenum)
+void GPU_Memory_Functions::create_in_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
 
     if (dA.dpdata==nullptr)
@@ -818,7 +927,7 @@ void GPU_Memory_Functions<T>::create_in_blocked(const BlockedDataView<T>& dA,int
 }
 
 template<typename T>
-void GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& dA,int devicenum)
+void GPU_Memory_Functions::exit_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -859,7 +968,7 @@ void GPU_Memory_Functions<T>::exit_blocked(const BlockedDataView<T>& dA,int devi
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::release_blocked(const BlockedDataView<T>& dA,int devicenum)
+void GPU_Memory_Functions::release_blocked(const BlockedDataView<T>& dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -897,10 +1006,10 @@ void GPU_Memory_Functions<T>::release_blocked(const BlockedDataView<T>& dA,int d
 
 
 template<typename T>
-DataBlock<T> GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum)
+DataBlock<T> GPU_Memory_Functions::alloc_data_copy_strides_extents_device(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap, int devicenum,bool conjugate)
 {
 #if defined(Unified_Shared_Memory)
-    return Host_Memory_Functions<T>::alloc_data_copy_strides_extents( datalength, rowmajor,  rank, extents, strides,  with_memmap);
+    return Host_Memory_Functions<T>::alloc_data_copy_strides_extents( datalength, rowmajor,  rank, extents, strides,  with_memmap,conjugate);
 #else
 
     size_t*pextents;
@@ -913,14 +1022,13 @@ DataBlock<T> GPU_Memory_Functions<T>::alloc_data_copy_strides_extents_device(siz
     memcpy(pstrides,strides,sizeof(size_t)*rank);
 
     pdata=(T*)omp_target_alloc(sizeof(T)*datalength,devicenum);
-    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false,true, devicenum);
-
+    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false,true, devicenum,conjugate);
 #endif
 }
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool with_memmap,int devicenum)
+void GPU_Memory_Functions::free_copy_device(DataBlock<T>&m, bool with_memmap,int devicenum)
 {
 
 #if defined(Unified_Shared_Memory)
@@ -949,7 +1057,7 @@ void GPU_Memory_Functions<T>::free_copy_device(DataBlock<T>&m, bool with_memmap,
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::exit(DataBlock<T> &dA,int devicenum)
+void GPU_Memory_Functions::exit(DataBlock<T> &dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -977,7 +1085,7 @@ void GPU_Memory_Functions<T>::exit(DataBlock<T> &dA,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::exit(const DataBlock<T> &dA,int devicenum)
+void GPU_Memory_Functions::exit(const DataBlock<T> &dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -1007,7 +1115,7 @@ void GPU_Memory_Functions<T>::exit(const DataBlock<T> &dA,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::release(DataBlock<T> &dA,int devicenum)
+void GPU_Memory_Functions::release(DataBlock<T> &dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;
@@ -1035,7 +1143,7 @@ void GPU_Memory_Functions<T>::release(DataBlock<T> &dA,int devicenum)
 
 
 template<typename T>
-void GPU_Memory_Functions<T>::release(const DataBlock<T> &dA,int devicenum)
+void GPU_Memory_Functions::release(const DataBlock<T> &dA,int devicenum)
 {
     if (dA.dpdata==nullptr)
         return;

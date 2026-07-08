@@ -75,11 +75,11 @@ struct AddExpr
 
         if (lhs.ObjectType() == DataBlock<T>::Matrix)
         {
-            Math_Functions<T>::matrix_add(lhs, rhs, C, pol);
+            Math_Functions::matrix_add(lhs, rhs, C, pol);
         }
         else if (lhs.ObjectType() == DataBlock<T>::Vector)
         {
-            Math_Functions<T>::vector_add(lhs, rhs, C, pol);
+            Math_Functions::vector_add(lhs, rhs, C, pol);
         }
         else
         {
@@ -101,9 +101,9 @@ struct SubtrExpr
         auto pol = override ? override : policy;
 
         if (lhs.ObjectType() == DataBlock<T>::Matrix)
-            Math_Functions<T>::matrix_subtract(lhs, rhs, C, pol);
+            Math_Functions::matrix_subtract(lhs, rhs, C, pol);
         else if (lhs.ObjectType() == DataBlock<T>::Vector)
-            Math_Functions<T>::vector_subtract(lhs, rhs, C, pol);
+            Math_Functions::vector_subtract(lhs, rhs, C, pol);
         else
             throw std::runtime_error("Unsupported type for subtraction");
     }
@@ -124,10 +124,10 @@ struct ScaleExpr
         switch(lhs.ObjectType())
         {
             case DataBlock<T>::Vector:
-                Math_Functions<T>::vector_multiply_scalar(lhs, scalar, C, pol);
+                Math_Functions::vector_multiply_scalar(lhs, scalar, C, pol);
                 break;
             case DataBlock<T>::Matrix:
-                Math_Functions<T>::matrix_multiply_scalar(lhs, scalar, C, pol);
+                Math_Functions::matrix_multiply_scalar(lhs, scalar, C, pol);
                 break;
             default:
                 throw std::runtime_error("Unsupported type for scalar multiplication");
@@ -150,9 +150,9 @@ struct MulExpr
         if (lhs.ObjectType() == DataBlock<T>::Matrix)
         {
             if (rhs.ObjectType() == DataBlock<T>::Matrix)
-                Math_Functions<T>::matrix_multiply_dot(lhs, rhs, C, pol);
+                Math_Functions::matrix_multiply_dot(lhs, rhs, C, pol);
             else if (rhs.ObjectType() == DataBlock<T>::Vector)
-                Math_Functions<T>::matrix_multiply_vector(lhs, rhs, C, pol);
+                Math_Functions::matrix_multiply_vector(lhs, rhs, C, pol);
             else
                 throw std::runtime_error("Unsupported RHS for matrix multiplication");
         }
@@ -179,7 +179,7 @@ struct DotExpr {
         auto pol = override ? override : policy;
         if (lhs.ObjectType() == DataBlock<T>::Vector && rhs.ObjectType() == DataBlock<T>::Vector)
         {
-            return Math_Functions<T>::dot_product(lhs, rhs, pol);
+            return Math_Functions::dot_product(lhs, rhs, pol);
         }
         throw std::runtime_error("DotExpr only works for vectors");
     }

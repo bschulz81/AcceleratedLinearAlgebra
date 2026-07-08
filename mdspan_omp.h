@@ -72,13 +72,15 @@ concept Container =
 // Class template for mdspan
 
 
+class mdspan_utilities;
+
 template <typename T, typename Container>
 class mdspan:public DataBlock<T>
 {
 
 protected:
 
-
+  friend class mdspan_utilities;
 
 
     class DevicemappingManager
@@ -193,24 +195,15 @@ public:
     using DataBlock<T>::operator=;
 
     // Subspan methods
-    using DataBlock<T>::tensor_subspan;
     mdspan<T, Container>tensor_subspan(const Container& offsets,  Container& sub_extents) const;
-    using DataBlock<T>::matrix_subspan;
     mdspan<T, Container>matrix_subspan(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-    using DataBlock<T>::matrix_column;
     mdspan<T, Container>matrix_column(const size_t col_index);
 
-    using DataBlock<T>::matrix_row;
     mdspan<T, Container>matrix_row(const size_t row_index);
 
-    using DataBlock<T>::matrix_transpose;
     mdspan<T, Container>matrix_transpose();
-
-    using DataBlock<T>::matrix_hermitian_transpose;
     mdspan<T, Container>matrix_hermitian_transpose();
 
-
-    using DataBlock<T>::collapsed_view;
     mdspan<T, std::vector<size_t>> collapsed_view();
 
     bool  device_data_upload(bool default_device,int devicenum=0);
@@ -702,7 +695,7 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum,conjugate)
+    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum,conjugate)
 {
     initialize_extents_and_strides(extents,strides);
 }
@@ -711,23 +704,22 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container&
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
-
+    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
 {
     initialize_extents_and_strides(extents,strides);
-    this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
 }
 
 
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
+    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
 {
     initialize_extents(extents);
     compute_strides(pextents,pstrides,rowm);
     this->dpstrides = pstrides.data();
-    this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
 }
 
 
@@ -738,7 +730,7 @@ mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum, bool conjugate)
-    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,false,false,dpdata_is_devptr,devnum, conjugate)
+    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
 {
 
     const size_t r=2;
@@ -759,14 +751,14 @@ mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,cons
 
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
-    this->dpdatalength=compute_data_length_w(this->dpextents,this->dpstrides,this->dprank);
+    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
 }
 
 
 
 template <typename T, typename Container>
 mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,false,false,dpdata_is_devptr,devnum,conjugate)
+    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,dpdata_is_devptr,devnum,conjugate)
 {
     const size_t s=1;
     if constexpr (StaticContainer<Container>)
@@ -810,7 +802,7 @@ bool mdspan<T, Container>:: device_data_upload(bool default_device,int devicenum
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    GPU_Memory_Functions<T>::copy_data_to_device_set_devptr(*this,devicenum);
+    GPU_Memory_Functions::copy_data_to_device_set_devptr(*this,devicenum);
 
     p_has_offloaded_host_data=true;
     return true;
@@ -830,7 +822,7 @@ bool mdspan<T, Container>:: device_data_alloc(bool default_device,int devicenum)
 
     if(!mapping_manager->insert(devicenum, (intptr_t)this->dpdata, (intptr_t)(this->dpdata+this->dpdatalength)))return false;
 
-    GPU_Memory_Functions<T>::alloc_data_to_device_set_devptr(*this,devicenum);
+    GPU_Memory_Functions::alloc_data_to_device_set_devptr(*this,devicenum);
     p_has_offloaded_host_data=true;
 
     return true;
@@ -845,7 +837,7 @@ bool mdspan<T, Container>:: device_data_download_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    GPU_Memory_Functions<T>::copy_data_to_host_set_host_ptr(*this);
+    GPU_Memory_Functions::copy_data_to_host_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
 
     return true;
@@ -864,7 +856,7 @@ bool mdspan<T, Container>:: device_data_release()
     if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
-    GPU_Memory_Functions<T>::free_device_data_set_host_ptr(*this);
+    GPU_Memory_Functions::free_device_data_set_host_ptr(*this);
     p_has_offloaded_host_data=false;
     return true;
 
@@ -876,7 +868,7 @@ bool mdspan<T, Container>:: host_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    GPU_Memory_Functions<T>::copy_data_to_host_ptr(*this);
+    GPU_Memory_Functions::copy_data_to_host_ptr(*this);
     return true;
 
 }
@@ -886,7 +878,7 @@ bool mdspan<T, Container>:: device_data_update()
     if(!this->dpdata_is_devptr)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
-    GPU_Memory_Functions<T>::copy_data_to_device_ptr(*this);
+    GPU_Memory_Functions::copy_data_to_device_ptr(*this);
     return true;
 
 }
@@ -904,58 +896,6 @@ mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
 
 }
 
-
-template <typename T, typename Container>
-mdspan<T, Container> mdspan<T, Container>::tensor_subspan(const Container&offsets,  Container &sub_extents)const
-{
-    size_t *tempstr=new size_t[offsets.size()];
-    size_t *tempext=new size_t[offsets.size()];
-    mdspan<T,Container> result( this->tensor_subspan(offsets.data(),sub_extents.data(),tempext, tempstr),mapping_manager);
-    delete [] tempstr;
-    delete [] tempext;
-    return result;
-}
-
-template <typename T, typename Container>inline
-mdspan<T, Container> mdspan<T, Container>::matrix_subspan(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols )const
-{
-    size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(this->matrix_subspan(row,col,tile_rows,tile_cols, tempext, tempstr),mapping_manager);
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan<T,Container> mdspan<T, Container>:: matrix_row(const size_t row_index)
-{
-    size_t tempext[1], tempstr[1];
-    mdspan<T,Container> result(this->matrix_row(row_index,tempext, tempstr),mapping_manager);
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan<T,Container> mdspan<T, Container>::matrix_column(const size_t column_index)
-{
-    size_t tempext[1], tempstr[1];
-    mdspan<T,Container> result(this->matrix_column(column_index,tempext, tempstr),mapping_manager);
-    return result;
-}
-
-
-template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>::matrix_transpose()
-{
-    size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(matrix_transpose(tempext,tempstr),mapping_manager);
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan<T, Container>mdspan<T, Container>::matrix_hermitian_transpose()
-{
-    size_t tempext[2], tempstr[2];
-    mdspan<T,Container> result(matrix_hermitian_transpose(tempext,tempstr),mapping_manager);
-    return result;
-}
 
 
 

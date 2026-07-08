@@ -3,12 +3,18 @@
 
 #include "mdspan_omp.h"
 #include "string.h"
+#include "indiceshelperfunctions.h"
+
+
+class mdspan_utilities;
 
 template <typename T, typename Container>
 class mdspan_data: public mdspan<T,Container>
 {
 public:
-public:
+
+friend class mdspan_utilities;
+
     mdspan_data() {};
 
 
@@ -56,7 +62,7 @@ public:
 
     using DataBlock<T>::operator=;
 //
-    using DataBlock<T>::tensor_subspan_copy;
+
     mdspan_data<T, Container> tensor_subspan_copy(const Container& offsets, const Container& sub_extents, bool memmap=false ) ;
     mdspan_data<T, Container> matrix_subspan_copy( size_t row,  size_t col,  size_t tile_rows,  size_t tile_cols, bool memmap=false );
 
@@ -93,7 +99,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
 #else
         if(default_device)
             devicenum=omp_get_default_device();
-        this->dpdata=GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength,devicenum);
+        this->dpdata=GPU_Memory_Functions::alloc_device_ptr<T>(this->dpdatalength,devicenum);
         this->devptr_devicenum=devicenum;
         this->dpdata_is_devptr=true;
         this->devptr_former_hostptr=nullptr;
@@ -103,7 +109,7 @@ void mdspan_data<T,Container>::initialization_helper(bool ondevice,bool default_
     else
     {
         if (memmap)
-            this->dpdata = Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = Host_Memory_Functions::create_temp_mmap<T>(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
         pmemmap=memmap;
@@ -164,18 +170,18 @@ void mdspan_data<T, Container>::release_all_data()
     {
         this->device_data_release();
         if (pmemmap)
-            Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+            Host_Memory_Functions::delete_temp_mmap(this->dpdata, this->dpdatalength);
         else
             delete[] this->dpdata;
     }
     else
     {
         if(this->dpdata_is_devptr)
-            GPU_Memory_Functions<T>::free_device_ptr(this->dpdata,this->devptr_devicenum);
+            GPU_Memory_Functions::free_device_ptr(this->dpdata,this->devptr_devicenum);
         else
         {
             if (pmemmap)
-                Host_Memory_Functions<T>::delete_temp_mmap(this->dpdata, this->dpdatalength);
+                Host_Memory_Functions::delete_temp_mmap(this->dpdata, this->dpdatalength);
             else
                 delete[] this->dpdata;
         }
@@ -187,63 +193,8 @@ mdspan_data<T, Container>::~mdspan_data()
 {
     release_all_data();
 }
-//
-// ============================================================================
-// Slicing and Transformation Routines (Fixed Constructor Mapping)
-// ============================================================================
 
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::tensor_subspan_copy(const Container& offsets, const Container& sub_extents, const bool memmap)
-{
 
-    mdspan_data<T, Container> result(sub_extents, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
-    DataBlock<T> temp = this->mdspan<T,Container>::tensor_subspan_copy(offsets.data(), sub_extents.data(), result.pextents.data(), result.pstrides.data(), result.dpdata);
-    result.dprank = temp.dprank;
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::matrix_subspan_copy(const size_t row, const size_t col, const size_t tile_rows, const size_t tile_cols, const bool memmap)
-{
-    mdspan_data<T, Container> result(tile_rows, tile_cols, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
-    this->matrix_subspan_copy_w(row, col, tile_rows, tile_cols, result.pextents.data(), result.pstrides.data(), result.dpdata);
-    result.dprank = 2;
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::matrix_transpose_copy(bool memmap)
-{
-    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
-    this->matrix_transpose_copy_w(result.pextents.data(), result.pstrides.data(), result.dpdata);
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::matrix_hermitian_transpose_copy(bool memmap)
-{
-    mdspan_data<T, Container> result(this->dpextents[1], this->dpextents[0], this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, !this->pconjugate);
-    this->matrix_hermitian_transpose_copy_w(result.pextents.data(), result.pstrides.data(), result.dpdata);
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::matrix_column_copy(const size_t col_index, const bool memmap)
-{
-    mdspan_data<T, Container> result(this->dpextents[0], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
-    this->matrix_column_copy_w(col_index, result.pextents.data(), result.pstrides.data(), result.dpdata);
-    result.dprank = 1;
-    return result;
-}
-
-template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::matrix_row_copy(const size_t row_index, const bool memmap)
-{
-    mdspan_data<T, Container> result(this->dpextents[1], 1, this->dprowmajor, memmap, this->dpdata_is_devptr, false, this->devptr_devicenum, this->pconjugate);
-    this->matrix_row_copy_w(row_index, result.pextents.data(), result.pstrides.data(), result.dpdata);
-    result.dprank = 1;
-    return result;
-}
 
 template<typename T, typename Container>
 mdspan_data<T, Container>::mdspan_data(const mdspan<T, Container>& base)
@@ -292,9 +243,6 @@ mdspan_data<T, Container> mdspan_data<T, Container>::copy(bool memmap, bool onde
 }
 
 
-// ============================================================================
-// Assignment and Lifetime Managers (Fixed Move Memory Safety)
-// ============================================================================
 
 template <typename T, typename Container>
 mdspan<T,Container>& mdspan_data<T, Container>::operator=(const mdspan_data<T,Container>& other)
@@ -342,14 +290,14 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
 this->pconjugate= other.pconjugate;
     if (other.dpdata_is_devptr)
     {
-        this->dpdata = GPU_Memory_Functions<T>::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
+        this->dpdata = GPU_Memory_Functions::alloc_device_ptr(this->dpdatalength, other.devptr_devicenum);
         omp_target_memcpy(this->dpdata, other.dpdata, sizeof(T) * this->dpdatalength, 0, 0,
                           other.devptr_devicenum, other.devptr_devicenum);
     }
     else
     {
         if (other.pmemmap)
-            this->dpdata = Host_Memory_Functions<T>::create_temp_mmap(this->dpdatalength);
+            this->dpdata = Host_Memory_Functions::create_temp_mmap(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength];
 
@@ -397,13 +345,13 @@ this->pconjugate=other.pconjugate;
 
 
 
-// Move assignment
+
 template<typename T, typename Container>
 mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, Container>&& other) noexcept
 {
     if(this != &other)
     {
-        // Release current memory
+
         release_all_data();
 
 

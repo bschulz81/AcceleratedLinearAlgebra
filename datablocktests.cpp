@@ -6,7 +6,7 @@
 #include "datablock.h"
 #include "mdspan_omp.h"
 #include "mdspan_data.h"
-
+#include "datablockutilities.h"
 using namespace std;
 
 int main(int argc, char** argv)
@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     cout<<" Note that this tests only the DataBlock class, which can be offloaded to gpu. it is non owning, "<<endl;
     cout<<" compared to the mdspan class which owns strides and extents and mdspan_data, which owns the data as well"<<endl<<endl;
     {
-//
+
         vector<double>A_data(3*7,0);
         A_data = {1,2,3,4,5,6,7,
                   8,9,10,11,12,13,14,
@@ -27,65 +27,65 @@ int main(int argc, char** argv)
 
         size_t extaa[2]= {3,7};
         size_t straa[2];
-        DataBlock<double>A(A_data.data(),0, true,2,extaa,straa,true,true,false);
+        DataBlock<double>A(A_data.data(),0, true,2,extaa,straa,true,true,false,-1,false);
         cout<<"A"<<A.datalength()<<endl;
-        A.printtensor();
+        A.print();
 
         cout<<"column"<<endl;
         size_t exta[1];
         size_t stra[1];
 
-        DataBlock<double>Aa=A.matrix_column(1,exta,stra);
+        DataBlock<double>Aa=DataBlockUtilities::matrix_column(A,1,exta,stra);
         cout <<"C"<<endl<<"Rank"<<Aa.rank()<<endl;
-        Aa.printtensor();
+        Aa.print();
 
 
 
         size_t exta3[2],stra3[2];
         double newda3[7];
         cout<<"column 1 of A with data c"<<endl;
-        DataBlock<double>Ac=A.matrix_column_copy_s(1, exta3,stra3,newda3);
-        Ac.printtensor();
+        DataBlock<double>Ac=DataBlockUtilities::matrix_column_copy<OpenMPVariant::Sequential>(A,1, exta3,stra3,newda3);
+        Ac.print();
         cout <<"Rank: "<<Ac.rank()<<endl;
         cout<<"row"<<endl;
         size_t extar[2];
         size_t strar[2];
-        DataBlock<double>Aa1=A.matrix_row(1,extar,strar);
+        DataBlock<double>Aa1=DataBlockUtilities::matrix_row(A,1,extar,strar);
         cout <<"C"<<endl;
-        Aa1.printtensor();
+        Aa1.print();
         cout <<"Rank"<<Aa1.rank()<<endl;
 
         size_t exta3r[2],stra3r[2];
         double newda3r[7];
         cout<<"row 1 of A with data c"<<endl;
-        DataBlock<double>Ac2=A.matrix_row_copy_s(1, exta3r,stra3r,newda3r);
-        Ac2.printtensor();
+        DataBlock<double>Ac2=DataBlockUtilities::matrix_row_copy<OpenMPVariant::Simd>(A,1, exta3r,stra3r,newda3r);
+        Ac2.print();
 
         size_t exta2[2],stra2[2];
-        DataBlock<double>Ab= A.matrix_subspan(1,1,2,4,exta2,stra2);
+        DataBlock<double>Ab=DataBlockUtilities:: matrix_subspan(A,1,1,2,4,exta2,stra2);
         cout<<"matrix_subspanA"<<endl;
-        Ab.printtensor();
-
-
+        Ab.print();
+//
+//
         size_t exta4[2],stra4[2];
         double newda4[8];
-        DataBlock<double>Ad= A.matrix_subspan_copy_s(1,1,2,4,exta4,stra4,newda4);
+        DataBlock<double>Ad= DataBlockUtilities::matrix_subspan_copy<OpenMPVariant::Sequential>(A,1,1,2,4,exta4,stra4,newda4);
         cout<<"matrix_subspanA with data copy"<<endl;
-        Ad.printtensor();
-
+        Ad.print();
+//
         size_t exta5[2],stra5[2];
-        DataBlock<double>Ae= A.matrix_transpose(exta5,stra5);
+        DataBlock<double>Ae= DataBlockUtilities::matrix_transpose(A,exta5,stra5);
         cout<<"transpose"<<endl;
-        Ae.printtensor();
-
+        Ae.print();
+//
         size_t exta6[2],stra6[2];
         double dataa6[21];
-        DataBlock<double>Af= A.matrix_transpose_copy_s(exta6,stra6,dataa6);
+        DataBlock<double>Af= DataBlockUtilities::matrix_transpose_copy<OpenMPVariant::Simd>(A,exta6,stra6,dataa6);
         cout<<"transpose with data copy"<<endl;
-        Af.printtensor();
-
-
-
+        Af.print();
+//
+//
+//
         std::vector<double> data_rowmajor =
         {
             //                block 0 (first 3x4 matrix)
@@ -109,34 +109,34 @@ int main(int argc, char** argv)
                                  strides,
                                  true, // compute_datalength
                                  true, // compute_strides
-                                 false // data is not device ptr
+                                 false,-1,false // data is not device ptr
                                 );
 
         size_t offsets[3]    = {1,0,0}; // start at block 1
         size_t sub_extents[3]= {1,3,4}; // take 1 block of full 3x4
 
-
-
+//
+//
         size_t newextT[2],newstrT[2];
-        DataBlock<double> subT_view =T_row.tensor_subspan(offsets, sub_extents, newextT,newstrT);
+        DataBlock<double> subT_view = DataBlockUtilities::tensor_subspan(T_row,offsets, sub_extents, newextT,newstrT);
 
         std::cout<<"now a Tensor"<<endl;
 
-        T_row.printtensor();
+        T_row.print();
         cout <<"Rank"<<T_row.rank()<<endl;
         std::cout << "Subtensor view (row-major):\n";
 
-        subT_view.printtensor();
+        subT_view.print();
         cout <<"Rank"<<subT_view.rank()<<endl;
 
         double buffer1[12];
         size_t newxtCa[2],newstrCA[2];
-        DataBlock<double> subC_view2A =T_row.tensor_subspan_copy(offsets, sub_extents, newxtCa, newstrCA,buffer1);
+        DataBlock<double> subC_view2A = DataBlockUtilities::tensor_subspan_copy(T_row,offsets, sub_extents, newxtCa, newstrCA,buffer1);
 
         std::cout << "Subtensor view (row-major) with buffer:\n";
-        subC_view2A.printtensor();
+        subC_view2A.print();
         cout <<"Rank"<<subC_view2A.rank()<<endl;
-
+//
 
         vector<double> B_data_colmajor =
         {
@@ -152,69 +152,69 @@ int main(int argc, char** argv)
 
         size_t extbb[2]= {3,7};
         size_t strbb[2];
-        DataBlock<double>B(B_data_colmajor.data(),21, false,2,extbb,strbb,true,true,false);
+        DataBlock<double>B(B_data_colmajor.data(),21, false,2,extbb,strbb,true,true,false,-1,false);
         cout<<"B"<< B.datalength()<<endl<<endl;
-        B.printtensor();
+        B.print();
         cout<<"B"<< B.datalength()<<endl<<endl;
         size_t extbbb[2];
         size_t strbbb[2];
-        DataBlock<double>Bbbb(B_data_colmajor.data(), false,3,7,extbbb,strbbb,true,false);
-        Bbbb.printtensor();
+        DataBlock<double>Bbbb(B_data_colmajor.data(), false,3,7,extbbb,strbbb,true,false,-1,false);
+        Bbbb.print();
 
         cout<<"column 1"<<endl;
 
         size_t extb[2],strb[2];
 
-        DataBlock<double>Ba= B.matrix_column(1,extb,strb);
-        Ba.printtensor();
+        DataBlock<double>Ba=  DataBlockUtilities::matrix_column(B,1,extb,strb);
+        Ba.print();
         size_t extb2[2],strb2[2];
 
-
+//
         size_t extb3[2],strb3[2];
         double newdb3[7];
         cout<< "column1  of B with data copy"<<endl;
 
-        DataBlock<double> Bc1=B.matrix_column_copy_s(1, extb3,strb3,  newdb3);
-        Bc1.printtensor();
-
+        DataBlock<double> Bc1= DataBlockUtilities::matrix_column_copy<OpenMPVariant::Sequential>(B,1, extb3,strb3,  newdb3);
+        Bc1.print();
+//
         cout<<"row 1"<<endl;
 
         size_t extb35[2],strb35[2];
-        DataBlock<double>Ba2= B.matrix_row(1,extb35,strb35);
-        Ba2.printtensor();
+        DataBlock<double>Ba2= DataBlockUtilities::matrix_row(B,1,extb35,strb35);
+        Ba2.print();
         cout <<"Rank"<<Ba2.rank()<<endl;
-
+//
         size_t extb34[2],strb34[2];
         double newdb3a[7];
         cout<< "row 1  of B with data copy"<<endl;
 
-        DataBlock<double> Bc3=B.matrix_row_copy_s(1, extb34,strb34,  newdb3a);
-        Bc3.printtensor();
+        DataBlock<double> Bc3= DataBlockUtilities::matrix_row_copy<OpenMPVariant::Sequential>(B,1, extb34,strb34,  newdb3a);
+        Bc3.print();
         cout <<"Rank"<<Bc3.rank()<<endl;
-
+//
         cout<<"subspanmatrx B"<<endl;
-        DataBlock<double>Bb= B.matrix_subspan(1,1,2,4,extb2,strb2);
-        Bb.printtensor();
+        DataBlock<double>Bb=  DataBlockUtilities::matrix_subspan(B,1,1,2,4,extb2,strb2);
+        Bb.print();
         cout <<"Rank"<<Bb.rank()<<endl;
-
+//
         size_t extb4[2],strb4[2];
         double newdb4[8];
-        DataBlock<double>Bd= B.matrix_subspan_copy_s(1,1,2,4,extb4,strb4,newdb4);
+        DataBlock<double>Bd=  DataBlockUtilities::matrix_subspan_copy<OpenMPVariant::Sequential>(B,1,1,2,4,extb4,strb4,newdb4);
         cout<<"matrix_subspanB with data copy"<<endl;
-        Bd.printtensor();
+        Bd.print();
 
         size_t extb5[2],strb5[2];
-        DataBlock<double>Be= B.matrix_transpose(extb5,strb5);
+        DataBlock<double>Be=  DataBlockUtilities::matrix_transpose(B,extb5,strb5);
         cout<<"transpose"<<endl;
-        Be.printtensor();
-
+        Be.print();
+//
         size_t extb6[2],strb6[2];
         double datab6[21];
-        DataBlock<double>Bf= B.matrix_transpose_copy_s(extb6,strb6,datab6);
+        DataBlock<double>Bf=  DataBlockUtilities::matrix_transpose_copy<OpenMPVariant::Sequential>(B,extb6,strb6,datab6);
         cout<<"transpose with data copy"<<endl;
-        Bf.printtensor();
-
-
+        Bf.print();
+//
+//
         std::vector<double> data_colmajor =
         {
             1,13,
@@ -244,29 +244,28 @@ int main(int argc, char** argv)
                                  stridesC,
                                  true,
                                  true,
-                                 false);
+                                 false,-1,false);
         std::cout<<"A tensor in colmajor \n";
-        T_col.printtensor();
-
-
+        T_col.print();
+//
+//
         size_t offsetsC[3]     = {1,0,0};
         size_t sub_extentsC[3] = {1,3,4};
 
 
         size_t newext[2],newstr[2];
-        DataBlock<double> subC_view =
-            T_col.tensor_subspan(offsetsC, sub_extentsC, newext,newstr);
+        DataBlock<double> subC_view =DataBlockUtilities::tensor_subspan(T_col,offsetsC, sub_extentsC, newext,newstr);
         std::cout << "Subtensor view (col-major):\n";
-        subC_view.printtensor();
-
+        subC_view.print();
+//
         double buffer4[12];
         size_t newextC[2],sub_stridesC[2];
-        DataBlock<double> subC_view2 =T_col.tensor_subspan_copy(offsetsC, sub_extentsC,newextC, sub_stridesC,buffer4);
+        DataBlock<double> subC_view2 = DataBlockUtilities::tensor_subspan_copy(T_col,offsetsC, sub_extentsC,newextC, sub_stridesC,buffer4);
         std::cout << "Subtensor view (col-major) with buffer:\n";
-        subC_view2.printtensor();
+        subC_view2.print();
         cout <<"Rank"<<subC_view2.rank()<<endl;
-
-
+//
+//
 
     }
 
