@@ -4,7 +4,8 @@
 #include "mathfunctions_mpi.h"
 #include "expression_templates.h"
 #include "mdspan_omp.h"
-
+#include "datablockutilities.h"
+#include "mdspanutilities.h"
 #include <vector>
 #include <iostream>
 
@@ -42,23 +43,28 @@ int main()
         std::vector<double>C_data(6,0);
         size_t rows = 2, cols = 3;
         cout<<"define A"<<endl;
-        mdspan<double, std::array<size_t,2>> A(A_data.data(), rows, cols, true); // row-major
-        A.printtensor();
+        mdspan<double, std::array<size_t,2>> A(A_data.data(), rows, cols, true);
+
+        A.print();
         cout <<"define B"<<endl;
+
         mdspan<double, std::array<size_t,2>> B(B_data.data(), rows, cols, true);
-        B.printtensor();
+        B.print();
 
         //dynamic_tag is the same as a vector container
         mdspan_data_t<double, dynamic_tag> C(rows,cols, true,false);
         cout<<"addition of A and B"<<endl;
         C =A+B;
-        C.printtensor();
-        //static_tag<rank> is the same as an array container of <rank>
-        mdspan_data_t<double, static_tag<2>> D(rows,rows, true,false);
-        cout<<"multiplication of A and transpose of B"<<endl;
-        D=A*B.matrix_transpose();
+        C.print();
 
-        D.printtensor();
+
+        mdspan_data_t<double, static_tag<2>> D(rows,rows, true,false);
+
+        cout<<"multiplication of A and transpose of B"<<endl;
+        mdspan<double, std::array<size_t,2>> H= mdspan_utilities::matrix_transpose(B);
+        D=A*mdspan_utilities::matrix_transpose(B);
+
+        D.print();
 
         mdspan_data_t<double, dynamic_tag> E(rows,cols, true,false);
         cout<<"Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here"<<endl;
@@ -67,7 +73,7 @@ int main()
         Math_Functions_Policy mypol(Math_Functions_Policy::AUTO);
         auto expr=A-B;
         expr.assign_to(E,&mypol);
-        E.printtensor();
+        E.print();
 
 
         cout<<"two vectors"<<endl;
@@ -87,8 +93,8 @@ int main()
 
 
 
-        vecA.printtensor();
-        vecB.printtensor();
+        vecA.print();
+        vecB.print();
 
         cout<<"a scalar product between two vectors"<<endl;
 
@@ -107,12 +113,12 @@ int main()
        std::vector<std::complex<double>> vectorB_data= {{5.0, 2.0}, {3.0, 4.0}, {1.0, 6.0} };
     mdspan<std::complex<double>, std::array<size_t,1>> vecA(vectorA_data.data(), 3, true);
     mdspan<std::complex<double>, std::array<size_t,1>> vecB(vectorB_data.data(), 3, true);
-    vecA.printtensor();
-    vecB.printtensor();
+    vecA.print();
+    vecB.print();
 
      cout<<"conjugate of A"<<endl;
-        DataBlock<std::complex<double>>con=vecA.conjugate();
-        con.printtensor();
+        DataBlock<std::complex<double>>con=DataBlockUtilities::conjugate(vecA);
+        con.print();
 
 //
 //
@@ -120,7 +126,7 @@ int main()
 //
         cout<<"addition of A and B"<<endl;
         C =vecA+vecB;
-        C.printtensor();
+        C.print();
         mdspan_data_t<std::complex<double>, dynamic_tag> D(3, true,false);
      Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
      cout<<"subtraction"<<endl;
@@ -128,7 +134,7 @@ int main()
 
 
         expr.assign_to(D,&mypol);
-        D.printtensor();
+        D.print();
 
 //   Careful:; this will work if compiled with clang, gcc will run into a compiler error instead..
   //   std::complex<double> d=dot(vecA,vecB);
@@ -183,23 +189,23 @@ int main()
         cout<<"Ordinary matrix multiplication, foced on gpu with a policy object"<<std::endl;
 
 
-        A.printtensor();
-        B.printtensor();
+        A.print();
+        B.print();
 
         cout <<"the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations v just with simd, s without parallel loops"<<endl;
 
         mdspan_data<double, std::vector<size_t>> C0({rowsA, colsA});
-        In_Kernel_Mathfunctions<double>::matrix_multiply_dot_s(A, B, C0);
+        In_Kernel_Mathfunctions::matrix_multiply_dot(A, B, C0);
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
 
-        C0.printtensor();
+        C0.print();
 
         cout <<"the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations w mean with parallel for"<<endl;
         mdspan_data<double, std::vector<size_t>> C1({rowsA, colsA});
-        In_Kernel_Mathfunctions<double>::matrix_multiply_dot_w(A, B, C1);
+        In_Kernel_Mathfunctions::matrix_multiply_dot<OpenMPVariant::Sequential>(A, B, C1);
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
 
-        C1.printtensor();
+        C1.print();
 
 
 
@@ -210,10 +216,10 @@ int main()
 
         Math_Functions_Policy p1(Math_Functions_Policy::GPU_ONLY);
         cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-        Math_Functions<double>::matrix_multiply_dot(A, B, C2,&p1);
+        Math_Functions::matrix_multiply_dot(A, B, C2,&p1);
         cout<<"per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false"<<endl;
 
-        C2.printtensor();
+        C2.print();
 
         cout<<"We can also use the Strassen algorithm or its Winograd variant for the multiplication."<<std::endl;
         cout<<"It may offload on gpu. With the Message Passing Interface enabled, it can do so in parallel. "<<std::endl;
@@ -234,9 +240,9 @@ int main()
         Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,false,false);
         p.size_to_stop_recursion=2;
 
-        Math_Functions_MPI<double>::winograd_multiply(A, B, C3,&p);
+        Math_Functions_MPI::winograd_multiply(A, B, C3,&p);
 
-        C3.printtensor();
+        C3.print();
 
     }
 
@@ -255,28 +261,28 @@ int main()
         }
 
 
-        O.printtensor();
+        O.print();
 
 
         cout<<"now we create a 4x4 matrix with data in a separate vector"<<endl;
 
         vector<double>O2_data(16,2);
         mdspan<double, std::vector<size_t>> O2(O2_data.data(),  {rows, cols},true);
-        O2.printtensor();
+        O2.print();
 
 
 
         cout<< "now we make a shallow copy of the first matrix on the second"<<endl;
 
         O2=O;
-        O2.printtensor();
+        O2.print();
 
 
         cout<<"We test the shallow copy by setting the first element of the first matrix to 42 and then print the first and second matrix"<<endl;
         O.data()[0]=42;
 
-        O.printtensor();
-        O2.printtensor();
+        O.print();
+        O2.print();
 
 
     }
@@ -300,12 +306,12 @@ int main()
 
             cout<<"with the dataset"<<endl;
 
-            A.printtensor();
+            A.print();
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
 
-            Math_Functions<double>::cholesky_decomposition(A,L,&p);
+            Math_Functions::cholesky_decomposition(A,L,&p);
 
-            L.printtensor();
+            L.print();
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify(  {rows2, cols2},true);
@@ -313,9 +319,9 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             cout<<"We can create a transpose with the base class DataBlock, but also with mdspan"<<endl;
             size_t newext[2],newstr[2];
-            DataBlock<double>m=L.matrix_transpose(newext,newstr);
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+            DataBlock<double>m=DataBlockUtilities::matrix_transpose(L,newext,newstr);
+            Math_Functions::matrix_multiply_dot(L,m, verify,&p2);
+            verify.print();
         }
 
 
@@ -328,9 +334,9 @@ int main()
 
             Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
 
-            Math_Functions<double>::cholesky_decomposition(A,L,&p);
+            Math_Functions::cholesky_decomposition(A,L,&p);
 
-            L.printtensor();
+            L.print();
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify( {rows2, cols2},true);
@@ -338,9 +344,9 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
 
             cout<<"Here we create the transpose with mdspan"<<endl;
-            mdspan<double,std::vector<size_t>> m=L.matrix_transpose();
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+            mdspan<double,std::vector<size_t>> m=mdspan_utilities::matrix_transpose(L);
+            Math_Functions::matrix_multiply_dot(L,m, verify,&p2);
+            verify.print();
 
         }
 
@@ -352,16 +358,16 @@ int main()
             mdspan<double, std::vector<size_t>> A(A_data.data(), {rows2, cols2},true);
             mdspan_data<double, std::vector<size_t>> L(  {rows2, cols2},true);
 
-            A.printtensor();
+            A.print();
 
             Math_MPI_Decomposition_Policy p(
                 Math_Functions_Policy::GPU_ONLY,
                 false,
                 false,
-                Math_MPI_Decomposition_Policy::Strassen);
+                Math_MPI_Decomposition_Policy::Naive);
             p.size_to_stop_recursion=2;
-            Math_Functions_MPI<double>::cholesky_decomposition(A,L,&p);
-            L.printtensor();
+            Math_Functions_MPI::cholesky_decomposition(A,L,&p);
+            L.print();
 
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
@@ -370,15 +376,15 @@ int main()
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             size_t newext[2],newstr[2];
 
-            DataBlock<double>m=L.matrix_transpose(newext,newstr);
-            Math_Functions<double>::matrix_multiply_dot(L,m, verify,&p2);
-            verify.printtensor();
+            DataBlock<double>m=DataBlockUtilities::matrix_transpose(L,newext,newstr);
+            Math_Functions::matrix_multiply_dot(L,m, verify,&p2);
+            verify.print();
 
         }
     }
 
     {
-
+//
         cout<< "Now we do the same with the lu decomposition of"<<std::endl;
         vector<double>A_data= {-3,3,-3,5,2,7,4,2,-2,4,2,-10,-4,-2,-10,1,-3,0,8,6,-3,-8,-8,-10,-6,-1,-4,-2,-4,-2,-3,1,-9,-10,5,-6,-8,1,-3,-8,-10,-8,-6,4,3,-8,-10,-6,3,-4,-2,4,4,-1,2,8,-4,6,9,-7,-6,-4,2,4};
         size_t rows3 = 8, cols3 = 8;
@@ -391,19 +397,19 @@ int main()
             mdspan_data<double, std::vector<size_t>> U( {rows3, cols3},true);
 
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
-            A.printtensor();
+            A.print();
 
             cout<<"on CPU"<<std::endl;
 
-            Math_Functions<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
-            U.printtensor();
+            Math_Functions::lu_decomposition(A,L,U,&p);
+            L.print();
+            U.print();
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify( {rows3, cols3},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
+            Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
+            verify.print();
 
         }
 
@@ -416,15 +422,15 @@ int main()
 
             cout<<"Entirely on gpu"<<std::endl;
             Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
-            Math_Functions<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
-            U.printtensor();
+            Math_Functions::lu_decomposition(A,L,U,&p);
+            L.print();
+            U.print();
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows3, cols3},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
+            Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
+            verify.print();
         }
 
         {
@@ -444,21 +450,21 @@ int main()
                 Math_MPI_Decomposition_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
-            Math_Functions_MPI<double>::lu_decomposition(A,L,U,&p);
-            L.printtensor();
+            Math_Functions_MPI::lu_decomposition(A,L,U,&p);
+            L.print();
 
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows3, cols3},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(L,U, verify,&p2);
-            verify.printtensor();
+            Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
+            verify.print();
 
         }
     }
-
+//
     {
-
+//
         cout<< "Now we do the same with the qr decomposition"<<std::endl;
         vector<double>A_data= {-4, 9, 4, 0, -3, -4, 8, 0, 0, -7, -3, -8, -9, 1, -5, -9, -10, 1, 1, 6, -1, 5, 4, 4, 8, 1, 9, -8, -6, 8, -4, -2, -4, 7, -7, 3, 7, -2, -9, 9, 4, -4, 1, -3, 4, -8, 3, 6, -7, 7, -3, -7, -9, -5, -1, -7, 7, 1, -9, -1, -7, 3, 5, 4};
         size_t rows4 = 8, cols4 = 8;
@@ -469,18 +475,18 @@ int main()
             mdspan_data<double, std::vector<size_t>> R( {rows4, cols4},true);
 
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
-            A.printtensor();
+            A.print();
 
             cout<<"On cpu"<<std::endl;
-            Math_Functions<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
+            Math_Functions::qr_decomposition(A,Q,R,&p);
+            Q.print();
+            R.print();
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows4, cols4},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
+            Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
+            verify.print();
         }
 
 
@@ -495,16 +501,16 @@ int main()
             cout<<"On gpu"<<std::endl;
             Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
 
-            Math_Functions<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
+            Math_Functions::qr_decomposition(A,Q,R,&p);
+            Q.print();
+            R.print();
 
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify({rows4, cols4},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
+            Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
+            verify.print();
 
         }
 
@@ -512,7 +518,7 @@ int main()
             cout<<"with the advanced algorithms on gpu "<<std::endl;
 
             mdspan<double, std::vector<size_t>> A(A_data.data(),  {rows4, cols4});
-            A.printtensor();
+            A.print();
             mdspan_data<double, std::vector<size_t>> Q({rows4, cols4});
             mdspan_data<double, std::vector<size_t>> R({rows4, cols4});
 
@@ -525,17 +531,17 @@ int main()
             p.size_to_stop_recursion=2;
 
 
-            Math_Functions_MPI<double>::qr_decomposition(A,Q,R,&p);
-            Q.printtensor();
-            R.printtensor();
+            Math_Functions_MPI::qr_decomposition(A,Q,R,&p);
+            Q.print();
+            R.print();
             vector<double>verifydata(64,0);
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
             mdspan_data<double, std::vector<size_t>> verify(  {rows4, cols4},true);
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
-            Math_Functions<double>::matrix_multiply_dot(Q,R, verify,&p2);
-            verify.printtensor();
-
+            Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
+            verify.print();
+//
         }
     }
 

@@ -4,28 +4,19 @@
 
 #include "datablock.h"
 #include<iostream>
-template<typename T>
+
 class GPU_Memory_Functions;
 
-template<typename T>
 class Host_Memory_Functions;
-
-template<typename T>
-class DataBlock_MPI_Functions;
 
 template<typename T>
 class DataBlock;
 
-template<typename T>
+
 class In_Kernel_Mathfunctions;
-
-template<typename T>
 class Math_Functions;
-
-template<typename T>
 class Math_Functions_MPI;
 
-template<typename T>
 class GPU_Math_Functions;
 
 template<typename U, typename Container>
@@ -47,13 +38,13 @@ class BlockedDataView:
 
 
 public:
-    friend class GPU_Memory_Functions<T>;
-    friend class Host_Memory_Functions<T>;
-    friend class DataBlock_MPI_Functions<T>;
-    friend class In_Kernel_Mathfunctions<T>;
-    friend class GPU_Math_Functions<T>;
-    friend class Math_Functions<T>;
-    friend class Math_Functions_MPI<T>;
+    friend class GPU_Memory_Functions;
+    friend class Host_Memory_Functions;
+    friend class DataBlock_MPI_Functions;
+    friend class In_Kernel_Mathfunctions;
+    friend class GPU_Math_Functions;
+    friend class Math_Functions;
+    friend class Math_Functions_MPI;
     template<typename U, typename Container>
     friend class ::mdspan;
 
@@ -113,14 +104,14 @@ public:
 
 protected:
     size_t* block_shape;
-    size_t* pooled_offsets_flat;   // stores concatenated coordinates
+    size_t* pooled_offsets_flat;
     size_t* pooled_offsets_starts;
     size_t usedblocks=0;
     bool offsets_starts_is_devptr=false;
     int  devnum=-1;
 
 
-    // --- Rank-1 specialized ---
+
     void build_blocks_rank1(size_t block_size, bool remove_zeroblocks)
     {
         const size_t nblocks = (this->dpextents[0] + block_size - 1) / block_size;
@@ -151,7 +142,6 @@ protected:
                 if (remove_zeroblocks)
                 {
                     keep = false;
-
                     for (size_t i = 0; i < len; ++i)
                     {
                         if (pd[offset + i] != T(0))
@@ -193,7 +183,6 @@ outofloop1:
                 if (remove_zeroblocks)
                 {
                     keep = false;
-
                     for (size_t i = 0; i < len; ++i)
                     {
                         if (pd[offset + i] != T(0))
@@ -218,13 +207,13 @@ outofloop2:
                 }
 
             }
-            pooled_offsets_starts[count] = count; // sentinel
+            pooled_offsets_starts[count] = count;
             usedblocks = count;
         }
 
     }
 
-// --- Rank-2 specialized ---
+
     void build_blocks_rank2(const size_t block_rows,const size_t block_cols,const bool remove_zeroblocks)
     {
         const size_t nblocks_row = (this->dpextents[0] + block_rows - 1) / block_rows;
@@ -353,7 +342,7 @@ outofloop4:
                           const size_t rank)
     {
         size_t* idx=new size_t[rank];
-
+        #pragma omp simd
         for(size_t i=0; i<rank; i++)
             idx[i]=0;
 
@@ -363,18 +352,19 @@ outofloop4:
        return b;
     }
 
-    bool check_nonzero_recursive(const size_t* block_shape,
-                                 const size_t* block_idx,
-                                 const size_t* tile_extents,
+    bool check_nonzero_recursive(const  size_t*  block_shape,
+                                 const  size_t*  block_idx,
+                                 const  size_t*  tile_extents,
                                  const size_t rank,
                                  const size_t dim,
-                                 size_t* idx)
+                                  size_t*  idx)
     {
 
         if (dim == rank)
         {
-            // compute linear offset
+
             size_t linear = 0;
+            #pragma omp simd reduction(+:linear)
             for (size_t d = 0; d < rank; ++d)
             {
                 const size_t global_coord = block_idx[d] * block_shape[d] + idx[d];
@@ -389,7 +379,6 @@ outofloop4:
 
             return d != T(0);
         }
-
         for (size_t i = 0; i < tile_extents[dim]; ++i)
         {
             idx[dim] = i;
@@ -399,14 +388,14 @@ outofloop4:
         return false;
     }
 
-    void build_blocks_arbitrary_rank(const size_t* bshape,const bool remove_zeroblocks)
+    void build_blocks_arbitrary_rank(const  size_t*  bshape,const bool remove_zeroblocks)
     {
         const size_t r = this->dprank;
 
         size_t* nblocks_dim = new size_t[r];
         size_t maxblocks = 1;
 
-
+        #pragma omp unroll partial
         for (size_t d = 0; d < r; ++d)
         {
             nblocks_dim[d] = (this->dpextents[d] + bshape[d] - 1) / bshape[d];
@@ -423,6 +412,7 @@ outofloop4:
 
 
         size_t* idx = new size_t[r];
+        #pragma omp simd
         for (size_t d = 0; d < r; ++d)
             idx[d] = 0;
 
@@ -435,6 +425,7 @@ outofloop4:
             if (remove_zeroblocks)
             {
                 size_t* tile_extents = new size_t[r];
+                #pragma omp simd
                 for (size_t d = 0; d < r; ++d)
                 {
                     const size_t offset = idx[d] * bshape[d];
@@ -450,7 +441,7 @@ outofloop4:
                 if(offsets_starts_is_devptr)
                 {
                     omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device());
-
+                    #pragma omp unroll partial
                     for (size_t d = 0; d < r; ++d)
                     {
                         size_t u= idx[d] * bshape[d];
@@ -463,13 +454,14 @@ outofloop4:
                 else
                 {
                     pooled_offsets_starts[count] = count2;
+                    #pragma omp unroll partial
                     for (size_t d = 0; d < r; ++d)
                         pooled_offsets_flat[count2++] = idx[d] * bshape[d];
                     ++count;
                 }
             }
 
-            // increment multidim index
+
             size_t dim = 0;
             for (; dim < r; ++dim)
             {
@@ -483,7 +475,7 @@ outofloop4:
         if(offsets_starts_is_devptr)
             omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device());
         else
-            pooled_offsets_starts[count] = count2; // sentinel
+            pooled_offsets_starts[count] = count2;
         usedblocks = count;
 
         delete[] idx;

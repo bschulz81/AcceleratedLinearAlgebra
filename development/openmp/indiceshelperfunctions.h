@@ -2,164 +2,131 @@
 #define HELPERFUNCTIONS
 
 #include "omp.h"
-#include <cstddef>
-
-
 
 #pragma omp begin declare target
-inline size_t compute_offset(const size_t row, const size_t col, const size_t* __restrict  strides)
+enum class OpenMPVariant
 {
-    return row * strides[0]+col*strides[1];
-}
+    ParallelSimd,
+    Simd,
+    Sequential
+};
 #pragma omp end declare target
 
 #pragma omp begin declare target
-inline size_t compute_offset(const size_t row, const size_t col, const size_t matrixstride0, const size_t matrixstride1)
-{
-    return row * matrixstride0+col*matrixstride1;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-inline size_t compute_offset_w(const size_t * __restrict indices, const size_t* __restrict strides,const size_t r)
+template <OpenMPVariant variant = OpenMPVariant::Sequential>
+inline size_t compute_offset(const size_t *  indices,
+                             const size_t*  strides,
+                             const size_t rank)
 {
     size_t offset = 0;
-    #pragma omp parallel for simd reduction(+ : offset)if(parallel:r>30)
-    for (size_t i = 0; i < r; ++i)
+    if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
-        offset += indices[i] * strides[i];
+        #pragma omp parallel for simd reduction(+ : offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
+    }
+    else if constexpr (variant == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(+ : offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * strides[i];
+        }
     }
 
     return offset;
 }
 #pragma omp end declare target
 
+
+
 #pragma omp begin declare target
-inline size_t compute_offset_w(const size_t* __restrict indices,
-                               const size_t* __restrict strides_buffer,
+template <OpenMPVariant variant = OpenMPVariant::Sequential>
+inline size_t compute_offset(const size_t*  indices,
+                               const size_t*  strides_buffer,
                                const size_t rank,
                                const size_t blocknumber)
 {
-    // Find the starting point of the strides for this specific block
+
     const size_t* block_strides = strides_buffer + (blocknumber * rank);
 
     size_t offset = 0;
-    #pragma omp parallel for simd reduction(+ : offset)if(parallel:rank>30)
-    for (size_t i = 0; i < rank; ++i)
+
+    if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
-        offset += indices[i] * block_strides[i];
+        #pragma omp parallel for simd reduction(+ : offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * block_strides[i];
+        }
     }
-    return offset;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-inline size_t compute_offset_s(const size_t * __restrict indices, const size_t* __restrict strides,const size_t rank)
-{
-    size_t offset = 0;
-    #pragma omp unroll partial
-    for (size_t i = 0; i < rank; ++i)
+    else if constexpr (variant == OpenMPVariant::Simd)
     {
-        offset += indices[i] * strides[i];
+        #pragma omp  simd reduction(+ : offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * block_strides[i];
+        }
     }
-    return offset;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-inline size_t compute_offset_s(const size_t* __restrict indices,
-                               const size_t* __restrict strides_buffer,
-                               const size_t rank,
-                               const size_t blocknumber)
-{
-    // Find the starting point of the strides for this specific block
-    const size_t* block_strides = strides_buffer + (blocknumber * rank);
-
-    size_t offset = 0;
-    #pragma omp unroll partial
-    for (size_t i = 0; i < rank; ++i)
+    else
     {
-        offset += indices[i] * block_strides[i];
+        #pragma omp unroll partial
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += indices[i] * block_strides[i];
+        }
     }
     return offset;
 }
 #pragma omp end declare target
 
 
-#pragma omp begin declare target
-inline size_t compute_offset_v(const size_t * __restrict indices, const size_t* __restrict strides,const size_t rank)
-{
-    size_t offset = 0;
 
-    // Row-major layout: iterate outermost to innermost
-    #pragma omp simd reduction(+ : offset)if(simd:rank>10)
-    for (size_t i = 0; i < rank; ++i)
-    {
-        offset += indices[i] * strides[i];
-    }
-    return offset;
-}
-#pragma omp end declare target
 
 #pragma omp begin declare target
-inline size_t compute_offset_v(const size_t* __restrict indices,
-                               const size_t* __restrict strides_buffer,
-                               const size_t rank,
-                               const size_t blocknumber)
-{
-    // Find the starting point of the strides for this specific block
-    const size_t* block_strides = strides_buffer + (blocknumber * rank);
-
-    size_t offset = 0;
-    #pragma omp  simd reduction(+ : offset)if(simd:rank>30)
-    for (size_t i = 0; i < rank; ++i)
-    {
-        offset += indices[i] * block_strides[i];
-    }
-    return offset;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-inline size_t compute_data_length_w(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
-{
-
-    size_t offset=0;
-    #pragma omp parallel for simd reduction(+:offset)
-    for (size_t i = 0; i < rank; ++i)
-    {
-        offset += (extents[i]-1) * strides[i];
-    }
-    return offset+1;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-inline size_t compute_data_length_v(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
+template <OpenMPVariant variant = OpenMPVariant::Sequential>
+inline size_t compute_data_length(const size_t*  extents, const size_t*  strides,const size_t rank)
 {
     size_t offset=0;
-    #pragma omp simd reduction(+:offset)
-    for (size_t i = 0; i < rank; ++i)
+    if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
-        offset += (extents[i]-1) * strides[i];
+        #pragma omp parallel for simd reduction(+:offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += (extents[i]-1) * strides[i];
+        }
+    }
+    else if constexpr (variant == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(+:offset)
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += (extents[i]-1) * strides[i];
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (size_t i = 0; i < rank; ++i)
+        {
+            offset += (extents[i]-1) * strides[i];
+        }
     }
     return offset+1;
 }
 #pragma omp end declare target
 
 
-
-#pragma omp begin declare target
-inline size_t compute_data_length_s(const size_t*__restrict  extents, const size_t*__restrict  strides,const size_t rank)
-{
-    size_t offset=0;
-    for (size_t i = 0; i < rank; ++i)
-    {
-        offset += (extents[i]-1) * strides[i];
-    }
-    return offset+1;
-}
-#pragma omp end declare target
 
 #pragma omp begin declare target
 inline bool is_row_major(const size_t*extents, const size_t* strides, const size_t rank)
@@ -175,37 +142,6 @@ inline bool is_row_major(const size_t*extents, const size_t* strides, const size
     }
     return true;
 }
-#pragma omp end declare target
-
-
-#pragma omp begin declare target
- inline bool checkPrimeNumber(int n)
-    {
-        bool isPrime = true;
-        switch (n)
-        {
-        case 0:
-        case 1:
-            isPrime=false;
-            break;
-        case 2:
-        case 3:
-            isPrime=false;
-            break;
-        default:
-        {
-            for (int i = 2; i <= n / 2; ++i)
-            {
-                if (n % i == 0)
-                {
-                    isPrime = false;
-                    break;
-                }
-            }
-        }
-        }
-        return isPrime;
-    }
 #pragma omp end declare target
 
 

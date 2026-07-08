@@ -10,6 +10,8 @@
 
 #include "gpu_mathfunctions.h"
 #include "inkernel_mathfunctions.h"
+#include "indiceshelperfunctions.h"
+
 
 struct DeviceInfo {
     int dev_id;
@@ -107,9 +109,9 @@ class Math_Functions_Policy
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-            const bool B_on_dev = GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-            const bool C_on_dev = GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+            const bool A_on_dev = GPU_Memory_Functions::is_on_gpu(A, devicenum);
+            const bool B_on_dev = GPU_Memory_Functions::is_on_gpu(B, devicenum);
+            const bool C_on_dev = GPU_Memory_Functions::is_on_gpu(C, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
         }
 
@@ -131,8 +133,8 @@ class Math_Functions_Policy
 
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-            bool B_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+            bool A_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
+            bool B_on_dev = GPU_Memory_Functions::is_on_gpu(v2, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev);
 
         }
@@ -152,7 +154,7 @@ class Math_Functions_Policy
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+            bool A_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
             return should_use_gpu(problem_size, threshold, A_on_dev);
 
         }
@@ -165,36 +167,52 @@ class Math_Functions_Policy
 
 
 
-template <typename T>
 class Math_Functions
 {
 public:
+    template<typename T>
     inline static void matrix_multiply_dot(const  DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_multiply_dot_kahan( const DataBlock<T>& A, const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_add(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_subtract(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
-
+    template<typename T>
     inline static void matrix_multiply_dot_accumulate(const  DataBlock<T>& A,const  DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_multiply_dot_accumulate_kahan( const DataBlock<T>& A, const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_add_accumulate(DataBlock<T>& A,const DataBlock<T>& B,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_subtract_accumulate(DataBlock<T>& A, const DataBlock<T>& B,const Math_Functions_Policy* policy=nullptr);
-
+    template<typename T>
     inline static void matrix_multiply_vector(const  DataBlock<T>&M,const  DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_multiply_vector(const  DataBlock<T>&M,const T*V,  DataBlock<T> & C, const Math_Functions_Policy* policy=nullptr);
-
+template<typename T>
     inline static void matrix_multiply_scalar(const   DataBlock<T>& M,const T V, DataBlock<T>& C, const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void matrix_multiply_scalar_accumulate(  DataBlock<T>& M,const T V, const Math_Functions_Policy* policy=nullptr);
-
+template<typename T>
     inline static void vector_multiply_scalar( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void vector_add( const DataBlock<T>& vec1,  const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void vector_subtract( const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,  const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void vector_add_accumulate(  DataBlock<T>& vec1,  const DataBlock<T>& vec2,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void vector_subtract_accumulate(  DataBlock<T>& vec1, const DataBlock<T>& vec2,  const Math_Functions_Policy* policy=nullptr);
-
+template<typename T>
     inline static T dot_product( const DataBlock<T> &vec1, const DataBlock<T> &vec2, const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void cholesky_decomposition(const DataBlock<T>& A, DataBlock<T> & L, const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void lu_decomposition(const DataBlock<T> &A, DataBlock<T> & L,DataBlock<T> & U, const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
     inline static void qr_decomposition(const DataBlock<T> &A,DataBlock<T>& Q, DataBlock<T> & R,  const Math_Functions_Policy* policy=nullptr);
 
     // optional default policy (initially empty = not constructed)
@@ -228,205 +246,205 @@ protected:
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_dot_accumulate( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_dot_accumulate( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
 
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
     {
-        GPU_Math_Functions<T>::matrix_multiply_dot_accumulate_g(A,B,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_dot_accumulate_g(A,B,C, policy.devicenum,policy.update_host);
     }
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_accumulate_w(A,B,C);
+        In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate(A,B,C);
 }
 
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_dot( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_dot( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
 
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
     {
-        GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_dot_g(A,B,C, policy.devicenum,policy.update_host);
     }
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(A,B,C);
+        In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C);
 }
 
 
 template <typename T>
-void Math_Functions<T>::matrix_add( const DataBlock<T>& A,const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_add( const DataBlock<T>& A,const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_add_g(A,B,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_add_g(A,B,C, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_add_w(A,B,C);
+        In_Kernel_Mathfunctions::matrix_add(A,B,C);
 }
 
 template <typename T>
-void Math_Functions<T>::matrix_add_accumulate( DataBlock<T>& A,const DataBlock<T>& B,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_add_accumulate( DataBlock<T>& A,const DataBlock<T>& B,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_add_accumulate_g(A,B, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_add_accumulate_g(A,B, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_add_accumulate_w(A,B);
+        In_Kernel_Mathfunctions::matrix_add_accumulate(A,B);
 }
 
 
 template <typename T>
-void Math_Functions<T>::matrix_subtract(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_subtract(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_subtract_g(A,B,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_subtract_g(A,B,C, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_subtract_w(A,B,C);
+        In_Kernel_Mathfunctions::matrix_subtract(A,B,C);
 
 }
 
 template <typename T>
-void Math_Functions<T>::matrix_subtract_accumulate(  DataBlock<T>& A, const DataBlock<T>& B,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_subtract_accumulate(  DataBlock<T>& A, const DataBlock<T>& B,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A, B,  Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_subtract_accumulate_g(A,B, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_subtract_accumulate_g(A,B, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_subtract_accumulate_w(A,B);
+        In_Kernel_Mathfunctions::matrix_subtract_accumulate(A,B);
 
 }
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_vector( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_vector( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M, V, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w(M,V,C);
+        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
 }
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_vector(  const DataBlock<T>&M, const T*V, DataBlock<T> & C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_vector(  const DataBlock<T>&M, const T*V, DataBlock<T> & C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_vector_w(M,V,C);
+        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
 }
 
 
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_multiply_scalar_g(M,V,C, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_scalar_g(M,V,C, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_w(M,V,C);
+        In_Kernel_Mathfunctions::matrix_multiply_scalar(M,V,C);
 }
 
 
 template <typename T>
-void Math_Functions<T>::matrix_multiply_scalar_accumulate( DataBlock<T>& M, const T V,const Math_Functions_Policy*pol)
+void Math_Functions::matrix_multiply_scalar_accumulate( DataBlock<T>& M, const T V,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(M, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_multiply_scalar_accumulate_g(M,V, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(M,V, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_w(M,V);
+        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(M,V);
 }
 
 template <typename T>
-void Math_Functions<T>::vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy*pol)
+void Math_Functions::vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::matrix_multiply_scalar_accumulate_g(vec,scalar, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(vec,scalar, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::matrix_multiply_scalar_accumulate_w(vec,scalar);
+        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(vec,scalar);
 }
 
 
 
 
 template <typename T>
-inline void Math_Functions<T>::vector_add(  const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy*pol)
+inline void Math_Functions::vector_add(  const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::vector_add_g(vec1,vec2,res, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::vector_add_g(vec1,vec2,res, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::vector_add_w(vec1,vec2,res);
+        In_Kernel_Mathfunctions::vector_add(vec1,vec2,res);
 }
 
 
 template <typename T>
-inline void Math_Functions<T>::vector_subtract(const DataBlock<T>& vec1,const DataBlock<T>& vec2, DataBlock<T> & res, const Math_Functions_Policy*pol)
+inline void Math_Functions::vector_subtract(const DataBlock<T>& vec1,const DataBlock<T>& vec2, DataBlock<T> & res, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::vector_subtract_g(vec1,vec2,res, policy.devicenum,policy.update_host);
+        GPU_Math_Functions::vector_subtract_g(vec1,vec2,res, policy.devicenum,policy.update_host);
     else
-        In_Kernel_Mathfunctions<T>::vector_subtract_w(vec1,vec2,res);
+        In_Kernel_Mathfunctions::vector_subtract(vec1,vec2,res);
 }
 
 
 template <typename T>
-inline T Math_Functions<T>::dot_product( const DataBlock<T> &vec1, const DataBlock<T> &vec2, const Math_Functions_Policy*pol)
+inline T Math_Functions::dot_product( const DataBlock<T> &vec1, const DataBlock<T> &vec2, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(vec1,vec2, Math_Functions_Policy::default_square_treshold))
-        return GPU_Math_Functions<T>::dot_product_g(vec1,vec2, policy.devicenum);
+        return GPU_Math_Functions::dot_product_g(vec1,vec2, policy.devicenum);
     else
-        return In_Kernel_Mathfunctions<T>::dot_product_w(vec1,vec2);
+        return In_Kernel_Mathfunctions::dot_product(vec1,vec2);
 }
 
 
 template <typename T>
-void Math_Functions<T>::cholesky_decomposition(const DataBlock<T> & A, DataBlock<T> & L, const Math_Functions_Policy*pol)
+void Math_Functions::cholesky_decomposition(const DataBlock<T> & A, DataBlock<T> & L, const Math_Functions_Policy*pol)
 {
 
     const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A,L, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions<T>::cholesky_decomposition_g(A,L, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
+        GPU_Math_Functions::cholesky_decomposition_g(A,L, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
     else
     {
-        In_Kernel_Mathfunctions<T>::cholesky_decomposition_w(A,L,policy.initialize_output_to_zeros);
+        In_Kernel_Mathfunctions::cholesky_decomposition(A,L,policy.initialize_output_to_zeros);
     }
 
 }
 
 template <typename T>
-void Math_Functions<T>::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U, const Math_Functions_Policy*pol)
+void Math_Functions::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U, const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
 
     if (policy.should_use_gpu(A,L,U, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions<T>::lu_decomposition_g(A,L,U, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
+        GPU_Math_Functions::lu_decomposition_g(A,L,U, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
     else
     {
-        In_Kernel_Mathfunctions<T>::lu_decomposition_w(A,L,U,policy.initialize_output_to_zeros);
+        In_Kernel_Mathfunctions::lu_decomposition(A,L,U,policy.initialize_output_to_zeros);
     }
 
 }
 // Fast QR Decomposition Algorithm for mdspan
 template <typename T>
-void Math_Functions<T>::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,   const Math_Functions_Policy*pol)
+void Math_Functions::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,   const Math_Functions_Policy*pol)
 {
     const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
     if (policy.should_use_gpu(A,Q,R, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions<T>::qr_decomposition_g(A,Q,R, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros,policy.memmapped_files);
+        GPU_Math_Functions::qr_decomposition_g(A,Q,R, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros,policy.memmapped_files);
     else
     {
-        In_Kernel_Mathfunctions<T>::qr_decomposition_w(A,Q,R,policy.initialize_output_to_zeros,policy.memmapped_files);
+        In_Kernel_Mathfunctions::qr_decomposition(A,Q,R,policy.initialize_output_to_zeros,policy.memmapped_files);
     }
 }
 

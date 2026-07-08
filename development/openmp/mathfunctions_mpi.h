@@ -10,7 +10,7 @@
 #include "gpu_memory_functions.h"
 #include "datablock_mpifunctions.h"
 #include "inkernel_mathfunctions.h"
-
+#include "datablockutilities.h"
 
 class Math_MPI_Functions_Policy : public Math_Functions_Policy, public MPI_Policy
 {
@@ -272,9 +272,9 @@ public:
     {
         size_t problem_size = A.datalength();
 
-        bool A_on_dev = GPU_Memory_Functions<T>::is_on_gpu(A, devicenum);
-        bool B_on_dev = GPU_Memory_Functions<T>::is_on_gpu(B, devicenum);
-        bool C_on_dev = GPU_Memory_Functions<T>::is_on_gpu(C, devicenum);
+        bool A_on_dev = GPU_Memory_Functions::is_on_gpu(A, devicenum);
+        bool B_on_dev = GPU_Memory_Functions::is_on_gpu(B, devicenum);
+        bool C_on_dev = GPU_Memory_Functions::is_on_gpu(C, devicenum);
 
         if(A_on_dev||B_on_dev||C_on_dev) return true;
 
@@ -289,8 +289,8 @@ public:
     {
         const size_t problem_size = v1.datalength();
 
-        bool v1_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
-        bool v2_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v2, devicenum);
+        bool v1_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
+        bool v2_on_dev = GPU_Memory_Functions::is_on_gpu(v2, devicenum);
         if(v1_on_dev||v1_on_dev) return true;
 
         return should_use_gpu(problem_size, threshold, v1_on_dev || v2_on_dev,num_subcalls);
@@ -303,7 +303,7 @@ public:
     {
         const size_t problem_size = v1.datalength();
 
-        const bool v1_on_dev = GPU_Memory_Functions<T>::is_on_gpu(v1, devicenum);
+        const bool v1_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
         if(v1_on_dev) return true;
         return should_use_gpu(problem_size, threshold, v1_on_dev,num_subcalls);
 
@@ -341,7 +341,7 @@ public:
 
 
 
-template<typename T>
+
 class DataBlock_MPI_Functions;
 
 enum class SummaGridPolicy
@@ -355,61 +355,73 @@ enum class SummaGridPolicy
 using namespace std;
 
 
-template <typename T>
-class Math_Functions_MPI: public Math_Functions<T>
+
+class Math_Functions_MPI
 {
 public:
 
-
+    template <typename T>
     inline static void strassen_multiply(const DataBlock<T> &aA, const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
-
+    template <typename T>
     inline static void winograd_multiply(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
-
+    template <typename T>
     inline static void cholesky_decomposition(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
-
+    template <typename T>
     inline static void lu_decomposition(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
-
+    template <typename T>
     inline static void qr_decomposition(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
-
+    template<typename T>
     inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
+    template<typename T>
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
 
+    template <typename T>
     inline static bool matrix_multiply_dot_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool Matrix_Vector_multiply_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& x,  DistributedDataBlock<T>& y,   const Math_MPI_Functions_Policy* pol=nullptr);
 
-
+    template <typename T>
     inline static bool matrix_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool matrix_add_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static bool matrix_subtract_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool matrix_subtract_accumulate_Distributed(  DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static bool matrix_multiply_scalar_Distributed (const DistributedDataBlock<T>& A, const T scalar,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool matrix_multiply_scalar_accumulate_Distributed ( DistributedDataBlock<T>& A, const  T scalar,  const Math_MPI_Functions_Policy* pol = nullptr);
 
-
+    template <typename T>
     inline static bool vector_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  const T scalar,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool vector_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A, const  T scalar,   const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static bool vector_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool vector_add_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static bool vector_subtract_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static bool vector_subtract_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static bool dot_product_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B, int root,T* result,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template <typename T>
     inline static T dot_product_Allreduce_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol = nullptr);
-
+    template <typename T>
     inline static MPI_Comm create_summa_communicator(size_t br,size_t bc,const DataBlock<T>* A,const DataBlock<T>* B,const DataBlock<T>* C,int rootrank = 0, MPI_Comm parent = MPI_COMM_WORLD, SummaGridPolicy policy=SummaGridPolicy::Compatible,bool printgrid=false);
+
     inline static bool matrix_distribution_is_summa_compatible( size_t grid_r, size_t grid_c,  size_t Pr,   size_t Pc);
 
+    template <typename T>
+    inline static bool dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
+    template <typename T>
+    inline static void conjugate_from_root(  DistributedDataBlock<T>& A,int rootrank, MPI_Comm com);
+    template <typename T>
+    inline static void  conjugate(  DistributedDataBlock<T>& A);
 
-inline static bool dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
-
-inline static void conjugate_from_root(  DistributedDataBlock<T>& A,int rootrank, MPI_Comm com);
-inline static void  conjugate(  DistributedDataBlock<T>& A);
-
-
+    template <typename T>
     inline static bool matrix_extents_equal(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B, const DistributedDataBlock<T>& C)
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
@@ -422,6 +434,7 @@ inline static void  conjugate(  DistributedDataBlock<T>& A);
                 A.pblock_extents[1] == C.pblock_extents[1]);
     }
 
+    template <typename T>
     inline static bool matrix_extents_equal(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B)
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0]&&
@@ -430,6 +443,7 @@ inline static void  conjugate(  DistributedDataBlock<T>& A);
                 A.pblock_extents[1]  == B.pblock_extents[1]);
     }
 
+    template <typename T>
     inline static bool vector_extents_equal(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B, const DistributedDataBlock<T>& C)
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
@@ -438,7 +452,7 @@ inline static void  conjugate(  DistributedDataBlock<T>& A);
                 A.pblock_extents[0] == C.pblock_extents[0]);
     }
 
-
+    template <typename T>
     inline static bool vector_extents_equal(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B )
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
@@ -446,14 +460,15 @@ inline static void  conjugate(  DistributedDataBlock<T>& A);
     }
 
 protected:
+    template <typename T>
     inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
-
+    template <typename T>
     inline static void winograd_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
-
+    template <typename T>
     inline static void cholesky_decomposition_h(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy &par);
-
+    template <typename T>
     inline static void lu_decomposition_h(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy &par);
-
+    template <typename T>
     inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
 
 
@@ -483,8 +498,8 @@ protected:
     }
 };
 
-template<typename T>
-bool Math_Functions_MPI<T>::matrix_distribution_is_summa_compatible(
+
+bool Math_Functions_MPI::matrix_distribution_is_summa_compatible(
     size_t grid_r,
     size_t grid_c,
     size_t Pr,
@@ -522,7 +537,7 @@ bool Math_Functions_MPI<T>::matrix_distribution_is_summa_compatible(
 
 
 template<typename T>
-MPI_Comm Math_Functions_MPI<T>::create_summa_communicator(size_t br,size_t bc,
+MPI_Comm Math_Functions_MPI::create_summa_communicator(size_t br,size_t bc,
         const DataBlock<T>* A,const DataBlock<T>* B,const DataBlock<T>* C,
         int rootrank,MPI_Comm parent, SummaGridPolicy policy,bool printgrid)
 {
@@ -774,7 +789,7 @@ MPI_Comm Math_Functions_MPI<T>::create_summa_communicator(size_t br,size_t bc,
 
 
 template <typename T>
-bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
+bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& B,
     DistributedDataBlock<T>& C,
@@ -846,9 +861,9 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_B,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
@@ -1031,9 +1046,9 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
         }
 
         if(max_A>0)
-            DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(memmap, ongpu,devnum,max_B,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -1146,9 +1161,9 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_B*num_B_panels,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
@@ -1488,9 +1503,9 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
             }
         }
         if(max_A>0)
-            DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu, devnum,max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions<T>::free_helper2(memmap, ongpu,devnum,max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(memmap, ongpu,devnum,max_B*num_B_panels,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -1504,7 +1519,7 @@ bool Math_Functions_MPI<T>::matrix_multiply_dot_Distributed(
 
 
 template<typename T>
-inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
+inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& x,
     DistributedDataBlock<T>& y,
@@ -1547,7 +1562,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
     T* x_global=nullptr;
     if(K>0)
-        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,K,x_global);
+        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,K,x_global);
 
     if (ongpu)
     {
@@ -1618,7 +1633,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
     size_t* Aext=nullptr,*Ablockoff=nullptr,*Ablocklinindex=nullptr;
 
     if(M>0)
-        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,M,y_full);
+        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,M,y_full);
 
 
     const bool rowm=A.Dblockarray.prowm;
@@ -1763,7 +1778,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
     }
 
     if(K>0)
-        DataBlock_MPI_Functions<double>::free_helper2(memmap,ongpu, devnum,  K,x_global);
+        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,  K,x_global);
 
     int* recvcounts = new int[size];
 
@@ -1795,7 +1810,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
     T* y_local=nullptr;
 
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions<T>::alloc_helper2(memmap,ongpu,devnum,recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,recvcounts[rank],y_local);
 
 
     MPI_Reduce_scatter(
@@ -1807,7 +1822,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
         y.pctx->comm);
 
     if(M>0)
-        DataBlock_MPI_Functions<double>::free_helper2(memmap,ongpu, devnum,  M,y_full);
+        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,  M,y_full);
 
     if(ongpu)
     {
@@ -1868,7 +1883,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
         }
     }
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions<T>::free_helper2(memmap,ongpu,devnum,recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu,devnum,recvcounts[rank],y_local);
 
     delete[] recvcounts;
 
@@ -1878,7 +1893,7 @@ inline bool Math_Functions_MPI<T>::Matrix_Vector_multiply_Distributed(
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::matrix_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -1900,15 +1915,15 @@ inline bool Math_Functions_MPI<T>::matrix_add_Distributed(const DistributedDataB
     const size_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
+    const DataBlockArray Ablockarray=A.Dblockarray;
     const DataBlockArray Bblockarray=B.Dblockarray;
     DataBlockArray Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -1948,7 +1963,7 @@ inline bool Math_Functions_MPI<T>::matrix_add_Distributed(const DistributedDataB
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_add_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::matrix_add_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -1972,8 +1987,8 @@ inline bool Math_Functions_MPI<T>::matrix_add_accumulate_Distributed(Distributed
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
@@ -2014,7 +2029,7 @@ inline bool Math_Functions_MPI<T>::matrix_add_accumulate_Distributed(Distributed
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_subtract_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::matrix_subtract_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2042,9 +2057,9 @@ inline bool Math_Functions_MPI<T>::matrix_subtract_Distributed(const Distributed
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -2084,7 +2099,7 @@ inline bool Math_Functions_MPI<T>::matrix_subtract_Distributed(const Distributed
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_subtract_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::matrix_subtract_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2104,12 +2119,12 @@ inline bool Math_Functions_MPI<T>::matrix_subtract_accumulate_Distributed(Distri
 
     DataBlockArray Ablockarray=A.Dblockarray;
     const DataBlockArray Bblockarray=B.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
@@ -2148,7 +2163,7 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
 }
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  T B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::matrix_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  T B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2175,8 +2190,8 @@ inline bool Math_Functions_MPI<T>::matrix_multiply_scalar_Distributed(const Dist
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -2216,7 +2231,7 @@ inline bool Math_Functions_MPI<T>::matrix_multiply_scalar_Distributed(const Dist
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::matrix_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A,  const T B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::matrix_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A,  const T B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2235,11 +2250,11 @@ inline bool Math_Functions_MPI<T>::matrix_multiply_scalar_accumulate_Distributed
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks ) return false;
 
     DataBlockArray Ablockarray=A.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
         {
@@ -2278,7 +2293,7 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  T B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::vector_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  T B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2306,8 +2321,8 @@ inline bool Math_Functions_MPI<T>::vector_multiply_scalar_Distributed(const Dist
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -2343,7 +2358,7 @@ inline bool Math_Functions_MPI<T>::vector_multiply_scalar_Distributed(const Dist
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A,  const T B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::vector_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A,  const T B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2360,11 +2375,11 @@ inline bool Math_Functions_MPI<T>::vector_multiply_scalar_accumulate_Distributed
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks ) return false;
 
     DataBlockArray Ablockarray=A.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
         {
@@ -2395,7 +2410,7 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::vector_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2423,9 +2438,9 @@ inline bool Math_Functions_MPI<T>::vector_add_Distributed(const DistributedDataB
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper    offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>    offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -2457,7 +2472,7 @@ inline bool Math_Functions_MPI<T>::vector_add_Distributed(const DistributedDataB
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_add_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::vector_add_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2477,12 +2492,12 @@ inline bool Math_Functions_MPI<T>::vector_add_accumulate_Distributed(Distributed
 
     DataBlockArray Ablockarray=A.Dblockarray;
     const DataBlockArray Bblockarray=B.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
@@ -2515,7 +2530,7 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_subtract_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+inline bool Math_Functions_MPI::vector_subtract_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2543,9 +2558,9 @@ inline bool Math_Functions_MPI<T>::vector_subtract_Distributed(const Distributed
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadC(Cblockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<cblocknum; b++)
@@ -2578,7 +2593,7 @@ inline bool Math_Functions_MPI<T>::vector_subtract_Distributed(const Distributed
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::vector_subtract_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::vector_subtract_accumulate_Distributed(DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -2598,12 +2613,12 @@ inline bool Math_Functions_MPI<T>::vector_subtract_accumulate_Distributed(Distri
 
     DataBlockArray Ablockarray=A.Dblockarray;
     const DataBlockArray Bblockarray=B.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
 
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelper      offloadA(Ablockarray, devnum, true, true);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
 
         #pragma omp target teams distribute
         for (size_t b=0; b<ablocknum; b++)
@@ -2635,7 +2650,7 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::dot_product_localblock(
+inline bool Math_Functions_MPI::dot_product_localblock(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& B,
     T* result,
@@ -2658,11 +2673,11 @@ inline bool Math_Functions_MPI<T>::dot_product_localblock(
     T sum = T(0);
     const DataBlockArray Ablockarray=A.Dblockarray;
     const DataBlockArray Bblockarray=B.Dblockarray;
-const size_t ablocknum=A.Dblockarray.pnumblocks;
+    const size_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadA(Ablockarray, devnum);
-        typename GPU_Memory_Functions<T>::DataBlockArrayOffloadHelperConst offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
 
         #pragma omp target data map (tofrom:sum)
         {
@@ -2692,14 +2707,14 @@ const size_t ablocknum=A.Dblockarray.pnumblocks;
         }
     }
 
-   *result=sum;
+    *result=sum;
 
     return true;
 }
 
 
 template <typename T>
-inline bool Math_Functions_MPI<T>::dot_product_Distributed(
+inline bool Math_Functions_MPI::dot_product_Distributed(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& B,
     int root,
@@ -2717,14 +2732,14 @@ inline bool Math_Functions_MPI<T>::dot_product_Distributed(
 }
 
 template <typename T>
-inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
+inline T Math_Functions_MPI::dot_product_Allreduce_Distributed(
     const DistributedDataBlock<T>& A,
     const DistributedDataBlock<T>& B,
     const Math_MPI_Functions_Policy* pol
 )
 {
     T sum=0;
-    if(!Math_Functions_MPI<T>::dot_product_localblock(A,B,&sum,pol)) return false;
+    if(!Math_Functions_MPI::dot_product_localblock(A,B,&sum,pol)) return false;
 
     T global_result = T(0);
     MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
@@ -2733,21 +2748,21 @@ inline T Math_Functions_MPI<T>::dot_product_Allreduce_Distributed(
 
 
 template <typename T>
-inline  void Math_Functions_MPI<T>:: conjugate_from_root(  DistributedDataBlock<T>& A,int rootrank, MPI_Comm com)
+inline  void Math_Functions_MPI:: conjugate_from_root(  DistributedDataBlock<T>& A,int rootrank, MPI_Comm com)
 {
     A.Dblockarray.pconjugate= !A.Dblockarray.pconjugate;
     MPI_Bcast(&A.Dblockarray.pconjugate,1,mpi_get_type<bool>(),rootrank,com);
 }
 
 template <typename T>
-inline  void Math_Functions_MPI<T>:: conjugate(  DistributedDataBlock<T>& A)
+inline  void Math_Functions_MPI:: conjugate(  DistributedDataBlock<T>& A)
 {
     A.Dblockarray.pconjugate=  !A.Dblockarray.pconjugate;
 }
 
 
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
+void Math_Functions_MPI::strassen_multiply( const DataBlock<T> & A,const  DataBlock<T> & B, DataBlock<T> & C,const Math_MPI_RecursiveMultiplication_Policy *pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -2759,27 +2774,14 @@ void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  Dat
         separate_device_memory=true;
 #endif
     }
-
     if(separate_device_memory)
     {
-        typename GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, policy.devicenum, false);
-        typename GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B,  policy.devicenum, false);
-        typename GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
-        DataBlock<T> tA=A,tB=B,tC=C;
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadA(A, policy.devicenum, false);
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadB(B, policy.devicenum, false);
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadC(C, policy.devicenum, policy.update_host);
 
-        if(!tA.dpdata_is_devptr)
-            tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-        if(!tB.dpdata_is_devptr)
-            tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
-        if(!tC.dpdata_is_devptr)
-            tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
-
-        tA.dpdata_is_devptr=true;
-        tB.dpdata_is_devptr=true;
-        tC.dpdata_is_devptr=true;
-        tA.devptr_devicenum=policy.devicenum;
-        tB.devptr_devicenum=policy.devicenum;
-        tC.devptr_devicenum=policy.devicenum;
+        const DataBlock<T>  &tA=offloadA.get(),&tB=offloadB.get();
+        DataBlock<T> &tC=offloadC.get_mutable();
 
         strassen_multiply_h(tA,tB,tC,ongpu, separate_device_memory,policy);
     }
@@ -2790,8 +2792,9 @@ void Math_Functions_MPI<T>::strassen_multiply( const DataBlock<T> & A,const  Dat
 
 }
 
+
 template <typename T>
-void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const DataBlock<T> & B, DataBlock<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
+void Math_Functions_MPI::strassen_multiply_h(const DataBlock<T> & A, const DataBlock<T> & B, DataBlock<T> & C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &policy)
 {
 
 
@@ -2805,7 +2808,7 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
     {
         if(ongpu)
         {
-            GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,false);
+            GPU_Math_Functions::matrix_multiply_dot_g<T>(   A,B,  C,policy.devicenum,false);
             return;
         }
         else
@@ -2814,20 +2817,20 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
+                GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 return;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
+                    GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 else
-                    In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
+                    In_Kernel_Mathfunctions::matrix_multiply_dot( A,B,C);
                 return;
             }
             default:
             {
-                In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,  C);
+                In_Kernel_Mathfunctions::matrix_multiply_dot( A,B,  C);
                 return;
             }
             }
@@ -2867,6 +2870,8 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
 
     T* Ard1,*Ard2,*Ard3,*Ard4,*Ard5,*Brd1,*Brd2,*Brd3,*Brd4,*Brd5,*M1d,*M2d,*M3d,*M4d,*M5d,*M6d,*M7d;
+    const bool aconj=A.pconjugate,
+               bconj=B.pconjugate;
 
     if(separate_device_memory)
     {
@@ -2894,25 +2899,25 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
     {
         if(policy.memmapped_files)
         {
-            Ard1=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard2=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard3=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard4=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            Ard5=Host_Memory_Functions<T>::create_temp_mmap(s2);
+            Ard1=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            Ard2=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            Ard3=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            Ard4=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            Ard5=Host_Memory_Functions::create_temp_mmap<T>(s2);
 
-            Brd1=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd2=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd3=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd4=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            Brd5=Host_Memory_Functions<T>::create_temp_mmap(s3);
+            Brd1=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            Brd2=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            Brd3=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            Brd4=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            Brd5=Host_Memory_Functions::create_temp_mmap<T>(s3);
 
-            M1d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M2d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M3d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M4d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M5d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M6d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M7d=Host_Memory_Functions<T>::create_temp_mmap(s);
+            M1d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M2d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M3d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M4d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M5d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M6d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M7d=Host_Memory_Functions::create_temp_mmap<T>(s);
         }
         else
         {
@@ -2940,37 +2945,37 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
 
     DataBlock<T>
-    A_result1(Ard1,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-              A_result2(Ard2,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-              A_result3(Ard3,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-              A_result4(Ard4,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-              A_result5(Ard5,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
+    A_result1(Ard1,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
+              A_result2(Ard2,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
+              A_result3(Ard3,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
+              A_result4(Ard4,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
+              A_result5(Ard5,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
 
-              B_result1(Brd1,s2,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-              B_result2(Brd2,s2,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-              B_result3(Brd3,s2,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-              B_result4(Brd4,s2,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-              B_result5(Brd5,s2,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
+              B_result1(Brd1,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
+              B_result2(Brd2,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
+              B_result3(Brd3,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
+              B_result4(Brd4,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
+              B_result5(Brd5,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
 
-              M1(M1d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M2(M2d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M3(M3d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M4(M4d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M5(M5d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M6(M6d,s,true,2,ext1,str1,false,false,separate_device_memory),
-              M7(M7d,s,true,2,ext1,str1,false,false,separate_device_memory);
+              M1(M1d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M2(M2d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M3(M3d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M4(M4d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M5(M5d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M6(M6d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+              M7(M7d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false);
 
 
-    DataBlock<T>  A11 = A.matrix_subspan(0, 0, half_n, half_m,psext1,a11str),
-                  A12 = A.matrix_subspan(0, half_m, half_n, half_m,psext2,a12str),
-                  A21 = A.matrix_subspan(half_n, 0, half_n, half_m,psext3,a21str),
-                  A22 = A.matrix_subspan(half_n, half_m, half_n, half_m,psext4,a22str);
+    DataBlock<T>  A11 = DataBlockUtilities::matrix_subspan(A,0, 0, half_n, half_m,psext1,a11str),
+                  A12 = DataBlockUtilities::matrix_subspan(A,0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = DataBlockUtilities::matrix_subspan(A,half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = DataBlockUtilities::matrix_subspan(A,half_n, half_m, half_n, half_m,psext4,a22str);
 
 // Submatrices of B
-    DataBlock<T>   B11 = B.matrix_subspan(0, 0, half_m, half_p,psext5,b11str),
-                   B12 = B.matrix_subspan(0, half_p, half_m, half_p,psext6,b12str),
-                   B21 = B.matrix_subspan(half_m, 0, half_m, half_p,psext7,b21str),
-                   B22 = B.matrix_subspan(half_m, half_p, half_m, half_p,psext8,b22str);
+    DataBlock<T>   B11 = DataBlockUtilities::matrix_subspan(B,0, 0, half_m, half_p,psext5,b11str),
+                   B12 = DataBlockUtilities::matrix_subspan(B,0, half_p, half_m, half_p,psext6,b12str),
+                   B21 = DataBlockUtilities::matrix_subspan(B,half_m, 0, half_m, half_p,psext7,b21str),
+                   B22 = DataBlockUtilities::matrix_subspan(B,half_m, half_p, half_m, half_p,psext8,b22str);
 
     const size_t str20=str2[0];
     const size_t str21=str2[1];
@@ -3021,10 +3026,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
         {
             for (size_t j=0; j<half_m; j++)
             {
-                const T a11dd=A11d[i*a11str0+j*a11str1];
-                const T a22dd=A22d[i*a22str0+j*a22str1];
-                const T a21dd=A21d[i*a21str0+j*a21str1];
-                const T a12dd=A12d[i*a12str0+j*a12str1];
+                const T a11dd=returnval(A11d[i*a11str0+j*a11str1],aconj);
+                const T a22dd=returnval(A22d[i*a22str0+j*a22str1],aconj);
+                const T a21dd=returnval(A21d[i*a21str0+j*a21str1],aconj);
+                const T a12dd=returnval(A12d[i*a12str0+j*a12str1],aconj);
                 const size_t aindex=i*str20+j*str21;
                 Ard1[aindex]=a11dd+a22dd;
                 Ard2[aindex]=a21dd+a22dd;
@@ -3039,10 +3044,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
         {
             for (size_t j=0; j<half_p; j++)
             {
-                const T b11dd=B11d[i*b11str0+j*b11str1];
-                const T b21dd=B21d[i*b21str0+j*b21str1];
-                const T b12dd=B12d[i*b12str0+j*b12str1];
-                const T b22dd=B22d[i*b22str0+j*b22str1];
+                const T b11dd=returnval(B11d[i*b11str0+j*b11str1],bconj);
+                const T b21dd=returnval(B21d[i*b21str0+j*b21str1],bconj);
+                const T b12dd=returnval(B12d[i*b12str0+j*b12str1],bconj);
+                const T b22dd=returnval(B22d[i*b22str0+j*b22str1],bconj);
                 const size_t bindex=i*str30+j*str31;
                 Brd1[bindex]=b11dd+b22dd;
                 Brd2[bindex]=b12dd-b22dd;
@@ -3060,10 +3065,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
         {
             for (size_t j=0; j<half_m; j++)
             {
-                const T a11dd=A11d[i*a11str0+j*a11str1];
-                const T a22dd=A22d[i*a22str0+j*a22str1];
-                const T a21dd=A21d[i*a21str0+j*a21str1];
-                const T a12dd=A12d[i*a12str0+j*a12str1];
+                const T a11dd=returnval(A11d[i*a11str0+j*a11str1],aconj);
+                const T a22dd=returnval(A22d[i*a22str0+j*a22str1],aconj);
+                const T a21dd=returnval(A21d[i*a21str0+j*a21str1],aconj);
+                const T a12dd=returnval(A12d[i*a12str0+j*a12str1],aconj);
                 const size_t aindex=i*str20+j*str21;
                 Ard1[aindex]=a11dd+a22dd;
                 Ard2[aindex]=a21dd+a22dd;
@@ -3078,10 +3083,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
         {
             for (size_t j=0; j<half_p; j++)
             {
-                const T b11dd=B11d[i*b11str0+j*b11str1];
-                const T b21dd=B21d[i*b21str0+j*b21str1];
-                const T b12dd=B12d[i*b12str0+j*b12str1];
-                const T b22dd=B22d[i*b22str0+j*b22str1];
+                const T b11dd=returnval(B11d[i*b11str0+j*b11str1],bconj);
+                const T b21dd=returnval(B21d[i*b21str0+j*b21str1],bconj);
+                const T b12dd=returnval(B12d[i*b12str0+j*b12str1],bconj);
+                const T b22dd=returnval(B22d[i*b22str0+j*b22str1],bconj);
                 const size_t bindex=i*str30+j*str31;
                 Brd1[bindex]=b11dd+b22dd;
                 Brd2[bindex]=b12dd-b22dd;
@@ -3108,9 +3113,9 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+1,1, policy.comm);
 
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result1,childdest+1,2, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A_result1,childdest+1,2, policy.comm);
 
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result1,childdest+1,3, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B_result1,childdest+1,3, policy.comm);
 
 
 
@@ -3118,52 +3123,52 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
         MPI_Send(&message, 1, MPI_INT, childdest+2, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+2,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result2,childdest+2,2, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B11,childdest+2,3, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A_result2,childdest+2,2, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B11,childdest+2,3, policy.comm);
 
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+3, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+3,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A11,childdest+3,2, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result2,childdest+3,3, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A11,childdest+3,2, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B_result2,childdest+3,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+4, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+4,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A22,childdest+4,2, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result3,childdest+4,3, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A22,childdest+4,2, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B_result3,childdest+4,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+5, 0,    policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+5,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result3,childdest+5,2,   policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B22,childdest+5,3,   policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A_result3,childdest+5,2,   policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B22,childdest+5,3,   policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+6, 0,  policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+6,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result4,childdest+6,2, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result4,childdest+6,3, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A_result4,childdest+6,2, policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B_result4,childdest+6,3, policy.comm);
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+7, 0, policy.comm);
         problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+7,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A_result5,childdest+7,2,   policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B_result5,childdest+7,3,   policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A_result5,childdest+7,2,   policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B_result5,childdest+7,3,   policy.comm);
 
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M1,childdest+1,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M2,childdest+2,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M3,childdest+3,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M4,childdest+4,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M5,childdest+5,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M6,childdest+6,4, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M7,childdest+7,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M1,childdest+1,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M2,childdest+2,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M3,childdest+3,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M4,childdest+4,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M5,childdest+5,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M6,childdest+6,4, policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M7,childdest+7,4, policy.comm);
 
     }
     else
@@ -3209,10 +3214,10 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
 // Submatrices of C
 
-    DataBlock<T>   C11 = C.matrix_subspan(0, 0, half_n, half_p,ext11a,cstr11),
-                   C12 = C.matrix_subspan(0, half_p, half_n, half_p,ext12a,cstr12),
-                   C21 = C.matrix_subspan(half_n, 0, half_n, half_p,ext13a,cstr21),
-                   C22 = C.matrix_subspan(half_n, half_p, half_n, half_p,ext14a,cstr22);
+    DataBlock<T>   C11 = DataBlockUtilities::matrix_subspan(C,0, 0, half_n, half_p,ext11a,cstr11),
+                   C12 = DataBlockUtilities::matrix_subspan(C,0, half_p, half_n, half_p,ext12a,cstr12),
+                   C21 = DataBlockUtilities::matrix_subspan(C,half_n, 0, half_n, half_p,ext13a,cstr21),
+                   C22 = DataBlockUtilities::matrix_subspan(C,half_n, half_p, half_n, half_p,ext14a,cstr22);
 
     const size_t cstr110=cstr11[0];
     const size_t cstr111=cstr11[1];
@@ -3321,25 +3326,25 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
     {
         if(policy.memmapped_files)
         {
-            Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M1d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M2d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M3d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M4d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M5d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M6d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M7d,s);
 
-            Host_Memory_Functions<T>::delete_temp_mmap(Ard1,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(Ard2,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(Ard3,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(Ard4,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(Ard5,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(Ard1,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(Ard2,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(Ard3,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(Ard4,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(Ard5,s2);
 
-            Host_Memory_Functions<T>::delete_temp_mmap(Brd1,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(Brd2,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(Brd3,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(Brd4,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(Brd5,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(Brd1,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(Brd2,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(Brd3,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(Brd4,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(Brd5,s3);
         }
         else
         {
@@ -3365,8 +3370,9 @@ void Math_Functions_MPI<T>::strassen_multiply_h(const DataBlock<T> & A, const Da
 
 }
 
+
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply(const DataBlock<T>& A, const DataBlock<T> &B, DataBlock<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
+void Math_Functions_MPI::winograd_multiply(const DataBlock<T>& A, const DataBlock<T> &B, DataBlock<T>& C,const Math_MPI_RecursiveMultiplication_Policy*pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -3383,26 +3389,15 @@ void Math_Functions_MPI<T>::winograd_multiply(const DataBlock<T>& A, const DataB
 
     if(separate_device_memory)
     {
-        typename GPU_Memory_Functions<T>::OffloadHelperConst offloadA(A, policy.devicenum, false);
-        typename GPU_Memory_Functions<T>::OffloadHelperConst offloadB(B,  policy.devicenum, false);
-        typename GPU_Memory_Functions<T>::OffloadHelper offloadC(C,  policy.devicenum, true, policy.update_host);
-        DataBlock<T> tA=A,tB=B,tC=C;
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadA(A, policy.devicenum, false);
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadB(B, policy.devicenum, false);
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadC(C, policy.devicenum, policy.update_host);
 
-        if(!tA.dpdata_is_devptr)
-            tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-        if(!tB.dpdata_is_devptr)
-            tB.dpdata=(T*) omp_get_mapped_ptr(B.dpdata,policy.devicenum);
-        if(!tC.dpdata_is_devptr)
-            tC.dpdata=(T*) omp_get_mapped_ptr(C.dpdata,policy.devicenum);
-
-        tA.dpdata_is_devptr=true;
-        tB.dpdata_is_devptr=true;
-        tC.dpdata_is_devptr=true;
-        tA.devptr_devicenum=policy.devicenum;
-        tB.devptr_devicenum=policy.devicenum;
-        tC.devptr_devicenum=policy.devicenum;
-
+        const DataBlock<T>  &tA=offloadA.get(), &tB=offloadB.get();
+        DataBlock<T>& tC=offloadC.get_mutable();
         winograd_multiply_h(tA,tB,tC,ongpu, separate_device_memory,policy);
+
+
     }
     else
     {
@@ -3412,7 +3407,7 @@ void Math_Functions_MPI<T>::winograd_multiply(const DataBlock<T>& A, const DataB
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const DataBlock<T> &B, DataBlock<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
+void Math_Functions_MPI::winograd_multiply_h(const DataBlock<T>& A,const DataBlock<T> &B, DataBlock<T>& C,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy&policy)
 {
     // Dimensions of input matrices
     size_t n = A.dpextents[0]; // Rows in A
@@ -3424,7 +3419,7 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
     {
         if(ongpu)
         {
-            GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,false);
+            GPU_Math_Functions::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,false);
             return;
         }
         else
@@ -3433,21 +3428,21 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
             {
             case Math_Functions_Policy::GPU_ONLY:
             {
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,true);
+                GPU_Math_Functions::matrix_multiply_dot_g(   A,B,  C,policy.devicenum,true);
                 return;
             }
             case Math_Functions_Policy::AUTO:
             {
                 if(policy.should_use_gpu(A,B,C,Math_Functions_Policy::default_cubic_treshold,1))
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
+                    GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,policy.devicenum,true);
                 else
-                    In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,C);
+                    In_Kernel_Mathfunctions::matrix_multiply_dot( A,B,C);
                 return;
 
             }
             default:
             {
-                In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w( A,B,  C);
+                In_Kernel_Mathfunctions::matrix_multiply_dot( A,B,  C);
                 return;
             }
             }
@@ -3509,21 +3504,21 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
     {
         if(policy.memmapped_files)
         {
-            S1d=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S2d=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S3d=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S4d=Host_Memory_Functions<T>::create_temp_mmap(s2);
-            S5d=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S6d=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S7d=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            S8d=Host_Memory_Functions<T>::create_temp_mmap(s3);
-            M1d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M2d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M3d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M4d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M5d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M6d=Host_Memory_Functions<T>::create_temp_mmap(s);
-            M7d=Host_Memory_Functions<T>::create_temp_mmap(s);
+            S1d=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            S2d=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            S3d=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            S4d=Host_Memory_Functions::create_temp_mmap<T>(s2);
+            S5d=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            S6d=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            S7d=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            S8d=Host_Memory_Functions::create_temp_mmap<T>(s3);
+            M1d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M2d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M3d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M4d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M5d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M6d=Host_Memory_Functions::create_temp_mmap<T>(s);
+            M7d=Host_Memory_Functions::create_temp_mmap<T>(s);
         }
         else
         {
@@ -3546,39 +3541,39 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 
     }
 
-
+    const bool aconj=A.pconjugate,bconj=B.pconjugate;
     DataBlock<T>
-    S1(S1d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-    S2(S2d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-    S3(S3d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
-    S4(S4d,s2,A.dprowmajor,2,ext2,str2,false,false,separate_device_memory),
+    S1(S1d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
+    S2(S2d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
+    S3(S3d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
+    S4(S4d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
 
-    S5(S5d,s3,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-    S6(S6d,s3,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-    S7(S7d,s3,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-    S8(S8d,s3,B.dprowmajor,2,ext3,str3,false,false,separate_device_memory),
-
-
-    M1(M1d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M2(M2d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M3(M3d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M4(M4d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M5(M5d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M6(M6d,s,true,2,ext1,str1,false,false,separate_device_memory),
-    M7(M7d,s,true,2,ext1,str1,false,false,separate_device_memory);
+    S5(S5d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
+    S6(S6d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
+    S7(S7d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
+    S8(S8d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
 
 
+    M1(M1d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M2(M2d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M3(M3d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M4(M4d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M5(M5d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M6(M6d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
+    M7(M7d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false);
 
-    DataBlock<T>  A11 = A.matrix_subspan(0, 0, half_n, half_m,psext1,a11str),
-                  A12 = A.matrix_subspan(0, half_m, half_n, half_m,psext2,a12str),
-                  A21 = A.matrix_subspan(half_n, 0, half_n, half_m,psext3,a21str),
-                  A22 = A.matrix_subspan(half_n, half_m, half_n, half_m,psext4,a22str);
+
+
+    DataBlock<T>  A11 = DataBlockUtilities::matrix_subspan(A,0, 0, half_n, half_m,psext1,a11str),
+                  A12 = DataBlockUtilities::matrix_subspan(A,0, half_m, half_n, half_m,psext2,a12str),
+                  A21 = DataBlockUtilities::matrix_subspan(A,half_n, 0, half_n, half_m,psext3,a21str),
+                  A22 = DataBlockUtilities::matrix_subspan(A,half_n, half_m, half_n, half_m,psext4,a22str);
 
     // Submatrices of B
-    DataBlock<T>  B11 = B.matrix_subspan(0, 0, half_m, half_p,psext5,b11str),
-                  B12 = B.matrix_subspan(0, half_p, half_m, half_p,psext6,b12str),
-                  B21 = B.matrix_subspan(half_m, 0, half_m, half_p,psext7,b21str),
-                  B22 = B.matrix_subspan(half_m, half_p, half_m, half_p,psext8,b22str);
+    DataBlock<T>  B11 = DataBlockUtilities::matrix_subspan(B,0, 0, half_m, half_p,psext5,b11str),
+                  B12 = DataBlockUtilities::matrix_subspan(B,0, half_p, half_m, half_p,psext6,b12str),
+                  B21 = DataBlockUtilities::matrix_subspan(B,half_m, 0, half_m, half_p,psext7,b21str),
+                  B22 = DataBlockUtilities::matrix_subspan(B,half_m, half_p, half_m, half_p,psext8,b22str);
 
 
     const size_t a11str0=a11str[0];
@@ -3626,10 +3621,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
             for (size_t j=0; j<half_m; j++)
             {
 
-                const T a11dd=A11d[a11str0*i+a11str1*j];
-                const T a12dd=A12d[a12str0*i+a12str1*j];
-                const T a21dd=A21d[a21str0*i+a21str1*j];
-                const T a22dd=A22d[a22str0*i+a22str1*j];
+                const T a11dd=returnval(A11d[a11str0*i+a11str1*j],aconj);
+                const T a12dd=returnval(A12d[a12str0*i+a12str1*j],aconj);
+                const T a21dd=returnval(A21d[a21str0*i+a21str1*j],aconj);
+                const T a22dd=returnval(A22d[a22str0*i+a22str1*j],aconj);
 
                 const size_t sindex=strs0*i+strs1*j;
 
@@ -3637,7 +3632,6 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
                 const T s2=s1-a11dd;
 
                 S1d[sindex]=s1;
-
                 S2d[sindex]=s2;
                 S3d[sindex]=a11dd-a21dd;
                 S4d[sindex]=a12dd-s2;
@@ -3649,10 +3643,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
         {
             for (size_t j=0; j<half_p; j++)
             {
-                const T b11dd=B11d[b11str0*i+b11str1*j];
-                const T b12dd=B12d[b12str0*i+b12str1*j];
-                const T b21dd=B21d[b21str0*i+b21str1*j];
-                const T b22dd=B22d[b22str0*i+b22str1*j];
+                const T b11dd=returnval(B11d[b11str0*i+b11str1*j],bconj);
+                const T b12dd=returnval(B12d[b12str0*i+b12str1*j],bconj);
+                const T b21dd=returnval(B21d[b21str0*i+b21str1*j],bconj);
+                const T b22dd=returnval(B22d[b22str0*i+b22str1*j],bconj);
 
                 const size_t sindex=i*strs0+j*strs1;
                 const T s5=b12dd-b11dd;
@@ -3672,10 +3666,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
         {
             for (size_t j=0; j<half_m; j++)
             {
-                const T a11dd=A11d[a11str0*i+a11str1*j];
-                const T a12dd=A12d[a12str0*i+a12str1*j];
-                const T a21dd=A21d[a21str0*i+a21str1*j];
-                const T a22dd=A22d[a22str0*i+a22str1*j];
+                const T a11dd=returnval(A11d[a11str0*i+a11str1*j],aconj);
+                const T a12dd=returnval(A12d[a12str0*i+a12str1*j],aconj);
+                const T a21dd=returnval(A21d[a21str0*i+a21str1*j],aconj);
+                const T a22dd=returnval(A22d[a22str0*i+a22str1*j],aconj);
 
                 const size_t sindex=strs0*i+strs1*j;
 
@@ -3695,10 +3689,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
         {
             for (size_t j=0; j<half_p; j++)
             {
-                const T b11dd=B11d[b11str0*i+b11str1*j];
-                const T b12dd=B12d[b12str0*i+b12str1*j];
-                const T b21dd=B21d[b21str0*i+b21str1*j];
-                const T b22dd=B22d[b22str0*i+b22str1*j];
+                const T b11dd=returnval(B11d[b11str0*i+b11str1*j],bconj);
+                const T b12dd=returnval(B12d[b12str0*i+b12str1*j],bconj);
+                const T b21dd=returnval(B21d[b21str0*i+b21str1*j],bconj);
+                const T b22dd=returnval(B22d[b22str0*i+b22str1*j],bconj);
 
                 const size_t sindex=i*strs0+j*strs1;
                 const T s5=b12dd-b11dd;
@@ -3727,56 +3721,56 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
         MPI_Send(&message, 1, MPI_INT, childdest+1,0, policy.comm);
         size_t problemsize=s2;
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+1,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S2,childdest+1,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S6,childdest+1,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S2,childdest+1,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S6,childdest+1,3,policy.comm);
 
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+2,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+2,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A11,childdest+2,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B11,childdest+2,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A11,childdest+2,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B11,childdest+2,3,policy.comm);
 
 
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+3,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+3,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A12,childdest+3,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B21,childdest+3,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A12,childdest+3,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B21,childdest+3,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+4,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+4,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S3,childdest+4,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S7,childdest+4,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S3,childdest+4,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S7,childdest+4,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+5,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+5,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S1,childdest+5,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S5,childdest+5,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S1,childdest+5,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S5,childdest+5,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+6,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+6,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S4,childdest+6,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(B22,childdest+6,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S4,childdest+6,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(B22,childdest+6,3,policy.comm);
 
         problemsize=s2;
         MPI_Send(&message, 1, MPI_INT, childdest+7,0, policy.comm);
         MPI_Send(&problemsize, 1, mpi_get_type<size_t>(), childdest+7,1, policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(A22,childdest+7,2,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Send_DataBlock(S8,childdest+7,3,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(A22,childdest+7,2,policy.comm);
+        DataBlock_MPI_Functions::MPI_Send_DataBlock(S8,childdest+7,3,policy.comm);
 
 
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M1,childdest+1,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M2,childdest+2,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M3,childdest+3,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M4,childdest+4,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M5,childdest+5,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M6,childdest+6,4,policy.comm);
-        DataBlock_MPI_Functions<T>::MPI_Recv_DataBlock_pdata(M7,childdest+7,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M1,childdest+1,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M2,childdest+2,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M3,childdest+3,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M4,childdest+4,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M5,childdest+5,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M6,childdest+6,4,policy.comm);
+        DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(M7,childdest+7,4,policy.comm);
 
     }
     else
@@ -3824,10 +3818,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 
     size_t pext10a[2],cstr11[2],pext11a[2],cstr12[2],pext12a[2],cstr21[2],pext13a[2],cstr22[2];
 
-    DataBlock<T>  C11 = C.matrix_subspan(0, 0, half_n, half_p,pext10a,cstr11),
-                  C12 = C.matrix_subspan(0, half_p, half_n, half_p,pext11a,cstr12),
-                  C21 = C.matrix_subspan(half_n, 0, half_n, half_p,pext12a,cstr21),
-                  C22 = C.matrix_subspan(half_n, half_p, half_n, half_p,pext13a,cstr22);
+    DataBlock<T>  C11 = DataBlockUtilities::matrix_subspan(C,0, 0, half_n, half_p,pext10a,cstr11),
+                  C12 = DataBlockUtilities::matrix_subspan(C,0, half_p, half_n, half_p,pext11a,cstr12),
+                  C21 = DataBlockUtilities::matrix_subspan(C,half_n, 0, half_n, half_p,pext12a,cstr21),
+                  C22 = DataBlockUtilities::matrix_subspan(C,half_n, half_p, half_n, half_p,pext13a,cstr22);
 
     const size_t cstr110=cstr11[0];
     const size_t cstr111=cstr11[1];
@@ -3930,21 +3924,21 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 
         if(policy.memmapped_files)
         {
-            Host_Memory_Functions<T>::delete_temp_mmap(M1d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M2d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M3d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M4d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M5d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M6d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(M7d,s);
-            Host_Memory_Functions<T>::delete_temp_mmap(S1d,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(S2d,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(S3d,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(S4d,s2);
-            Host_Memory_Functions<T>::delete_temp_mmap(S5d,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(S6d,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(S7d,s3);
-            Host_Memory_Functions<T>::delete_temp_mmap(S8d,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(M1d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M2d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M3d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M4d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M5d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M6d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(M7d,s);
+            Host_Memory_Functions::delete_temp_mmap<T>(S1d,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(S2d,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(S3d,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(S4d,s2);
+            Host_Memory_Functions::delete_temp_mmap<T>(S5d,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(S6d,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(S7d,s3);
+            Host_Memory_Functions::delete_temp_mmap<T>(S8d,s3);
         }
         else
         {
@@ -3968,16 +3962,10 @@ void Math_Functions_MPI<T>::winograd_multiply_h(const DataBlock<T>& A,const Data
 }
 
 template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition(const DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy *pol)
-{
-    Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
-    Math_Functions_MPI<T>::cholesky_decomposition_h(A,L,policy);
-}
-
-template <typename T>
-void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,DataBlock<T> & L, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI::cholesky_decomposition(const DataBlock<T> & A, DataBlock<T> &L, Math_MPI_Decomposition_Policy *pol)
 {
 
+Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
     bool ongpu=policy.should_use_gpu(A,L,Math_Functions_Policy::default_cubic_treshold,1);
     bool separate_device_memory=false;
@@ -3988,6 +3976,9 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 #endif
     }
 
+    L.pconjugate=false;
+
+    bool aconj=A.pconjugate;
 
 
     const size_t n = A.dpextents[0];
@@ -4017,8 +4008,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
         {
             if(policy.memmapped_files)
             {
-                sdata=Host_Memory_Functions<T>::create_temp_mmap(tempsize);
-                tempad=Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                sdata=Host_Memory_Functions::create_temp_mmap<T>(tempsize);
+                tempad=Host_Memory_Functions::create_temp_mmap<T>(A.dpdatalength);
             }
             else
             {
@@ -4029,15 +4020,16 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
 
-        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory,policy.devicenum);
+        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,aext,astr,separate_device_memory,policy.devicenum,false);
+
 
         DataBlock<T> tA=A,tL=L;
 
 
         if(separate_device_memory)
         {
-            GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
-            GPU_Memory_Functions<T>::create_out(L,policy.devicenum);
+            GPU_Memory_Functions::create_in(A,policy.devicenum);
+            GPU_Memory_Functions::create_out(L,policy.devicenum);
 
             if(!A.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -4057,28 +4049,31 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
         const size_t Lstr1=tL.dpstrides[1];
         const size_t Astr0=tA.dpstrides[0];
         const size_t Astr1=tA.dpstrides[1];
+        T* tempAptr=tempA.dpdata;
+        T* tempLptr=tL.dpdata;
+        const T* tAdptr=tA.dpdata;
 
         if(policy.initialize_output_to_zeros)
         {
 
-            #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2)is_device_ptr(tempLptr,tempAptr,tAdptr) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j <n; ++j)
                 {
-                    tL.dpdata[i*Lstr0+j*Lstr1]=0;
-                    tempA.dpdata[i*Astr0+j*Astr1]=tA.dpdata[i*Astr0+j*Astr1];
+                    tempLptr[i*Lstr0+j*Lstr1]=0;
+                    tempAptr[i*Astr0+j*Astr1]=returnval(tAdptr[i*Astr0+j*Astr1],aconj);
                 }
             }
         }
         else
         {
-            #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2) is_device_ptr(tempLptr,tempAptr,tAdptr)  device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j <n; ++j)
                 {
-                    tempA.dpdata[i*Astr0+j*Astr1]=tA.dpdata[i*Astr0+j*Astr1];
+                    tempAptr[i*Astr0+j*Astr1]=returnval(tAdptr[i*Astr0+j*Astr1],aconj);
                 }
             }
         }
@@ -4092,21 +4087,22 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> R = tL.matrix_subspan(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = DataBlockUtilities::matrix_subspan(tL,c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,true,tA.devptr_devicenum);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,true,tA.devptr_devicenum,false);
+
 
                 size_t rtext[2],strtext[2];
 
 
-                DataBlock<T> RT=R.matrix_hermitian_transpose(rtext,strtext);
+                DataBlock<T> RT=DataBlockUtilities::matrix_hermitian_transpose(R,rtext,strtext);
 
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,false);
+                    GPU_Math_Functions::matrix_multiply_dot_g(R,RT,S,policy.devicenum,false);
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
                     strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
@@ -4116,13 +4112,13 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                     break;
                 }
 
-
-                #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+                const T*Sptr=S.dpdata;
+                #pragma omp target teams distribute parallel for simd collapse(2)is_device_ptr(tempAptr,Sptr) device(policy.devicenum)
                 for (size_t i = c; i < n; ++i)
                 {
                     for (size_t j = c; j < n; ++j)
                     {
-                        tempA.dpdata[i*Astr0+j*Astr1] -= S.dpdata[(i - c)*sstrt[0]+ (j - c)*sstrt[1]];
+                        tempAptr[i*Astr0+j*Astr1] -= Sptr[(i - c)*sstrt[0]+ (j - c)*sstrt[1]];
                     }
                 }
 
@@ -4131,32 +4127,32 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
 
 
             T tmp=T(0);
-            #pragma omp target teams distribute parallel for simd map(tofrom:tmp) reduction(+:tmp)  device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd map(tofrom:tmp) reduction(+:tmp)  is_device_ptr(tempLptr) device(policy.devicenum)
             for (size_t k = z; k < c; ++k)
             {
-                const T tmp3=tL.dpdata[c*Lstr0+k*Lstr1];
+                const T tmp3=tempLptr[c*Lstr0+k*Lstr1];
                 tmp+= tmp3 *  cond_conj(tmp3);
             }
 
             T tmp42=T(0);
-            omp_target_memcpy(&tmp42,&tempA.dpdata[0],sizeof(T),0,sizeof(T)*(Astr0*c+Astr1*c),omp_get_initial_device(),policy.devicenum);
+            omp_target_memcpy(&tmp42,tempAptr,sizeof(T),0,sizeof(T)*(Astr0*c+Astr1*c),omp_get_initial_device(),policy.devicenum);
             tmp=tmp42-tmp;
 
             const T temp4=sqrt(tmp);
 
-            omp_target_memcpy(&tL.dpdata[0],&temp4,sizeof(T),sizeof(T)*(Lstr0*c+Lstr1*c),0,policy.devicenum,omp_get_initial_device());
+            omp_target_memcpy(tempLptr,&temp4,sizeof(T),sizeof(T)*(Lstr0*c+Lstr1*c),0,policy.devicenum,omp_get_initial_device());
 
-            #pragma omp target teams distribute parallel for map(to:temp4) device(policy.devicenum)
+            #pragma omp target teams distribute parallel for map(to:temp4) is_device_ptr(tempLptr,tempAptr) device(policy.devicenum)
             for (size_t i = c + 1; i < n; ++i)
             {
                 T tmp2 = T(0);
                 #pragma omp simd reduction(+:tmp2)
                 for (size_t k = z; k < c; ++k)
                 {
-                    tmp2 += tL.dpdata[i*Lstr0+k*Lstr1] *  cond_conj(tL.dpdata[c*Lstr0+k*Lstr1]);
+                    tmp2 += tempLptr[i*Lstr0+k*Lstr1] *  cond_conj(tempLptr[c*Lstr0+k*Lstr1]);
                 }
-                tmp2=tempA.dpdata[i*Astr0+c*Astr1]-tmp2;
-                tL.dpdata[i*Lstr0+ c*Lstr1]=tmp2/temp4;
+                tmp2=tempAptr[i*Astr0+c*Astr1]-tmp2;
+                tempLptr[i*Lstr0+ c*Lstr1]=tmp2/temp4;
             }
         }
 
@@ -4164,9 +4160,9 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
         if(separate_device_memory)
         {
             if(policy.update_host)
-                GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
-            GPU_Memory_Functions<T>::release(L,policy.devicenum);
-            GPU_Memory_Functions<T>::release(A,policy.devicenum);
+                GPU_Memory_Functions::update_host(L,policy.devicenum);
+            GPU_Memory_Functions::release(L,policy.devicenum);
+            GPU_Memory_Functions::release(A,policy.devicenum);
 
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
@@ -4176,8 +4172,8 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
         {
             if(policy.memmapped_files)
             {
-                Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
-                Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
+                Host_Memory_Functions::delete_temp_mmap(sdata,tempsize);
+                Host_Memory_Functions::delete_temp_mmap(tempad,A.dpdatalength);
             }
             else
             {
@@ -4190,9 +4186,9 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
     else
     {
 
-        T * sdata= Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
+        T * sdata= Host_Memory_Functions::alloc_data_ptr<T>(tempsize,policy.memmapped_files);
 
-        DataBlock<T>  tempA=Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,policy.memmapped_files);
+        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,policy.memmapped_files,false);
 
         if (policy.initialize_output_to_zeros)
         {
@@ -4228,25 +4224,26 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 size_t v=c-z;
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> R = L.matrix_subspan(c, z,u,v,sub_ext,sub_str);
+                DataBlock<T> R = DataBlockUtilities::matrix_subspan(L,c, z,u,v,sub_ext,sub_str);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,-1,false);
+
 
                 size_t rtext[2],strtext[2];
 
 
-                DataBlock<T> RT=R.matrix_hermitian_transpose(rtext,strtext);
+                DataBlock<T> RT=DataBlockUtilities::matrix_hermitian_transpose(R,rtext,strtext);
 
 
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
                     if(policy.should_use_gpu(R,RT,S,Math_Functions_Policy::default_cubic_treshold,1))
-                        GPU_Math_Functions<T>::matrix_multiply_dot_g(R,RT,S,policy.devicenum,true);
+                        GPU_Math_Functions::matrix_multiply_dot_g(R,RT,S,policy.devicenum,true);
                     else
-                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(R,RT,S);
+                        In_Kernel_Mathfunctions::matrix_multiply_dot(R,RT,S);
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
                     strassen_multiply_h(R,RT,S,ongpu,separate_device_memory,policy);
@@ -4293,25 +4290,17 @@ void Math_Functions_MPI<T>::cholesky_decomposition_h(const DataBlock<T> & A,Data
                 L(i, c)=tmp2/tmp4;
             }
         }
-        Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
-        Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
+        Host_Memory_Functions::free_copy<T>(tempA,policy.memmapped_files);
+        Host_Memory_Functions::free_data_ptr<T>(sdata,tempsize,policy.memmapped_files);
     }
 }
 
 
+
 template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy* pol)
+void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy* pol)
 {
-    Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
-
-    Math_Functions_MPI<T>::lu_decomposition_h(A,L,U,policy);
-
-
-}
-template <typename T>
-void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  Math_MPI_Decomposition_Policy& policy)
-{
-
+ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
     bool ongpu=policy.should_use_gpu(A,L,U,Math_Functions_Policy::default_cubic_treshold,1);
 
     size_t n = A.dpextents[0];
@@ -4323,7 +4312,8 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
         step_size=step_size-1;
 
     size_t tempsize=(n-step_size)*(n-step_size);
-
+    L.pconjugate=false;
+    U.pconjugate=false;
     if(ongpu)
     {
         bool separate_device_memory=false;
@@ -4343,8 +4333,8 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
         {
             if(policy.memmapped_files)
             {
-                sdata=Host_Memory_Functions<T>::create_temp_mmap(tempsize);
-                tempad=Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                sdata=Host_Memory_Functions::create_temp_mmap<T>(tempsize);
+                tempad=Host_Memory_Functions::create_temp_mmap<T>(A.dpdatalength);
             }
             else
             {
@@ -4356,16 +4346,17 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
         size_t taext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t tastr[2]= {A.dpstrides[0],A.dpstrides[1]};
 
-        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,taext,tastr,false,false,separate_device_memory,policy.devicenum);
+        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,taext,tastr,separate_device_memory,policy.devicenum,false);
+
 
         DataBlock<T> tA=A,tL=L,tU=U;
 
 
         if(separate_device_memory)
         {
-            GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
-            GPU_Memory_Functions<T>::create_out(L,policy.devicenum);
-            GPU_Memory_Functions<T>::create_out(U,policy.devicenum);
+            GPU_Memory_Functions::create_in(A,policy.devicenum);
+            GPU_Memory_Functions::create_out(L,policy.devicenum);
+            GPU_Memory_Functions::create_out(U,policy.devicenum);
 
             if(!A.dpdata_is_devptr)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
@@ -4389,28 +4380,32 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
         const size_t Lstr1=tL.dpstrides[1];
         const size_t Ustr0=tU.dpstrides[0];
         const size_t Ustr1=tU.dpstrides[1];
-
+        T* tempAdptr=tempA.dpdata;
+        T* tadptr=tA.dpdata;
+        T* tLdptr=tL.dpdata;
+        T* tUdptr=tU.dpdata;
         if(policy.initialize_output_to_zeros)
         {
-            #pragma omp target teams distribute parallel for simd collapse(2)  device(policy.devicenum)
+
+            #pragma omp target teams distribute parallel for simd collapse(2)  is_device_ptr(tLdptr,tUdptr,tempAdptr)device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j <n; ++j)
                 {
-                    tL.dpdata[i*Lstr0+j*Lstr1]=0;
-                    tU.dpdata[i*Ustr0+j*Ustr1]=0;
-                    tempA.dpdata[i*Astr0+j*Astr1]=tA.dpdata[i*Astr0+j*Astr1];
+                    tLdptr[i*Lstr0+j*Lstr1]=0;
+                    tUdptr[i*Ustr0+j*Ustr1]=0;
+                    tempAdptr[i*Astr0+j*Astr1]=tadptr[i*Astr0+j*Astr1];
                 }
             }
         }
         else
         {
-            #pragma omp target teams distribute parallel for simd collapse(2)   device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2) is_device_ptr(tempAdptr,tadptr)  device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j <n; ++j)
                 {
-                    tempA.dpdata[i*Astr0+j*Astr1]=tA.dpdata[i*Astr0+j*Astr1];
+                    tempAdptr[i*Astr0+j*Astr1]=tadptr[i*Astr0+j*Astr1];
                 }
             }
         }
@@ -4426,21 +4421,22 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> RL = tL.matrix_subspan(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = DataBlockUtilities::matrix_subspan(tL,c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                DataBlock<T> RU = tU.matrix_subspan(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = DataBlockUtilities::matrix_subspan(tU,z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
 
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,separate_device_memory,tA.devptr_devicenum);
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,separate_device_memory,policy.devicenum,false);
+
 
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
                 {
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(RL,RU,S,policy.devicenum,false);
+                    GPU_Math_Functions::matrix_multiply_dot_g(RL,RU,S,policy.devicenum,false);
                     break;
                 }
                 case Math_MPI_Decomposition_Policy::Strassen:
@@ -4454,13 +4450,13 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
                     break;
                 }
                 }
-
-                #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+                T*Sdptr=S.dpdata;
+                #pragma omp target teams distribute parallel for simd collapse(2) is_device_ptr(tUdptr,Sdptr)device(policy.devicenum)
                 for (size_t i = c; i < n; ++i)
                 {
                     for (size_t j = c; j < n; ++j)
                     {
-                        tempA.dpdata[i*Astr0+j*Astr1] -= S.dpdata[(i - c)*sstrt[0]+(j - c)*sstrt[1]];
+                        tempAdptr[i*Astr0+j*Astr1] -= Sdptr[(i - c)*sstrt[0]+(j - c)*sstrt[1]];
                     }
                 }
 
@@ -4468,59 +4464,59 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
 
 
-            #pragma omp target teams distribute device(policy.devicenum)
+            #pragma omp target teams distribute is_device_ptr(tUdptr,tLdptr,tempAdptr) device(policy.devicenum)
             for (size_t i = c; i < n; ++i)
             {
                 T temp=T(0);
                 #pragma omp parallel for simd reduction(+:temp)
                 for (size_t k = z; k < c; ++k)
                 {
-                    temp += tU.dpdata[ k*Ustr0+i*Ustr1] * tL.dpdata[ c*Lstr0+k*Lstr1];
+                    temp += tUdptr[ k*Ustr0+i*Ustr1] *tLdptr[ c*Lstr0+k*Lstr1];
                 }
-                temp=tempA.dpdata[c*Astr0+i*Astr1]-temp;
-                tU.dpdata[c*Ustr0+i*Ustr1]=temp;
+                temp=tempAdptr[c*Astr0+i*Astr1]-temp;
+               tUdptr[c*Ustr0+i*Ustr1]=temp;
             }
 
             T temp4=T(0);
-            omp_target_memcpy(&temp4,&tU.dpdata[0],sizeof(T),0,sizeof(T)*(Ustr0*c+Ustr1*c),omp_get_initial_device(),policy.devicenum);
+            omp_target_memcpy(&temp4,tUdptr,sizeof(T),0,sizeof(T)*(Ustr0*c+Ustr1*c),omp_get_initial_device(),policy.devicenum);
 
 
-            #pragma omp target teams distribute device(policy.devicenum)
+            #pragma omp target teams distribute is_device_ptr(tUdptr,tLdptr,tempAdptr)  device(policy.devicenum)
             for (size_t i = c; i < n; ++i)
             {
                 T temp = T(0);
                 #pragma omp parallel for simd reduction(+:temp)
                 for (size_t k = z; k < c; ++k)
                 {
-                    temp += tU.dpdata[k*Ustr0+c*Ustr1] * tL.dpdata[i*Lstr0+k*Lstr1];
+                    temp += tUdptr[k*Ustr0+c*Ustr1] * tLdptr[i*Lstr0+k*Lstr1];
                 }
-                temp=tempA.dpdata[i*Astr0+c*Astr1]-temp;
-                tL.dpdata[i*Lstr0+c*Lstr1]=temp/temp4;
+                temp=tempAdptr[i*Astr0+c*Astr1]-temp;
+                tLdptr[i*Lstr0+c*Lstr1]=temp/temp4;
             }
         }
 
 
         if(separate_device_memory)
         {
-            GPU_Memory_Functions<T>::release(A,policy.devicenum);
+            GPU_Memory_Functions::release(A,policy.devicenum);
             if(policy.update_host)
             {
-                GPU_Memory_Functions<T>::update_host(L,policy.devicenum);
-                GPU_Memory_Functions<T>::update_host(U,policy.devicenum);
+                GPU_Memory_Functions::update_host(L,policy.devicenum);
+                GPU_Memory_Functions::update_host(U,policy.devicenum);
             }
 
             omp_target_free(sdata,  policy.devicenum);
             omp_target_free(tempad, policy.devicenum);
 
-            GPU_Memory_Functions<T>::release(L,policy.devicenum);
-            GPU_Memory_Functions<T>::release(U,policy.devicenum);
+            GPU_Memory_Functions::release(L,policy.devicenum);
+            GPU_Memory_Functions::release(U,policy.devicenum);
         }
         else
         {
             if(policy.memmapped_files)
             {
-                Host_Memory_Functions<T>::delete_temp_mmap(sdata,tempsize);
-                Host_Memory_Functions<T>::delete_temp_mmap(tempad,A.dpdatalength);
+                Host_Memory_Functions::delete_temp_mmap<T>(sdata,tempsize);
+                Host_Memory_Functions::delete_temp_mmap<T>(tempad,A.dpdatalength);
             }
             else
             {
@@ -4533,10 +4529,10 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
     else
     {
 
-        T * sdata= Host_Memory_Functions<T>::alloc_data_ptr(tempsize,policy.memmapped_files);
+        T * sdata= Host_Memory_Functions::alloc_data_ptr<T>(tempsize,policy.memmapped_files);
 
-        DataBlock<T>  tempA=Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
-                            ,policy.memmapped_files);
+        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
+                            ,policy.memmapped_files,false);
 
         if (policy.initialize_output_to_zeros)
         {
@@ -4574,15 +4570,14 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t sub_ext[2];
                 size_t sub_str[2];
-                DataBlock<T> RL = L.matrix_subspan(c, z,u, v,sub_ext,sub_str);
+                DataBlock<T> RL = DataBlockUtilities::matrix_subspan(L,c, z,u, v,sub_ext,sub_str);
                 size_t sub_ext2[2];
                 size_t sub_str2[2];
-                DataBlock<T> RU = U.matrix_subspan(z, c,v, u,sub_ext2,sub_str2);
+                DataBlock<T> RU = DataBlockUtilities::matrix_subspan(U,z, c,v, u,sub_ext2,sub_str2);
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,false);
-
+                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,-1,false);
 
 
 
@@ -4592,11 +4587,11 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
                 {
                     if(policy.should_use_gpu(RL,RU,S,Math_Functions_Policy::default_cubic_treshold,1))
                     {
-                        GPU_Math_Functions<T>::matrix_multiply_dot_g(RL,RU,S,policy.devicenum,true);
+                        GPU_Math_Functions::matrix_multiply_dot_g(RL,RU,S,policy.devicenum,true);
                     }
                     else
                     {
-                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(RL,RU,S);
+                        In_Kernel_Mathfunctions::matrix_multiply_dot(RL,RU,S);
                     }
                     break;
                 }
@@ -4650,23 +4645,17 @@ void Math_Functions_MPI<T>::lu_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
         }
 
-        Host_Memory_Functions<T>::free_copy(tempA,policy.memmapped_files);
-        Host_Memory_Functions<T>::free_data_ptr(sdata,tempsize,policy.memmapped_files);
+        Host_Memory_Functions::free_copy<T>(tempA,policy.memmapped_files);
+        Host_Memory_Functions::free_data_ptr<T>(sdata,tempsize,policy.memmapped_files);
     }
 
 }
 
-template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy *pol)
-{
 
-    Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
-    Math_Functions_MPI<T>::qr_decomposition_h(A,Q,R,policy);
-
-}
 template <typename T>
-void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy &policy)
+void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R, Math_MPI_Decomposition_Policy *pol)
 {
+Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
     bool ongpu=policy.should_use_gpu(A,Q,R,Math_Functions_Policy::default_cubic_treshold,1);
 
@@ -4680,7 +4669,9 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
     size_t n = A.dpextents[0]; // Number of rows (assuming 2D matrix)
     size_t m = A.dpextents[1]; // Number of columns
-
+    bool aconj=A.pconjugate;
+    Q.pconjugate=false;
+    R.pconjugate=false;
     // Initialize Q and R matrices
     size_t nm=n*m, mm=m*m;
     if(ongpu)
@@ -4705,29 +4696,32 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         {
             if(policy.memmapped_files)
             {
-                tempS=Host_Memory_Functions<T>::create_temp_mmap(nm);
-                tempC=Host_Memory_Functions<T>::create_temp_mmap(mm);
-                tempM= Host_Memory_Functions<T>::create_temp_mmap(A.dpdatalength);
+                tempS=Host_Memory_Functions::create_temp_mmap<T>(nm);
+                tempC=Host_Memory_Functions::create_temp_mmap<T>(mm);
+                tempM= Host_Memory_Functions::create_temp_mmap<T>(A.dpdatalength);
             }
             else
             {
-                tempS=new T[nm];
-                tempC=new T[mm];
-                tempM=new T[A.dpdatalength];
+            tempS= (T*)omp_alloc(sizeof(T)*nm,omp_default_mem_alloc);
+            tempC= (T*) omp_alloc(sizeof(T)*mm, omp_default_mem_alloc);
+            tempM= (T*) omp_alloc(sizeof(T)*A.dpdatalength, omp_default_mem_alloc);
             }
         }
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-        DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,false,false,separate_device_memory,policy.devicenum);
+        DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,separate_device_memory,policy.devicenum, false);
+
+
 
         DataBlock<T> tA=A,tQ=Q,tR=R;
 
+        T* Mdptr=M.dpdata;
 
         if(separate_device_memory)
         {
-            GPU_Memory_Functions<T>::create_in(A,policy.devicenum);
-            GPU_Memory_Functions<T>::create_out(Q,policy.devicenum);
-            GPU_Memory_Functions<T>::create_out(R,policy.devicenum);
+            GPU_Memory_Functions::create_in(A,policy.devicenum);
+            GPU_Memory_Functions::create_out(Q,policy.devicenum);
+            GPU_Memory_Functions::create_out(R,policy.devicenum);
 
 
             if(!A.dpdata_is_devptr)
@@ -4751,43 +4745,42 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         const size_t Rstr1=R.dpstrides[1];
         const size_t Astr0=A.dpstrides[0];
         const size_t Astr1=A.dpstrides[1];
-
+        T* tQdptr=tQ.dpdata;
+        T* tRdptr=tR.dpdata;
+        const T* tAdptr=tA.dpdata;
         if(policy.initialize_output_to_zeros)
         {
 
-            #pragma omp target teams distribute parallel for simd collapse(2)device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2)is_device_ptr(tQdptr) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j < n; ++j)
                 {
-                    tQ.dpdata[i*Qstr0 + j*Qstr1] = T(0);
+                    tQdptr[i*Qstr0 + j*Qstr1] = T(0);
                 }
             }
 
-            #pragma omp target teams distribute parallel for simd collapse(2)device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2) is_device_ptr(tAdptr,tRdptr,Mdptr)device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j < m; ++j)
                 {
-                    M.dpdata[i*Astr0 + j*Astr1] = tA.dpdata[i*Astr0 + j*Astr1];
-                    tR.dpdata[i*Rstr0 + j*Rstr1] = T(0);
+                   Mdptr[i*Astr0 + j*Astr1] =returnval(tAdptr[i*Astr0 + j*Astr1],aconj);
+                   tRdptr[i*Rstr0 + j*Rstr1] = T(0);
                 }
             }
         }
         else
         {
-            #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd collapse(2)  is_device_ptr(tAdptr,tRdptr,Mdptr) device(policy.devicenum)
             for (size_t i = 0; i < n; ++i)
             {
                 for (size_t j = 0; j < m; ++j)
                 {
-                    M.dpdata[i*Astr0+j*Astr1]=tA.dpdata[i*Astr0+j*Astr1];
+                    Mdptr[i*Astr0+j*Astr1]=returnval(tAdptr[i*Astr0+j*Astr1],aconj);
                 }
             }
         }
-
-
-
 
         size_t z = 0;
 
@@ -4805,31 +4798,33 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t extBM[2],strBM[2];
 
-                DataBlock<T> BQ = tQ.matrix_subspan(0, z, n, cz,extBQ,strBQ);
-                DataBlock<T> BM = M.matrix_subspan(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = DataBlockUtilities::matrix_subspan(tQ,0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = DataBlockUtilities::matrix_subspan(M,0, c, n,mc,extBM,strBM);
 
                 size_t tempCextt[2]= {cz,mc};
                 size_t tempCstrt[2]= {mc,1};
 
-                DataBlock<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,false,false,separate_device_memory,tA.devptr_devicenum);
+                DataBlock<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,separate_device_memory,policy.devicenum,false);
 
 
                 size_t extBQT[2],strBQT[2];
 
-                DataBlock<T> BQT=BQ.matrix_hermitian_transpose(extBQT,strBQT);
+                DataBlock<T> BQT=DataBlockUtilities::matrix_hermitian_transpose(BQ,extBQT,strBQT);
 
-                GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
+                GPU_Math_Functions::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,false);
 
 
 
                 size_t sextt[2]= {n,mc};
                 size_t sstrt[2]= {mc,1};
-                DataBlock<T>  S(tempS,n*mc,true,2,sextt,sstrt,false,false,separate_device_memory,tA.devptr_devicenum);
+                DataBlock<T>  S(tempS,n*mc,true,2,sextt,sstrt,separate_device_memory,policy.devicenum, false);
+
+
 
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(BQ,C,S,policy.devicenum,false);
+                    GPU_Math_Functions::matrix_multiply_dot_g(BQ,C,S,policy.devicenum,false);
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
                     strassen_multiply_h(BQ,C,S,ongpu,separate_device_memory,policy);
@@ -4839,13 +4834,13 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
                     break;
                 }
 
-
-                #pragma omp target teams distribute parallel for simd collapse(2) device(policy.devicenum)
+                T* Sdptr=S.dpdata;
+                #pragma omp target teams distribute parallel for simd collapse(2) is_device_ptr(Sdptr,Mdptr) device(policy.devicenum)
                 for (size_t i = 0; i < n; ++i)
                 {
                     for (size_t j = c; j < n; ++j)
                     {
-                        M.dpdata[i*Astr0+j*Astr1] -= S.dpdata[i*sstrt[0]+(j-c)*sstrt[1]];
+                        Mdptr[i*Astr0+j*Astr1] -= Sdptr[i*sstrt[0]+(j-c)*sstrt[1]];
                     }
                 }
                 z = c;
@@ -4853,44 +4848,45 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 //            // Extract column c of M
 
             size_t vext[1],vstr[1];
-            DataBlock<T> v = M.matrix_column(c,vext,vstr);
+            DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,vext,vstr);
             const size_t pextv0=vext[0];
+            T* vdptr=v.dpdata;
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                DataBlock<T>  u = tQ.matrix_column(j,uext,ustr);
-
+                DataBlock<T>  u =DataBlockUtilities::matrix_column(tQ,j,uext,ustr);
+                T*udptr=u.dpdata;
                 T dot_pr=T(0);
 
-                #pragma omp target teams distribute parallel for simd  map(tofrom: dot_pr) reduction(+:dot_pr) device(policy.devicenum)
+                #pragma omp target teams distribute parallel for simd  map(tofrom: dot_pr) is_device_ptr(tQdptr,vdptr) reduction(+:dot_pr) device(policy.devicenum)
                 for (size_t i = 0; i < pextv0; ++i)
                 {
-                    dot_pr +=cond_conj( u.dpdata[i*ustr[0]]) * v.dpdata[i*vstr[0]];
+                    dot_pr +=cond_conj( udptr[i*ustr[0]]) * vdptr[i*vstr[0]];
                 }
 
                 const T cdot_pr = dot_pr;
-                #pragma omp target teams distribute parallel for simd device(policy.devicenum)
+                #pragma omp target teams distribute parallel for simd is_device_ptr(udptr,vdptr)device(policy.devicenum)
                 for (size_t i = 0; i < pextv0; ++i)
                 {
-                    v.dpdata[i*vstr[0]] -= cdot_pr * u.dpdata[i*ustr[0]];
+                    vdptr[i*vstr[0]] -= cdot_pr * udptr[i*ustr[0]];
                 }
 
             }
 
             T norm = T(0);
-            #pragma omp target  teams distribute parallel for simd map(tofrom:norm) reduction(+:norm)device(policy.devicenum)
+            #pragma omp target  teams distribute parallel for simd map(tofrom:norm) is_device_ptr(vdptr)reduction(+:norm)device(policy.devicenum)
             for (size_t i = 0; i < pextv0; ++i)
             {
-                T val=v.dpdata[i*vstr[0]] ;
-                norm += cond_conj(val) * v.dpdata[i*vstr[0]];
+                T val=vdptr[i*vstr[0]] ;
+                norm += cond_conj(val) *vdptr[i*vstr[0]];
             }
 
             const T normc = sqrt(norm);
 
-            #pragma omp target teams distribute parallel for simd device(policy.devicenum)
+            #pragma omp target teams distribute parallel for simd is_device_ptr(tQdptr,vdptr) device(policy.devicenum)
             for (size_t i = 0; i < pextv0; ++i)
             {
-                tQ.dpdata[i*Qstr0+c*Qstr1] = v.dpdata[i*vstr[0]]/normc;
+                tQdptr[i*Qstr0+c*Qstr1] = vdptr[i*vstr[0]]/normc;
             }
 
         }
@@ -4898,12 +4894,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
 
         size_t extQT[2],strQT[2];
-        DataBlock<T> QT=tQ.matrix_hermitian_transpose(extQT,strQT);
+        DataBlock<T> QT=DataBlockUtilities::matrix_hermitian_transpose(tQ,extQT,strQT);
 
         switch (policy.algorithm_version)
         {
         case Math_MPI_Decomposition_Policy::Naive:
-            GPU_Math_Functions<T>::matrix_multiply_dot_g(QT,tA,tR,policy.devicenum,false);
+            GPU_Math_Functions::matrix_multiply_dot_g(QT,tA,tR,policy.devicenum,false);
             break;
         case Math_MPI_Decomposition_Policy::Strassen:
             strassen_multiply_h(QT,tA,tR,ongpu,separate_device_memory,policy);
@@ -4919,12 +4915,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         {
             if(policy.update_host)
             {
-                GPU_Memory_Functions<T>::update_host(Q,policy.devicenum);
-                GPU_Memory_Functions<T>::update_host(R,policy.devicenum);
+                GPU_Memory_Functions::update_host(Q,policy.devicenum);
+                GPU_Memory_Functions::update_host(R,policy.devicenum);
             }
-            GPU_Memory_Functions<T>::release(A,policy.devicenum);
-            GPU_Memory_Functions<T>::release(Q,policy.devicenum);
-            GPU_Memory_Functions<T>::release(R,policy.devicenum);
+            GPU_Memory_Functions::release(A,policy.devicenum);
+            GPU_Memory_Functions::release(Q,policy.devicenum);
+            GPU_Memory_Functions::release(R,policy.devicenum);
 
             omp_target_free(tempS, policy.devicenum);
             omp_target_free(tempC, policy.devicenum);
@@ -4934,15 +4930,15 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         {
             if(policy.memmapped_files)
             {
-                Host_Memory_Functions<T>::delete_temp_mmap(tempS,nm);
-                Host_Memory_Functions<T>::delete_temp_mmap(tempM,A.dpdatalength);
-                Host_Memory_Functions<T>::delete_temp_mmap(tempC,mm);
+                Host_Memory_Functions::delete_temp_mmap<T>(tempS,nm);
+                Host_Memory_Functions::delete_temp_mmap<T>(tempM,A.dpdatalength);
+                Host_Memory_Functions::delete_temp_mmap<T>(tempC,mm);
             }
             else
             {
-                delete[] tempS;
-                delete[] tempM;
-                delete[] tempC;
+            omp_free(tempS, omp_default_mem_alloc);
+            omp_free(tempC, omp_default_mem_alloc);
+            omp_free(tempM, omp_default_mem_alloc);
             }
         }
 
@@ -4952,12 +4948,12 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
     {
 
 
-        DataBlock<T> M= Host_Memory_Functions<T>::alloc_data_copy_strides_extents(A.dpdatalength,A.dprowmajor,
+        DataBlock<T> M= Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor,
                         A.dprank,A.dpextents,A.dpstrides,
-                        policy.memmapped_files);
+                        policy.memmapped_files,false);
 
-        T * tempC= Host_Memory_Functions<T>::alloc_data_ptr(mm,policy.memmapped_files);
-        T * tempS= Host_Memory_Functions<T>::alloc_data_ptr(nm,policy.memmapped_files);
+        T * tempC= Host_Memory_Functions::alloc_data_ptr<T>(mm,policy.memmapped_files);
+        T * tempS= Host_Memory_Functions::alloc_data_ptr<T>(nm,policy.memmapped_files);
 
 
         if(policy.initialize_output_to_zeros)
@@ -5004,47 +5000,37 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
                 size_t extBM[2],strBM[2];
 
-                DataBlock<T> BQ = Q.matrix_subspan(0, z, n, cz,extBQ,strBQ);
-                DataBlock<T> BM = M.matrix_subspan(0, c, n,mc,extBM,strBM);
+                DataBlock<T> BQ = DataBlockUtilities::matrix_subspan(Q,0, z, n, cz,extBQ,strBQ);
+                DataBlock<T> BM = DataBlockUtilities::matrix_subspan(M,0, c, n,mc,extBM,strBM);
 
                 size_t Cextt[2]= {cz,mc};
                 size_t Cstrt[2]= {mc,1};
 
-                DataBlock<T>  C(tempC,cz*mc,true,2,Cextt,Cstrt,false,false,false);
+                DataBlock<T>  C(tempC,cz*mc,true,2,Cextt,Cstrt,false,-1,false);
 
 
                 size_t extBQT[2],strBQT[2];
-                DataBlock<T> BQT=BQ.matrix_transpose(extBQT,strBQT);
+                DataBlock<T> BQT=DataBlockUtilities::matrix_hermitian_transpose(BQ,extBQT,strBQT);
 
-                if constexpr (is_complex<T>::value)
-                {
-                    if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
-                        GPU_Math_Functions<T>::template matrix_multiply_conjugate_dot_g<ConjOp::First>(BQT,BM,C,policy.devicenum,true);
-                    else
-                        In_Kernel_Mathfunctions<T>::template matrix_multiply_conjugate_dot_w<ConjOp::First>(BQT,BM,C);
-                }
+                if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
+                    GPU_Math_Functions::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,true);
                 else
-                {
-                    if(policy.should_use_gpu(BQT,BM,C,Math_Functions_Policy::default_cubic_treshold,1))
-                        GPU_Math_Functions<T>::matrix_multiply_dot_g(BQT,BM,C,policy.devicenum,true);
-                    else
-                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(BQT,BM,C);
-                }
-
-
+                    In_Kernel_Mathfunctions::matrix_multiply_dot(BQT,BM,C);
                 size_t sexttt[2]= {n,mc};
                 size_t sstrtt[2]= {mc,1};
 
-                DataBlock<T>  S(tempS,n*mc,true,2,sexttt,sstrtt,false,false,false);
+                DataBlock<T>  S(tempS,n*mc,true,2,sexttt,sstrtt,false,-1,false);
+
+
 
 
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
                     if(policy.should_use_gpu(BQ,C,S,Math_Functions_Policy::default_cubic_treshold,1))
-                        GPU_Math_Functions<T>::matrix_multiply_dot_g(BQ,C,S,policy.devicenum,true);
+                        GPU_Math_Functions::matrix_multiply_dot_g(BQ,C,S,policy.devicenum,true);
                     else
-                        In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(BQ,C,S);
+                        In_Kernel_Mathfunctions::matrix_multiply_dot(BQ,C,S);
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
                     strassen_multiply_h(BQ,C,S,false,false,policy);
@@ -5066,13 +5052,13 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
 
             size_t vext[1],vstr[1];
-            DataBlock<T> v = M.matrix_column(c,vext,vstr);
+            DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,vext,vstr);
 
             for (size_t j = z; j < c; ++j)
             {
                 size_t uext[1],ustr[1];
-                DataBlock<T>  u = Q.matrix_column(j,uext,ustr);
-                const T dot_pr =Math_Functions<T>::dot_product(u,v,&policy);
+                DataBlock<T>  u = DataBlockUtilities::matrix_column(Q,j,uext,ustr);
+                const T dot_pr =Math_Functions::dot_product(u,v,&policy);
 
                 #pragma omp parallel for simd
                 for (size_t i = 0; i < n; ++i)
@@ -5082,7 +5068,7 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
             }
 
             // Normalize v
-            const T norm = sqrt(Math_Functions<T>::dot_product(v,v,&policy));
+            const T norm = sqrt(Math_Functions::dot_product(v,v,&policy));
 
             // Set column c of Q
 
@@ -5098,33 +5084,23 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
         // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
 
         size_t extQT[2],strQT[2];
-        DataBlock<T> QT=Q.matrix_transpose(extQT,strQT);
+        DataBlock<T> QT=DataBlockUtilities::matrix_hermitian_transpose(Q,extQT,strQT);
 
-        if constexpr (is_complex<T>::value)
+        switch (policy.algorithm_version)
         {
-            if(policy.should_use_gpu(QT,A,R,Math_Functions_Policy::default_cubic_treshold,1))
-                GPU_Math_Functions<T>:: template matrix_multiply_conjugate_dot_g<ConjOp::First>(QT,A,R,policy.devicenum,true);
-            else
-                In_Kernel_Mathfunctions<T>:: template matrix_multiply_conjugate_dot_w<ConjOp::First>(QT,A,R);
-        }
-        else
-        {
-            switch (policy.algorithm_version)
-            {
-            case Math_MPI_Decomposition_Policy::Naive:
-                In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(QT,A,R);
-                break;
-            case Math_MPI_Decomposition_Policy::Strassen:
-                strassen_multiply_h(QT,A,R,false,false,policy);
-                break;
-            case Math_MPI_Decomposition_Policy::WinogradVariant:
-                winograd_multiply_h(QT,A,R,false,false,policy);
-            }
+        case Math_MPI_Decomposition_Policy::Naive:
+            In_Kernel_Mathfunctions::matrix_multiply_dot(QT,A,R);
+            break;
+        case Math_MPI_Decomposition_Policy::Strassen:
+            strassen_multiply_h(QT,A,R,false,false,policy);
+            break;
+        case Math_MPI_Decomposition_Policy::WinogradVariant:
+            winograd_multiply_h(QT,A,R,false,false,policy);
         }
 
-        Host_Memory_Functions<T>::free_data_ptr(tempC,mm,policy.memmapped_files);
-        Host_Memory_Functions<T>::free_data_ptr(tempS,nm,policy.memmapped_files);
-        Host_Memory_Functions<T>::free_copy(M,policy.memmapped_files);
+        Host_Memory_Functions::free_data_ptr<T>(tempC,mm,policy.memmapped_files);
+        Host_Memory_Functions::free_data_ptr<T>(tempS,nm,policy.memmapped_files);
+        Host_Memory_Functions::free_copy<T>(M,policy.memmapped_files);
 
     }
 }
@@ -5133,9 +5109,8 @@ void Math_Functions_MPI<T>::qr_decomposition_h(const DataBlock<T>& A, DataBlock<
 
 
 
-
-template <typename T>
-void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_RecursiveMultiplication_Policy *pol)
+template<typename T>
+void Math_Functions_MPI::MPI_recursive_multiplication_helper(const Math_MPI_RecursiveMultiplication_Policy *pol)
 {
     const Math_MPI_RecursiveMultiplication_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -5166,8 +5141,8 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
 #endif
             }
 
-            A=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
-            B=DataBlock_MPI_Functions<T>::MPI_Recv_alloc_DataBlock(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
+            A=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
+            B=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
 
 
             bool crowm=true;
@@ -5187,11 +5162,11 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             size_t length=rowsC*colsC;
             if(separate_device_memory)
             {
-                C_data=GPU_Memory_Functions<T>::alloc_data_device_ptr(length,policy.memmapped_files,policy.devicenum);
+                C_data=GPU_Memory_Functions::alloc_data_device_ptr<T>(length,policy.memmapped_files,policy.devicenum);
             }
             else
             {
-                C_data=Host_Memory_Functions<T>::alloc_data_ptr(length,policy.memmapped_files);
+                C_data=Host_Memory_Functions::alloc_data_ptr<T>(length,policy.memmapped_files);
             }
 
             DataBlock<T> C(C_data,length,crowm,2,extC,strC,false,false,separate_device_memory);
@@ -5201,10 +5176,10 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
             {
                 if(ongpu)
                 {
-                    GPU_Math_Functions<T>::matrix_multiply_dot_g(A, B, C,policy.devicenum,false);
+                    GPU_Math_Functions::matrix_multiply_dot_g(A, B, C,policy.devicenum,false);
                 }
                 else
-                    In_Kernel_Mathfunctions<T>::matrix_multiply_dot_w(A, B, C);
+                    In_Kernel_Mathfunctions::matrix_multiply_dot(A, B, C);
             }
             else
             {
@@ -5214,17 +5189,17 @@ void Math_Functions_MPI<T>::MPI_recursive_multiplication_helper(const Math_MPI_R
                     winograd_multiply_h(A,B,C,ongpu,separate_device_memory,policy);
             }
 
-            DataBlock_MPI_Functions<T>::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
+            DataBlock_MPI_Functions::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
 
-            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(A,policy.memmapped_files);
-            DataBlock_MPI_Functions<T>::MPI_Free_DataBlock(B,policy.memmapped_files);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A,policy.memmapped_files);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(B,policy.memmapped_files);
             if(separate_device_memory)
             {
-                GPU_Memory_Functions<T>::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
+                GPU_Memory_Functions::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
             }
             else
             {
-                Host_Memory_Functions<T>::free_data_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files);
+                Host_Memory_Functions::free_data_ptr<T>(C.dpdata,C.dpdatalength,policy.memmapped_files);
             }
 
 
@@ -5241,7 +5216,7 @@ endloop:
 
 }
 template <typename T>
-void Math_Functions_MPI<T>::MPI_recursion_helper_end(MPI_Comm pcomm)
+void Math_Functions_MPI::MPI_recursion_helper_end(MPI_Comm pcomm)
 {
     int commsize=0;
     MPI_Comm_size(pcomm, &commsize);

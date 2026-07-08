@@ -4,22 +4,26 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-template<typename T>
+
 class Host_Memory_Functions
 {
 public:
+    template<typename T>
     inline static void free_copy(DataBlock<T>&m, bool with_memmap);
-    inline static DataBlock<T> alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap);
-
+    template<typename T>
+    inline static DataBlock<T> alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap,bool conjugate);
+    template<typename T>
     inline static T*  alloc_data_ptr(size_t length,bool create_memmap);
+    template<typename T>
     inline static void free_data_ptr(T*&pdata,size_t datalength,bool with_memmap);
-
+    template<typename T>
     inline static T* create_temp_mmap(const size_t array_size);
+    template<typename T>
     inline static void delete_temp_mmap(T* &mmap_ptr,const size_t array_size);
 };
 
 template<typename T>
-T* Host_Memory_Functions<T>::create_temp_mmap(const size_t array_size)
+T* Host_Memory_Functions::create_temp_mmap(const size_t array_size)
 {
     size_t file_size = array_size * sizeof(T);
 
@@ -65,7 +69,7 @@ T* Host_Memory_Functions<T>::create_temp_mmap(const size_t array_size)
 }
 
 template<typename T>
-void Host_Memory_Functions<T>::delete_temp_mmap(T* &mmap_ptr,const size_t array_size)
+void Host_Memory_Functions::delete_temp_mmap(T* &mmap_ptr,const size_t array_size)
 {
     size_t file_size = array_size * sizeof(T);
     if (mmap_ptr!=nullptr)
@@ -80,33 +84,33 @@ void Host_Memory_Functions<T>::delete_temp_mmap(T* &mmap_ptr,const size_t array_
 
 
 template<typename T>
-void Host_Memory_Functions<T>::free_data_ptr(T*&pdata,size_t datalength,bool with_memmap)
+void Host_Memory_Functions::free_data_ptr(T*&pdata,size_t datalength,bool with_memmap)
 {
     if(pdata!=nullptr)
     {
         if (with_memmap)
-            Host_Memory_Functions<T>::delete_temp_mmap(pdata,datalength);
+            Host_Memory_Functions::delete_temp_mmap(pdata,datalength);
         else
             if(pdata!=nullptr)
-                free(pdata);
+                omp_free(pdata,omp_default_mem_alloc);
     }
 }
 
 
 template<typename T>
-T* Host_Memory_Functions<T>::alloc_data_ptr(size_t length,bool create_memmap)
+T* Host_Memory_Functions::alloc_data_ptr(size_t length,bool create_memmap)
 {
 
     if (create_memmap)
-        return Host_Memory_Functions<T>::create_temp_mmap(length);
+        return Host_Memory_Functions::create_temp_mmap<T>(length);
     else
-        return (T*) malloc(sizeof(T)*length);
+        return (T*) omp_alloc(sizeof(T)*length,omp_default_mem_alloc);
 
 }
 
 
 template<typename T>
-DataBlock<T> Host_Memory_Functions<T>::alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap)
+DataBlock<T> Host_Memory_Functions::alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap,bool conjugate)
 {
     size_t*pextents;
     size_t*pstrides;
@@ -118,18 +122,17 @@ DataBlock<T> Host_Memory_Functions<T>::alloc_data_copy_strides_extents(size_t da
     memcpy(pstrides,strides,sizeof(size_t)*rank);
 
     if (with_memmap)
-        pdata=Host_Memory_Functions<T>::create_temp_mmap(datalength);
+        pdata=Host_Memory_Functions::create_temp_mmap<T>(datalength);
     else
-        pdata=(T*)malloc(sizeof(T)*datalength);
+        pdata=(T*)omp_alloc(sizeof(T)*datalength,omp_default_mem_alloc);
 
-
-    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false, false,false);
+    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false,-1,conjugate);
 }
 
 
 
 template<typename T>
-void Host_Memory_Functions<T>::free_copy(DataBlock<T>&m, bool with_memmap)
+void Host_Memory_Functions::free_copy(DataBlock<T>&m, bool with_memmap)
 {
     if(m.dpextents!=nullptr)
     free(m.dpextents);
@@ -137,10 +140,10 @@ void Host_Memory_Functions<T>::free_copy(DataBlock<T>&m, bool with_memmap)
     free(m.dpstrides);
 
     if (with_memmap)
-        Host_Memory_Functions<T>::delete_temp_mmap(m.dpdata,m.dpdatalength);
+        Host_Memory_Functions::delete_temp_mmap(m.dpdata,m.dpdatalength);
     else
         if(m.dpdata!=nullptr)
-            free(m.dpdata);
+            omp_free(m.dpdata,omp_default_mem_alloc);
 }
 
 
