@@ -974,7 +974,7 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, DataBlock<T>& L, bool initialize_to_zero)
 {
     const size_t n = A.dpextents[0];
-    L.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
@@ -1123,8 +1123,8 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
 {
 
     const size_t n = A.dpextents[0];
-    L.pconjugate=false;
-    U.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
+    U.dpconfig.dpconjugate=false;
 
     if(initialize_to_zero)
     {
@@ -1276,8 +1276,8 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     const size_t n = A.dpextents[0];
     const size_t m = A.dpextents[1];
 
-    Q.pconjugate=false;
-    R.pconjugate=false;
+    Q.dpconfig.dpconjugate=false;
+    R.dpconfig.dpconjugate=false;
     T* tempM;
 
     if(with_memmaps)
@@ -1288,8 +1288,11 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
 
     size_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
     size_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
-
-    DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,A.dprank,Mext,Mstrides,false,-1,false);
+              DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
+                                 .data_ondevice=false,
+                                  .devicenum=-INT_MAX,
+                                  .dpconjugate=false});
+    DataBlock<T> M(tempM,A.dpdatalength,A.dprank,Mext,Mstrides,mconf);
 
 
     if(initialize_to_zero)

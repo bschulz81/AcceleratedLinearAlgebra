@@ -59,12 +59,12 @@ public:
         for (size_t i=0; i<this->dprank; i++)
             block_shape[i]=bshape[i];
 
-        offsets_starts_is_devptr=(this->dpdata_is_devptr &&omp_is_initial_device());
+        offsets_starts_is_devptr=(this->dpconfig.data_ondevice &&omp_is_initial_device());
 
         if(offsets_starts_is_devptr)
-            devnum=this->devptr_devicenum;
+            devnum=this->dpconfig.devicenum;
         else
-            devnum=-1;
+            devnum=-INT_MAX;
 
         switch(this->dprank)
         {
@@ -93,7 +93,7 @@ public:
             delete[] pooled_offsets_flat;
             delete[] pooled_offsets_starts;
         }
-        devnum=-1;
+        devnum=-INT_MAX;
     }
 
     const DataBlock<T>& get_datablock()const
@@ -108,7 +108,7 @@ protected:
     size_t* pooled_offsets_starts;
     size_t usedblocks=0;
     bool offsets_starts_is_devptr=false;
-    int  devnum=-1;
+    int  devnum=-INT_MAX;
 
 
 

@@ -1088,7 +1088,7 @@ void GPU_Math_Functions::cholesky_decomposition_g(const DataBlock<T> & A,DataBlo
 
     const size_t n = A.dpextents[0];
 
-    L.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
 
     typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,dev,false);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperL(L,dev,true,update_host);
@@ -1149,8 +1149,8 @@ void GPU_Math_Functions::lu_decomposition_g(const DataBlock<T>& A, DataBlock<T> 
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperU(U,dev,true,update_host);
 
     size_t n = A.dpextents[0];
-    L.pconjugate=false;
-    U.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
+    U.dpconfig.dpconjugate=false;
     if(initialize_output_to_zero)
     {
         #pragma omp target teams distribute parallel for simd collapse(2) device(dev)
@@ -1210,10 +1210,10 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
 
     size_t n = A.dpextents[0];
     size_t m = A.dpextents[1];
-    Q.pconjugate=false;
-    R.pconjugate=false;
+    Q.dpconfig.dpconjugate=false;
+    R.dpconfig.dpconjugate=false;
 
-    bool aconj=A.pconjugate;
+    bool aconj=A.dpconfig.dpconjugate;
     // Initialize Q and R matrices
     size_t nm=n*m, mm=m*m;
 
@@ -1248,7 +1248,11 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
         }
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-        DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,separate_device_memory,dev, false);
+                  DataBlockConfig aconf({.dprowmajor=A.dpconfig.dprowmajor,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=dev,
+                                  .dpconjugate=false});
+        DataBlock<T> M(tempM,A.dpdatalength,2,aext,astr,aconf);
 
 
 
@@ -1263,19 +1267,19 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
             GPU_Memory_Functions::create_out(R,dev);
 
 
-            if(!A.dpdata_is_devptr)
+            if(!A.dpconfig.data_ondevice)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,dev);
-            if(!Q.dpdata_is_devptr)
+            if(!Q.dpconfig.data_ondevice)
                 tQ.dpdata=(T*) omp_get_mapped_ptr(Q.dpdata,dev);
-            if(!R.dpdata_is_devptr)
+            if(!R.dpconfig.data_ondevice)
                 tR.dpdata=(T*) omp_get_mapped_ptr(R.dpdata,dev);
 
-            tA.dpdata_is_devptr=true;
-            tQ.dpdata_is_devptr=true;
-            tR.dpdata_is_devptr=true;
-            tA.devptr_devicenum=dev;
-            tQ.devptr_devicenum=dev;
-            tR.devptr_devicenum=dev;
+            tA.dpconfig.data_ondevice=true;
+            tQ.dpconfig.data_ondevice=true;
+            tR.dpconfig.data_ondevice=true;
+            tA.dpconfig.devicenum=dev;
+            tQ.dpconfig.devicenum=dev;
+            tR.dpconfig.devicenum=dev;
         }
 
         const size_t Qstr0=Q.dpstrides[0];
@@ -1322,7 +1326,10 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
         }
 
         size_t z = 0;
-
+          DataBlockConfig cconf({.dprowmajor=true,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=dev,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < m; ++c)
         {
 
@@ -1343,7 +1350,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
                 size_t tempCextt[2]= {cz,mc};
                 size_t tempCstrt[2]= {mc,1};
 
-                DataBlock<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,separate_device_memory,dev,false);
+                DataBlock<T>  C(tempC,cz*mc,2,tempCextt,tempCstrt,cconf);
 
 
                 size_t extBQT[2],strBQT[2];
@@ -1356,7 +1363,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
 
                 size_t sextt[2]= {n,mc};
                 size_t sstrt[2]= {mc,1};
-                DataBlock<T>  S(tempS,n*mc,true,2,sextt,sstrt,separate_device_memory,dev, false);
+                DataBlock<T>  S(tempS,n*mc,2,sextt,sstrt,cconf);
 
 
                 GPU_Math_Functions::matrix_multiply_dot_g(BQ,C,S,dev,false);

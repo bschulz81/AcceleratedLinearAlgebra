@@ -7,110 +7,108 @@
 #include "mathfunctions.h"
 #include "datablock_mpifunctions.h"
 #include "mathfunctions_mpi.h"
-
+#include "mdspanutilities.h"
 
 using namespace std;
 
 int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
-//    {
-//
-//
-//
-//
-//        int process_Rank, size_Of_Cluster;
-//
-//        MPI_Comm_size(MPI_COMM_WORLD, &size_Of_Cluster);
-//        MPI_Comm_rank(MPI_COMM_WORLD, &process_Rank);
-//
-//        {
-//
-//            size_t rows = 4, cols = 4;
-//            if(process_Rank == 0)
-//            {
-//
-//                cout<<"this tests recursive algorithms of the library that use hybrid gpu and cpu mode with Message passing interface and OpenMP on device"<<endl;
-//
-//                vector<double>A2_data(16,4);
-//                mdspan<double, std::vector<size_t>> A2(A2_data.data(),  {rows, cols},true);
-//                DataBlock_MPI_Functions::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
-//                cout<<"Message Sent:\n";
-//                A2.print();
-//            }
-//            else if(process_Rank == 1)
-//            {
-//
-//                cout<<"As a recieve buffer, mdspan_data is very useful, which allocates its own memory in the suitable size." <<endl;
-//                cout<<" It can do so on a memory map, on host working memory, or on device memory, which is then accesible only with a device kernel"<<endl;
-//                mdspan_data<double, std::vector<size_t>> B( {rows, cols},true);
-//
-//                DataBlock_MPI_Functions::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
-//                cout<<"Message recieved"<<endl;
-//                B.print();
-//            }
-//
-//        }
-//
-//        {
-//
-//
-//            size_t rows = 8, cols = 8;
-//            Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,true,true);
-//            p.update_host=true;
-//            if(process_Rank == 0)
-//            {
-//                vector<double>A3_data(rows*cols,0);
-//                vector<double>B3_data(rows*cols,0);
-//                for (size_t i = 0; i < rows * cols; ++i)
-//                {
-//                    A3_data[i] = i + 1;
-//                    B3_data[i] = i ;
-//                }
-//
-//                mdspan<double, std::vector<size_t>> A3(A3_data.data(),  {rows, cols},true);
-//                mdspan<double, std::vector<size_t>> B3(B3_data.data(), {rows, cols},true);
-//
-//                cout<<"We define two matrices A and B:" <<endl;
-//                A3.print();
-//                B3.print();
-//
-//                {
-//
-//                    cout<<"ordinary matrix multiplication on a single node with openmp. It will decide automatically whether to compute on gpu or not"<<endl;
-//
-//                    Math_Functions_Policy p1(Math_Functions_Policy::AUTO);
-//                    cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-//                    mdspan_data<double, std::vector<size_t>> C({rows, cols},true);
-//                    Math_Functions::matrix_multiply_dot(A3, B3, C,&p1);
-//                    C.print();
-//
-//                }
-//
-//                {
-//
-//                    mdspan_data<double, std::vector<size_t>> C3({rows, cols},true);
-//
-//                    cout<<"matrix multiplication with the Strassen algorithm over message passing interface"<<std::endl;
-//                    cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
-//                    cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
-//                    cout <<" default_cubic_treshold = 256;"<< "The default number of elements at which matrices are auto offloaded in multiplication"<< std::endl;
-//                    cout<< " default_square_treshold = 1000;"<<"The default number of elements at which matrices are auto offloaded for addition"<< std::endl;
-//                    cout <<" default_linear_treshold = 1000000;"<<"The default number of elements at which vectors are auto offloaded for addition"<<std::endl<<endl;
-//
-//                    Math_Functions_MPI::strassen_multiply(A3, B3, C3,&p);
-//                    C3.print();
-//                    Math_Functions_MPI::MPI_recursion_helper_end<double>(p.comm);
-//                }
-//            }
-//            else
-//            {
-//                Math_Functions_MPI::MPI_recursive_multiplication_helper<double>(&p);
-//            }
-//
-//        }
-//
-//    }
+
+{
+
+
+
+
+        int process_Rank, size_Of_Cluster;
+
+        MPI_Comm_size(MPI_COMM_WORLD, &size_Of_Cluster);
+        MPI_Comm_rank(MPI_COMM_WORLD, &process_Rank);
+
+        {
+
+            size_t rows = 4, cols = 4;
+            if(process_Rank == 0)
+            {
+
+                cout<<"this tests recursive algorithms of the library that use hybrid gpu and cpu mode with Message passing interface and OpenMP on device"<<endl;
+
+                vector<double>A2_data(16,4);
+                auto A2 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A2_data.data(), rows, cols, DataBlockConfig{});
+                DataBlock_MPI_Functions::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
+                cout<<"Message Sent:\n";
+                A2.print();
+            }
+            else if(process_Rank == 1)
+            {
+
+                cout<<"As a recieve buffer, mdspan_data is very useful, which allocates its own memory in the suitable size." <<endl;
+                cout<<" It can do so on a memory map, on host working memory, or on device memory, which is then accesible only with a device kernel"<<endl;
+                auto B = mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                DataBlock_MPI_Functions::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
+                cout<<"Message recieved"<<endl;
+                B.print();
+            }
+
+        }
+
+        {
+
+
+            size_t rows = 8, cols = 8;
+            Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,true,true);
+            p.update_host=true;
+            if(process_Rank == 0)
+            {
+                vector<double>A3_data(rows*cols,0);
+                vector<double>B3_data(rows*cols,0);
+                for (size_t i = 0; i < rows * cols; ++i)
+                {
+                    A3_data[i] = i + 1;
+                    B3_data[i] = i ;
+                }
+                auto A3 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A3_data.data(), rows, cols, DataBlockConfig{});
+                auto B3 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A3_data.data(), rows, cols, DataBlockConfig{});
+
+                cout<<"We define two matrices A and B:" <<endl;
+                A3.print();
+                B3.print();
+
+                {
+
+                    cout<<"ordinary matrix multiplication on a single node with openmp. It will decide automatically whether to compute on gpu or not"<<endl;
+
+                    Math_Functions_Policy p1(Math_Functions_Policy::AUTO);
+                    cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
+                     auto C = mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                    Math_Functions::matrix_multiply_dot(A3, B3, C,&p1);
+                    C.print();
+
+                }
+
+                {
+
+                    auto C3= mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                    cout<<"matrix multiplication with the Strassen algorithm over message passing interface"<<std::endl;
+                    cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
+                    cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
+                    cout <<" default_cubic_treshold = 256;"<< "The default number of elements at which matrices are auto offloaded in multiplication"<< std::endl;
+                    cout<< " default_square_treshold = 1000;"<<"The default number of elements at which matrices are auto offloaded for addition"<< std::endl;
+                    cout <<" default_linear_treshold = 1000000;"<<"The default number of elements at which vectors are auto offloaded for addition"<<std::endl<<endl;
+
+                    Math_Functions_MPI::strassen_multiply(A3, B3, C3,&p);
+                    C3.print();
+                    Math_Functions_MPI::MPI_recursion_helper_end<double>(p.comm);
+                }
+            }
+            else
+            {
+                Math_Functions_MPI::MPI_recursive_multiplication_helper<double>(&p);
+            }
+
+        }
+
+    }
 
     {
 
@@ -128,12 +126,6 @@ int main(int argc, char** argv)
 
         DataBlock<double> A1,B1,C1;
 
-
-
-
-
-
-
         if (rank == rootrank)
         {
             size_t M = 11;
@@ -145,7 +137,7 @@ int main(int argc, char** argv)
             extentsA[0] = M;
             extentsA[1] = K;
 
-            A1=DataBlock<double> (A_data.data(),0, true,2, extentsA,stridesA,true, true, false, -1,false);
+            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
 
             cout<<"Matrix A\n";
             A1.print();
@@ -156,7 +148,7 @@ int main(int argc, char** argv)
             extentsB[0] = K;
             extentsB[1] = N;
 
-            B1=DataBlock<double>(B_data.data(),0, true,2, extentsB,stridesB,true, true, false, -1,false);
+            B1=DataBlock<double>(B_data.data(),0,2, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
 
             cout<<"Matrix B\n";
             B1.print();
@@ -166,7 +158,7 @@ int main(int argc, char** argv)
             extentsC[0] = M;
             extentsC[1] = N;
 
-            C1=DataBlock<double>(C_data.data(),0, true,2, extentsC,stridesC,true, true, false, -1,false);
+            C1=DataBlock<double>(C_data.data(),0,2, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
 
 
         }
@@ -197,7 +189,7 @@ int main(int argc, char** argv)
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -1);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
 
         if(rank==rootrank)
         {
@@ -244,11 +236,6 @@ endofblock:
         DataBlock<std::complex<double>> A1,B1,C1;
 
 
-
-
-
-
-
         if (rank == rootrank)
         {
             constexpr size_t M = 11;
@@ -256,26 +243,25 @@ endofblock:
 
             A_data.resize(M*K);
             std::generate(A_data.begin(), A_data.end(), [val = 1.0]() mutable {
-        return std::complex<double>(val++, 0.0);
-    });
+                return std::complex<double>(val++, 0.0);});
 
 
             extentsA[0] = M;
             extentsA[1] = K;
 
-            A1=DataBlock<std::complex<double>> (A_data.data(),0, true,2, extentsA,stridesA,true, true, false, -1,false);
+
+            A1=DataBlock<std::complex<double>> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
+
             cout<<"Matrix A\n";
             A1.print();
 
             B_data.resize(M*K);
-            std::generate(B_data.begin(), B_data.end(), [val = 1.0]() mutable {
-        return std::complex<double>(0.0,val++);
-    });
+            std::generate(B_data.begin(), B_data.end(), [val = 1.0]() mutable {return std::complex<double>(0.0,val++);});
 
             extentsB[0] = M;
             extentsB[1] = K;
 
-            B1=DataBlock<std::complex<double>>(B_data.data(),0, true,2, extentsB,stridesB,true, true, false, -1,false);
+            B1=DataBlock<std::complex<double>>(B_data.data(),0,2, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
             cout<<"Matrix B\n";
             B1.print();
 
@@ -284,7 +270,7 @@ endofblock:
             extentsC[0] = M;
             extentsC[1] = K;
 
-            C1=DataBlock<std::complex<double>>(C_data.data(),0, true,2, extentsC,stridesC,true, true, false, -1,false);
+            C1=DataBlock<std::complex<double>>(C_data.data(),0,2, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
 
 
         }
@@ -327,7 +313,7 @@ endofblock:
         Math_Functions_MPI::conjugate(block3);
         DataBlock<std::complex<double>> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -1);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
 
         if(rank==rootrank)
         {
@@ -399,7 +385,7 @@ endofblock:
 
             extentsA[0]=12*12;
 
-            A1=DataBlock<double> (A_data.data(),0, true,1, extentsA,stridesA,true, true, false, -1,false);
+            A1=DataBlock<double> (A_data.data(),0,1, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
             cout<<"Vector A\n";
             A1.print();
 
@@ -409,14 +395,14 @@ endofblock:
             extentsB[0]=12*12;
 
 
-            B1=DataBlock<double>(B_data.data(),0, true,1, extentsB,stridesB,true, true, false, -1,false);
+            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
             cout<<"Vector B\n";
             B1.print();
 
             C_data.resize(12*12,0);
 
             extentsC[0]= 12*12;
-            C1=DataBlock<double>(C_data.data(),0, true,1, extentsC,stridesC,true, true, false, -1,false);
+            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
 
 
         }
@@ -442,7 +428,7 @@ endofblock:
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -1);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
 
         if(rank==rootrank)
         {
@@ -515,7 +501,7 @@ endofblock:
             extentsA[1]=11;
 
 
-            A1=DataBlock<double> (A_data.data(),0, false,2, extentsA,stridesA,true, true, false, -1,false);
+            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
 
             A1.print();
             B_data.resize(11);
@@ -523,14 +509,14 @@ endofblock:
 
             extentsB[0]= 11;
 
-            B1=DataBlock<double>(B_data.data(),0, true,1, extentsB,stridesB,true, true, false, -1,false);
+            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
 
             B1.print();
             C_data.resize(8,0);
 
             extentsC[0]= 6;
 
-            C1=DataBlock<double>(C_data.data(),0, true,1, extentsC,stridesC,true, true, false, -1,false);
+            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
 
 
         }
@@ -550,7 +536,7 @@ endofblock:
         block3.print();
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -1);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
 
         if(rank==rootrank)
         {
@@ -625,7 +611,7 @@ endofblock:
 
             std::iota(A_data.begin(), A_data.end(), 0.0);
 
-            A1 = DataBlock<double>( A_data.data(),0,false,4, extents, strides,true, true, false,-1,false);
+            A1 = DataBlock<double>( A_data.data(),0,4, extents, strides,DataBlockConfig{.dprowmajor=false},ComputeMetadata{});
 
             A1.print();
         }
@@ -641,7 +627,7 @@ endofblock:
         block.print();
 
         DataBlock<double> A1copy;
-        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,rank==rootrank?&A1copy:nullptr,  false, false, -1);
+        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,rank==rootrank?&A1copy:nullptr,  false, false, -INT_MAX);
         if(rank==rootrank)
         {
             A1copy.print();

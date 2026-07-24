@@ -4,6 +4,13 @@
 #include "indiceshelperfunctions.h"
 
 #pragma omp begin declare target
+enum class StridesCalculation {
+    NoComputation,       // Use the provided strides array as-is
+    Compute       // Compute strides automatically from the extents
+};
+#pragma omp end declare target
+
+#pragma omp begin declare target
 class DataBlockUtilities
 {
 public:
@@ -51,13 +58,109 @@ public:
     inline static size_t count_noncollapsed_dims(const  DataBlock<T>&d) ;
 
     template<typename T>
-    inline static DataBlock<T>  collapsed_view(const  DataBlock<T>&d,size_t num_non_collapsed_dims,size_t* extents, size_t* strides) ;
+    inline static DataBlock<T>  collapsed_view(const  DataBlock<T>&d,const size_t num_non_collapsed_dims,size_t* extents, size_t* strides) ;
 
 
     template <OpenMPVariant Policy = OpenMPVariant::ParallelSimd, typename T>
     inline static float sparsity(const  DataBlock<T>&d);
+
+    template<typename T>
+    inline static DataBlock<T> create_vector(T* data, size_t* extents, size_t* strides, DataBlockConfig config, const StridesCalculation computestrides);
+
+    template<typename T>
+    inline static DataBlock<T>create_matrix(T* data,  const size_t rows,  const size_t cols,  size_t* extents,  size_t* strides,  DataBlockConfig config,   const StridesCalculation computestrides);
+
 };
 #pragma omp end declare target
+
+#pragma omp begin declare target
+template<typename T>
+DataBlock<T>DataBlockUtilities::create_vector(
+    T* data,
+    size_t* extents,
+    size_t* strides,
+    DataBlockConfig config,
+    const StridesCalculation stride_mode)
+    {
+    config.dprowmajor =true;
+    size_t calculated_length = 0;
+    if (extents!=nullptr && strides!=nullptr)
+    {
+        if(stride_mode == StridesCalculation::Compute)
+            strides[0] = 1;
+
+        calculated_length = (extents[0] - 1) * strides[0] + 1;
+    }
+
+    return DataBlock<T>(data, calculated_length, 1, extents, strides, config);
+    }
+
+
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template<typename T>
+inline DataBlock<T>DataBlockUtilities::create_matrix(
+    T* data,
+    const size_t rows,
+    const size_t cols,
+    size_t* extents,
+    size_t* strides,
+    DataBlockConfig config,
+    const StridesCalculation stride_mode) {
+    size_t final_rank = 0;
+    size_t final_length = 0;
+    const bool rowm = config.dprowmajor;
+
+
+    if (rows > 1 && cols > 1) {
+        final_rank = 2;
+        if (extents) {
+            extents[0] = rows;
+            extents[1] = cols;
+        }
+        if (strides!=nullptr) {
+            if (stride_mode == StridesCalculation::Compute) {
+                strides[0] = rowm ? cols : 1;
+                strides[1] = rowm ? 1 : rows;
+            } else {
+                config.dprowmajor = (strides[1] < strides[0]) ? true : false;
+            }
+            if (extents!=nullptr) {
+                final_length = (rows - 1) * strides[0] + (cols - 1) * strides[1] + 1;
+            }
+        }
+    }
+
+    else if (rows == 0 && cols == 0) {
+        final_rank = 0;
+        final_length = 0;
+        config.dprowmajor = true;
+    }
+
+    else {
+        final_rank = 1;
+        config.dprowmajor =true;
+        const size_t length = (rows > 1) ? rows : cols;
+
+        if (extents!=nullptr)
+            extents[0] = length;
+
+        if (strides!=nullptr) {
+            if (stride_mode == StridesCalculation::Compute)
+                strides[0] = 1;
+            if (extents!=nullptr)
+                final_length = (extents[0] - 1) * strides[0] + 1;
+        }
+    }
+
+    return DataBlock<T>(data, final_length, final_rank, extents, strides, config);
+}
+
+#pragma omp end declare target
+
+
 
 
 #pragma omp begin declare target
@@ -67,13 +170,14 @@ DataBlock<T>DataBlockUtilities::conjugate(const  DataBlock<T>&d)
     return DataBlock<T>(
                d.dpdata,
                d.dpdatalength,
-               d.dprowmajor,
                d.dprank,
                d.dpextents,
                d.dpstrides,
-               d.dpdata_is_devptr,
-               d.devptr_devicenum,
-               !d.pconjugate
+               DataBlockConfig{
+        .dprowmajor       = d.dpconfig.dprowmajor,
+        .data_ondevice = d.dpconfig.data_ondevice,
+        .devicenum = d.dpconfig.devicenum,
+        .dpconjugate      = !d.dpconfig.dpconjugate}
            );
 }
 #pragma omp end declare target
@@ -90,7 +194,7 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose(const  DataBlock<T>&d,s
     newstrides[0]=d.dpstrides[1];
     newstrides[1]=d.dpstrides[0];
 
-    return DataBlock(d.dpdata,d.dpdatalength,d.dprowmajor,2,newextents,newstrides,d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock(d.dpdata,d.dpdatalength,2,newextents,newstrides,d.dpconfig);
 
 }
 #pragma omp end declare target
@@ -106,7 +210,11 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose(const  DataBl
     newstrides[0]=d.dpstrides[1];
     newstrides[1]=d.dpstrides[0];
 
-    return DataBlock(d.dpdata,d.dpdatalength,d.dprowmajor,2,newextents,newstrides,d.dpdata_is_devptr,d.devptr_devicenum, !d.pconjugate);
+    return DataBlock(d.dpdata,d.dpdatalength,2,newextents,newstrides, DataBlockConfig{
+        .dprowmajor       = d.dpconfig.dprowmajor,
+        .data_ondevice = d.dpconfig.data_ondevice,
+        .devicenum = d.dpconfig.devicenum,
+        .dpconjugate      = !d.dpconfig.dpconjugate});
 }
 #pragma omp end declare target
 
@@ -132,10 +240,10 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose_copy(const  DataBlock<T
     {
 
 
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
 
-            #pragma omp target parallel for simd collapse(2) device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target parallel for simd collapse(2) device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
                 for (size_t j=0; j<cols; j++)
                 {
@@ -158,9 +266,9 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose_copy(const  DataBlock<T
     }
     else if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target simd collapse(2) device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target simd collapse(2) device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
                 for (size_t j=0; j<cols; j++)
                 {
@@ -183,9 +291,9 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose_copy(const  DataBlock<T
     }
     else
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target  device(d.devptr_devicenum) is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target  device(d.dpconfig.devicenum) is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
                 for (size_t j=0; j<cols; j++)
                 {
@@ -209,7 +317,7 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose_copy(const  DataBlock<T
 
     }
 
-    return DataBlock(newdata,d.dpdatalength,d.dprowmajor,2,newextents,newstrides,d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock(newdata,d.dpdatalength,2,newextents,newstrides,d.dpconfig);
 
 }
 #pragma omp end declare target
@@ -235,10 +343,10 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose_copy(const  D
     const size_t new_s1=newstrides[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
 
-            #pragma omp target parallel for simd collapse(2) device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target parallel for simd collapse(2) device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
             {
                 for (size_t j=0; j<cols; j++)
@@ -267,9 +375,9 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose_copy(const  D
     }
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target simd collapse(2) device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target simd collapse(2) device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
             {
                 for (size_t j=0; j<cols; j++)
@@ -296,9 +404,9 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose_copy(const  D
     }
     else
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target  device(d.devptr_devicenum) is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target  device(d.dpconfig.devicenum) is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i=0; i<rows; i++)
             {
                 for (size_t j=0; j<cols; j++)
@@ -327,7 +435,7 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose_copy(const  D
 
     }
 
-    return DataBlock(newdata,d.dpdatalength,d.dprowmajor,2,newextents,newstrides,d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock(newdata,d.dpdatalength,2,newextents,newstrides,d.dpconfig);
 
 }
 #pragma omp end declare target
@@ -415,13 +523,10 @@ DataBlock<T>DataBlockUtilities::tensor_subspan(const  DataBlock<T>&d,const size_
     return DataBlock(
                d.dpdata + offset_index,
                length_index + 1,
-               d.dprowmajor,
                rank_out,
                newextents,
                new_strides,
-               d.dpdata_is_devptr,
-               d.devptr_devicenum,
-               d.pconjugate
+               d.dpconfig
            );
 }
 #pragma omp end  declare target
@@ -439,13 +544,13 @@ DataBlock<T> DataBlockUtilities::tensor_subspan_copy(const  DataBlock<T>&d,
     const size_t r = d.dprank;
 
     size_t* tempstr = new size_t[r];
-    fill_strides(psub_extents, tempstr, r, d.dprowmajor);
+    fill_strides(psub_extents, tempstr, r, d.dpconfig.dprowmajor);
 
     // Allocate index arrays
     size_t* indices        = new size_t[r]();
     size_t* global_indices = new size_t[r];
 
-    bool tmcpy = omp_is_initial_device() && d.dpdata_is_devptr;
+    bool tmcpy = omp_is_initial_device() && d.dpconfig.data_ondevice;
 
     // Copy loop
     while (true)
@@ -478,8 +583,8 @@ DataBlock<T> DataBlockUtilities::tensor_subspan_copy(const  DataBlock<T>&d,
                               sizeof(T),
                               sizeof(T) * buffer_index,
                               sizeof(T) * original_index,
-                              d.devptr_devicenum,
-                              d.devptr_devicenum);
+                              d.dpconfig.devicenum,
+                              d.dpconfig.devicenum);
         else
             sub_data[buffer_index] = d.dpdata[original_index];
 
@@ -545,13 +650,10 @@ DataBlock<T> DataBlockUtilities::tensor_subspan_copy(const  DataBlock<T>&d,
     return DataBlock(
                sub_data,
                pl,
-               d.dprowmajor,
                rank_out,
                new_extents,
                new_strides,
-               d.dpdata_is_devptr,
-               d.devptr_devicenum,
-               d.pconjugate
+               d.dpconfig
            );
 }
 #pragma omp end declare target
@@ -578,24 +680,24 @@ DataBlock<T>  DataBlockUtilities::matrix_subspan( const  DataBlock<T>&d,const si
     {
         psub_extents[0] = 1;
         psub_strides[0]=1;
-        return DataBlock<T>(data_ptr, 1, d.dprowmajor, 1, psub_extents, psub_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+        return DataBlock<T>(data_ptr, 1,  1, psub_extents, psub_strides, d.dpconfig);
     }
     else if (tile_rows == 1)
     {
         psub_extents[0] = tile_cols;
         psub_strides[0] = d.dpstrides[1];
-        return DataBlock<T>(data_ptr, tile_cols, d.dprowmajor, 1, psub_extents, psub_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+        return DataBlock<T>(data_ptr, tile_cols, 1, psub_extents, psub_strides, d.dpconfig);
     }
     else if (tile_cols == 1)
     {
         psub_extents[0] = tile_rows;
         psub_strides[0] = d.dpstrides[0];
-        return DataBlock<T>(data_ptr, tile_rows, d.dprowmajor, 1, psub_extents, psub_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+        return DataBlock<T>(data_ptr, tile_rows,  1, psub_extents, psub_strides, d.dpconfig);
     }
     else
     {
         size_t pl = (tile_rows-1) * d.dpstrides[0] + (tile_cols-1) * d.dpstrides[1] + 1;
-        return DataBlock<T>(data_ptr, pl, d.dprowmajor, 2, psub_extents, psub_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+        return DataBlock<T>(data_ptr, pl,2, psub_extents, psub_strides, d.dpconfig);
     }
 }
 #pragma omp end declare target
@@ -615,15 +717,15 @@ DataBlock<T>  DataBlockUtilities::matrix_subspan_copy(const  DataBlock<T>&d, con
     // Set extents and strides
     psub_extents[0] = tile_rows;
     psub_extents[1] = tile_cols;
-    psub_strides[0] = d.dprowmajor ? tile_cols : 1;
-    psub_strides[1] = d.dprowmajor ? 1 : tile_rows;
+    psub_strides[0] = d.dpconfig.dprowmajor ? tile_cols : 1;
+    psub_strides[1] = d.dpconfig.dprowmajor ? 1 : tile_rows;
     const size_t ps_str0=psub_strides[0];
     const size_t ps_str1=psub_strides[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if (omp_is_initial_device() &&d.dpdata_is_devptr)
+        if (omp_is_initial_device() &&d.dpconfig.data_ondevice)
         {
-            #pragma omp target parallel for simd collapse(2) device(d.devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
+            #pragma omp target parallel for simd collapse(2) device(d.dpconfig.devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
             for (size_t i = 0; i < tile_rows; ++i)
                 for (size_t j = 0; j < tile_cols; ++j)
                     sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
@@ -638,9 +740,9 @@ DataBlock<T>  DataBlockUtilities::matrix_subspan_copy(const  DataBlock<T>&d, con
     }
     else    if constexpr (Policy == OpenMPVariant::Simd)
     {
-        if (omp_is_initial_device() && d.dpdata_is_devptr)
+        if (omp_is_initial_device() && d.dpconfig.data_ondevice)
         {
-            #pragma omp target  simd collapse(2) device(d.devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
+            #pragma omp target  simd collapse(2) device(d.dpconfig.devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
             for (size_t i = 0; i < tile_rows; ++i)
                 for (size_t j = 0; j < tile_cols; ++j)
                     sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
@@ -655,9 +757,9 @@ DataBlock<T>  DataBlockUtilities::matrix_subspan_copy(const  DataBlock<T>&d, con
     }
     else
     {
-        if (omp_is_initial_device() && d.dpdata_is_devptr)
+        if (omp_is_initial_device() && d.dpconfig.data_ondevice)
         {
-            #pragma omp target device(d.devptr_devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
+            #pragma omp target device(d.dpconfig.devicenum) is_device_ptr(sub_data) is_device_ptr(pd)
             for (size_t i = 0; i < tile_rows; ++i)
                 for (size_t j = 0; j < tile_cols; ++j)
                     sub_data[i * ps_str0 + j * ps_str1] = pd[(row+i)*s0 + (col+j)*s1];
@@ -696,7 +798,7 @@ DataBlock<T>  DataBlockUtilities::matrix_subspan_copy(const  DataBlock<T>&d, con
         psub_strides[0] = 1;
         length = tile_rows;
     }
-    return DataBlock<T>(sub_data, length, d.dprowmajor, rank_out, psub_extents, psub_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock<T>(sub_data, length, rank_out, psub_extents, psub_strides, d.dpconfig);
 
 }
 #pragma omp end declare target
@@ -719,7 +821,7 @@ DataBlock<T> DataBlockUtilities::matrix_row(const  DataBlock<T>&d,const size_t r
     extents[0] = d.dpextents[1];
     new_strides[0]=d.dpstrides[1];
 
-    return DataBlock<T>( d.dpdata + row_index * d.dpstrides[0],  d.dpstrides[1] * extents[0],d.dprowmajor,   1, extents,    new_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock<T>( d.dpdata + row_index * d.dpstrides[0],  d.dpstrides[1] * extents[0],   1, extents,    new_strides, d.dpconfig);
 }
 #pragma omp end declare target
 
@@ -730,7 +832,7 @@ DataBlock<T> DataBlockUtilities::matrix_column(const  DataBlock<T>&d,const size_
 {
     extents[0] = d.dpextents[0];
     new_strides[0]=d.dpstrides[0];
-    return DataBlock(d.dpdata + col_index * d.dpstrides[1], d.dpstrides[0] * extents[0],d.dprowmajor,  1, extents,   new_strides,d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate );
+    return DataBlock(d.dpdata + col_index * d.dpstrides[1], d.dpstrides[0] * extents[0],  1, extents,   new_strides,d.dpconfig );
 }
 #pragma omp end declare target
 
@@ -750,10 +852,10 @@ DataBlock<T> DataBlockUtilities::matrix_row_copy(const  DataBlock<T>&d,const siz
     const T*    pd=d.dpdata;
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
 
-            #pragma omp target parallel for simd device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target parallel for simd device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t j = 0; j < pl; ++j)
                 newdata[j] = pd[row_index*s0+j*s1];
         }
@@ -767,9 +869,9 @@ DataBlock<T> DataBlockUtilities::matrix_row_copy(const  DataBlock<T>&d,const siz
 
     else     if constexpr (Policy == OpenMPVariant::Simd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target simd device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target simd device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t j = 0; j < pl; ++j)
                 newdata[j] = pd[row_index*s0+j*s1];
         }
@@ -783,9 +885,9 @@ DataBlock<T> DataBlockUtilities::matrix_row_copy(const  DataBlock<T>&d,const siz
     else
     {
 
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target  device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target  device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t j = 0; j < pl; ++j)
                 newdata[j] = pd[row_index*s0+j*s1];
         }
@@ -798,7 +900,7 @@ DataBlock<T> DataBlockUtilities::matrix_row_copy(const  DataBlock<T>&d,const siz
 
     }
 
-    return DataBlock<T>(newdata,  pl,d.dprowmajor,   1, extents,    new_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock<T>(newdata,  pl,   1, extents,    new_strides, d.dpconfig);
 }
 #pragma omp end declare target
 
@@ -819,9 +921,9 @@ DataBlock<T> DataBlockUtilities::matrix_column_copy(const  DataBlock<T>&d,const 
     const T*    pd=d.dpdata;
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target parallel for simd device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target parallel for simd device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i = 0; i < pl; ++i)
                 newdata[i] = pd[i*s0+col_index*s1];
         }
@@ -834,9 +936,9 @@ DataBlock<T> DataBlockUtilities::matrix_column_copy(const  DataBlock<T>&d,const 
     }
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target simd device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target simd device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i = 0; i < pl; ++i)
                 newdata[i] = pd[ i*s0+col_index*s1];
         }
@@ -849,9 +951,9 @@ DataBlock<T> DataBlockUtilities::matrix_column_copy(const  DataBlock<T>&d,const 
     }
     else
     {
-        if(omp_is_initial_device()&&d.dpdata_is_devptr)
+        if(omp_is_initial_device()&&d.dpconfig.data_ondevice)
         {
-            #pragma omp target device(d.devptr_devicenum)is_device_ptr(newdata) is_device_ptr(pd)
+            #pragma omp target device(d.dpconfig.devicenum)is_device_ptr(newdata) is_device_ptr(pd)
             for (size_t i = 0; i < pl; ++i)
                 newdata[i] = pd[ i*s0+col_index*s1];
         }
@@ -865,7 +967,7 @@ DataBlock<T> DataBlockUtilities::matrix_column_copy(const  DataBlock<T>&d,const 
     }
 
 
-    return DataBlock<T>(newdata,  pl,d.dprowmajor,   1, extents,    new_strides, d.dpdata_is_devptr,d.devptr_devicenum,d.pconjugate);
+    return DataBlock<T>(newdata,  pl,   1, extents,    new_strides, d.dpconfig);
 }
 #pragma omp end declare target
 
@@ -878,9 +980,9 @@ inline  float DataBlockUtilities::sparsity(const  DataBlock<T>&d)
     {
 
 
-        if(omp_is_initial_device()&& d.dpdata_is_devptr)
+        if(omp_is_initial_device()&& d.dpconfig.data_ondevice)
         {
-            #pragma omp target teams distribute parallel for simd map(tofrom: count) shared(count)  device(d.devptr_devicenum)
+            #pragma omp target teams distribute parallel for simd map(tofrom: count) shared(count)  device(d.dpconfig.devicenum)
             for(size_t i=0; i<d.dpdatalength; i++)
             {
                 if(d.dpdata[i]==0)
@@ -905,9 +1007,9 @@ inline  float DataBlockUtilities::sparsity(const  DataBlock<T>&d)
     }
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
-        if(omp_is_initial_device()&& d.dpdata_is_devptr)
+        if(omp_is_initial_device()&& d.dpconfig.data_ondevice)
         {
-            #pragma omp target simd map(tofrom: count)  device(d.devptr_devicenum)
+            #pragma omp target simd map(tofrom: count)  device(d.dpconfig.devicenum)
             for(size_t i=0; i<d.dpdatalength; i++)
             {
                 if(d.dpdata[i]==0)
@@ -933,9 +1035,9 @@ inline  float DataBlockUtilities::sparsity(const  DataBlock<T>&d)
     else
     {
 
-        if(omp_is_initial_device()&& d.dpdata_is_devptr)
+        if(omp_is_initial_device()&& d.dpconfig.data_ondevice)
         {
-            #pragma omp target map(tofrom: count)  device(d.devptr_devicenum)
+            #pragma omp target map(tofrom: count)  device(d.dpconfig.devicenum)
             for(size_t i=0; i<d.dpdatalength; i++)
             {
                 if(d.dpdata[i]==0)
@@ -977,7 +1079,7 @@ size_t DataBlockUtilities::count_noncollapsed_dims(const  DataBlock<T>&d)
 
 #pragma omp begin declare target
 template<typename T>
-DataBlock<T> DataBlockUtilities::collapsed_view(const  DataBlock<T>&d,size_t num_non_collapsed_dims,size_t *extents, size_t *strides)
+DataBlock<T> DataBlockUtilities::collapsed_view(const  DataBlock<T>&d,const size_t num_non_collapsed_dims,size_t *extents, size_t *strides)
 {
 
     size_t idx = 0;
@@ -1001,13 +1103,10 @@ DataBlock<T> DataBlockUtilities::collapsed_view(const  DataBlock<T>&d,size_t num
     DataBlock<T> view(
         d.dpdata,
         d.dpdatalength,
-        d.dprowmajor,
         num_non_collapsed_dims,
         extents,
         strides,
-        d.dpdata_is_devptr,
-        d.devptr_devicenum,d.pconjugate
-    );
+        d.dpconfig );
 
 
     return view;

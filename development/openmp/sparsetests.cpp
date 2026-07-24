@@ -24,7 +24,8 @@ int main()
     std::vector<size_t> extA{M,K}, extB{K,N},extC{M,N};
     std::vector<size_t> stridesA{K,1}, stridesB{N,1}, stridesC{N,1};
 
-    DataBlock<double> Ad(A.data(), M*K, true, 2, extA.data(), stridesA.data(), false,false,false);
+    auto Ad=DataBlock<double> (A.data(),M*K,2, extA.data(),stridesA.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+
 
     size_t sub_ext[2],sub_strides[2];
     DataBlock<double> A1 = DataBlockUtilities::matrix_subspan(Ad,0, 0, 4, 4, sub_ext, sub_strides);
@@ -44,7 +45,9 @@ int main()
 
 
     size_t sub_ext2[2],sub_strides2[2];
-    DataBlock<double> Bd(B.data(), K*N, true, 2, extB.data(), stridesB.data(), false,false,false);
+
+    auto Bd=DataBlock<double> (B.data(),K*N,2, extB.data(),stridesB.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+
 
     DataBlock<double> B1 =  DataBlockUtilities::matrix_subspan(Bd,0, 0, 4, 4, sub_ext2, sub_strides2);
     DataBlock<double> B2 =  DataBlockUtilities::matrix_subspan(Bd,4, 0, 4, 4, sub_ext2, sub_strides2);
@@ -66,8 +69,10 @@ int main()
     Bd.print();
 cout <<"sparsity "<< DataBlockUtilities::sparsity(Bd)<<endl;
 
-    DataBlock<double> C1d(C1.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
-    DataBlock<double> C2d(C2.data(), M*N, true, 2, extC.data(), stridesC.data(), false,false,false);
+
+    auto C1d=DataBlock<double> (C1.data(),M*N,2, extC.data(),stridesC.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+
+    auto C2d=DataBlock<double> (C2.data(),M*N,2, extC.data(),stridesC.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
 cout<<"naive matrix multiplication"<<endl;
     In_Kernel_Mathfunctions::matrix_multiply_dot(Ad, Bd, C1d);
     C1d.print();
@@ -87,9 +92,12 @@ cout<<"We now do a sparse multiplication"<<endl;
 
 cout<<"now an example with sparse matrx multiplication and the mdspan class"<<endl;
 
-mdspan<double, std::vector<size_t>> Aspan(A.data(),  {M,K},true);
-mdspan<double, std::vector<size_t>> Bspan(B.data(),  {K,N},true);
-mdspan_data<double, std::vector<size_t>> Cspan({M,N},true);
+
+mdspan<double, std::vector<size_t>> Aspan(A.data(),  {M,K},DataBlockConfig{});
+mdspan<double, std::vector<size_t>> Bspan(B.data(),  {K,N},DataBlockConfig{});
+
+
+mdspan_data<double, std::vector<size_t>> Cspan({M,N},ManagedDataBlockConfig{});
 
 cout<<"of course we offload the data first to device"<<endl;
 
