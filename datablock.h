@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <print>
 #include<iostream>
-
+#include <limits.h>
 #include "indiceshelperfunctions.h"
 
 
@@ -24,7 +24,7 @@ inline void fill_strides(const size_t*    extents,size_t*    strides, const size
 
     if (rowmajor)
     {
-        // Row-major layout: last dimension has stride 1
+
         strides[rank - 1] = 1;
         #pragma omp unroll partial
         for (int i = rank - 2; i >= 0; --i)
@@ -34,7 +34,6 @@ inline void fill_strides(const size_t*    extents,size_t*    strides, const size
     }
     else
     {
-        // Column-major layout: first dimension has stride 1
         strides[0] = 1;
         #pragma omp unroll partial
         for (size_t i = 1; i < rank; ++i)
@@ -174,48 +173,64 @@ void print_variable(const T& var,bool conjugate)
 
 
 
-
-
-
 class GPU_Memory_Functions;
-class Host_Memory_Functions;
+    class Host_Memory_Functions;
+
+        class DataBlock_MPI_Functions;
+
+            class In_Kernel_Mathfunctions;
+
+                class Math_Functions_MPI;
+
+                    class GPU_Math_Functions;
+
+                        template <typename T>
+                        class BlockedDataView;
+
+                            template<typename U, typename Container>
+                            class mdspan;
+
+                                template<typename U, typename Container>
+                                class mdspan_data;
+
+                                    template <typename T>
+                                    class DistributedDataBlock;
+
+                                        template <typename T>
+                                        class DataBlockArray;
 
 
-class DataBlock_MPI_Functions;
+                                            class DataBlockUtilities;
+                                                class mdspan_utilities;
 
+                                                    class Math_Functions_Policy;
 
-template <typename T>
-class BlockedDataView;
+                                                        #pragma omp begin declare target
+                                                        enum class DataBlockObject
+                                                        {
+                                                            Scalar,
+                                                            Vector,
+                                                            Matrix,
+                                                            Tensor
+                                                        };
+#pragma omp end declare target
 
-class In_Kernel_Mathfunctions;
-
-
-class Math_Functions_MPI;
-class GPU_Math_Functions;
-template<typename U, typename Container>
-class mdspan;
-
-template<typename U, typename Container>
-class mdspan_data;
-
-template <typename T>
-class DistributedDataBlock;
-
-template <typename T>
-class DataBlockArray;
-
-
-class DataBlockUtilities;
-class mdspan_utilities;
-
-class Math_Functions_Policy;
 
 #pragma omp begin declare target
-enum class DataBlockObject{
-    Scalar,
-    Vector,
-    Matrix,
-    Tensor
+struct ComputeMetadata
+{
+    bool ComputeStrides=true;
+    bool ComputeLength=true;
+};
+#pragma omp end declare target
+
+#pragma omp begin declare target
+struct DataBlockConfig
+{
+    bool dprowmajor=true;
+    bool data_ondevice=false;
+    int devicenum = -INT_MAX;
+    bool dpconjugate=false;
 };
 #pragma omp end declare target
 
@@ -246,22 +261,13 @@ public:
 
     DataBlock() {};
 
+    DataBlock(T*  data,    size_t datalength,   size_t   rank,
+              size_t*   extents,      size_t*    strides,
+              DataBlockConfig config, ComputeMetadata method);
 
-    //vector constructor
-   DataBlock(T*  data,   size_t* extents,   size_t* strides,  bool data_is_devptr,     int       devicenum,    bool conjugateflag);
-
-    //matrix constructor
-   DataBlock(T*  data,    bool   rowm,       size_t  rows,     size_t   cols,
-                 size_t*   extents,      size_t*   strides,  bool compute_strides_from_extents,
-                 bool data_is_devptr,              int devicenum,      bool conjugateflag);
-   //raw copy constructor
-   DataBlock(T*  data,    size_t datalength, bool    rowm,     size_t   rank,
-                size_t*   extents,      size_t*    strides,
-                    bool data_is_devptr,                int devicenum,                    bool conjugateflag );
-   //constructor for tensors that computes datalenght and strides from extents
-   DataBlock(T*  data,    size_t datalength, bool    rowm,     size_t   rank,
-                 size_t*   extents,      size_t*   strides,
-                bool compute_datalength,            bool compute_strides_from_extents,bool data_is_devptr,int devicenum, bool conjugateflag );
+    DataBlock(T*  data,    size_t datalength,   size_t   rank,
+              size_t*   extents,      size_t*    strides,
+              DataBlockConfig config);
 
 
     inline size_t datalength() const
@@ -276,28 +282,23 @@ public:
 
     inline bool rowmajor() const
     {
-        return dprowmajor;
+        return dpconfig.dprowmajor;
     }
 
 
     inline int devptr_num()const
     {
-        return devptr_devicenum;
+        return dpconfig.devicenum;
     }
-    inline bool is_dev_ptr()const
+
+    inline bool data_is_devptr()const
     {
-        return dpdata_is_devptr;
+        return dpconfig.data_ondevice;
     }
+
     inline T* former_hostptr()const
     {
         return devptr_former_hostptr;
-    }
-
-
-
-    inline bool data_is_devptr() const
-    {
-        return dpdata_is_devptr;
     }
 
     inline T& data(size_t i)
@@ -383,7 +384,7 @@ public:
     {
         if constexpr (is_complex<T>::value)
         {
-            if (pconjugate)
+            if (dpconfig.dpconjugate)
             {
                 return std::conj(dpdata[row * dpstrides[0] + col * dpstrides[1]]);
             }
@@ -397,7 +398,7 @@ public:
     {
         if constexpr (is_complex<T>::value)
         {
-            if (pconjugate)
+            if (dpconfig.dpconjugate)
             {
                 return std::conj(dpdata[i * dpstrides[0]]);
             }
@@ -410,7 +411,7 @@ public:
     {
         if constexpr (is_complex<T>::value)
         {
-            if (pconjugate)
+            if (dpconfig.dpconjugate)
             {
                 return std::conj( dpdata[compute_offset<OpenMPVariant::Sequential>(indices, dpstrides, dprank)]);
             }
@@ -475,7 +476,7 @@ public:
 
     bool is_conjugate() const
     {
-        return this->pconjugate;
+        return dpconfig.dpconjugate;
     }
 
     inline bool is_contiguous()const;
@@ -485,224 +486,98 @@ protected:
     void printtensor_required_size_recursive(size_t& count, size_t* indices, size_t depth,  bool ondevice) const;
 
     T*          dpdata = nullptr;
+    size_t      dpdatalength = 0;
     size_t*     dpextents = nullptr;
     size_t*     dpstrides = nullptr;
-    size_t      dpdatalength = 0;
+
     size_t      dprank = 0;
-    bool        dprowmajor = true;
-    int         devptr_devicenum=-1;
-    bool        dpdata_is_devptr=false;
+
+    DataBlockConfig dpconfig;
     T*          devptr_former_hostptr=nullptr;
-    bool        pconjugate=false;
+
 };
 #pragma omp end declare target
 
 
 
-
-
-
 #pragma omp begin declare target
 template<typename T>
 DataBlock<T>::DataBlock(
-    T*    data,
+    T* data,
     size_t datalength,
-    bool rowm,
     size_t rank,
-    size_t*    extents,
-    size_t*    strides,
-    bool compute_datalength,
-    bool compute_strides_from_extents,
-    bool data_is_devptr,
-    int devicenum,
-    bool conj_flag):
-    dpdata(data),
+    size_t* extents,
+    size_t* strides,
+    DataBlockConfig config,
+    ComputeMetadata method
+) : dpdata(data),
     dpextents(extents),
     dpstrides(strides),
     dprank(rank),
-    dprowmajor(rowm),
-    devptr_devicenum( devicenum),
-
-#if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false),
-#else
-    dpdata_is_devptr(data_is_devptr),
-#endif
-    pconjugate(conj_flag)
-
+    dpconfig(config)
 {
-    if(compute_strides_from_extents==true && extents!=nullptr && strides!=nullptr && rank !=0)
-    {
-        fill_strides(dpextents,dpstrides,rank,rowm);
-    }
+#if defined(Unified_Shared_Memory)
+    dpconfig.data_ondevice =false;
+#endif
 
-    if(compute_strides_from_extents==false && extents!=nullptr && strides!=nullptr && rank !=0)
+    if(extents != nullptr && strides != nullptr)
     {
-        switch(dprank)
+        if(method.ComputeStrides)
+            fill_strides(dpextents, dpstrides, rank, dpconfig.dprowmajor);
+        else
         {
-        case 0:
-            dprowmajor=true;
-            break;
-        case 1:
-            dprowmajor=true;
-            break;
-        case 2:
-            dprowmajor=dpstrides[1]<dpstrides[0];
-            break;
-        default:
-            dprowmajor=is_row_major(extents, strides,dprank);
+            switch (dprank)
+            {
+            case 0:
+                dpconfig.dprowmajor=true;
+                break;
+            case 1:
+                dpconfig.dprowmajor = true;
+                break;
+            case 2:
+                dpconfig.dprowmajor = (dpstrides[1] < dpstrides[0]) ? true : false;
+                break;
+            default:
+                dpconfig.dprowmajor = is_row_major(extents, strides, dprank) ? true : false;
+                break;
+            }
         }
+        if(method.ComputeLength)
+            dpdatalength=compute_data_length<OpenMPVariant::Sequential>(extents, strides, rank);
+        else
+            dpdatalength = datalength;
     }
 
-    if(compute_datalength==true && extents!=nullptr && strides!=nullptr && rank !=0)
-    {
-        dpdatalength=compute_data_length<OpenMPVariant::Sequential>(extents,strides,rank);
-    }
-    else
-        dpdatalength=datalength;
 }
 #pragma omp end declare target
 
 
 
 
-
 #pragma omp begin declare target
 template<typename T>
 DataBlock<T>::DataBlock(
-    T*    data,
+    T* data,
     size_t datalength,
-    bool rowm,
     size_t rank,
-    size_t*    extents,
-    size_t*    strides,
-    bool data_is_devptr,
-    int devicenum,
-    bool    conj_flag
+    size_t* extents,
+    size_t* strides,
+    DataBlockConfig config
 ) : dpdata(data),
-    dpextents(extents),
-    dpstrides(strides),
     dpdatalength(datalength),
+    dpextents(extents),
+    dpstrides(strides),
     dprank(rank),
-    dprowmajor(rowm),
-    devptr_devicenum( devicenum),
-#if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false),
-#else
-    dpdata_is_devptr(data_is_devptr),
-#endif
-    pconjugate(conj_flag)
-{}
-#pragma omp end declare target
-
-
-
-
-#pragma omp begin declare target
-template<typename T>
-DataBlock<T>::DataBlock(T*  data,
-                        size_t* extents,
-                        size_t*   strides,
-                        bool data_is_devptr,
-                        int devicenum,
-                        bool conjugateflag):
-    dpdata(data),
-    dpextents(extents),
-    dpstrides(strides),
-    dprank(1),
-    dprowmajor(true),
-    devptr_devicenum( devicenum),
-#if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false),
-#else
-    dpdata_is_devptr(data_is_devptr),
-#endif
-    pconjugate(conjugateflag)
-{dpdatalength=(extents[0]-1) * strides[0]+1;}
-#pragma omp end declare target
-
-
-
-
-#pragma omp begin declare target
-template<typename T> DataBlock<T>::DataBlock(
-    T*    data,
-    bool rowm,
-    size_t rows,
-    size_t cols,
-    size_t*    extents,
-    size_t*    strides,
-    bool compute_strides_from_extents,
-    bool data_is_devptr,
-    int devicenum,
-    bool    conj_flag
-) : dpdata(data),
-    dpextents(extents),
-    dpstrides(strides),
-    dprowmajor(rowm),
-    devptr_devicenum( devicenum),
-#if defined(Unified_Shared_Memory)
-    dpdata_is_devptr(false),
-#else
-    dpdata_is_devptr(data_is_devptr),
-#endif
-    pconjugate(conj_flag)
+    dpconfig(config)
 {
-    if((rows>1) && (cols>1))
-    {
-        dprank=2;
-        if(extents!=nullptr)
-        {
-            dpextents[0]=rows;
-            dpextents[1]=cols;
-        }
-        if(strides!=nullptr)
-        {
-            if(compute_strides_from_extents)
-            {
-                dpstrides[0]=(rowm==true)? cols:1;
-                dpstrides[1]=(rowm==true)?1: rows;
-                dprowmajor=rowm;
-            }
-            else
-            {
-                dprowmajor=dpstrides[1]<dpstrides[0];
-            }
-            if(extents!=nullptr)
-            {
-                dpdatalength=(rows-1) * strides[0]+(cols-1)*strides[1]+1;
-            }
-        }
-    }
-    else
-    {
-        if(rows>1)
-        {
-            dprank=1;
-            if(compute_strides_from_extents)
-                dpstrides[0]=1;
-            dpdatalength=rows;
-            dpextents[0]=rows;
-            dpdatalength=(extents[0]-1) * strides[0]+1;
-        }
-        if(cols>1)
-        {
-            dprank=1;
-            if(compute_strides_from_extents)
-                dpstrides[0]=1;
-            dpextents[0]=cols;
-            dpdatalength=(extents[0]-1) * strides[0]+1;
-        }
-        if(rows==0 && cols==0)
-        {
-            dprank=0;
-            dpdatalength=0;
-        }
-        dprowmajor=true;
-    }
-
+#if defined(Unified_Shared_Memory)
+    dpconfig.data_ondevice =false;
+#endif
 }
 #pragma omp end declare target
+
+
+
 
 #pragma omp begin declare target
 template <typename T>
@@ -741,7 +616,7 @@ bool DataBlock<T>::is_contiguous() const
     }
     size_t expected_stride = 1;
 
-    if (dprowmajor)
+    if (dpconfig.dprowmajor)
     {
 
         for (int i = (int)dprank - 1; i >= 0; --i)
@@ -805,7 +680,7 @@ size_t DataBlock<T>::print_to_buffer(
 
     bool ondevice =
         omp_is_initial_device() &&
-        dpdata_is_devptr;
+        dpconfig.data_ondevice;
 
     printtensor_recursive_buffer(
         cur,
@@ -859,7 +734,7 @@ void DataBlock<T>::printtensor_recursive_buffer(
                 0,
                 sizeof(T)*offset,
                 omp_get_initial_device(),
-                devptr_devicenum);
+                dpconfig.devicenum);
         }
         else
         {
@@ -873,7 +748,7 @@ void DataBlock<T>::printtensor_recursive_buffer(
         {
             double r = static_cast<double>(value.real());
             double i = static_cast<double>(value.imag());
-            if(this->pconjugate)
+            if(this->dpconfig.dpconjugate)
                 n = snprintf(cur, max_avail, "(%g, %g)", r, -i);
             else
                 n = snprintf(cur, max_avail, "(%g, %g)", r, i);
@@ -995,7 +870,7 @@ void DataBlock<T>::printtensor_required_size_recursive(
                 0,
                 sizeof(T)*offset,
                 omp_get_initial_device(),
-                devptr_devicenum);
+                dpconfig.devicenum);
         }
         else
         {
@@ -1008,7 +883,7 @@ void DataBlock<T>::printtensor_required_size_recursive(
             double r = static_cast<double>(value.real());
             double i = static_cast<double>(value.imag());
             int n=0;
-            if(this->pconjugate)
+            if(this->dpconfig.dpconjugate)
                 n= snprintf(nullptr, 0, "(%g, %g)", r, -i);
             else
                 n = snprintf(nullptr, 0, "(%g, %g)", r, i);
@@ -1088,7 +963,7 @@ size_t DataBlock<T>::print_required_size() const
 
     bool ondevice =
         omp_is_initial_device() &&
-        dpdata_is_devptr;
+        dpconfig.data_ondevice;
 
     printtensor_required_size_recursive(
         count,
@@ -1121,7 +996,7 @@ void DataBlock<T>::print() const
     for (size_t i = 0; i < dprank; ++i)
         indices[i] = 0;
 
-    bool ondevice=omp_is_initial_device()&&dpdata_is_devptr;
+    bool ondevice=omp_is_initial_device()&&dpconfig.data_ondevice;
     printtensor_recursive(indices, 0,ondevice);
     delete []indices;
 
@@ -1139,11 +1014,11 @@ void DataBlock<T>::printtensor_recursive(size_t* indices, size_t depth,bool onde
         size_t offset=compute_offset<OpenMPVariant::Sequential>(indices, dpstrides, dprank);
         T d;
         if(ondevice)
-            omp_target_memcpy(&d,dpdata,sizeof(T),0,sizeof(T)*offset,omp_get_initial_device(),this->devptr_devicenum);
+            omp_target_memcpy(&d,dpdata,sizeof(T),0,sizeof(T)*offset,omp_get_initial_device(),this->dpconfig.devicenum);
         else
             d= dpdata[offset];
 
-        print_variable(d,pconjugate);
+        print_variable(d,dpconfig.dpconjugate);
         return;
     }
 
@@ -1184,7 +1059,7 @@ public:
     size_t* pstridesbuffer=nullptr;
     size_t pnumblocks=0;
     bool pdata_is_devptr=false;
-    int pdevnum=-1;
+    int pdevnum=-INT_MAX;
     bool pconjugate=false;
 
     inline T& operator()(const size_t* indices,const size_t blocknumber)
@@ -1265,10 +1140,13 @@ inline DataBlock<T>get_datablock_from_arrays(const size_t i, const DataBlockArra
 
     size_t len =(i + 1 <arr.pnumblocks)? arr.pblock_offsets[i+1] - arr.pblock_offsets[i]: arr.pdatalength - arr.pblock_offsets[i];
     return DataBlock<T>(arr.pdata + arr.pblock_offsets[i],
-                        len, arr.prowm, arr.ptensor_rank,
+                        len,  arr.ptensor_rank,
                         arr.pextentsbuffer + i*arr.ptensor_rank,
                         arr.pstridesbuffer + i*arr.ptensor_rank,
-                        false, false,arr.pdata_is_devptr,arr.pdevnum,arr.pconjugate);
+                        DataBlockConfig{.dprowmajor=arr.prowm,
+                        .data_ondevice=arr.pdata_is_devptr,
+                        .devicenum=arr.pdata_is_devptr? arr.pdevnum:-INT_MAX,
+                        .dpconjugate=arr.pconjugate}  );
 
 }
 #pragma omp end declare target

@@ -32,11 +32,11 @@ public:
                 else if (mpi_rank < num_gpus)
                     devicenum = mpi_rank;             // exclusive mode
                 else
-                    devicenum = -1;                   // CPU fallback
+                    devicenum = -INT_MAX;                   // CPU fallback
             }
             else
             {
-                devicenum = -1; // no GPU available
+                devicenum = -INT_MAX; // no GPU available
             }
         }
     }
@@ -107,9 +107,9 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = A.dpdata_is_devptr;
-            const bool B_on_dev = B.dpdata_is_devptr;
-            const bool C_on_dev = C.dpdata_is_devptr;
+            const bool A_on_dev = A.dpconfig.data_ondevice;
+            const bool B_on_dev = B.dpconfig.data_ondevice;
+            const bool C_on_dev = C.dpconfig.data_ondevice;
             if(A_on_dev|| C_on_dev|| B_on_dev) return true;
 
 
@@ -132,8 +132,8 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = v1.dpdata_is_devptr;
-            const bool C_on_dev = v2.dpdata_is_devptr;
+            const bool A_on_dev = v1.dpconfig.data_ondevice;
+            const bool C_on_dev = v2.dpconfig.data_ondevice;
             if(A_on_dev||C_on_dev) return true;
 
             return this->should_use_gpu(problem_size, threshold, A_on_dev  || C_on_dev);
@@ -179,7 +179,7 @@ public:
         case GPU_ONLY:
             return (num_gpus > 0);  // use cached value
         case AUTO:
-            const bool A_on_dev = v1.dpdata_is_devptr;
+            const bool A_on_dev = v1.dpconfig.data_ondevice;
             if(A_on_dev) return true;
             return this->should_use_gpu(problem_size, threshold, A_on_dev );
 
@@ -2870,8 +2870,8 @@ void Math_Functions_MPI::strassen_multiply_h(const DataBlock<T> & A, const DataB
 
 
     T* Ard1,*Ard2,*Ard3,*Ard4,*Ard5,*Brd1,*Brd2,*Brd3,*Brd4,*Brd5,*M1d,*M2d,*M3d,*M4d,*M5d,*M6d,*M7d;
-    const bool aconj=A.pconjugate,
-               bconj=B.pconjugate;
+    const bool aconj=A.dpconfig.dpconjugate,
+               bconj=B.dpconfig.dpconjugate;
 
     if(separate_device_memory)
     {
@@ -2943,27 +2943,45 @@ void Math_Functions_MPI::strassen_multiply_h(const DataBlock<T> & A, const DataB
         }
     }
 
+        DataBlockConfig aconfig=DataBlockConfig{
+        .dprowmajor=A.dpconfig.dprowmajor,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=aconj},
+
+        bconfig=DataBlockConfig{
+        .dprowmajor=B.dpconfig.dprowmajor,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=bconj},
+
+        mconfig=DataBlockConfig{
+        .dprowmajor=true,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=false};
+
 
     DataBlock<T>
-    A_result1(Ard1,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
-              A_result2(Ard2,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
-              A_result3(Ard3,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
-              A_result4(Ard4,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
-              A_result5(Ard5,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,A.pconjugate),
+              A_result1(Ard1,s2,2,ext2,str2,aconfig),
+              A_result2(Ard2,s2,2,ext2,str2,aconfig),
+              A_result3(Ard3,s2,2,ext2,str2,aconfig),
+              A_result4(Ard4,s2,2,ext2,str2,aconfig),
+              A_result5(Ard5,s2,2,ext2,str2,aconfig),
 
-              B_result1(Brd1,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
-              B_result2(Brd2,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
-              B_result3(Brd3,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
-              B_result4(Brd4,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
-              B_result5(Brd5,s2,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,B.pconjugate),
+              B_result1(Brd1,s2,2,ext3,str3,bconfig),
+              B_result2(Brd2,s2,2,ext3,str3,bconfig),
+              B_result3(Brd3,s2,2,ext3,str3,bconfig),
+              B_result4(Brd4,s2,2,ext3,str3,bconfig),
+              B_result5(Brd5,s2,2,ext3,str3,bconfig),
 
-              M1(M1d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M2(M2d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M3(M3d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M4(M4d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M5(M5d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M6(M6d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-              M7(M7d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false);
+              M1(M1d,s,2,ext1,str1,mconfig),
+              M2(M2d,s,2,ext1,str1,mconfig),
+              M3(M3d,s,2,ext1,str1,mconfig),
+              M4(M4d,s,2,ext1,str1,mconfig),
+              M5(M5d,s,2,ext1,str1,mconfig),
+              M6(M6d,s,2,ext1,str1,mconfig),
+              M7(M7d,s,2,ext1,str1,mconfig);
 
 
     DataBlock<T>  A11 = DataBlockUtilities::matrix_subspan(A,0, 0, half_n, half_m,psext1,a11str),
@@ -3541,26 +3559,43 @@ void Math_Functions_MPI::winograd_multiply_h(const DataBlock<T>& A,const DataBlo
 
     }
 
-    const bool aconj=A.pconjugate,bconj=B.pconjugate;
+    const bool aconj=A.dpconfig.dpconjugate,bconj=B.dpconfig.dpconjugate;
+
+    DataBlockConfig
+    aconfig=DataBlockConfig{
+        .dprowmajor=A.dpconfig.dprowmajor,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=aconj},
+
+   bconfig=DataBlockConfig{
+        .dprowmajor=B.dpconfig.dprowmajor,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=bconj},
+
+    mconfig=DataBlockConfig{
+        .dprowmajor=true,
+        .data_ondevice=separate_device_memory,
+        .devicenum=separate_device_memory? policy.devicenum:-INT_MAX,
+        .dpconjugate=false};
+
     DataBlock<T>
-    S1(S1d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
-    S2(S2d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
-    S3(S3d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
-    S4(S4d,s2,A.dprowmajor,2,ext2,str2,separate_device_memory,separate_device_memory? policy.devicenum:-1,aconj),
-
-    S5(S5d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
-    S6(S6d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
-    S7(S7d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
-    S8(S8d,s3,B.dprowmajor,2,ext3,str3,separate_device_memory,separate_device_memory? policy.devicenum:-1,bconj),
-
-
-    M1(M1d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M2(M2d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M3(M3d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M4(M4d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M5(M5d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M6(M6d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false),
-    M7(M7d,s,true,2,ext1,str1,separate_device_memory,separate_device_memory? policy.devicenum:-1,false);
+        S1(S1d,s2,2,ext2,str2,aconfig),
+        S2(S2d,s2,2,ext2,str2,aconfig),
+        S3(S3d,s2,2,ext2,str2,aconfig),
+        S4(S4d,s2,2,ext2,str2,aconfig),
+        S5(S5d,s3,2,ext3,str3,bconfig),
+        S6(S6d,s3,2,ext3,str3,bconfig),
+        S7(S7d,s3,2,ext3,str3,bconfig),
+        S8(S8d,s3,2,ext3,str3,bconfig),
+        M1(M1d,s,2,ext1,str1,mconfig),
+        M2(M2d,s,2,ext1,str1,mconfig),
+        M3(M3d,s,2,ext1,str1,mconfig),
+        M4(M4d,s,2,ext1,str1,mconfig),
+        M5(M5d,s,2,ext1,str1,mconfig),
+        M6(M6d,s,2,ext1,str1,mconfig),
+        M7(M7d,s,2,ext1,str1,mconfig);
 
 
 
@@ -3976,9 +4011,9 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 #endif
     }
 
-    L.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
 
-    bool aconj=A.pconjugate;
+    bool aconj=A.dpconfig.dpconjugate;
 
 
     const size_t n = A.dpextents[0];
@@ -4019,8 +4054,12 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
         }
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
+        DataBlockConfig tempAconf({.dprowmajor=A.dpconfig.dprowmajor,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
 
-        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,aext,astr,separate_device_memory,policy.devicenum,false);
+        DataBlock<T> tempA(tempad,A.dpdatalength,2,aext,astr,tempAconf);
 
 
         DataBlock<T> tA=A,tL=L;
@@ -4031,18 +4070,18 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
             GPU_Memory_Functions::create_in(A,policy.devicenum);
             GPU_Memory_Functions::create_out(L,policy.devicenum);
 
-            if(!A.dpdata_is_devptr)
+            if(!A.dpconfig.data_ondevice)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
 
 
-            if(!L.dpdata_is_devptr)
+            if(!L.dpconfig.data_ondevice)
                 tL.dpdata=(T*) omp_get_mapped_ptr(L.dpdata,policy.devicenum);
 
 
-            tA.dpdata_is_devptr=true;
-            tL.dpdata_is_devptr=true;
-            tA.devptr_devicenum=policy.devicenum;
-            tL.devptr_devicenum=policy.devicenum;
+            tA.dpconfig.data_ondevice=true;
+            tL.dpconfig.data_ondevice=true;
+            tA.dpconfig.devicenum=policy.devicenum;
+            tL.dpconfig.devicenum=policy.devicenum;
         }
 
         const size_t Lstr0=tL.dpstrides[0];
@@ -4079,6 +4118,10 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
         }
 
         size_t z=0;
+                    DataBlockConfig sconf({.dprowmajor=true,
+                                  .data_ondevice=true,
+                                  .devicenum=tA.dpconfig.devicenum,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < n; ++c)   // Iterate over columns
         {
             if (c == z + step_size)
@@ -4091,7 +4134,8 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,true,tA.devptr_devicenum,false);
+
+                DataBlock<T>  S(sdata,u*u,2,sextt,sstrt,sconf);
 
 
                 size_t rtext[2],strtext[2];
@@ -4188,7 +4232,7 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
         T * sdata= Host_Memory_Functions::alloc_data_ptr<T>(tempsize,policy.memmapped_files);
 
-        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides,policy.memmapped_files,false);
+        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dpconfig.dprowmajor, A.dprank,A.dpextents,A.dpstrides,policy.memmapped_files,false);
 
         if (policy.initialize_output_to_zeros)
         {
@@ -4216,6 +4260,10 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
 
         size_t z=0;
+                   DataBlockConfig sconf({.dprowmajor=true,
+                                  .data_ondevice=false,
+                                  .devicenum=-INT_MAX,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < n; ++c)   // Iterate over columns
         {
             if (c == z + step_size)
@@ -4228,7 +4276,8 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,-1,false);
+
+                DataBlock<T>  S(sdata,u*u,2,sextt,sstrt,sconf);
 
 
                 size_t rtext[2],strtext[2];
@@ -4312,8 +4361,8 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
         step_size=step_size-1;
 
     size_t tempsize=(n-step_size)*(n-step_size);
-    L.pconjugate=false;
-    U.pconjugate=false;
+    L.dpconfig.dpconjugate=false;
+    U.dpconfig.dpconjugate=false;
     if(ongpu)
     {
         bool separate_device_memory=false;
@@ -4345,8 +4394,11 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
 
         size_t taext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t tastr[2]= {A.dpstrides[0],A.dpstrides[1]};
-
-        DataBlock<T> tempA(tempad,A.dpdatalength,A.dprowmajor,2,taext,tastr,separate_device_memory,policy.devicenum,false);
+        DataBlockConfig tempAconf({.dprowmajor=A.dpconfig.dprowmajor,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
+        DataBlock<T> tempA(tempad,A.dpdatalength,2,taext,tastr,tempAconf);
 
 
         DataBlock<T> tA=A,tL=L,tU=U;
@@ -4358,19 +4410,19 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
             GPU_Memory_Functions::create_out(L,policy.devicenum);
             GPU_Memory_Functions::create_out(U,policy.devicenum);
 
-            if(!A.dpdata_is_devptr)
+            if(!A.dpconfig.data_ondevice)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-            if(!L.dpdata_is_devptr)
+            if(!L.dpconfig.data_ondevice)
                 tL.dpdata=(T*) omp_get_mapped_ptr(L.dpdata,policy.devicenum);
-            if(!U.dpdata_is_devptr)
+            if(!U.dpconfig.data_ondevice)
                 tU.dpdata=(T*) omp_get_mapped_ptr(U.dpdata,policy.devicenum);
 
-            tA.dpdata_is_devptr=true;
-            tL.dpdata_is_devptr=true;
-            tU.dpdata_is_devptr=true;
-            tA.devptr_devicenum=policy.devicenum;
-            tL.devptr_devicenum=policy.devicenum;
-            tU.devptr_devicenum=policy.devicenum;
+            tA.dpconfig.data_ondevice=true;
+            tL.dpconfig.data_ondevice=true;
+            tU.dpconfig.data_ondevice=true;
+            tA.dpconfig.devicenum=policy.devicenum;
+            tL.dpconfig.devicenum=policy.devicenum;
+            tU.dpconfig.devicenum=policy.devicenum;
 
         }
 
@@ -4411,7 +4463,10 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
         }
 
         size_t z=0;
-
+      DataBlockConfig sconf({.dprowmajor=true,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < n; ++c)
         {
             if (c == z + step_size)
@@ -4429,7 +4484,7 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
 
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,false,separate_device_memory,policy.devicenum,false);
+                DataBlock<T>  S(sdata,u*u,2,sextt,sstrt,sconf);
 
 
                 switch (policy.algorithm_version)
@@ -4531,7 +4586,7 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
 
         T * sdata= Host_Memory_Functions::alloc_data_ptr<T>(tempsize,policy.memmapped_files);
 
-        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor, A.dprank,A.dpextents,A.dpstrides
+        DataBlock<T>  tempA=Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dpconfig.dprowmajor, A.dprank,A.dpextents,A.dpstrides
                             ,policy.memmapped_files,false);
 
         if (policy.initialize_output_to_zeros)
@@ -4559,7 +4614,10 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
             }
 
         }
-
+                      DataBlockConfig sconf({.dprowmajor=true,
+                                 .data_ondevice=false,
+                                  .devicenum=-INT_MAX,
+                                  .dpconjugate=false});
         size_t z=0;
         for (size_t c = 0; c < n; ++c)
         {
@@ -4577,7 +4635,8 @@ void Math_Functions_MPI::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L
 
                 size_t sextt[2]= {u,u};
                 size_t sstrt[2]= {u,1};
-                DataBlock<T>  S(sdata,u*u,true,2,sextt,sstrt,false,-1,false);
+
+                DataBlock<T>  S(sdata,u*u,2,sextt,sstrt,sconf);
 
 
 
@@ -4667,12 +4726,12 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
     if (step_size% 2 !=0 &&step_size>=1)
         step_size=step_size-1;
 
-    size_t n = A.dpextents[0]; // Number of rows (assuming 2D matrix)
-    size_t m = A.dpextents[1]; // Number of columns
-    bool aconj=A.pconjugate;
-    Q.pconjugate=false;
-    R.pconjugate=false;
-    // Initialize Q and R matrices
+    size_t n = A.dpextents[0];
+    size_t m = A.dpextents[1];
+    bool aconj=A.dpconfig.dpconjugate;
+    Q.dpconfig.dpconjugate=false;
+    R.dpconfig.dpconjugate=false;
+
     size_t nm=n*m, mm=m*m;
     if(ongpu)
     {
@@ -4709,7 +4768,11 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
         }
         size_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         size_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-        DataBlock<T> M(tempM,A.dpdatalength,A.dprowmajor,2,aext,astr,separate_device_memory,policy.devicenum, false);
+        DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
+        DataBlock<T> M(tempM,A.dpdatalength,2,aext,astr,mconf);
 
 
 
@@ -4724,19 +4787,19 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
             GPU_Memory_Functions::create_out(R,policy.devicenum);
 
 
-            if(!A.dpdata_is_devptr)
+            if(!A.dpconfig.data_ondevice)
                 tA.dpdata=(T*) omp_get_mapped_ptr(A.dpdata,policy.devicenum);
-            if(!Q.dpdata_is_devptr)
+            if(!Q.dpconfig.data_ondevice)
                 tQ.dpdata=(T*) omp_get_mapped_ptr(Q.dpdata,policy.devicenum);
-            if(!R.dpdata_is_devptr)
+            if(!R.dpconfig.data_ondevice)
                 tR.dpdata=(T*) omp_get_mapped_ptr(R.dpdata,policy.devicenum);
 
-            tA.dpdata_is_devptr=true;
-            tQ.dpdata_is_devptr=true;
-            tR.dpdata_is_devptr=true;
-            tA.devptr_devicenum=policy.devicenum;
-            tQ.devptr_devicenum=policy.devicenum;
-            tR.devptr_devicenum=policy.devicenum;
+            tA.dpconfig.data_ondevice=true;
+            tQ.dpconfig.data_ondevice=true;
+            tR.dpconfig.data_ondevice=true;
+            tA.dpconfig.devicenum=policy.devicenum;
+            tQ.dpconfig.devicenum=policy.devicenum;
+            tR.dpconfig.devicenum=policy.devicenum;
         }
 
         const size_t Qstr0=Q.dpstrides[0];
@@ -4783,7 +4846,10 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
         }
 
         size_t z = 0;
-
+      DataBlockConfig cconf({.dprowmajor=true,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < m; ++c)
         {
 
@@ -4804,7 +4870,7 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
                 size_t tempCextt[2]= {cz,mc};
                 size_t tempCstrt[2]= {mc,1};
 
-                DataBlock<T>  C(tempC,cz*mc,true,2,tempCextt,tempCstrt,separate_device_memory,policy.devicenum,false);
+                DataBlock<T>  C(tempC,cz*mc,2,tempCextt,tempCstrt,cconf);
 
 
                 size_t extBQT[2],strBQT[2];
@@ -4817,7 +4883,8 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
                 size_t sextt[2]= {n,mc};
                 size_t sstrt[2]= {mc,1};
-                DataBlock<T>  S(tempS,n*mc,true,2,sextt,sstrt,separate_device_memory,policy.devicenum, false);
+
+                DataBlock<T>  S(tempS,n*mc,2,sextt,sstrt,cconf);
 
 
 
@@ -4948,7 +5015,7 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
     {
 
 
-        DataBlock<T> M= Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dprowmajor,
+        DataBlock<T> M= Host_Memory_Functions::alloc_data_copy_strides_extents<T>(A.dpdatalength,A.dpconfig.dprowmajor,
                         A.dprank,A.dpextents,A.dpstrides,
                         policy.memmapped_files,false);
 
@@ -4987,7 +5054,10 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
 
 
         size_t z = 0;
-
+          DataBlockConfig cconf({.dprowmajor=true,
+                                 .data_ondevice=false,
+                                  .devicenum=-INT_MAX,
+                                  .dpconjugate=false});
         for (size_t c = 0; c < m; ++c)
         {
             if (c == z +step_size)
@@ -5006,7 +5076,7 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
                 size_t Cextt[2]= {cz,mc};
                 size_t Cstrt[2]= {mc,1};
 
-                DataBlock<T>  C(tempC,cz*mc,true,2,Cextt,Cstrt,false,-1,false);
+                DataBlock<T>  C(tempC,cz*mc,2,Cextt,Cstrt,cconf);
 
 
                 size_t extBQT[2],strBQT[2];
@@ -5019,7 +5089,7 @@ Math_MPI_Decomposition_Policy policy = (pol != nullptr) ? *pol : get_default_pol
                 size_t sexttt[2]= {n,mc};
                 size_t sstrtt[2]= {mc,1};
 
-                DataBlock<T>  S(tempS,n*mc,true,2,sexttt,sstrtt,false,-1,false);
+                DataBlock<T>  S(tempS,n*mc,2,sexttt,sstrtt,cconf);
 
 
 
@@ -5168,8 +5238,11 @@ void Math_Functions_MPI::MPI_recursive_multiplication_helper(const Math_MPI_Recu
             {
                 C_data=Host_Memory_Functions::alloc_data_ptr<T>(length,policy.memmapped_files);
             }
-
-            DataBlock<T> C(C_data,length,crowm,2,extC,strC,false,false,separate_device_memory);
+                      DataBlockConfig cconf({.dprowmajor=crowm,
+                                 .data_ondevice=separate_device_memory,
+                                  .devicenum=policy.devicenum,
+                                  .dpconjugate=false});
+            DataBlock<T> C(C_data,length,2,extC,strC,cconf);
 
 
             if(policy.size_to_stop_recursion>=problemsize)

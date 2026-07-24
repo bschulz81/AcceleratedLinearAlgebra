@@ -126,7 +126,11 @@ DataBlock<T> Host_Memory_Functions::alloc_data_copy_strides_extents(size_t datal
     else
         pdata=(T*)omp_alloc(sizeof(T)*datalength,omp_default_mem_alloc);
 
-    return DataBlock<T>(pdata,datalength,rowmajor,rank,pextents,pstrides,false,-1,conjugate);
+    DataBlockConfig conf({.dprowmajor=rowmajor,
+                            .data_ondevice=false,
+                            .devicenum=-INT_MAX,
+                            .dpconjugate=conjugate});
+    return DataBlock<T>(pdata,datalength,rank,pextents,pstrides,conf);
 }
 
 

@@ -22,32 +22,35 @@ int main()
                      };
 
             size_t rows=3,cols=7;
-            mdspan<double,array<size_t,2>> A(A_data.data(),  {rows, cols},true);
+            cout<<"with the create_matrix function"<<endl;
+            auto A = mdspan_utilities::create_matrix<double, array<size_t, 2>>(A_data.data(), rows, cols, DataBlockConfig{});
+
             cout<<"A"<<endl;
             A.print();
 
+            cout<<"with the constructor"<<endl;
+            mdspan<double, std::vector<size_t>>  A3 (A_data.data(), {rows, cols}, DataBlockConfig{});
+            cout<<"A2"<<endl;
+            A3.print();
+
+            cout<<"instead of this long designation, there is also a type mdspan_t with a dynamic tag for the vector constructor and a static tag for the array constructor"<<endl;
+            mdspan_t<double, dynamic_tag> A4(A_data.data(), {rows, cols}, DataBlockConfig{});
+            mdspan_t<double, static_tag<2>> A5(A_data.data(), {rows, cols}, DataBlockConfig{});
+
+
             cout<<"row 1"<<endl;
-            mdspan<double, array<size_t,2>> Aa=mdspan_utilities::matrix_row(A,1);
+            auto Aa=mdspan_utilities::matrix_row(A4,1);
             Aa.print();
 
 
-            mdspan<double, std::array<size_t,2>> Ab= mdspan_utilities::matrix_subspan(A,1,1,2,4);
+            auto Ab= mdspan_utilities::matrix_subspan(A,1,1,2,4);
             std::cout<<Ab.rank();
             cout<<"matrix_subspanA"<<endl;
             Ab.print();
 
-            mdspan<double, std::array<size_t,2>> Ae= mdspan_utilities::matrix_transpose(A);
+            auto Ae= mdspan_utilities::matrix_transpose(A);
             cout<<"transpose"<<endl;
             Ae.print();
-
-
-
-
-
-
-
-
-
 
 
 
@@ -66,13 +69,13 @@ int main()
             vector<size_t> extents = {2,3,4};
 
 
-            mdspan<double, std::vector<size_t>> T_row(data_rowmajor.data(), extents,true );
+            mdspan<double, std::vector<size_t>> T_row(data_rowmajor.data(), extents,DataBlockConfig{} );
             cout<<"A tensor"<<endl;
             T_row.print();
 
             vector<size_t> offsets   = {1,0,0};
             vector<size_t> sub_extents= {1,3,4};
-            mdspan<double, std::vector<size_t>>  subT_view =mdspan_utilities::tensor_subspan(T_row,offsets, sub_extents);
+            auto  subT_view =mdspan_utilities::tensor_subspan(T_row,offsets, sub_extents);
 
             std::cout << "Subtensor view (row-major):\n";
             subT_view.print();
@@ -92,7 +95,7 @@ int main()
             A.device_data_upload(true);
 
             A.print();
-            mdspan<double, std::array<size_t,2>>ShallowCopyofA=A;
+            auto ShallowCopyofA=A;
             A.print();
             cout<<"print Shallow Copy on device"<<endl;
             ShallowCopyofA.print();
@@ -109,7 +112,7 @@ int main()
             cout<<"Verify A is on device"<<A.data_is_devptr()<<endl;
 
 
-            mdspan<double, std::array<size_t,2>> subspan_of_A= mdspan_utilities::matrix_subspan(A,1,1,2,2);
+            auto subspan_of_A= mdspan_utilities::matrix_subspan(A,1,1,2,2);
             cout<<"this is a submatrix of A"<<endl;
             subspan_of_A.print();
             cout<<"now we offload this submatrix"<<endl;
@@ -140,7 +143,9 @@ int main()
                 6, 13, 20,
                 7, 14, 21
             };
-            mdspan<double, std::vector<size_t>> B(B_data_colmajor.data(), { rows, cols},false);
+
+            auto B=mdspan_utilities::create_matrix<double, std::vector<size_t>>(B_data_colmajor.data(), rows, cols,
+                    DataBlockConfig{.dprowmajor = false});
             cout<<"B"<<endl;
             B.print();
 
@@ -149,18 +154,18 @@ int main()
             cout<<"column"<<endl;
 
 
-            mdspan<double, std::vector<size_t>>Ba= mdspan_utilities::matrix_column(B,1);
+            auto Ba= mdspan_utilities::matrix_column(B,1);
             Ba.print();
             cout <<"Rank"<<Ba.rank()<<endl;
             cout<<"subspanmatrx B"<<endl;
-            mdspan<double, std::vector<size_t>>Bb= mdspan_utilities::matrix_subspan(B,1,1,1,4);
+            auto Bb= mdspan_utilities::matrix_subspan(B,1,1,1,4);
             Bb.print();
             cout <<"Rank"<<Bb.rank()<<endl;
 
 
 
 
-            mdspan<double, std::vector<size_t>>Be= mdspan_utilities::matrix_transpose(B);
+            auto Be= mdspan_utilities::matrix_transpose(B);
             cout<<"transpose"<<endl;
             Be.print();
 
@@ -187,19 +192,13 @@ int main()
 
             vector<size_t> extentsC = {2,3,4};
 
-            mdspan<double, std::vector<size_t>> T_col(data_colmajor.data(),extentsC,false);
+            mdspan<double, std::vector<size_t>> T_col(data_colmajor.data(),extentsC,DataBlockConfig{.dprowmajor = false});
             vector<size_t> offsetsC     = {1,0,0};
             vector<size_t> sub_extentsC = {1,3,4};
             cout <<"Rank"<<T_col.rank()<<endl;
-            mdspan<double, std::vector<size_t>> subC_view =mdspan_utilities::tensor_subspan(T_col,offsetsC, sub_extentsC);
+            auto subC_view =mdspan_utilities::tensor_subspan(T_col,offsetsC, sub_extentsC);
             std::cout << "Subtensor view (col-major):\n";
             subC_view.print();
-
-
-
-
-
-
 
         }
 
@@ -220,44 +219,58 @@ int main()
 
             size_t rows=3,cols=7;
 
-            cout<<"now rowmajordata on a memmap on harddrive"<<endl;
-            mdspan_data<double,array<size_t,2>> mdspan_data_matrix( rows, cols,true,true);
+            cout<<"now rowmajordata on a memmap on harddrive, creation with factory function"<<endl;
+            auto mdspan_data_matrix = mdspan_utilities::create_matrix<double, array<size_t, 2>>(rows, cols, ManagedDataBlockConfig{.memmap=true});
+            cout<<"the utility function created an empty matrix. We fill it now by copying in the data field"<<endl;
 
             std::copy(begin(A_data),end(A_data),mdspan_data_matrix.data());
-
-            cout<<"mdspan_data matrix with the data of the Matrix A"<<endl;
             mdspan_data_matrix.print();
+
+
+            cout<<"creation with the constructor"<<endl;
+            mdspan_data <double, std::vector<size_t>>  mdspan_data_matrix2 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
+            cout<<"the constructor created an empty matrix. We fill it now by copying in the data field"<<endl;
+            std::copy(begin(A_data),end(A_data),mdspan_data_matrix2.data());
+            mdspan_data_matrix2.print();
+
+
+
+            cout<<"instead of this long designation, there is also a type mdspan_t with a dynamic tag for the vector constructor and a static tag for the array constructor"<<endl;
+            mdspan_data_t <double, dynamic_tag>  mdspan_data_matrix3 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
+            mdspan_data_t <double,static_tag<2>>  mdspan_data_matrix4 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
+
+
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_utilities::matrix_row_copy(mdspan_data_matrix,1);
+            auto rowcopy=mdspan_utilities::matrix_row_copy(mdspan_data_matrix,1);
             rowcopy.print();
             cout <<"rank:" <<rowcopy.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopy=mdspan_utilities::matrix_column_copy(mdspan_data_matrix,1);
+            auto columncopy=mdspan_utilities::matrix_column_copy(mdspan_data_matrix,1);
             columncopy.print();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrix,true);
+            auto transposecopy=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrix,true);
             transposecopy.print();
 
             cout<<"mdspan_data matrix_subspan copy on memory"<<endl;
-            mdspan_data<double,array<size_t,2>>matrix_subspancopy=mdspan_utilities::matrix_subspan_copy(mdspan_data_matrix,1,2,2,2,false);
+            auto matrix_subspancopy=mdspan_utilities::matrix_subspan_copy(mdspan_data_matrix,1,2,2,2,false);
             matrix_subspancopy.print();
 
             cout<<"mdspan_data matrix_subspan copy on a memmap"<<endl;
             array<size_t,2>offs= {1,2};
             array<size_t,2>sub_extents= {2,2};
-            mdspan_data<double,array<size_t,2>>subspan=mdspan_utilities::tensor_subspan_copy(mdspan_data_matrix,offs,sub_extents,false);
+            auto subspan=mdspan_utilities::tensor_subspan_copy(mdspan_data_matrix,offs,sub_extents,false);
             subspan.print();
             cout<<"copy of mdspan on device";
-            mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
+            auto newcopy=mdspan_data_matrix.copy(false,true,true,0);
 
             newcopy.print();
 
             cout<<"mdspan_data matrix_subspan copy on device"<<endl;
 
-           mdspan_data<double,array<size_t,2>>newcopy_subspan=mdspan_utilities::matrix_subspan_copy(newcopy,1,2,2,2,false);
+            auto newcopy_subspan=mdspan_utilities::matrix_subspan_copy(newcopy,1,2,2,2,false);
             newcopy_subspan.print();
-            cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
+            cout<<"verify that the copy has data on device "<<newcopy_subspan.data_is_devptr()<<endl;
 
 
             cout<<"define a tensor"<<endl;
@@ -276,7 +289,7 @@ int main()
             vector<size_t> extents2 = {2,3,4};
 
             cout<<"We write the tensor as a memmap with rowmajor data"<<endl;
-            mdspan_data<double, std::vector<size_t>> Tensor(extents2,true,true);
+            mdspan_data<double, std::vector<size_t>> Tensor(extents2, ManagedDataBlockConfig{.memmap=true});
             std::copy(begin(data_rowmajor),end(data_rowmajor),Tensor.data());
             cout<<"A tensor"<<endl;
 
@@ -285,25 +298,25 @@ int main()
             vector<size_t> sub_extents1= {1,3,4};
 
             cout<<"now an mdspan_data subtensor"<<endl;
-            mdspan_data<double, std::vector<size_t>>  subtensor =mdspan_utilities::tensor_subspan_copy(Tensor,offsets1, sub_extents1);
+            auto subtensor =mdspan_utilities::tensor_subspan_copy(Tensor,offsets1, sub_extents1);
             subtensor.print();
 
 
 
 
             cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
-            mdspan<double, std::vector<size_t>>  subtensor2(mdspan_utilities::tensor_subspan(Tensor,offsets1, sub_extents1));
+            auto  subtensor2(mdspan_utilities::tensor_subspan(Tensor,offsets1, sub_extents1));
             subtensor2.print();
 
             cout<<"now we offload that subtensor to gpu"<<endl;
             subtensor2.device_data_upload(true);
 
-            cout<<endl<<"verify that the copy has data on device: "<<subtensor2.is_dev_ptr()<<endl;
+            cout<<endl<<"verify that the copy has data on device: "<<subtensor2.data_is_devptr()<<endl;
 
             cout<<"now we try to offload the subtensor tensor to gpu, despite a subtensor (i.e. part of the data is alive, and offloaded. "<<endl;
             cout<<"the entire tensor would overlap with the subtensor, so the program should turn out false and forbid the offload"<<endl;
             bool cc=Tensor.device_data_upload(true);
-            cout<<endl<<"result of the procedure: "<< cc <<"verify that the Tensor has data on device: "<<Tensor.is_dev_ptr()<<endl;
+            cout<<endl<<"result of the procedure: "<< cc <<"verify that the Tensor has data on device: "<<Tensor.data_is_devptr()<<endl;
 
 
 
@@ -328,164 +341,24 @@ int main()
 
             cout<<"We test the same tensor as column major data"<<endl;
             size_t rowsB=3,colsB=7;
-            mdspan_data<double,array<size_t,2>> mdspan_data_matrixB( rowsB, colsB, false,false);
+            auto mdspan_data_matrixB=mdspan_utilities::create_matrix<double,array<size_t,2>> ( rowsB, colsB,  ManagedDataBlockConfig({.dprowmajor=false}));
 
             std::copy(begin(B_data_colmajor),end(B_data_colmajor),mdspan_data_matrixB.data());
             cout<<"mdspan_data matrix with the data of the Matrix B (A in colmajor)"<<endl;
             mdspan_data_matrixB.print();
             cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_utilities::matrix_row_copy(mdspan_data_matrixB,1);
+            auto rowcopyB=mdspan_utilities::matrix_row_copy(mdspan_data_matrixB,1);
             rowcopyB.print();
             cout <<"rank:" <<rowcopyB.rank();
 
             cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_utilities::matrix_column_copy(mdspan_data_matrixB,1);
+            auto columncopyB=mdspan_utilities::matrix_column_copy(mdspan_data_matrixB,1);
             columncopyB.print();
             cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrixB,true);
+            auto transposecopyB=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrixB,true);
             transposecopyB.print();
 
         }
-
-
     }
 
-    {
-
-        cout<< "This demonstrates some functions of the mdspan data class, which can, in contrast to mdspan, manage and own data."<<endl;
-        cout<<"mdpspan_data does not provied shallow copies, for this one has to use the base class of mdspan, to which mdspan_data provides an assignment operator "<<endl;
-
-        {
-
-
-            vector<double>A_data(3*7,0);
-            A_data = {1,2,3,4,5,6,7,
-                      8,9,10,11,12,13,14,
-                      15,16,17,18,19,20,21
-                     };
-
-            size_t rows=3,cols=7;
-
-            cout<<"now rowmajordata on a memmap on harddrive"<<endl;
-            mdspan_data<double,array<size_t,2>> mdspan_data_matrix( rows, cols,true,true);
-
-            std::copy(begin(A_data),end(A_data),mdspan_data_matrix.data());
-
-            cout<<"mdspan_data matrix with the data of the Matrix A"<<endl;
-            mdspan_data_matrix.print();
-            cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopy=mdspan_utilities::matrix_row_copy(mdspan_data_matrix,1);
-            rowcopy.print();
-            cout <<"rank:" <<rowcopy.rank();
-
-            cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopy=mdspan_utilities::matrix_column_copy(mdspan_data_matrix,1);
-            columncopy.print();
-            cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopy=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrix,true);
-            transposecopy.print();
-
-            cout<<"mdspan_data matrix_subspan copy on a memory"<<endl;
-            mdspan_data<double,array<size_t,2>>matrix_subspancopy=mdspan_utilities::matrix_subspan_copy(mdspan_data_matrix,1,2,2,2,false);
-            matrix_subspancopy.print();
-
-            cout<<"mdspan_data matrix_subspan copy on a memmap"<<endl;
-            array<size_t,2>offs= {1,2};
-            array<size_t,2>sub_extents= {2,2};
-            mdspan_data<double,array<size_t,2>>subspan=mdspan_utilities::tensor_subspan_copy(mdspan_data_matrix,offs,sub_extents,false);
-            subspan.print();
-            cout<<"copy of mdspan on device";
-            mdspan_data<double,array<size_t,2>>newcopy=mdspan_data_matrix.copy(false,true,true,0);
-
-            newcopy.print();
-          cout<<"mdspan_data matrix_subspan copy on device"<<endl;
-//
-            mdspan_data<double,array<size_t,2>>newcopy_subspan=mdspan_utilities::matrix_subspan_copy(newcopy,1,2,2,2,false);
-           newcopy_subspan.print();
-            cout<<"verify that the copy has data on device "<<newcopy_subspan.is_dev_ptr()<<endl;
-
-
-            cout<<"define a tensor"<<endl;
-            std::vector<double> data_rowmajor =
-            {
-                //   block 0 (first 3x4 matrix)
-                1,2,3,4,
-                5,6,7,8,
-                9,10,11,12,
-                //  block 1 (second 3x4 matrix)
-                13,14,15,16,
-                17,18,19,20,
-                21,22,23,24
-            };
-
-            vector<size_t> extents2 = {2,3,4};
-
-            cout<<"We write the tensor as a memmap with rowmajor data"<<endl;
-            mdspan_data<double, std::vector<size_t>> Tensor(extents2,true,true);
-            std::copy(begin(data_rowmajor),end(data_rowmajor),Tensor.data());
-            cout<<"A tensor"<<endl;
-
-            Tensor.print();
-            vector<size_t> offsets1   = {1,0,0};
-            vector<size_t> sub_extents1= {1,3,4};
-
-            cout<<"now an mdspan_data subtensor"<<endl;
-            mdspan_data<double, std::vector<size_t>>  subtensor =mdspan_utilities::tensor_subspan_copy(Tensor,offsets1, sub_extents1);
-            subtensor.print();
-
-
-
-
-            cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
-            mdspan<double, std::vector<size_t>>  subtensor2(mdspan_utilities::tensor_subspan(Tensor,offsets1, sub_extents1));
-            subtensor2.print();
-
-            cout<<"now we offload that subtensor to gpu"<<endl;
-            subtensor2.device_data_upload(true);
-
-            cout<<endl<<"verify that the copy has data on device: "<<subtensor2.is_dev_ptr()<<endl;
-
-            cout<<"now we try to offload the subtensor tensor to gpu, despite a subtensor (i.e. part of the data is alive, and offloaded. "<<endl;
-            cout<<"the entire tensor would overlap with the subtensor, so the program should turn out false and forbid the offload"<<endl;
-            bool cc=Tensor.device_data_upload(true);
-            cout<<endl<<"result of the procedure: "<< cc <<"verify that the Tensor has data on device: "<<Tensor.is_dev_ptr()<<endl;
-
-        }
-        {
-            cout<<"Now tests with a column major tensor"<< endl;
-            vector<double> B_data_colmajor =
-            {
-                1, 8, 15,
-                2, 9, 16,
-                3, 10, 17,
-                4, 11, 18,
-                5, 12, 19,
-                6, 13, 20,
-                7, 14, 21
-            };
-
-
-
-            cout<<"We test the same tensor as column major data"<<endl;
-            size_t rowsB=3,colsB=7;
-            mdspan_data<double,array<size_t,2>> mdspan_data_matrixB( rowsB, colsB, false,false);
-
-            std::copy(begin(B_data_colmajor),end(B_data_colmajor),mdspan_data_matrixB.data());
-            cout<<"mdspan_data matrix with the data of the Matrix B (A in colmajor)"<<endl;
-            mdspan_data_matrixB.print();
-            cout<<"mdspan_data row copy"<<endl;
-            mdspan_data<double,array<size_t,2>>rowcopyB=mdspan_utilities::matrix_row_copy(mdspan_data_matrixB,1);
-            rowcopyB.print();
-            cout <<"rank:" <<rowcopyB.rank();
-
-            cout<<"mdspan_data column copy"<<endl;
-            mdspan_data<double,array<size_t,2>>columncopyB=mdspan_utilities::matrix_column_copy(mdspan_data_matrixB,1);
-            columncopyB.print();
-            cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            mdspan_data<double,array<size_t,2>>transposecopyB=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrixB,true);
-            transposecopyB.print();
-
-        }
-
-    }
 }

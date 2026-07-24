@@ -34,7 +34,7 @@ template<typename LHS, typename RHS>
 struct DotExpr;
 
 
-// 3. Structural Type Identification Helpers
+
 template<typename T>
 struct is_datablock_type {
 private:
@@ -47,7 +47,6 @@ public:
 template<typename T>
 inline constexpr bool is_datablock_type_v = is_datablock_type<std::remove_cvref_t<T>>::value;
 
-// Catch-all trait to identify our expression structures or data containers safely
 template<typename T>
 struct is_expr_type : std::false_type {};
 template<typename L, typename R> struct is_expr_type<AddExpr<L, R>> : std::true_type {};
@@ -191,7 +190,6 @@ struct DotExpr {
 };
 
 
-// 5. Global Clean Operator Overloads (Constrained via robust SFINAE/Traits)
 template<typename LHS, typename Scalar>
 requires IsValidMathOperand<LHS> && ValidNumericType<std::remove_cvref_t<Scalar>>
 auto operator*(const LHS& lhs, Scalar scalar)

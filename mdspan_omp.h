@@ -80,7 +80,7 @@ class mdspan:public DataBlock<T>
 
 protected:
 
-  friend class mdspan_utilities;
+    friend class mdspan_utilities;
 
 
     class DevicemappingManager
@@ -152,8 +152,7 @@ protected:
 
     void initialize_extents_and_strides(const Container&extents,const Container & strides);
     void initialize_extents(const Container&extents);
-    void allocate_extents_and_strides(size_t r);
-    void adopt_subDataBlock_helper(const DataBlock<T>& sub);
+    void compute_initialize_strides(const Container& extents,const bool rowmajor);
 
     Container pextents;
     Container pstrides;
@@ -175,17 +174,11 @@ public:
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
 
 
-    mdspan(T* data, const size_t datalength, const Container& extents, const Container& strides,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
+    mdspan(T* data, const size_t datalength, const Container& extents, const Container& strides, const DataBlockConfig  config);
+    mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config);
+    mdspan(T* data, const Container& extents,const DataBlockConfig  config);
 
 
-    mdspan(T* data,  const Container& extents, const Container& strides,const bool rowm=true, bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
-
-
-    mdspan(T* data, const Container& extents, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
-
-
-    mdspan(T* data, const size_t rows,const size_t cols,const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
-    mdspan(T* data,const size_t rows, const bool rowm=true,bool dpdata_is_devptr=false,int devnum=0,bool conjugate=false);
     virtual ~mdspan();
 
     using DataBlock<T>::operator();
@@ -193,18 +186,6 @@ public:
     inline T operator()(const Container& extents)const;
 
     using DataBlock<T>::operator=;
-
-    // Subspan methods
-    mdspan<T, Container>tensor_subspan(const Container& offsets,  Container& sub_extents) const;
-    mdspan<T, Container>matrix_subspan(const size_t row, const size_t col,const  size_t tile_rows,const  size_t tile_cols)const;
-    mdspan<T, Container>matrix_column(const size_t col_index);
-
-    mdspan<T, Container>matrix_row(const size_t row_index);
-
-    mdspan<T, Container>matrix_transpose();
-    mdspan<T, Container>matrix_hermitian_transpose();
-
-    mdspan<T, std::vector<size_t>> collapsed_view();
 
     bool  device_data_upload(bool default_device,int devicenum=0);
     bool  device_data_alloc(bool default_device,int devicenum=0);
@@ -215,7 +196,7 @@ public:
 
     size_t extent(const size_t dim) const
     {
-        return this->dpextents[dim];
+        return pextents[dim];
     };
     size_t rank() const
     {
@@ -250,7 +231,6 @@ struct dynamic_tag {};
 template<size_t Rank>
 struct static_tag {};
 
-// Primary template (undefined on purpose)
 template<typename Tag>
 struct container_for_tag;
 
@@ -283,9 +263,14 @@ mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> 
     {
         if(p_has_offloaded_host_data)
             this->device_data_release();
-        //does not get copied. Only set to true for upload.
         p_has_offloaded_host_data = false;
     }
+    this->dpdata           = other.dpdata;
+    this->dpdatalength     = other.dpdatalength;
+    this->dprank           = other.dprank;
+    this->dpconfig         = other.dpconfig;
+    this->devptr_former_hostptr  = other.devptr_former_hostptr;
+
 
     mapping_manager=other.mapping_manager;
 
@@ -295,15 +280,8 @@ mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> 
     this->dpextents        = pextents.data();
     this->dpstrides        = pstrides.data();
 
-    this->dpdata           = other.dpdata;
-    this->dpdatalength     = other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dprank           = other.dprank;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
 
-    this->devptr_devicenum=other.devptr_devicenum;
-    this->devptr_former_hostptr=other.devptr_former_hostptr;
-    this->pconjugate=other.pconjugate;
+
     return *this;
 }
 
@@ -315,18 +293,13 @@ mdspan<T, Container>&mdspan<T, Container>::operator=(const DataBlock<T> & other)
     {
         if(p_has_offloaded_host_data)
             this->device_data_release();
-        p_has_offloaded_host_data = false;
-        this->devptr_devicenum=-1;
-        this->devptr_former_hostptr=nullptr;
     }
 
     this->dpdata           = other.dpdata;
     this->dpdatalength      =other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-
-    this->dprank=other.dprank;
-this->pconjugate=other.pconjugate;
+    this->dprank            =other.dprank;
+    this->dpconfig         =other.dpconfig;
+    this->devptr_former_hostptr  = other.devptr_former_hostptr;
 
     if(pextents.size()!=other.dprank)
         if constexpr (DynamicContainer<Container>)
@@ -339,11 +312,13 @@ this->pconjugate=other.pconjugate;
         if constexpr (DynamicContainer<Container>)
             pstrides.resize(other.dprank);
 
-    if(pextents.data()!=other.dpstrides)
+    if(pstrides.data()!=other.dpstrides)
         copy(other.dpstrides,other.dpstrides+other.dprank,begin(pstrides));
 
     this->dpextents = pextents.data();
     this->dpstrides = pstrides.data();
+
+
 
     return *this;
 }
@@ -360,11 +335,11 @@ mdspan<T, Container>& mdspan<T, Container>::operator=( mdspan<T, Container>&& ot
 
 
     this->dpdata           = other.dpdata;
-    this->dpdatalength      =other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->pconjugate=other.pconjugate;
-    this->dprank=other.dprank;
+    this->dpdatalength     = other.dpdatalength;
+    this->dprank           = other.dprank;
+    this->dpconfig         = other.dpconfig;
+    this->devptr_former_hostptr  = other.devptr_former_hostptr;
+
 
     if constexpr (DynamicContainer<Container>)
     {
@@ -376,7 +351,7 @@ mdspan<T, Container>& mdspan<T, Container>::operator=( mdspan<T, Container>&& ot
         if(pextents.data()!=other.dpextents)
             copy(other.dpextents,other.dpextents+other.dprank,begin(pextents));
 
-        if(pextents.data()!=other.dpstrides)
+        if(pstrides.data()!=other.dpstrides)
             copy(other.dpstrides,other.dpstrides+other.dprank,begin(pstrides));
     }
     this->dpextents = pextents.data();
@@ -387,61 +362,72 @@ mdspan<T, Container>& mdspan<T, Container>::operator=( mdspan<T, Container>&& ot
     mapping_manager=std::move(other.mapping_manager);
 
     p_has_offloaded_host_data  = other.p_has_offloaded_host_data;
-    this->devptr_devicenum    = other.devptr_devicenum;
-    this->devptr_former_hostptr = other.devptr_former_hostptr;
-
-
     other.p_has_offloaded_host_data = false;
+
+
     other.dpdata               = nullptr;
     other.dpstrides            = nullptr;
     other.dpextents            = nullptr;
     other.devptr_former_hostptr=nullptr;
-
+    other.dpconfig.dprowmajor=false;
+    other.dpconfig.data_ondevice=false;
+    other.dpconfig.devicenum = -INT_MAX;
+    other.dpconfig.dpconjugate=false;
     return *this;
 }
 
-
 template<typename T, typename Container>
-mdspan<T, Container>::mdspan(const mdspan<T, Container>& other)
-{
-    // don't take ownership of device memory on copy
+mdspan<T, Container>::mdspan(const mdspan<T, Container>& other) {
     p_has_offloaded_host_data = false;
+    this->dpdata = other.dpdata;
+    this->dpdatalength = other.dpdatalength;
+    this->dprank = other.dprank;
+    this->dpconfig = other.dpconfig;
+    this->devptr_former_hostptr = other.devptr_former_hostptr;
+    this->mapping_manager = other.mapping_manager;
 
-    // shared mapping manager (shared_ptr copy)
-    mapping_manager = other.mapping_manager;
 
-    // copy extents/strides container contents
-    if constexpr (DynamicContainer<Container>)
-    {
+    if constexpr (DynamicContainer<Container>) {
         pextents = other.pextents;
         pstrides = other.pstrides;
     }
-    if constexpr(StaticContainer<Container>)
-    {
-        // only copy actual rank elements
-        if (pextents.data() != other.dpextents)
-            std::copy(other.dpextents, other.dpextents + other.dprank, std::begin(pextents));
-        if (pstrides.data() != other.dpstrides)
-            std::copy(other.dpstrides, other.dpstrides + other.dprank, std::begin(pstrides));
+    if constexpr (StaticContainer<Container>) {
+        if (pextents.data() != other.dpextents) std::copy(other.dpextents, other.dpextents + other.dprank, std::begin(pextents));
+        if (pstrides.data() != other.dpstrides) std::copy(other.dpstrides, other.dpstrides + other.dprank, std::begin(pstrides));
+    }
+
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+}
+
+
+template <typename T, typename Container>
+mdspan<T, Container>::mdspan(const DataBlock<T>& other, const shared_ptr<typename mdspan<T,Container>::DevicemappingManager>& m) {
+    p_has_offloaded_host_data = false;
+    this->dpdata = other.dpdata;
+    this->dpdatalength = other.dpdatalength;
+    this->dprank = other.dprank;
+    this->dpconfig = other.dpconfig;
+    this->devptr_former_hostptr = other.devptr_former_hostptr;
+    this->mapping_manager = m;
+
+
+    if constexpr (DynamicContainer<Container>) {
+        if (pextents.size() != other.dprank) pextents.resize(other.dprank);
+        if (pstrides.size() != other.dprank) pstrides.resize(other.dprank);
+    }
+
+    if (pextents.data() != other.dpextents) {
+        std::copy(other.dpextents, other.dpextents + other.dprank, std::begin(pextents));
+    }
+    if (pstrides.data() != other.dpstrides) {
+        std::copy(other.dpstrides, other.dpstrides + other.dprank, std::begin(pstrides));
     }
 
 
-    // update raw pointers used by base DataBlock
-    this->dpextents  = pextents.data();
-    this->dpstrides  = pstrides.data();
-
-    // copy the underlying pointer/metadata (shallow copy of host/device pointer)
-    this->dpdata           = other.dpdata;
-    this->dpdatalength     = other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dprank           = other.dprank;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->devptr_devicenum=other.devptr_devicenum;
-    this->devptr_former_hostptr=other.devptr_former_hostptr;
-    this->pconjugate=other.pconjugate;
-
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
 }
-
 
 
 template <typename T, typename Container>
@@ -450,10 +436,9 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
 
     this->dpdata           = other.dpdata;
     this->dpdatalength      =other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-    this->pconjugate=other.pconjugate;
-    this->dprank=other.dprank;
+    this->dprank            =other.dprank;
+    this->dpconfig          =other.dpconfig;
+    this->devptr_former_hostptr  = other.devptr_former_hostptr;
 
     if constexpr (DynamicContainer<Container>)
     {
@@ -466,7 +451,7 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
         if(pextents.data()!=other.dpextents)
             copy(other.dpextents,other.dpextents+other.dprank,begin(pextents));
 
-        if(pextents.data()!=other.dpstrides)
+        if(pstrides.data()!=other.dpstrides)
             copy(other.dpstrides,other.dpstrides+other.dprank,begin(pstrides));
     }
 
@@ -477,65 +462,16 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
 
 
     p_has_offloaded_host_data  = other.p_has_offloaded_host_data;
-    this->devptr_devicenum    = other.devptr_devicenum;
-    this->devptr_former_hostptr  = other.devptr_former_hostptr;
-
 
     other.p_has_offloaded_host_data = false;
     other.dpdata               = nullptr;
     other.dpstrides            = nullptr;
     other.dpextents            = nullptr;
     other.devptr_former_hostptr=nullptr;
-
-
-
-}
-
-
-
-template <typename T, typename Container>
-mdspan<T, Container>::mdspan(const DataBlock<T>&other,const shared_ptr<mdspan<T,Container>::DevicemappingManager>&m )
-{
-
-    p_has_offloaded_host_data = false;
-
-    this->dpdata           = other.dpdata;
-    this->dpdatalength      =other.dpdatalength;
-    this->dprowmajor       = other.dprowmajor;
-    this->dpdata_is_devptr = other.dpdata_is_devptr;
-
-    this->dprank=other.dprank;
-this->pconjugate=other.pconjugate;
-
-    if(pextents.size()!=other.dprank)
-        if constexpr (DynamicContainer<Container>)
-            pextents.resize(other.dprank);
-
-    if(pextents.data()!=other.dpextents)
-        copy(other.dpextents,other.dpextents+other.dprank,begin(pextents));
-
-    if(pstrides.size()!=other.dprank)
-        if constexpr (DynamicContainer<Container>)
-            pstrides.resize(other.dprank);
-
-    if(pextents.data()!=other.dpstrides)
-        copy(other.dpstrides,other.dpstrides+other.dprank,begin(pstrides));
-
-
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
-
-
-    mapping_manager=m;
-
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
-
-
-    p_has_offloaded_host_data  = false;
-
-    this->devptr_devicenum    = other.devptr_devicenum;
-    this->devptr_former_hostptr  = other.devptr_former_hostptr;
+    other.dpconfig.dprowmajor=false;
+    other.dpconfig.data_ondevice=false;
+    other.dpconfig.devicenum = -INT_MAX;
+    other.dpconfig.dpconjugate=false;
 
 
 }
@@ -577,78 +513,67 @@ T mdspan<T, Container>::operator()(const Container& indices)const
     {
         offset += indices[i] * this->dpstrides[i];
     }
+    if constexpr (is_complex<T>::value)
+    {
+        if (this->dpconfig.dpconjugate)
+        {
+            return std::conj( this->dpdata[offset]);
+        }
+    }
 
     return this->dpdata[offset];
 }
 
 
-template <typename Container>
-void compute_strides(const Container& extents, Container& strides,const bool rowmajor)
+template <typename T, typename Container>
+void mdspan<T, Container>::compute_initialize_strides(const Container& extents,const bool rowmajor)
 {
     const size_t n = extents.size();
     if (n == 0) return;
 
     if constexpr (StaticContainer<Container>)
     {
-        strides = {}; // Default-initialize static container
+        pstrides = {}; // Default-initialize static container
     }
 
     if constexpr (DynamicContainer<Container>)
     {
-        strides.resize(n); // Resize dynamic container
+        pstrides.resize(n); // Resize dynamic container
     }
     if(n==1)
     {
-        strides[0]=1;
+        pstrides[0]=1;
         return;
     }
 
     if (rowmajor)
     {
-
-        // Row-major layout: last dimension has stride 1
-        strides[n - 1] = 1;
+        pstrides[n - 1] = 1;
         #pragma omp unroll partial
-        for (int i =(int) n - 2; i > 0; --i)
+        for (int i =(int) n - 2; i >= 0; --i)
         {
-            strides[i] = strides[i + 1] * extents[i + 1];
+            pstrides[i] = pstrides[i + 1] * extents[i + 1];
         }
-        strides[0] = strides[1] * extents[1];
+
     }
     else
     {
-        // Column-major layout: first dimension has stride 1
-        strides[0] = 1;
+
+        pstrides[0] = 1;
         #pragma omp unroll partial
         for (size_t i = 1; i < n; ++i)
         {
-            strides[i] = strides[i - 1] * extents[i - 1];
+            pstrides[i] = pstrides[i - 1] * extents[i - 1];
         }
     }
+    this->dpstrides = pstrides.data();
+
 }
 
 template <typename T, typename Container>
 void mdspan<T, Container>::initialize_extents_and_strides(const Container& extents, const Container& strides)
 {
     const size_t r = extents.size();
-    allocate_extents_and_strides(r);
-
-    #pragma omp simd
-    for (size_t i = 0; i < r; ++i)
-    {
-        pextents[i] = extents[i];
-        pstrides[i] = strides[i];
-    }
-    // Assign to DataBlock
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
-
-}
-
-
-template <typename T, typename Container>
-void mdspan<T, Container>::allocate_extents_and_strides(size_t r)
-{
 
     if constexpr (StaticContainer<Container>)
     {
@@ -661,11 +586,19 @@ void mdspan<T, Container>::allocate_extents_and_strides(size_t r)
         pextents.resize(r);
         pstrides.resize(r);
     }
-    this->dpstrides=pstrides.data();
-    this->dpextents=pextents.data();
+
+
+    #pragma omp simd
+    for (size_t i = 0; i < r; ++i)
+    {
+        pextents[i] = extents[i];
+        pstrides[i] = strides[i];
+    }
+    this->dpextents = pextents.data();
+    this->dpstrides = pstrides.data();
+
 
 }
-
 
 
 template <typename T, typename Container>
@@ -682,20 +615,18 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
         pextents.resize(r);
 
     }
-
     #pragma omp simd
     for (size_t i = 0; i < r; ++i)
     {
         pextents[i] = extents[i];
     }
-    // Assign to DataBlock
     this->dpextents = pextents.data();
 }
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const  bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :DataBlock<T>(data,datalength,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum,conjugate)
+mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container& extents, const Container& strides,const DataBlockConfig  config)
+    :DataBlock<T>(data,datalength,extents.size(),nullptr,nullptr, config)
 {
     initialize_extents_and_strides(extents,strides);
 }
@@ -703,8 +634,8 @@ mdspan<T, Container>::mdspan(T* data, const  size_t datalength, const Container&
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    : DataBlock<T>(data, 0,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
+mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config)
+    : DataBlock<T>(data, 0,extents.size(),nullptr,nullptr,config)
 {
     initialize_extents_and_strides(extents,strides);
     this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
@@ -713,75 +644,15 @@ mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container&
 
 
 template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data, const  Container& extents,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :  DataBlock<T>(data,0,rowm,extents.size(),nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
+mdspan<T, Container>::mdspan(T* data, const  Container& extents,const DataBlockConfig  config)
+    :  DataBlock<T>(data,0,extents.size(),nullptr,nullptr,  config)
 {
     initialize_extents(extents);
-    compute_strides(pextents,pstrides,rowm);
-    this->dpstrides = pstrides.data();
+    compute_initialize_strides(pextents,config.dprowmajor);
     this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
 }
 
 
-
-
-
-
-
-template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,  const size_t rows, const size_t cols,const bool rowm,bool dpdata_is_devptr,int devnum, bool conjugate)
-    :  DataBlock<T>(data,0,rowm,2,nullptr,nullptr,dpdata_is_devptr,devnum, conjugate)
-{
-
-    const size_t r=2;
-    if constexpr (StaticContainer<Container>)
-    {
-        pextents = {}; // Default-initialize static container
-    }
-
-    if constexpr (DynamicContainer<Container>)
-    {
-        pextents.resize(r); // Resize dynamic container
-    }
-    // Resize and copy extents from container
-
-    pextents[0]=rows;
-    pextents[1]=cols;
-    compute_strides(pextents,pstrides,rowm);
-
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
-    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
-}
-
-
-
-template <typename T, typename Container>
-mdspan<T, Container>::mdspan(T* data,  const size_t rows,const bool rowm,bool dpdata_is_devptr,int devnum,bool conjugate)
-    :  DataBlock<T>(data,0,rowm,1,nullptr,nullptr,dpdata_is_devptr,devnum,conjugate)
-{
-    const size_t s=1;
-    if constexpr (StaticContainer<Container>)
-    {
-        pextents = {}; // Default-initialize static container
-        pstrides={};
-    }
-
-    if constexpr (DynamicContainer<Container>)
-    {
-        pextents.resize(s);
-        pstrides.resize(s);
-    }
-    // Resize and copy extents from container
-
-    pextents[0]=rows;
-    pstrides[0]=s;
-
-
-    this->dpextents = pextents.data();
-    this->dpstrides = pstrides.data();
-    this->dpdatalength=rows;
-}
 
 
 template <typename T, typename Container>inline
@@ -792,7 +663,7 @@ bool mdspan<T, Container>:: device_data_upload(bool default_device,int devicenum
         devicenum=omp_get_default_device();
     if(devicenum>=omp_get_num_devices()) return false;
 
-    if(this->dpdata_is_devptr && devicenum==this->devptr_devicenum )return false;
+    if(this->dpconfig.data_ondevice && devicenum==this->dpconfig.devicenum )return false;
 
     if(mapping_manager==nullptr)
     {
@@ -815,7 +686,7 @@ bool mdspan<T, Container>:: device_data_alloc(bool default_device,int devicenum)
         devicenum=omp_get_default_device();
     if(devicenum>=omp_get_num_devices()) return false;
 
-    if(this->dpdata_is_devptr && devicenum==this->devptr_devicenum )return false;
+    if(this->dpconfig.data_ondevice && devicenum==this->dpconfig.devicenum)return false;
 
     if(mapping_manager==nullptr)
         mapping_manager = std::make_shared<DevicemappingManager>();
@@ -834,7 +705,7 @@ bool mdspan<T, Container>:: device_data_download_release()
 
     if(!p_has_offloaded_host_data)return false;
     if(mapping_manager==nullptr) return false;
-    if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
+    if(!mapping_manager->remove(this->dpconfig.devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
     GPU_Memory_Functions::copy_data_to_host_set_host_ptr(*this);
@@ -853,7 +724,7 @@ bool mdspan<T, Container>:: device_data_release()
     if(!p_has_offloaded_host_data)return false;
     if(mapping_manager==nullptr) return false;
 
-    if(!mapping_manager->remove(this->devptr_devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
+    if(!mapping_manager->remove(this->dpconfig.devicenum, (intptr_t)this->devptr_former_hostptr, (intptr_t)(this->devptr_former_hostptr+this->dpdatalength)))
         return false;
 
     GPU_Memory_Functions::free_device_data_set_host_ptr(*this);
@@ -865,7 +736,7 @@ bool mdspan<T, Container>:: device_data_release()
 template <typename T, typename Container>inline
 bool mdspan<T, Container>:: host_data_update()
 {
-    if(!this->dpdata_is_devptr)return false;
+    if(!this->dpconfig.data_ondevice)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
     GPU_Memory_Functions::copy_data_to_host_ptr(*this);
@@ -875,7 +746,7 @@ bool mdspan<T, Container>:: host_data_update()
 template <typename T, typename Container>inline
 bool mdspan<T, Container>:: device_data_update()
 {
-    if(!this->dpdata_is_devptr)return false;
+    if(!this->dpconfig.data_ondevice)return false;
     if(this->devptr_former_hostptr==nullptr)return false;
 
     GPU_Memory_Functions::copy_data_to_device_ptr(*this);
@@ -883,18 +754,6 @@ bool mdspan<T, Container>:: device_data_update()
 
 }
 
-template <typename T, typename Container>
-mdspan<T,std::vector<size_t>>  mdspan<T, Container>::collapsed_view()
-{
-    size_t num_dims = this->count_noncollapsed_dims();
-    size_t *tempext=new size_t[num_dims],
-           *tempstr=new size_t[num_dims];
-    mdspan<T, std::vector<size_t>> result(this->collapsed_view(num_dims,tempext, tempstr),mapping_manager);
-    delete []tempext;
-    delete []tempstr;
-    return result;
-
-}
 
 
 
