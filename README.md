@@ -47,6 +47,10 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 24.07.2026
+
+replaced the bool fields in the datablock, mdspan,mdspan_data constructors with structs to make code more readable and initialization less dangerous.
+fixed bugs in the copy and move operators, constructors in mdspan and mdspan_data
 
 ### 08.07.2026
 
