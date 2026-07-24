@@ -51,6 +51,8 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 replaced the bool fields in the datablock, mdspan,mdspan_data constructors with structs to make code more readable and initialization less dangerous.
 fixed bugs in the copy and move operators, constructors in mdspan and mdspan_data
+the operator() of mdspan also respects the conjugate flag now
+the example programs were made a bit more instructive
 
 ### 08.07.2026
 
