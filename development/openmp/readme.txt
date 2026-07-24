@@ -6,6 +6,10 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+24.07.2026
+replaced the bool fields in the datablock, mdspan,mdspan_data constructors with structs to make code more readable,
+fixed bugs in copy and move operators in mdspan and mdspan_data
+
 08.07.2026
 added a utilities class for the modification of matrices and tensors, made the syntax of the classes simpler. note that there are changes in the arguments of the datablock constructor. This structure should now allow it to add more functions to the library more easily.
 added fixes that the lu,qr and cholesky decomposition, as well as the strassen algorithm variants check if the input matrices were conjugated
