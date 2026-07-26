@@ -177,9 +177,10 @@ int main(int argc, char** argv)
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
 
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,false,true,  omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,false,true,  omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,false,true, omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}  ,&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
         block3.print();
@@ -189,13 +190,13 @@ int main(int argc, char** argv)
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
             cout<<"Matrix C\n";
             A1copy.print();
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy,false);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
         if(block1.local_blocknumber()>0)
@@ -301,9 +302,9 @@ endofblock:
 
         DistributedDataBlock<std::complex<double>> block1,block2,block3;
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,false,true,  omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,false,true,  omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,false,true, omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
         block3.print();
@@ -313,13 +314,13 @@ endofblock:
         Math_Functions_MPI::conjugate(block3);
         DataBlock<std::complex<double>> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
             cout<<"Matrix C\n";
             A1copy.print();
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy,false);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
         if(block1.local_blocknumber()>0)
@@ -411,9 +412,9 @@ endofblock:
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block1,false,true, omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block2,false,true, omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block3,false,true, omp_get_default_device(),&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
 
@@ -428,14 +429,14 @@ endofblock:
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
             cout<<"scalarproduct result: "<< result<<"\n";
             cout<<"result of vector operation\n";
             A1copy.print();
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy,false);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
         if(block1.local_blocknumber()>0)
@@ -525,9 +526,9 @@ endofblock:
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block1,false,true, omp_get_default_device(), &ctx,&policy,rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block2,false,true, omp_get_default_device(), &ctx,&policy,rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block3,false,true,omp_get_default_device(), &ctx,&policy,rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &C1:nullptr);
 
         block1.print();
         block2.print();
@@ -536,12 +537,12 @@ endofblock:
         block3.print();
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,rank==rootrank? &A1copy:nullptr,  false, false, -INT_MAX);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
             A1copy.print();
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy,false);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
         if(block1.local_blocknumber()>0)
@@ -623,15 +624,15 @@ endofblock:
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
-        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,false, true,omp_get_default_device(), &ctx,&policy,rootrank,rank==rootrank?&A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank?&A1:nullptr);
         block.print();
 
         DataBlock<double> A1copy;
-        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,rank==rootrank?&A1copy:nullptr,  false, false, -INT_MAX);
+        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank?&A1copy:nullptr);
         if(rank==rootrank)
         {
             A1copy.print();
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy,false);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
         if(block.local_blocknumber()>0)
