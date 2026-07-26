@@ -51,15 +51,15 @@ public:
     template<typename U, typename Container>
     friend class ::mdspan_data;
 
-    BlockedDataView(const DataBlock<T>& db, const size_t* bshape, bool remove_zeroblocks)
+    BlockedDataView(const DataBlock<T>& db, const ptrdiff_t* bshape, bool remove_zeroblocks)
         :DataBlock<T>(db)
     {
-        block_shape=new size_t[this->dprank];
+        block_shape=new ptrdiff_t[this->dprank];
         #pragma omp simd
-        for (size_t i=0; i<this->dprank; i++)
+        for (ptrdiff_t i=0; i<this->dprank; i++)
             block_shape[i]=bshape[i];
 
-        offsets_starts_is_devptr=(this->dpconfig.data_ondevice &&omp_is_initial_device());
+        offsets_starts_is_devptr=(this->dpconfig.data_is_devptr &&omp_is_initial_device());
 
         if(offsets_starts_is_devptr)
             devnum=this->dpconfig.devicenum;
@@ -103,46 +103,46 @@ public:
 
 
 protected:
-    size_t* block_shape;
-    size_t* pooled_offsets_flat;
-    size_t* pooled_offsets_starts;
-    size_t usedblocks=0;
+    ptrdiff_t* block_shape;
+    ptrdiff_t* pooled_offsets_flat;
+    ptrdiff_t* pooled_offsets_starts;
+    ptrdiff_t usedblocks=0;
     bool offsets_starts_is_devptr=false;
     int  devnum=-INT_MAX;
 
 
 
-    void build_blocks_rank1(size_t block_size, bool remove_zeroblocks)
+    void build_blocks_rank1(ptrdiff_t block_size, bool remove_zeroblocks)
     {
-        const size_t nblocks = (this->dpextents[0] + block_size - 1) / block_size;
+        const ptrdiff_t nblocks = (this->dpextents[0] + block_size - 1) / block_size;
 
         pooled_offsets_flat = offsets_starts_is_devptr
-                              ? (size_t*)omp_target_alloc(sizeof(size_t) * nblocks,devnum)
-                              : new size_t[nblocks];
+                              ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * nblocks,devnum)
+                              : new ptrdiff_t[nblocks];
 
         pooled_offsets_starts = offsets_starts_is_devptr
-                                ? (size_t*)omp_target_alloc(sizeof(size_t) * (nblocks + 1),devnum)
-                                : new size_t[nblocks + 1];
+                                ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * (nblocks + 1),devnum)
+                                : new ptrdiff_t[nblocks + 1];
 
-        size_t count = 0;
-        size_t ext0=this->dpextents[0] ;
+        ptrdiff_t count = 0;
+        ptrdiff_t ext0=this->dpextents[0] ;
 
         const T* pd=this->dpdata;
         if(offsets_starts_is_devptr)
         {
             #pragma omp target teams distribute parallel for map (tofrom: count)is_device_ptr(pd) device(devnum)
-            for (size_t bi = 0; bi < nblocks; ++bi)
+            for (ptrdiff_t bi = 0; bi < nblocks; ++bi)
             {
-                const size_t offset = bi * block_size;
-                const size_t diff   = ext0- offset;
-                const size_t len    = (block_size < diff) ? block_size : diff;
+                const ptrdiff_t offset = bi * block_size;
+                const ptrdiff_t diff   = ext0- offset;
+                const ptrdiff_t len    = (block_size < diff) ? block_size : diff;
 
                 bool keep = true;
 
                 if (remove_zeroblocks)
                 {
                     keep = false;
-                    for (size_t i = 0; i < len; ++i)
+                    for (ptrdiff_t i = 0; i < len; ++i)
                     {
                         if (pd[offset + i] != T(0))
                         {
@@ -154,7 +154,7 @@ protected:
 outofloop1:
                 if (keep)
                 {
-                    size_t slot;
+                    ptrdiff_t slot;
                     #pragma omp atomic capture
                     slot = count++;
                     {
@@ -164,7 +164,7 @@ outofloop1:
                 }
             }
 
-            omp_target_memcpy(pooled_offsets_starts,&count,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device()); // sentinel
+            omp_target_memcpy(pooled_offsets_starts,&count,sizeof(ptrdiff_t),sizeof(ptrdiff_t)*count,0,devnum,omp_get_initial_device()); // sentinel
             usedblocks = count;
         }
 
@@ -172,18 +172,18 @@ outofloop1:
         {
 
             #pragma omp parallel for
-            for (size_t bi = 0; bi < nblocks; ++bi)
+            for (ptrdiff_t bi = 0; bi < nblocks; ++bi)
             {
-                const size_t offset = bi * block_size;
-                const size_t diff   = ext0- offset;
-                const size_t len    = (block_size < diff) ? block_size : diff;
+                const ptrdiff_t offset = bi * block_size;
+                const ptrdiff_t diff   = ext0- offset;
+                const ptrdiff_t len    = (block_size < diff) ? block_size : diff;
 
                 bool keep = true;
 
                 if (remove_zeroblocks)
                 {
                     keep = false;
-                    for (size_t i = 0; i < len; ++i)
+                    for (ptrdiff_t i = 0; i < len; ++i)
                     {
                         if (pd[offset + i] != T(0))
                         {
@@ -197,7 +197,7 @@ outofloop1:
 outofloop2:
                 if (keep)
                 {
-                    size_t slot;
+                    ptrdiff_t slot;
                     #pragma omp atomic capture
                     slot = count++;
                     {
@@ -214,50 +214,50 @@ outofloop2:
     }
 
 
-    void build_blocks_rank2(const size_t block_rows,const size_t block_cols,const bool remove_zeroblocks)
+    void build_blocks_rank2(const ptrdiff_t block_rows,const ptrdiff_t block_cols,const bool remove_zeroblocks)
     {
-        const size_t nblocks_row = (this->dpextents[0] + block_rows - 1) / block_rows;
-        const size_t nblocks_col = (this->dpextents[1] + block_cols - 1) / block_cols;
-        const size_t maxblocks   = nblocks_row * nblocks_col;
+        const ptrdiff_t nblocks_row = (this->dpextents[0] + block_rows - 1) / block_rows;
+        const ptrdiff_t nblocks_col = (this->dpextents[1] + block_cols - 1) / block_cols;
+        const ptrdiff_t maxblocks   = nblocks_row * nblocks_col;
 
         pooled_offsets_flat = offsets_starts_is_devptr
-                              ? (size_t*)omp_target_alloc(sizeof(size_t) * 2 * maxblocks, devnum)
-                              : new size_t[2 * maxblocks];
+                              ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * 2 * maxblocks, devnum)
+                              : new ptrdiff_t[2 * maxblocks];
 
         pooled_offsets_starts = offsets_starts_is_devptr
-                                ? (size_t*)omp_target_alloc(sizeof(size_t) * (maxblocks + 1),devnum)
-                                : new size_t[maxblocks + 1];
+                                ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * (maxblocks + 1),devnum)
+                                : new ptrdiff_t[maxblocks + 1];
 
-        size_t count  = 0; // block count
-        const size_t ext0=this->dpextents[0];
-        const size_t ext1=this->dpextents[1];
-        const size_t str0=this->dpstrides[0];
-        const size_t str1=this->dpstrides[1];
+        ptrdiff_t count  = 0; // block count
+        const ptrdiff_t ext0=this->dpextents[0];
+        const ptrdiff_t ext1=this->dpextents[1];
+        const ptrdiff_t str0=this->dpstrides[0];
+        const ptrdiff_t str1=this->dpstrides[1];
         const T* pd=this->dpdata;
 
         if(offsets_starts_is_devptr)
         {
             #pragma omp target teams distribute parallel for collapse(2) map(tofrom:count) is_device_ptr(pd) device(devnum)
-            for (size_t bi = 0; bi < nblocks_row; ++bi)
+            for (ptrdiff_t bi = 0; bi < nblocks_row; ++bi)
             {
-                for (size_t bj = 0; bj < nblocks_col; ++bj)
+                for (ptrdiff_t bj = 0; bj < nblocks_col; ++bj)
                 {
-                    const size_t row_off = bi * block_rows;
-                    const size_t diff1   = ext0 - row_off;
-                    const size_t tile_rows = (block_rows < diff1) ? block_rows : diff1;
+                    const ptrdiff_t row_off = bi * block_rows;
+                    const ptrdiff_t diff1   = ext0 - row_off;
+                    const ptrdiff_t tile_rows = (block_rows < diff1) ? block_rows : diff1;
 
 
 
-                    const size_t col_off = bj * block_cols;
-                    const size_t diff2   = ext1 - col_off;
-                    const size_t tile_cols = (block_cols < diff2) ? block_cols : diff2;
+                    const ptrdiff_t col_off = bj * block_cols;
+                    const ptrdiff_t diff2   = ext1 - col_off;
+                    const ptrdiff_t tile_cols = (block_cols < diff2) ? block_cols : diff2;
                     bool keep = true;
                     if (remove_zeroblocks)
                     {
                         keep = false;
-                        for (size_t i = 0; i < tile_rows && !keep; ++i)
+                        for (ptrdiff_t i = 0; i < tile_rows && !keep; ++i)
                         {
-                            for (size_t j = 0; j < tile_cols && !keep; ++j)
+                            for (ptrdiff_t j = 0; j < tile_cols && !keep; ++j)
                             {
                                 if (pd[(row_off + i) * str0 + (col_off + j) *str1] != T(0))
                                 {
@@ -270,11 +270,11 @@ outofloop2:
 outofloop3:
                     if (keep)
                     {
-                        size_t slot;
+                        ptrdiff_t slot;
                         #pragma omp atomic capture
                         slot = count++;
                         {
-                        size_t pos = slot * 2;
+                        ptrdiff_t pos = slot * 2;
                         pooled_offsets_starts[slot] = pos;
                         pooled_offsets_flat[pos]    = row_off;
                         pooled_offsets_flat[pos+1]  = col_off;
@@ -285,30 +285,30 @@ outofloop3:
                 }
             }
 
-            size_t count2=2*count;
-            omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device()); // sentinel
+            ptrdiff_t count2=2*count;
+            omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(ptrdiff_t),sizeof(ptrdiff_t)*count,0,devnum,omp_get_initial_device()); // sentinel
             usedblocks = count;
         }
         else
         {
             #pragma omp parallel for collapse(2)
-            for (size_t bi = 0; bi < nblocks_row; ++bi)
+            for (ptrdiff_t bi = 0; bi < nblocks_row; ++bi)
             {
-                for (size_t bj = 0; bj < nblocks_col; ++bj)
+                for (ptrdiff_t bj = 0; bj < nblocks_col; ++bj)
                 {
-                    const size_t row_off = bi * block_rows;
-                    const size_t diff1   = ext0 - row_off;
-                    const size_t tile_rows = (block_rows < diff1) ? block_rows : diff1;
+                    const ptrdiff_t row_off = bi * block_rows;
+                    const ptrdiff_t diff1   = ext0 - row_off;
+                    const ptrdiff_t tile_rows = (block_rows < diff1) ? block_rows : diff1;
                     bool keep = true;
-                    const size_t col_off = bj * block_cols;
-                    const size_t diff2   = ext1 - col_off;
-                    const size_t tile_cols = (block_cols < diff2) ? block_cols : diff2;
+                    const ptrdiff_t col_off = bj * block_cols;
+                    const ptrdiff_t diff2   = ext1 - col_off;
+                    const ptrdiff_t tile_cols = (block_cols < diff2) ? block_cols : diff2;
 
                     if (remove_zeroblocks)
                     {
                         keep = false;
-                        for (size_t i = 0; i < tile_rows && !keep; ++i)
-                            for (size_t j = 0; j < tile_cols && !keep; ++j)
+                        for (ptrdiff_t i = 0; i < tile_rows && !keep; ++i)
+                            for (ptrdiff_t j = 0; j < tile_cols && !keep; ++j)
                                 if (pd[(row_off + i) * str0 + (col_off + j) *str1] != T(0))
                                 {
                                     keep = true;
@@ -318,11 +318,11 @@ outofloop3:
 outofloop4:
                     if (keep)
                     {
-                        size_t slot;
+                        ptrdiff_t slot;
                         #pragma omp atomic capture
                         slot = count++;
                         {
-                        const size_t pos = slot * 2;
+                        const ptrdiff_t pos = slot * 2;
                         pooled_offsets_starts[slot] = pos;
                         pooled_offsets_flat[pos]    = row_off;
                         pooled_offsets_flat[pos+1]  = col_off;
@@ -336,14 +336,14 @@ outofloop4:
         }
     }
 
-    bool is_nonzero_block(const size_t* block_shape,
-                          const size_t* block_idx,
-                          const size_t* tile_extents,
-                          const size_t rank)
+    bool is_nonzero_block(const ptrdiff_t* block_shape,
+                          const ptrdiff_t* block_idx,
+                          const ptrdiff_t* tile_extents,
+                          const ptrdiff_t rank)
     {
-        size_t* idx=new size_t[rank];
+        ptrdiff_t* idx=new ptrdiff_t[rank];
         #pragma omp simd
-        for(size_t i=0; i<rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             idx[i]=0;
 
 
@@ -352,22 +352,22 @@ outofloop4:
        return b;
     }
 
-    bool check_nonzero_recursive(const  size_t*  block_shape,
-                                 const  size_t*  block_idx,
-                                 const  size_t*  tile_extents,
-                                 const size_t rank,
-                                 const size_t dim,
-                                  size_t*  idx)
+    bool check_nonzero_recursive(const  ptrdiff_t*  block_shape,
+                                 const  ptrdiff_t*  block_idx,
+                                 const  ptrdiff_t*  tile_extents,
+                                 const ptrdiff_t rank,
+                                 const ptrdiff_t dim,
+                                  ptrdiff_t*  idx)
     {
 
         if (dim == rank)
         {
 
-            size_t linear = 0;
+            ptrdiff_t linear = 0;
             #pragma omp simd reduction(+:linear)
-            for (size_t d = 0; d < rank; ++d)
+            for (ptrdiff_t d = 0; d < rank; ++d)
             {
-                const size_t global_coord = block_idx[d] * block_shape[d] + idx[d];
+                const ptrdiff_t global_coord = block_idx[d] * block_shape[d] + idx[d];
                 linear += global_coord * this->dpstrides[d];
             }
 
@@ -379,7 +379,7 @@ outofloop4:
 
             return d != T(0);
         }
-        for (size_t i = 0; i < tile_extents[dim]; ++i)
+        for (ptrdiff_t i = 0; i < tile_extents[dim]; ++i)
         {
             idx[dim] = i;
             if (check_nonzero_recursive(block_shape, block_idx, tile_extents, rank, dim+1, idx))
@@ -388,48 +388,48 @@ outofloop4:
         return false;
     }
 
-    void build_blocks_arbitrary_rank(const  size_t*  bshape,const bool remove_zeroblocks)
+    void build_blocks_arbitrary_rank(const  ptrdiff_t*  bshape,const bool remove_zeroblocks)
     {
-        const size_t r = this->dprank;
+        const ptrdiff_t r = this->dprank;
 
-        size_t* nblocks_dim = new size_t[r];
-        size_t maxblocks = 1;
+        ptrdiff_t* nblocks_dim = new ptrdiff_t[r];
+        ptrdiff_t maxblocks = 1;
 
         #pragma omp unroll partial
-        for (size_t d = 0; d < r; ++d)
+        for (ptrdiff_t d = 0; d < r; ++d)
         {
             nblocks_dim[d] = (this->dpextents[d] + bshape[d] - 1) / bshape[d];
             maxblocks *= nblocks_dim[d];
         }
 
         pooled_offsets_flat = offsets_starts_is_devptr
-                              ? (size_t*)omp_target_alloc(sizeof(size_t) * r * maxblocks, devnum)
-                              : new size_t[r * maxblocks];
+                              ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * r * maxblocks, devnum)
+                              : new ptrdiff_t[r * maxblocks];
 
         pooled_offsets_starts =offsets_starts_is_devptr
-                               ? (size_t*)omp_target_alloc(sizeof(size_t) * (maxblocks + 1), devnum)
-                               : new size_t[maxblocks + 1];
+                               ? (ptrdiff_t*)omp_target_alloc(sizeof(ptrdiff_t) * (maxblocks + 1), devnum)
+                               : new ptrdiff_t[maxblocks + 1];
 
 
-        size_t* idx = new size_t[r];
+        ptrdiff_t* idx = new ptrdiff_t[r];
         #pragma omp simd
-        for (size_t d = 0; d < r; ++d)
+        for (ptrdiff_t d = 0; d < r; ++d)
             idx[d] = 0;
 
-        size_t count  = 0;
-        size_t count2 = 0;
+        ptrdiff_t count  = 0;
+        ptrdiff_t count2 = 0;
 
         while (true)
         {
             bool keep = true;
             if (remove_zeroblocks)
             {
-                size_t* tile_extents = new size_t[r];
+                ptrdiff_t* tile_extents = new ptrdiff_t[r];
                 #pragma omp simd
-                for (size_t d = 0; d < r; ++d)
+                for (ptrdiff_t d = 0; d < r; ++d)
                 {
-                    const size_t offset = idx[d] * bshape[d];
-                    const size_t diff   = this->dpextents[d] - offset;
+                    const ptrdiff_t offset = idx[d] * bshape[d];
+                    const ptrdiff_t diff   = this->dpextents[d] - offset;
                     tile_extents[d]     = (bshape[d] < diff) ? bshape[d] : diff;
                 }
                 keep = is_nonzero_block(bshape, idx, tile_extents, r);
@@ -440,12 +440,12 @@ outofloop4:
             {
                 if(offsets_starts_is_devptr)
                 {
-                    omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device());
+                    omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(ptrdiff_t),sizeof(ptrdiff_t)*count,0,devnum,omp_get_initial_device());
                     #pragma omp unroll partial
-                    for (size_t d = 0; d < r; ++d)
+                    for (ptrdiff_t d = 0; d < r; ++d)
                     {
-                        size_t u= idx[d] * bshape[d];
-                        omp_target_memcpy(pooled_offsets_flat,&u,sizeof(size_t),sizeof(size_t)*count2,0,devnum,omp_get_initial_device());
+                        ptrdiff_t u= idx[d] * bshape[d];
+                        omp_target_memcpy(pooled_offsets_flat,&u,sizeof(ptrdiff_t),sizeof(ptrdiff_t)*count2,0,devnum,omp_get_initial_device());
                     }
                     ++count2;
                     ++count;
@@ -455,14 +455,14 @@ outofloop4:
                 {
                     pooled_offsets_starts[count] = count2;
                     #pragma omp unroll partial
-                    for (size_t d = 0; d < r; ++d)
+                    for (ptrdiff_t d = 0; d < r; ++d)
                         pooled_offsets_flat[count2++] = idx[d] * bshape[d];
                     ++count;
                 }
             }
 
 
-            size_t dim = 0;
+            ptrdiff_t dim = 0;
             for (; dim < r; ++dim)
             {
                 idx[dim]++;
@@ -473,7 +473,7 @@ outofloop4:
             if (dim == r) break;
         }
         if(offsets_starts_is_devptr)
-            omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(size_t),sizeof(size_t)*count,0,devnum,omp_get_initial_device());
+            omp_target_memcpy(pooled_offsets_starts,&count2,sizeof(ptrdiff_t),sizeof(ptrdiff_t)*count,0,devnum,omp_get_initial_device());
         else
             pooled_offsets_starts[count] = count2;
         usedblocks = count;

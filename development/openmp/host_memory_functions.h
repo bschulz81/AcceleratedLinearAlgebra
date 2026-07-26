@@ -9,23 +9,25 @@ class Host_Memory_Functions
 {
 public:
     template<typename T>
-    inline static void free_copy(DataBlock<T>&m, bool with_memmap);
+    inline static void free_copy(DataBlock<T>&m);
     template<typename T>
-    inline static DataBlock<T> alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap,bool conjugate);
+    inline static DataBlock<T> alloc_data_copy_strides_extents(ptrdiff_t datalength, ptrdiff_t rank, ptrdiff_t*extents,ptrdiff_t *strides,  DataBlockConfig conf);
     template<typename T>
-    inline static T*  alloc_data_ptr(size_t length,bool create_memmap);
+    inline static DataBlock<T> alloc_data_strides_extents(ptrdiff_t datalength, ptrdiff_t rank, ptrdiff_t*extents,ptrdiff_t *strides,  DataBlockConfig conf);
     template<typename T>
-    inline static void free_data_ptr(T*&pdata,size_t datalength,bool with_memmap);
+    inline static T*  alloc_data_ptr(ptrdiff_t length,bool create_memmap);
     template<typename T>
-    inline static T* create_temp_mmap(const size_t array_size);
+    inline static void free_data_ptr(T*&pdata,ptrdiff_t datalength,bool with_memmap);
     template<typename T>
-    inline static void delete_temp_mmap(T* &mmap_ptr,const size_t array_size);
+    inline static T* create_temp_mmap(const ptrdiff_t array_size);
+    template<typename T>
+    inline static void delete_temp_mmap(T* &mmap_ptr,const ptrdiff_t array_size);
 };
 
 template<typename T>
-T* Host_Memory_Functions::create_temp_mmap(const size_t array_size)
+T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
 {
-    size_t file_size = array_size * sizeof(T);
+    ptrdiff_t file_size = array_size * sizeof(T);
 
     // Create a temporary file using std::tmpfile()
     FILE* tmpf = tmpfile();
@@ -69,9 +71,9 @@ T* Host_Memory_Functions::create_temp_mmap(const size_t array_size)
 }
 
 template<typename T>
-void Host_Memory_Functions::delete_temp_mmap(T* &mmap_ptr,const size_t array_size)
+void Host_Memory_Functions::delete_temp_mmap(T* &mmap_ptr,const ptrdiff_t array_size)
 {
-    size_t file_size = array_size * sizeof(T);
+    ptrdiff_t file_size = array_size * sizeof(T);
     if (mmap_ptr!=nullptr)
     if (munmap(mmap_ptr, file_size) == -1)
     {
@@ -84,7 +86,7 @@ void Host_Memory_Functions::delete_temp_mmap(T* &mmap_ptr,const size_t array_siz
 
 
 template<typename T>
-void Host_Memory_Functions::free_data_ptr(T*&pdata,size_t datalength,bool with_memmap)
+void Host_Memory_Functions::free_data_ptr(T*&pdata,ptrdiff_t datalength,bool with_memmap)
 {
     if(pdata!=nullptr)
     {
@@ -98,7 +100,7 @@ void Host_Memory_Functions::free_data_ptr(T*&pdata,size_t datalength,bool with_m
 
 
 template<typename T>
-T* Host_Memory_Functions::alloc_data_ptr(size_t length,bool create_memmap)
+T* Host_Memory_Functions::alloc_data_ptr(ptrdiff_t length,bool create_memmap)
 {
 
     if (create_memmap)
@@ -110,40 +112,59 @@ T* Host_Memory_Functions::alloc_data_ptr(size_t length,bool create_memmap)
 
 
 template<typename T>
-DataBlock<T> Host_Memory_Functions::alloc_data_copy_strides_extents(size_t datalength,bool rowmajor, size_t rank, size_t*extents,size_t *strides, bool with_memmap,bool conjugate)
+DataBlock<T> Host_Memory_Functions::alloc_data_copy_strides_extents(ptrdiff_t datalength, ptrdiff_t rank, ptrdiff_t*extents,ptrdiff_t *strides,DataBlockConfig conf)
 {
-    size_t*pextents;
-    size_t*pstrides;
+    ptrdiff_t*pextents;
+    ptrdiff_t*pstrides;
     T* pdata;
-    pextents=(size_t*) malloc(sizeof(size_t)*rank);
-    memcpy(pextents,extents,sizeof(size_t)*rank);
+    pextents=(ptrdiff_t*) malloc(sizeof(ptrdiff_t)*rank);
+    memcpy(pextents,extents,sizeof(ptrdiff_t)*rank);
 
-    pstrides=(size_t*) malloc(sizeof(size_t)*rank);
-    memcpy(pstrides,strides,sizeof(size_t)*rank);
+    pstrides=(ptrdiff_t*) malloc(sizeof(ptrdiff_t)*rank);
+    memcpy(pstrides,strides,sizeof(ptrdiff_t)*rank);
 
-    if (with_memmap)
+    if (conf.pmemmap)
         pdata=Host_Memory_Functions::create_temp_mmap<T>(datalength);
     else
         pdata=(T*)omp_alloc(sizeof(T)*datalength,omp_default_mem_alloc);
 
-    DataBlockConfig conf({.dprowmajor=rowmajor,
-                            .data_ondevice=false,
-                            .devicenum=-INT_MAX,
-                            .dpconjugate=conjugate});
+    conf.data_is_devptr=false;
+    conf.devicenum=-INT_MAX;
     return DataBlock<T>(pdata,datalength,rank,pextents,pstrides,conf);
 }
 
 
+template<typename T>
+DataBlock<T> Host_Memory_Functions::alloc_data_strides_extents(ptrdiff_t datalength, ptrdiff_t rank, ptrdiff_t*extents,ptrdiff_t *strides, DataBlockConfig conf)
+{
+    ptrdiff_t*pextents;
+    ptrdiff_t*pstrides;
+    T* pdata;
+    pextents=(ptrdiff_t*) malloc(sizeof(ptrdiff_t)*rank);
+
+    pstrides=(ptrdiff_t*) malloc(sizeof(ptrdiff_t)*rank);
+
+    if (conf.pmemmap)
+        pdata=Host_Memory_Functions::create_temp_mmap<T>(datalength);
+    else
+        pdata=(T*)omp_alloc(sizeof(T)*datalength,omp_default_mem_alloc);
+
+
+    conf.data_is_devptr=false;
+    conf.devicenum=-INT_MAX;
+    return DataBlock<T>(pdata,datalength,rank,pextents,pstrides,conf);
+}
+
 
 template<typename T>
-void Host_Memory_Functions::free_copy(DataBlock<T>&m, bool with_memmap)
+void Host_Memory_Functions::free_copy(DataBlock<T>&m)
 {
     if(m.dpextents!=nullptr)
     free(m.dpextents);
     if(m.dpstrides!=nullptr)
     free(m.dpstrides);
 
-    if (with_memmap)
+    if (m.dpconfig.pmemmap)
         Host_Memory_Functions::delete_temp_mmap(m.dpdata,m.dpdatalength);
     else
         if(m.dpdata!=nullptr)

@@ -21,18 +21,18 @@ int main()
                       15,16,17,18,19,20,21
                      };
 
-            size_t rows=3,cols=7;
+            ptrdiff_t rows=3,cols=7;
             cout<<"with the create_matrix function"<<endl;
-            auto A = mdspan_utilities::create_matrix<double, array<size_t, 2>>(A_data.data(), rows, cols, DataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows, cols, DataBlockConfig{});
 
             cout<<"A"<<endl;
             A.print();
-
+//
             cout<<"with the constructor"<<endl;
-            mdspan<double, std::vector<size_t>>  A3 (A_data.data(), {rows, cols}, DataBlockConfig{});
+            mdspan_t<double, dynamic_tag>  A3 (A_data.data(), {rows, cols}, DataBlockConfig{});
             cout<<"A2"<<endl;
             A3.print();
-
+//
             cout<<"instead of this long designation, there is also a type mdspan_t with a dynamic tag for the vector constructor and a static tag for the array constructor"<<endl;
             mdspan_t<double, dynamic_tag> A4(A_data.data(), {rows, cols}, DataBlockConfig{});
             mdspan_t<double, static_tag<2>> A5(A_data.data(), {rows, cols}, DataBlockConfig{});
@@ -41,19 +41,19 @@ int main()
             cout<<"row 1"<<endl;
             auto Aa=mdspan_utilities::matrix_row(A4,1);
             Aa.print();
-
+//
 
             auto Ab= mdspan_utilities::matrix_subspan(A,1,1,2,4);
             std::cout<<Ab.rank();
             cout<<"matrix_subspanA"<<endl;
             Ab.print();
-
+//
             auto Ae= mdspan_utilities::matrix_transpose(A);
             cout<<"transpose"<<endl;
             Ae.print();
+//
 
-
-
+//
             std::vector<double> data_rowmajor =
             {
 //                 block 0 (first 3x4 matrix)
@@ -66,23 +66,23 @@ int main()
                 21,22,23,24
             };
 //
-            vector<size_t> extents = {2,3,4};
+            vector<ptrdiff_t> extents = {2,3,4};
 
 
-            mdspan<double, std::vector<size_t>> T_row(data_rowmajor.data(), extents,DataBlockConfig{} );
+            mdspan_t<double, dynamic_tag> T_row(data_rowmajor.data(), extents,DataBlockConfig{} );
             cout<<"A tensor"<<endl;
             T_row.print();
 
-            vector<size_t> offsets   = {1,0,0};
-            vector<size_t> sub_extents= {1,3,4};
+            vector<ptrdiff_t> offsets   = {1,0,0};
+            vector<ptrdiff_t> sub_extents= {1,3,4};
             auto  subT_view =mdspan_utilities::tensor_subspan(T_row,offsets, sub_extents);
 
             std::cout << "Subtensor view (row-major):\n";
             subT_view.print();
 
-            size_t num_dims = DataBlockUtilities::count_noncollapsed_dims(subT_view);
-            size_t* extentsA = new size_t[num_dims];
-            size_t* stridesA = new size_t[num_dims];
+            ptrdiff_t num_dims = DataBlockUtilities::count_noncollapsed_dims(subT_view);
+            ptrdiff_t * extentsA = new ptrdiff_t[num_dims];
+            ptrdiff_t* stridesA = new ptrdiff_t[num_dims];
 
             DataBlock<double> coll=DataBlockUtilities::collapsed_view(subT_view,num_dims,extentsA, stridesA);
             std::cout<<"with collapsed dims"<<endl;
@@ -144,8 +144,9 @@ int main()
                 7, 14, 21
             };
 
-            auto B=mdspan_utilities::create_matrix<double, std::vector<size_t>>(B_data_colmajor.data(), rows, cols,
-                    DataBlockConfig{.dprowmajor = false});
+
+            auto B = mdspan_utilities::create_matrix<double, dynamic_tag>(B_data_colmajor.data(), rows, cols, DataBlockConfig{.dprowmajor = false});
+
             cout<<"B"<<endl;
             B.print();
 
@@ -190,11 +191,11 @@ int main()
                 12,24
             };
 
-            vector<size_t> extentsC = {2,3,4};
+            vector<ptrdiff_t> extentsC = {2,3,4};
 
-            mdspan<double, std::vector<size_t>> T_col(data_colmajor.data(),extentsC,DataBlockConfig{.dprowmajor = false});
-            vector<size_t> offsetsC     = {1,0,0};
-            vector<size_t> sub_extentsC = {1,3,4};
+            mdspan_t<double, dynamic_tag> T_col(data_colmajor.data(),extentsC,DataBlockConfig{.dprowmajor = false});
+            vector<ptrdiff_t> offsetsC     = {1,0,0};
+            vector<ptrdiff_t> sub_extentsC = {1,3,4};
             cout <<"Rank"<<T_col.rank()<<endl;
             auto subC_view =mdspan_utilities::tensor_subspan(T_col,offsetsC, sub_extentsC);
             std::cout << "Subtensor view (col-major):\n";
@@ -210,17 +211,18 @@ int main()
 
         {
 
-
+//
             vector<double>A_data(3*7,0);
             A_data = {1,2,3,4,5,6,7,
                       8,9,10,11,12,13,14,
                       15,16,17,18,19,20,21
                      };
 
-            size_t rows=3,cols=7;
+            ptrdiff_t rows=3,cols=7;
 
             cout<<"now rowmajordata on a memmap on harddrive, creation with factory function"<<endl;
-            auto mdspan_data_matrix = mdspan_utilities::create_matrix<double, array<size_t, 2>>(rows, cols, ManagedDataBlockConfig{.memmap=true});
+            auto mdspan_data_matrix = mdspan_utilities::create_matrix<double,static_tag<2>>(rows, cols, ManagedDataBlockConfig{.memmap=true});
+
             cout<<"the utility function created an empty matrix. We fill it now by copying in the data field"<<endl;
 
             std::copy(begin(A_data),end(A_data),mdspan_data_matrix.data());
@@ -228,7 +230,7 @@ int main()
 
 
             cout<<"creation with the constructor"<<endl;
-            mdspan_data <double, std::vector<size_t>>  mdspan_data_matrix2 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
+            mdspan_data_t <double, dynamic_tag>  mdspan_data_matrix2 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
             cout<<"the constructor created an empty matrix. We fill it now by copying in the data field"<<endl;
             std::copy(begin(A_data),end(A_data),mdspan_data_matrix2.data());
             mdspan_data_matrix2.print();
@@ -239,38 +241,17 @@ int main()
             mdspan_data_t <double, dynamic_tag>  mdspan_data_matrix3 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
             mdspan_data_t <double,static_tag<2>>  mdspan_data_matrix4 ({rows, cols}, ManagedDataBlockConfig{.memmap=true});
 
+//
 
-            cout<<"mdspan_data row copy"<<endl;
-            auto rowcopy=mdspan_utilities::matrix_row_copy(mdspan_data_matrix,1);
-            rowcopy.print();
-            cout <<"rank:" <<rowcopy.rank();
 
-            cout<<"mdspan_data column copy"<<endl;
-            auto columncopy=mdspan_utilities::matrix_column_copy(mdspan_data_matrix,1);
-            columncopy.print();
-            cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            auto transposecopy=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrix,true);
-            transposecopy.print();
 
-            cout<<"mdspan_data matrix_subspan copy on memory"<<endl;
-            auto matrix_subspancopy=mdspan_utilities::matrix_subspan_copy(mdspan_data_matrix,1,2,2,2,false);
-            matrix_subspancopy.print();
 
-            cout<<"mdspan_data matrix_subspan copy on a memmap"<<endl;
-            array<size_t,2>offs= {1,2};
-            array<size_t,2>sub_extents= {2,2};
-            auto subspan=mdspan_utilities::tensor_subspan_copy(mdspan_data_matrix,offs,sub_extents,false);
-            subspan.print();
             cout<<"copy of mdspan on device";
-            auto newcopy=mdspan_data_matrix.copy(false,true,true,0);
+            auto newcopy=mdspan_data_matrix.copy(ManagedDataBlockConfig{.data_ondevice=true,});
 
             newcopy.print();
 
-            cout<<"mdspan_data matrix_subspan copy on device"<<endl;
-
-            auto newcopy_subspan=mdspan_utilities::matrix_subspan_copy(newcopy,1,2,2,2,false);
-            newcopy_subspan.print();
-            cout<<"verify that the copy has data on device "<<newcopy_subspan.data_is_devptr()<<endl;
+            cout<<"verify that the copy has data on device "<<newcopy.data_is_devptr()<<endl;
 
 
             cout<<"define a tensor"<<endl;
@@ -286,22 +267,16 @@ int main()
                 21,22,23,24
             };
 
-            vector<size_t> extents2 = {2,3,4};
+            vector<ptrdiff_t> extents2 = {2,3,4};
 
             cout<<"We write the tensor as a memmap with rowmajor data"<<endl;
-            mdspan_data<double, std::vector<size_t>> Tensor(extents2, ManagedDataBlockConfig{.memmap=true});
+            mdspan_data_t<double,dynamic_tag> Tensor(extents2, ManagedDataBlockConfig{.memmap=true});
             std::copy(begin(data_rowmajor),end(data_rowmajor),Tensor.data());
             cout<<"A tensor"<<endl;
 
             Tensor.print();
-            vector<size_t> offsets1   = {1,0,0};
-            vector<size_t> sub_extents1= {1,3,4};
-
-            cout<<"now an mdspan_data subtensor"<<endl;
-            auto subtensor =mdspan_utilities::tensor_subspan_copy(Tensor,offsets1, sub_extents1);
-            subtensor.print();
-
-
+            vector<ptrdiff_t> offsets1   = {1,0,0};
+            vector<ptrdiff_t> sub_extents1= {1,3,4};
 
 
             cout<<"now an mdspan subtensor, which only shallow copies"<<endl;
@@ -340,23 +315,22 @@ int main()
 
 
             cout<<"We test the same tensor as column major data"<<endl;
-            size_t rowsB=3,colsB=7;
-            auto mdspan_data_matrixB=mdspan_utilities::create_matrix<double,array<size_t,2>> ( rowsB, colsB,  ManagedDataBlockConfig({.dprowmajor=false}));
+            ptrdiff_t rowsB=3,colsB=7;
+            auto mdspan_data_matrixB=mdspan_utilities::create_matrix<double,static_tag<2>> ( rowsB, colsB,  ManagedDataBlockConfig({.dprowmajor=false}));
 
             std::copy(begin(B_data_colmajor),end(B_data_colmajor),mdspan_data_matrixB.data());
             cout<<"mdspan_data matrix with the data of the Matrix B (A in colmajor)"<<endl;
             mdspan_data_matrixB.print();
-            cout<<"mdspan_data row copy"<<endl;
-            auto rowcopyB=mdspan_utilities::matrix_row_copy(mdspan_data_matrixB,1);
-            rowcopyB.print();
-            cout <<"rank:" <<rowcopyB.rank();
 
-            cout<<"mdspan_data column copy"<<endl;
-            auto columncopyB=mdspan_utilities::matrix_column_copy(mdspan_data_matrixB,1);
-            columncopyB.print();
-            cout<<"mdspan_data transpose copy on a memmap"<<endl;
-            auto transposecopyB=mdspan_utilities::matrix_transpose_copy(mdspan_data_matrixB,true);
-            transposecopyB.print();
+
+            cout<<"mdspan_data transpose"<<endl;
+            auto transpose=mdspan_utilities::matrix_transpose(mdspan_data_matrixB);
+            transpose.print();
+
+            cout<<"copy of a view of mdspan_data with help of a constructor";
+            mdspan_data_t<double,dynamic_tag>newcopy(transpose,ManagedDataBlockConfig{.memmap=false,.data_ondevice=true});
+
+            newcopy.print();
 
         }
     }
