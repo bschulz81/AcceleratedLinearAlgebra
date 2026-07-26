@@ -12,30 +12,30 @@ int main()
 {
 
 
-    size_t M = 8, K = 8, N = 8;
+    ptrdiff_t M = 8, K = 8, N = 8;
     std::vector<double> A(M*K,0), B(K*N,0), C1(M*N,0),C2(M*N,0);
 
     // fill A and B with simple values
-    for (size_t i =0; i < M*K; ++i) A[i] = i;
-    for (size_t i = 0; i < K*N; ++i) B[i] = i + 1;
+    for (ptrdiff_t i =0; i < M*K; ++i) A[i] = i;
+    for (ptrdiff_t i = 0; i < K*N; ++i) B[i] = i + 1;
 
 
     // wrap dense arrays in DataBlock
-    std::vector<size_t> extA{M,K}, extB{K,N},extC{M,N};
-    std::vector<size_t> stridesA{K,1}, stridesB{N,1}, stridesC{N,1};
+    std::vector<ptrdiff_t> extA{M,K}, extB{K,N},extC{M,N};
+    std::vector<ptrdiff_t> stridesA{K,1}, stridesB{N,1}, stridesC{N,1};
 
     auto Ad=DataBlock<double> (A.data(),M*K,2, extA.data(),stridesA.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
 
 
-    size_t sub_ext[2],sub_strides[2];
+    ptrdiff_t sub_ext[2],sub_strides[2];
     DataBlock<double> A1 = DataBlockUtilities::matrix_subspan(Ad,0, 0, 4, 4, sub_ext, sub_strides);
     DataBlock<double> A2 = DataBlockUtilities::matrix_subspan(Ad,4, 0, 4, 4, sub_ext, sub_strides);
     DataBlock<double> A3 = DataBlockUtilities::matrix_subspan(Ad,0, 4, 4, 4, sub_ext, sub_strides);
     DataBlock<double> A4 = DataBlockUtilities::matrix_subspan(Ad,4, 4, 4, 4, sub_ext, sub_strides);
 
 // fill some blocks (e.g., leave A3 zero)
-    for(size_t i = 0; i < 4; ++i)
-        for(size_t j = 0; j < 4; ++j)
+    for(ptrdiff_t i = 0; i < 4; ++i)
+        for(ptrdiff_t j = 0; j < 4; ++j)
         {
             A1(i,j) = i+i;
             A2(i,j) = i;
@@ -44,7 +44,7 @@ int main()
         }
 
 
-    size_t sub_ext2[2],sub_strides2[2];
+    ptrdiff_t sub_ext2[2],sub_strides2[2];
 
     auto Bd=DataBlock<double> (B.data(),K*N,2, extB.data(),stridesB.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
 
@@ -55,8 +55,8 @@ int main()
     DataBlock<double> B4 =  DataBlockUtilities::matrix_subspan(Bd,4, 4, 4, 4, sub_ext2, sub_strides2);
 
 // fill some blocks (e.g., leave A3 zero)
-    for(size_t i = 0; i < 4; ++i)
-        for(size_t j = 0; j < 4; ++j)
+    for(ptrdiff_t i = 0; i < 4; ++i)
+        for(ptrdiff_t j = 0; j < 4; ++j)
         {
             B1(i,j) = i;
             B2(i,j) = 0;
@@ -77,9 +77,9 @@ cout<<"naive matrix multiplication"<<endl;
     In_Kernel_Mathfunctions::matrix_multiply_dot(Ad, Bd, C1d);
     C1d.print();
 
-    size_t block_shape[2]={2,2};
+    ptrdiff_t block_shape[2]={2,2};
     BlockedDataView<double> Ablocks(Ad, block_shape,true);
-    size_t block_shape2[2]={2,2};
+    ptrdiff_t block_shape2[2]={2,2};
     BlockedDataView<double> Bblocks(Bd, block_shape2,true);
 
 
@@ -93,11 +93,11 @@ cout<<"We now do a sparse multiplication"<<endl;
 cout<<"now an example with sparse matrx multiplication and the mdspan class"<<endl;
 
 
-mdspan<double, std::vector<size_t>> Aspan(A.data(),  {M,K},DataBlockConfig{});
-mdspan<double, std::vector<size_t>> Bspan(B.data(),  {K,N},DataBlockConfig{});
+mdspan<double, std::vector<ptrdiff_t>> Aspan(A.data(),  {M,K},DataBlockConfig{});
+mdspan<double, std::vector<ptrdiff_t>> Bspan(B.data(),  {K,N},DataBlockConfig{});
 
 
-mdspan_data<double, std::vector<size_t>> Cspan({M,N},ManagedDataBlockConfig{});
+mdspan_data<double, std::vector<ptrdiff_t>> Cspan({M,N},ManagedDataBlockConfig{});
 
 cout<<"of course we offload the data first to device"<<endl;
 
@@ -106,8 +106,8 @@ cout<<"did the offload of B work?: "<<Bspan.device_data_upload(true)<<endl;
 cout<<"did the offload of C work?: "<<Cspan.device_data_alloc(true)<<endl;
 
 //cout <<"sparsity "<<Bspan.sparsity()<<endl;
-size_t block_shape3[2]={2,2};
-size_t block_shape4[2]={2,2};
+ptrdiff_t block_shape3[2]={2,2};
+ptrdiff_t block_shape4[2]={2,2};
 BlockedDataView<double> Ablocks1(Aspan, block_shape3,true);
 BlockedDataView<double> Bblocks2(Bspan, block_shape4,true);
 

@@ -54,14 +54,14 @@ class Math_Functions_Policy
     bool update_host = true;
     bool memmapped_files = false;
     bool initialize_output_to_zeros = true;
-    size_t precision=1;
+    ptrdiff_t precision=1;
     int devicenum = omp_get_default_device();
     int num_gpus = 0;
 
-    static constexpr size_t max_problem_size_for_gpu = SIZE_MAX;
-    static constexpr size_t default_cubic_treshold = 256;
-    static constexpr size_t default_square_treshold = 1000;
-    static constexpr size_t default_linear_treshold = 1000000;
+    static constexpr ptrdiff_t max_problem_size_for_gpu = SIZE_MAX;
+    static constexpr ptrdiff_t default_cubic_treshold = 256;
+    static constexpr ptrdiff_t default_square_treshold = 1000;
+    static constexpr ptrdiff_t default_linear_treshold = 1000000;
 
     Math_Functions_Policy(Mode m = AUTO) : mode(m)
     {
@@ -78,8 +78,8 @@ class Math_Functions_Policy
         return (n > 0) ? n : 0;
     }
 
-    bool should_use_gpu(const size_t problem_size,
-                        const size_t threshold,
+    bool should_use_gpu(const ptrdiff_t problem_size,
+                        const ptrdiff_t threshold,
                         const bool any_input_output_on_device)const
     {
         switch (mode)
@@ -98,9 +98,9 @@ class Math_Functions_Policy
     bool should_use_gpu(const DataBlock<T>& A,
                         const  DataBlock<T>& B,
                         const DataBlock<T>& C,
-                        const size_t threshold)const
+                        const ptrdiff_t threshold)const
     {
-        size_t problem_size = A.datalength();
+        ptrdiff_t problem_size = A.datalength();
 
         switch (mode)
         {
@@ -121,9 +121,9 @@ class Math_Functions_Policy
     template <typename T>
     bool should_use_gpu( const DataBlock<T>& v1,
                          const DataBlock<T>& v2,
-                         const size_t threshold)const
+                         const ptrdiff_t threshold)const
     {
-        size_t problem_size = v1.datalength();
+        ptrdiff_t problem_size = v1.datalength();
 
         switch (mode)
         {
@@ -143,9 +143,9 @@ class Math_Functions_Policy
 
     template <typename T>
     bool should_use_gpu( const DataBlock<T>& v1,
-                         const size_t threshold)const
+                         const ptrdiff_t threshold)const
     {
-        size_t problem_size = v1.datalength();
+        ptrdiff_t problem_size = v1.datalength();
 
         switch (mode)
         {

@@ -13,35 +13,41 @@ class mdspan_utilities;
 struct ManagedDataBlockConfig
 {
     bool dprowmajor=true;
+    bool dpconjugate=false;
     bool memmap=false;
     bool data_ondevice=false;
-    bool default_device=false;
+    bool default_device=true;
     int devicenum = -INT_MAX;
-    bool dpconjugate=false;
 
-inline DataBlockConfig Get_DataBlockConfig() const {
-        return DataBlockConfig{
+
+    inline DataBlockConfig Get_DataBlockConfig() const
+    {
+        return DataBlockConfig
+        {
             .dprowmajor    = this->dprowmajor,
-            .data_ondevice = this->data_ondevice,
-            .devicenum     = this->devicenum,
-            .dpconjugate   = this->dpconjugate
+            .dpconjugate   = this->dpconjugate,
+            .pmemmap=this->memmap,
+            .data_is_devptr = this->data_ondevice,
+            .devicenum     = this->devicenum
         };
-}
+    }
 
- inline static ManagedDataBlockConfig SetConfig(bool pmemmap, bool defaultdevice, const DataBlockConfig& config) {
-        return ManagedDataBlockConfig{
+    inline static ManagedDataBlockConfig SetConfig( bool defaultdevice, const DataBlockConfig& config)
+    {
+        return ManagedDataBlockConfig
+        {
             .dprowmajor     = config.dprowmajor,
-            .memmap         = pmemmap,
-            .data_ondevice  = config.data_ondevice,
+            .dpconjugate    = config.dpconjugate,
+            .memmap         =config.pmemmap,
+            .data_ondevice  = config.data_is_devptr,
             .default_device = defaultdevice,
-            .devicenum      = config.devicenum,
-            .dpconjugate    = config.dpconjugate
+            .devicenum      = config.devicenum
         };
     }
 };
 
-template <typename T, typename Container>
-class mdspan_data: public mdspan<T,Container>
+template <typename T,typename Container>
+class mdspan_data : public mdspan<T,Container>
 {
 public:
 
@@ -50,7 +56,7 @@ public:
     mdspan_data() {};
 
 
-    mdspan_data(size_t datalength, const Container& extents, const Container& strides,ManagedDataBlockConfig config);
+    mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides,ManagedDataBlockConfig config);
 
     mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockConfig config);
 
@@ -59,10 +65,10 @@ public:
     mdspan_data( const DataBlock<T>& view, ManagedDataBlockConfig alloc_config) ;
 
     mdspan_data(const mdspan_data<T, Container>& other);
-   mdspan_data<T, Container>&operator=(const mdspan_data<T,Container> & other);
+    mdspan_data<T, Container>&operator=(const mdspan_data<T,Container> & other);
 
     mdspan_data(mdspan_data<T, Container>&& other) noexcept;
-      mdspan_data<T, Container>& operator=( mdspan_data<T, Container>&& other) noexcept;
+    mdspan_data<T,Container>& operator=( mdspan_data<T, Container>&& other) noexcept;
 
 
 
@@ -72,22 +78,26 @@ public:
 
     using DataBlock<T>::operator=;
 
-    mdspan_data<T, Container> copy( bool memmap=false, bool ondevice=false,bool defaultdevice=true,int devicenum=0);
+    mdspan_data<T,Container> copy( ManagedDataBlockConfig config);
 
     void release_all_data();
 protected:
     std::atomic<int>* p_ref_count = nullptr;
-    bool pmemmap=false;
     void initialization_helper(const ManagedDataBlockConfig& config);
 };
 
+
 template<typename T, typename Tag>
-using mdspan_data_t = mdspan_data<T, typename container_for_tag<Tag>::type>;
+using mdspan_data_t =
+    mdspan_data<
+        T,
+        typename container_selector<Tag>::template container<ptrdiff_t>>;
+
 
 template <typename T, typename Container>
 void mdspan_data<T,Container>::initialization_helper(const ManagedDataBlockConfig& config)
 {
-    this->pmemmap = config.memmap;
+    this->dpconfig.pmemmap = config.memmap;
     this->p_has_offloaded_host_data = false;
 
     this->dpconfig= config.Get_DataBlockConfig();
@@ -102,7 +112,7 @@ void mdspan_data<T,Container>::initialization_helper(const ManagedDataBlockConfi
         else
             this->dpdata = new T[this->dpdatalength]();
 
-        this->dpconfig.data_ondevice = false;
+        this->dpconfig.data_is_devptr = false;
 #else
         if (config.default_device)
         {
@@ -110,18 +120,20 @@ void mdspan_data<T,Container>::initialization_helper(const ManagedDataBlockConfi
         }
         this->dpdata = GPU_Memory_Functions::alloc_device_ptr<T>(this->dpdatalength, target_device);
         this->dpconfig.devicenum = target_device;
-        this->dpconfig.data_ondevice = true;
+        this->dpconfig.data_is_devptr = true;
         this->devptr_former_hostptr = nullptr;
 #endif
     }
     else
     {
         if (config.memmap)
+        {
             this->dpdata = Host_Memory_Functions::create_temp_mmap<T>(this->dpdatalength);
+        }
         else
             this->dpdata = new T[this->dpdatalength]();
 
-        this->dpconfig.data_ondevice = false;
+        this->dpconfig.data_is_devptr = false;
     }
 
     p_ref_count = new std::atomic<int>(1);
@@ -129,7 +141,7 @@ void mdspan_data<T,Container>::initialization_helper(const ManagedDataBlockConfi
 
 
 template <typename T, typename Container>
-mdspan_data<T,Container>::mdspan_data(size_t datalength, const Container& extents, const Container& strides, ManagedDataBlockConfig config)
+mdspan_data<T,Container>::mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides, ManagedDataBlockConfig config)
     : mdspan<T,Container>(nullptr, extents, strides, config)
 {
     initialization_helper(config);
@@ -151,8 +163,8 @@ mdspan_data<T,Container>::mdspan_data(const Container& extents, ManagedDataBlock
 
 
 
-template <typename T, typename Container>
-void mdspan_data<T, Container>::release_all_data()
+template <typename T,typename Container>
+void mdspan_data<T,Container>::release_all_data()
 {
     if (p_ref_count)
     {
@@ -165,7 +177,7 @@ void mdspan_data<T, Container>::release_all_data()
                 this->device_data_release();
             }
 
-            else if (this->dpconfig.data_ondevice)
+            else if (this->dpconfig.data_is_devptr)
             {
                 if (this->dpdata != nullptr)
                 {
@@ -175,7 +187,7 @@ void mdspan_data<T, Container>::release_all_data()
             }
             if (this->dpdata != nullptr)
             {
-                if (this->pmemmap)
+                if (this->dpconfig.pmemmap)
                 {
                     Host_Memory_Functions::delete_temp_mmap(this->dpdata, this->dpdatalength);
                 }
@@ -192,31 +204,42 @@ void mdspan_data<T, Container>::release_all_data()
     }
 }
 
-template <typename T, typename Container>
-mdspan_data<T, Container>::~mdspan_data()
+template <typename T,typename Container>
+mdspan_data<T,Container>::~mdspan_data()
 {
     release_all_data();
 }
 
 template <typename T, typename Container>
-mdspan_data<T, Container>::mdspan_data( const DataBlock<T>& view,
-                                        ManagedDataBlockConfig alloc_config)
+mdspan_data<T,Container>::mdspan_data( const DataBlock<T>& view,
+        ManagedDataBlockConfig alloc_config)
 {
-    // 1. Synchronize basic memory configuration states
-    this->dpconfig = alloc_config.Get_DataBlockConfig();
-    this->pmemmap = alloc_config.memmap;
+
+    this->dpconfig.dprowmajor = view.dpconfig.dprowmajor;
+    this->dpconfig.dpconjugate = view.dpconfig.dpconjugate;
+
+    this->dpconfig.pmemmap = alloc_config.data_ondevice? false: alloc_config.memmap;
+    this->dpconfig.data_is_devptr = alloc_config.data_ondevice;
+    this->dpconfig.devicenum =alloc_config.default_device? omp_get_default_device(): alloc_config.devicenum;
     this->p_has_offloaded_host_data = false;
-    this->dpdatalength = view.datalength();
-    this->dprank = view.rank();
+    this->dpdatalength = view.dpdatalength;
+    this->dprank = view.dprank;
 
     if constexpr (StaticContainer<Container>)
     {
         this->pextents = {};
+    }
+    if constexpr (StaticContainer<Container>)
+    {
         this->pstrides = {};
     }
 
-    if constexpr (DynamicContainer<Container>) {
+    if constexpr (DynamicContainer<Container>)
+    {
         this->pextents.resize(this->dprank);
+    }
+    if constexpr (DynamicContainer<Container>)
+    {
         this->pstrides.resize(this->dprank);
     }
 
@@ -229,35 +252,44 @@ mdspan_data<T, Container>::mdspan_data( const DataBlock<T>& view,
 
 
     int target_device = alloc_config.devicenum;
-    if (alloc_config.data_ondevice && alloc_config.default_device) {
+
+    if (alloc_config.data_ondevice && alloc_config.default_device)
+    {
         target_device = omp_get_default_device();
     }
 
-
-    if (alloc_config.data_ondevice) {
+    if (alloc_config.data_ondevice)
+    {
 #if defined(Unified_Shared_Memory)
         if (alloc_config.memmap)
             this->dpdata = Host_Memory_Functions::create_temp_mmap<T>(this->dpdatalength);
         else
             this->dpdata = new T[this->dpdatalength]();
-        this->dpconfig.data_ondevice = false;
+        this->dpconfig.data_is_devptr = false;
 #else
         this->dpdata = GPU_Memory_Functions::alloc_device_ptr<T>(this->dpdatalength, target_device);
         this->dpconfig.devicenum = target_device;
-        this->dpconfig.data_ondevice = true;
+        this->dpconfig.data_is_devptr = true;
         this->devptr_former_hostptr = nullptr;
 #endif
-    } else {
+    }
+    else
+    {
         if (alloc_config.memmap)
+        {
             this->dpdata = Host_Memory_Functions::create_temp_mmap<T>(this->dpdatalength);
+        }
+
+
         else
             this->dpdata = new T[this->dpdatalength]();
-        this->dpconfig.data_ondevice = false;
+        this->dpconfig.data_is_devptr = false;
     }
 
 
-    if (this->dpconfig.data_ondevice) {
-        int source_device = view.config().data_ondevice ? view.config().devicenum : omp_get_initial_device();
+    if (this->dpconfig.data_is_devptr)
+    {
+        int source_device = view.dpconfig.data_is_devptr ? view.dpconfig.devicenum : omp_get_initial_device();
         omp_target_memcpy(
             this->dpdata,
             view.data(),
@@ -266,7 +298,9 @@ mdspan_data<T, Container>::mdspan_data( const DataBlock<T>& view,
             target_device,
             source_device
         );
-    } else {
+    }
+    else
+    {
         memcpy(this->dpdata, view.data(), sizeof(T) * this->dpdatalength);
     }
 
@@ -275,43 +309,35 @@ mdspan_data<T, Container>::mdspan_data( const DataBlock<T>& view,
 }
 
 template <typename T, typename Container>
-mdspan_data<T, Container> mdspan_data<T, Container>::copy(bool memmap, bool ondevice, bool defaultdevice, int devicenum)
+mdspan_data<T,Container> mdspan_data<T,Container>::copy(  ManagedDataBlockConfig alloc_config)
 {
-    if(defaultdevice)
-        devicenum = omp_get_default_device();
-
-    ManagedDataBlockConfig cfg = ManagedDataBlockConfig{
-        .dprowmajor=this->dpconfig.dprowmajor,
-        .memmap = memmap ,
-                                                        .data_ondevice=ondevice,
-                                                        .devicenum = devicenum,
-                                                        .dpconjugate=this->dpconfig.dpconjugate};
-
-
-
-    mdspan_data<T, Container> result(this->pextents, this->pstrides, cfg);
 
     int targetdev, sourcedev;
     bool useomptargetmemcpy = false;
 
-    if(ondevice && this->dpconfig.data_ondevice)
+    if(alloc_config.data_ondevice && this->dpconfig.data_is_devptr)
     {
-        targetdev = devicenum;
+        targetdev = alloc_config.default_device?omp_get_default_device(): alloc_config.devicenum;
         sourcedev = this->dpconfig.devicenum;
         useomptargetmemcpy = true;
     }
-    else if(ondevice && !this->dpconfig.data_ondevice)
+    else if(alloc_config.data_ondevice && !this->dpconfig.data_is_devptr)
     {
-        targetdev = devicenum;
+        targetdev =  alloc_config.default_device?omp_get_default_device(): alloc_config.devicenum;
         sourcedev = omp_get_initial_device();
         useomptargetmemcpy = true;
     }
-    else if(!ondevice && this->dpconfig.data_ondevice)
+    else if(!alloc_config.data_ondevice && this->dpconfig.data_is_devptr)
     {
         targetdev = omp_get_initial_device();
         sourcedev = this->dpconfig.devicenum;
         useomptargetmemcpy = true;
     }
+
+    alloc_config.dpconjugate=this->dpconfig.dpconjugate;
+    alloc_config.dprowmajor=this->dpconfig.dprowmajor;
+
+    mdspan_data<T,Container> result(this->pextents, this->pstrides, alloc_config);
 
     if(useomptargetmemcpy)
         omp_target_memcpy(result.dpdata, this->dpdata, sizeof(T) * this->dpdatalength, 0, 0, targetdev, sourcedev);
@@ -324,7 +350,7 @@ mdspan_data<T, Container> mdspan_data<T, Container>::copy(bool memmap, bool onde
 
 
 template <typename T, typename Container>
-mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(const mdspan_data<T,Container>& other)
+mdspan_data<T,Container>& mdspan_data<T, Container>::operator=(const mdspan_data<T,Container>& other)
 {
     if(this->dpdata != other.dpdata)
     {
@@ -355,8 +381,8 @@ mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(const mdspan_dat
 }
 
 template<typename T, typename Container>
-mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
-    : mdspan<T, Container>(other),
+mdspan_data<T,Container>::mdspan_data(const mdspan_data<T,Container>& other)
+    : mdspan<T,Container>(other),
       p_ref_count(other.p_ref_count)
 {
 
@@ -367,7 +393,7 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
     this->devptr_former_hostptr = other.devptr_former_hostptr;
 
 
-    this->pmemmap = other.pmemmap;
+    this->memmap = other.memmap;
     this->p_has_offloaded_host_data = false;
 
 
@@ -380,7 +406,7 @@ mdspan_data<T, Container>::mdspan_data(const mdspan_data<T, Container>& other)
 
 
 template<typename T, typename Container>
-mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, Container>&& other) noexcept
+mdspan_data<T,Container>& mdspan_data<T, Container>::operator=(mdspan_data<T,Container>&& other) noexcept
 {
     if (this != &other)
     {
@@ -393,15 +419,21 @@ mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, C
         this->dpconfig = other.dpconfig;
         this->devptr_former_hostptr = other.devptr_former_hostptr;
 
-
         if constexpr (DynamicContainer<Container>)
         {
             this->pextents = std::move(other.pextents);
+        }
+        if constexpr (DynamicContainer<Container>)
+        {
             this->pstrides = std::move(other.pstrides);
         }
-        else
+
+        if constexpr (StaticContainer<Container>)
         {
             this->pextents = other.pextents;
+        }
+        if constexpr (StaticContainer<Container>)
+        {
             this->pstrides = other.pstrides;
         }
 
@@ -412,7 +444,7 @@ mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, C
 
         this->p_has_offloaded_host_data = other.p_has_offloaded_host_data;
         this->mapping_manager = std::move(other.mapping_manager);
-        this->pmemmap = other.pmemmap;
+        this->dpconfig.pmemmap = other.dpconfig.pmemmap;
         this->p_ref_count = other.p_ref_count;
 
 
@@ -423,7 +455,7 @@ mdspan_data<T, Container>& mdspan_data<T, Container>::operator=(mdspan_data<T, C
 
         other.dpconfig = DataBlockConfig{};
         other.p_has_offloaded_host_data = false;
-        other.pmemmap = false;
+        other.dpconfig.pmemmap = false;
         other.p_ref_count = nullptr;
     }
     return *this;

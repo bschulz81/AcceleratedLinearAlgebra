@@ -14,15 +14,15 @@ enum class OpenMPVariant
 
 #pragma omp begin declare target
 template <OpenMPVariant variant = OpenMPVariant::Sequential>
-inline size_t compute_offset(const size_t *  indices,
-                             const size_t*  strides,
-                             const size_t rank)
+inline ptrdiff_t compute_offset(const ptrdiff_t *  indices,
+                             const ptrdiff_t*  strides,
+                             const ptrdiff_t rank)
 {
-    size_t offset = 0;
+    ptrdiff_t offset = 0;
     if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd reduction(+ : offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * strides[i];
         }
@@ -30,7 +30,7 @@ inline size_t compute_offset(const size_t *  indices,
     else if constexpr (variant == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(+ : offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * strides[i];
         }
@@ -38,7 +38,7 @@ inline size_t compute_offset(const size_t *  indices,
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * strides[i];
         }
@@ -52,20 +52,20 @@ inline size_t compute_offset(const size_t *  indices,
 
 #pragma omp begin declare target
 template <OpenMPVariant variant = OpenMPVariant::Sequential>
-inline size_t compute_offset(const size_t*  indices,
-                               const size_t*  strides_buffer,
-                               const size_t rank,
-                               const size_t blocknumber)
+inline ptrdiff_t compute_offset(const ptrdiff_t*  indices,
+                               const ptrdiff_t*  strides_buffer,
+                               const ptrdiff_t rank,
+                               const ptrdiff_t blocknumber)
 {
 
-    const size_t* block_strides = strides_buffer + (blocknumber * rank);
+    const ptrdiff_t* block_strides = strides_buffer + (blocknumber * rank);
 
-    size_t offset = 0;
+    ptrdiff_t offset = 0;
 
     if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd reduction(+ : offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * block_strides[i];
         }
@@ -73,7 +73,7 @@ inline size_t compute_offset(const size_t*  indices,
     else if constexpr (variant == OpenMPVariant::Simd)
     {
         #pragma omp  simd reduction(+ : offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * block_strides[i];
         }
@@ -81,7 +81,7 @@ inline size_t compute_offset(const size_t*  indices,
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += indices[i] * block_strides[i];
         }
@@ -95,13 +95,13 @@ inline size_t compute_offset(const size_t*  indices,
 
 #pragma omp begin declare target
 template <OpenMPVariant variant = OpenMPVariant::Sequential>
-inline size_t compute_data_length(const size_t*  extents, const size_t*  strides,const size_t rank)
+inline ptrdiff_t compute_data_length(const ptrdiff_t*  extents, const ptrdiff_t*  strides,const ptrdiff_t rank)
 {
-    size_t offset=0;
+    ptrdiff_t offset=0;
     if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd reduction(+:offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += (extents[i]-1) * strides[i];
         }
@@ -109,7 +109,7 @@ inline size_t compute_data_length(const size_t*  extents, const size_t*  strides
     else if constexpr (variant == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(+:offset)
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += (extents[i]-1) * strides[i];
         }
@@ -117,7 +117,7 @@ inline size_t compute_data_length(const size_t*  extents, const size_t*  strides
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < rank; ++i)
+        for (ptrdiff_t i = 0; i < rank; ++i)
         {
             offset += (extents[i]-1) * strides[i];
         }
@@ -129,14 +129,14 @@ inline size_t compute_data_length(const size_t*  extents, const size_t*  strides
 
 
 #pragma omp begin declare target
-inline bool is_row_major(const size_t*extents, const size_t* strides, const size_t rank)
+inline bool is_row_major(const ptrdiff_t*extents, const ptrdiff_t* strides, const ptrdiff_t rank)
 {
-    size_t expected = 1;
-    for (size_t i = 0; i < rank; ++i)
+    ptrdiff_t expected = 1;
+    for (ptrdiff_t i = 0; i < rank; ++i)
     {
-        if (extents[i] == 1)
+        if (extents[i] <= 1)
             continue;
-        if (strides[i] != expected)
+        if (abs(strides[i]) != expected)
             return false;
         expected *= extents[i];
     }

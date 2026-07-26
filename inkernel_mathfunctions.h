@@ -109,10 +109,10 @@ public:
     inline static  void matrix_vector_multiply_sparse(const BlockedDataView<T>& A, const BlockedDataView<T>& x, DataBlock<T>& y,bool initialize_output_to_zero=true);
 
     template <typename T>
-    inline static T kahan_sum(const T *arr,size_t n);
+    inline static T kahan_sum(const T *arr,ptrdiff_t n);
 
     template <typename T>
-    inline static T neumaier_sum(const T*arr,size_t n);
+    inline static T neumaier_sum(const T*arr,ptrdiff_t n);
 };
 #pragma omp end declare target
 
@@ -120,38 +120,38 @@ public:
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse(  const BlockedDataView<T>& A, const BlockedDataView<T>& x,  DataBlock<T>& y,bool initialize_to_zero)
 {
-    const size_t mblocks = A.usedblocks;
-    const size_t nblocks = x.usedblocks;
+    const ptrdiff_t mblocks = A.usedblocks;
+    const ptrdiff_t nblocks = x.usedblocks;
 
-    const size_t Ablock_rows = A.block_shape[0];
-    const size_t Ablock_cols = A.block_shape[1];
-    const size_t Xblock_size = x.block_shape[0];
+    const ptrdiff_t Ablock_rows = A.block_shape[0];
+    const ptrdiff_t Ablock_cols = A.block_shape[1];
+    const ptrdiff_t Xblock_size = x.block_shape[0];
 
 
-    const size_t aext0 = A.dpextents[0];
-    const size_t aext1 = A.dpextents[1];
-    const size_t xext  = x.dpextents[0];
+    const ptrdiff_t aext0 = A.dpextents[0];
+    const ptrdiff_t aext1 = A.dpextents[1];
+    const ptrdiff_t xext  = x.dpextents[0];
 
-    const size_t ystr0 = y.dpstrides[0];
+    const ptrdiff_t ystr0 = y.dpstrides[0];
 
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for simd
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
         else  if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp  simd
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
         else
         {
             #pragma omp  unroll partial
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
     }
@@ -160,42 +160,42 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse(  const BlockedDataV
     {
 
         #pragma omp parallel for collapse(2)
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
-                const size_t a_start = A.pooled_offsets_starts[ia];
-                const size_t* a_off  = A.pooled_offsets_flat + a_start;
+                const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+                const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-                const size_t a_row_off = a_off[0];
-                const size_t a_col_off = a_off[1];
+                const ptrdiff_t a_row_off = a_off[0];
+                const ptrdiff_t a_col_off = a_off[1];
 
-                const size_t a_rem_rows = aext0 - a_row_off;
-                const size_t a_rem_cols = aext1 - a_col_off;
+                const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+                const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-                const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-                const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+                const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+                const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
 
-                const size_t x_start = x.pooled_offsets_starts[jb];
-                const size_t* x_off  = x.pooled_offsets_flat + x_start;
+                const ptrdiff_t x_start = x.pooled_offsets_starts[jb];
+                const ptrdiff_t* x_off  = x.pooled_offsets_flat + x_start;
 
-                const size_t x_off0 = x_off[0];
-                const size_t x_rem  = xext - x_off0;
-                const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+                const ptrdiff_t x_off0 = x_off[0];
+                const ptrdiff_t x_rem  = xext - x_off0;
+                const ptrdiff_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
 
-                const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
-                const size_t a= a_col_off + a_tile_cols;
-                const size_t b=x_off0 + x_tile;
-                const size_t k_end   =(a<b)?a:b;
+                const ptrdiff_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+                const ptrdiff_t a= a_col_off + a_tile_cols;
+                const ptrdiff_t b=x_off0 + x_tile;
+                const ptrdiff_t k_end   =(a<b)?a:b;
 
                 if (k_start >= k_end) continue;
 
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
+                    const ptrdiff_t global_i = a_row_off + ii;
                     T sum = 0;
                     #pragma omp simd reduction(+:sum)
-                    for (size_t kk = k_start; kk < k_end; ++kk)
+                    for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                     {
 
                         sum += A(global_i,kk)* x(kk);
@@ -211,43 +211,43 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse(  const BlockedDataV
     {
 
 
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            const size_t a= a_col_off + a_tile_cols;
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a= a_col_off + a_tile_cols;
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
 
 
-                const size_t x_start = x.pooled_offsets_starts[jb];
-                const size_t* x_off  = x.pooled_offsets_flat + x_start;
+                const ptrdiff_t x_start = x.pooled_offsets_starts[jb];
+                const ptrdiff_t* x_off  = x.pooled_offsets_flat + x_start;
 
-                const size_t x_off0 = x_off[0];
-                const size_t x_rem  = xext - x_off0;
-                const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+                const ptrdiff_t x_off0 = x_off[0];
+                const ptrdiff_t x_rem  = xext - x_off0;
+                const ptrdiff_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
 
-                const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+                const ptrdiff_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
 
-                const size_t b=x_off0 + x_tile;
-                const size_t k_end   =(a<b)?a:b;
+                const ptrdiff_t b=x_off0 + x_tile;
+                const ptrdiff_t k_end   =(a<b)?a:b;
 
                 if (k_start >= k_end) continue;
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
+                    const ptrdiff_t global_i = a_row_off + ii;
                     T sum = 0;
                     #pragma omp simd reduction(+:sum)
-                    for (size_t kk = k_start; kk < k_end; ++kk)
+                    for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                     {
 
                         sum += A(global_i,kk)* x(kk);
@@ -260,44 +260,44 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse(  const BlockedDataV
     else
     {
 
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            const size_t a= a_col_off + a_tile_cols;
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a= a_col_off + a_tile_cols;
 
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
 
 
-                const size_t x_start = x.pooled_offsets_starts[jb];
-                const size_t* x_off  = x.pooled_offsets_flat + x_start;
+                const ptrdiff_t x_start = x.pooled_offsets_starts[jb];
+                const ptrdiff_t* x_off  = x.pooled_offsets_flat + x_start;
 
-                const size_t x_off0 = x_off[0];
-                const size_t x_rem  = xext - x_off0;
-                const size_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
+                const ptrdiff_t x_off0 = x_off[0];
+                const ptrdiff_t x_rem  = xext - x_off0;
+                const ptrdiff_t x_tile = (Xblock_size < x_rem) ? Xblock_size : x_rem;
 
-                const size_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
+                const ptrdiff_t k_start = (a_col_off> x_off0) ? a_col_off:x_off0;
 
-                const size_t b=x_off0 + x_tile;
-                const size_t k_end   =(a<b)?a:b;
+                const ptrdiff_t b=x_off0 + x_tile;
+                const ptrdiff_t k_end   =(a<b)?a:b;
 
                 if (k_start >= k_end) continue;
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
+                    const ptrdiff_t global_i = a_row_off + ii;
                     T sum = 0;
                     #pragma omp unroll partial
-                    for (size_t kk = k_start; kk < k_end; ++kk)
+                    for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                     {
                         sum += A(global_i,kk)* x(kk);
                     }
@@ -314,36 +314,36 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse(  const BlockedDataV
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse( const BlockedDataView<T>& A, const DataBlock<T>& x, DataBlock<T>& y,bool initialize_to_zero)
 {
-    const size_t mblocks = A.usedblocks;
+    const ptrdiff_t mblocks = A.usedblocks;
 
-    const size_t Ablock_rows = A.block_shape[0];
-    const size_t Ablock_cols = A.block_shape[1];
+    const ptrdiff_t Ablock_rows = A.block_shape[0];
+    const ptrdiff_t Ablock_cols = A.block_shape[1];
 
 
 
-    const size_t aext0 = A.dpextents[0];
-    const size_t aext1 = A.dpextents[1];
+    const ptrdiff_t aext0 = A.dpextents[0];
+    const ptrdiff_t aext1 = A.dpextents[1];
 
-    const size_t ystr0 = y.dpstrides[0];
+    const ptrdiff_t ystr0 = y.dpstrides[0];
 
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for simd
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
         else  if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp simd
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
         else
         {
             #pragma omp  unroll partial
-            for(size_t i=0; i<y.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
                 y.dpdata[i*ystr0]=T(0);
         }
     }
@@ -353,29 +353,29 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse( const BlockedDataVi
     {
 
         #pragma omp parallel for
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
 
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
 
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
+                const ptrdiff_t global_i = a_row_off + ii;
                 T sum = 0;
                 #pragma omp simd reduction(+:sum)
-                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                 {
-                    const size_t global_k = a_col_off + kk;
+                    const ptrdiff_t global_k = a_col_off + kk;
 
                     sum += A(global_i,global_k) * x(global_k);
                 }
@@ -388,28 +388,28 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse( const BlockedDataVi
     if constexpr (Policy == OpenMPVariant::Simd)
     {
 
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
 
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
+                const ptrdiff_t global_i = a_row_off + ii;
                 T sum = 0;
                 #pragma omp simd reduction(+:sum)
-                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                 {
-                    const size_t global_k = a_col_off + kk;
+                    const ptrdiff_t global_k = a_col_off + kk;
 
                     sum += A(global_i,global_k) * x(global_k);
                 }
@@ -420,29 +420,29 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse( const BlockedDataVi
     else
     {
 
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
 
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
 
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
+                const ptrdiff_t global_i = a_row_off + ii;
                 T sum = 0;
                 #pragma omp unroll partial
-                for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                 {
-                    const size_t global_k = a_col_off + kk;
+                    const ptrdiff_t global_k = a_col_off + kk;
 
                     sum += A(global_i,global_k) * x(global_k);
                 }
@@ -457,45 +457,45 @@ void In_Kernel_Mathfunctions::matrix_vector_multiply_sparse( const BlockedDataVi
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<T>& A,  const DataBlock<T>& B, DataBlock<T>& C,bool initialize_to_zero)
 {
-    const size_t mblocks = A.usedblocks;
+    const ptrdiff_t mblocks = A.usedblocks;
 
-    const size_t Ablock_rows = A.block_shape[0];
-    const size_t Ablock_cols = A.block_shape[1];
+    const ptrdiff_t Ablock_rows = A.block_shape[0];
+    const ptrdiff_t Ablock_cols = A.block_shape[1];
 
 
-    const size_t Cstr0 = C.dpstrides[0];
-    const size_t Cstr1 = C.dpstrides[1];
+    const ptrdiff_t Cstr0 = C.dpstrides[0];
+    const ptrdiff_t Cstr1 = C.dpstrides[1];
 
-    const size_t aext0 = A.dpextents[0];
-    const size_t aext1 = A.dpextents[1];
-    const size_t bext0 = B.dpextents[0]; // must equal aext1
-    const size_t bext1 = B.dpextents[1];
+    const ptrdiff_t aext0 = A.dpextents[0];
+    const ptrdiff_t aext1 = A.dpextents[1];
+    const ptrdiff_t bext0 = B.dpextents[0]; // must equal aext1
+    const ptrdiff_t bext1 = B.dpextents[1];
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for simd collapse(2)
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
         else if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp simd collapse(2)
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
         else
         {
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
                 #pragma omp unroll partial
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
@@ -503,29 +503,29 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
-                for (size_t jj = 0; jj < bext1; ++jj)
+                const ptrdiff_t global_i = a_row_off + ii;
+                for (ptrdiff_t jj = 0; jj < bext1; ++jj)
                 {
                     T sum = T(0);
                     #pragma omp simd reduction(+:sum)
-                    for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                    for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                     {
-                        const size_t global_k = a_col_off + kk;
+                        const ptrdiff_t global_k = a_col_off + kk;
                         sum += A(global_i,global_k) * B(global_k,jj);
                     }
                     #pragma omp atomic update
@@ -537,30 +537,30 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
 
     else  if constexpr (Policy == OpenMPVariant::Simd)
     {
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
 
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
-                for (size_t jj = 0; jj < bext1; ++jj)
+                const ptrdiff_t global_i = a_row_off + ii;
+                for (ptrdiff_t jj = 0; jj < bext1; ++jj)
                 {
                     T sum = T(0);
                     #pragma omp simd reduction(+:sum)
-                    for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                    for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                     {
-                        const size_t global_k = a_col_off + kk;
+                        const ptrdiff_t global_k = a_col_off + kk;
                         sum += A(global_i,global_k) * B(global_k,jj);
                     }
                     C(global_i,jj) += sum;
@@ -570,30 +570,30 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     }
     else
     {
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
 
-            const size_t a_start = A.pooled_offsets_starts[ia];
-            const size_t* a_off  = A.pooled_offsets_flat + a_start;
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t* a_off  = A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1 - a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1 - a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            for (size_t ii = 0; ii < a_tile_rows; ++ii)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
             {
-                const size_t global_i = a_row_off + ii;
-                for (size_t jj = 0; jj < bext1; ++jj)
+                const ptrdiff_t global_i = a_row_off + ii;
+                for (ptrdiff_t jj = 0; jj < bext1; ++jj)
                 {
                     T sum = T(0);
                     #pragma omp unroll partial
-                    for (size_t kk = 0; kk < a_tile_cols; ++kk)
+                    for (ptrdiff_t kk = 0; kk < a_tile_cols; ++kk)
                     {
-                        const size_t global_k = a_col_off + kk;
+                        const ptrdiff_t global_k = a_col_off + kk;
                         sum += A(global_i,global_k) * B(global_k,jj);
                     }
                     C(global_i,jj) += sum;
@@ -610,20 +610,20 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<T>& A, const BlockedDataView<T>& B, DataBlock<T>& C, bool initialize_to_zero)
 {
-    const size_t mblocks = A.usedblocks;
-    const size_t nblocks = B.usedblocks;
+    const ptrdiff_t mblocks = A.usedblocks;
+    const ptrdiff_t nblocks = B.usedblocks;
 
-    const size_t Ablock_rows = A.block_shape[0];
-    const size_t Ablock_cols = A.block_shape[1];
-    const size_t Bblock_rows = B.block_shape[0];
-    const size_t Bblock_cols = B.block_shape[1];
+    const ptrdiff_t Ablock_rows = A.block_shape[0];
+    const ptrdiff_t Ablock_cols = A.block_shape[1];
+    const ptrdiff_t Bblock_rows = B.block_shape[0];
+    const ptrdiff_t Bblock_cols = B.block_shape[1];
 
-    const size_t Cstr0=C.dpstrides[0];
-    const size_t Cstr1=C.dpstrides[1];
-    const size_t aext0=A.dpextents[0];
-    const size_t aext1=A.dpextents[1];
-    const size_t bext0=B.dpextents[0];
-    const size_t bext1=B.dpextents[1];
+    const ptrdiff_t Cstr0=C.dpstrides[0];
+    const ptrdiff_t Cstr1=C.dpstrides[1];
+    const ptrdiff_t aext0=A.dpextents[0];
+    const ptrdiff_t aext1=A.dpextents[1];
+    const ptrdiff_t bext0=B.dpextents[0];
+    const ptrdiff_t bext1=B.dpextents[1];
 
 
     if(initialize_to_zero)
@@ -631,27 +631,27 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for simd collapse(2)
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
         else if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp simd collapse(2)
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
         else
         {
-            for(size_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
             {
                 #pragma omp unroll partial
-                for(size_t j=0; j<C.dpextents[1]; j++)
+                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
                     C.dpdata[i*Cstr0+j*Cstr1]=T(0);
             }
         }
@@ -660,58 +660,58 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     {
 
         #pragma omp parallel for collapse(2)
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
-                const size_t a_start = A.pooled_offsets_starts[ia];
+                const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
 
-                const size_t* a_off =  A.pooled_offsets_flat + a_start;
+                const ptrdiff_t* a_off =  A.pooled_offsets_flat + a_start;
 
-                const size_t a_row_off = a_off[0];
-                const size_t a_col_off = a_off[1];
+                const ptrdiff_t a_row_off = a_off[0];
+                const ptrdiff_t a_col_off = a_off[1];
 
-                const size_t a_rem_rows = aext0 - a_row_off;
-                const size_t a_rem_cols = aext1- a_col_off;
+                const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+                const ptrdiff_t a_rem_cols = aext1- a_col_off;
 
-                const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-                const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+                const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+                const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
 
-                const size_t b_start = B.pooled_offsets_starts[jb];
+                const ptrdiff_t b_start = B.pooled_offsets_starts[jb];
 
-                const size_t* b_off = B.pooled_offsets_flat + b_start;
-                const size_t b_row_off = b_off[0];
-                const size_t b_col_off = b_off[1];
+                const ptrdiff_t* b_off = B.pooled_offsets_flat + b_start;
+                const ptrdiff_t b_row_off = b_off[0];
+                const ptrdiff_t b_col_off = b_off[1];
 
-                const size_t b_rem_rows =bext0 - b_row_off;
-                const size_t b_rem_cols =bext1 - b_col_off;
+                const ptrdiff_t b_rem_rows =bext0 - b_row_off;
+                const ptrdiff_t b_rem_cols =bext1 - b_col_off;
 
-                const size_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
-                const size_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
+                const ptrdiff_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
+                const ptrdiff_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
 
-                const size_t a_k_start = a_col_off;
-                const size_t a_k_end   = a_col_off + a_tile_cols;
+                const ptrdiff_t a_k_start = a_col_off;
+                const ptrdiff_t a_k_end   = a_col_off + a_tile_cols;
 
-                const size_t b_k_start = b_row_off;
-                const size_t b_k_end   = b_row_off + b_tile_rows;
+                const ptrdiff_t b_k_start = b_row_off;
+                const ptrdiff_t b_k_end   = b_row_off + b_tile_rows;
 
-                const size_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
-                const size_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
+                const ptrdiff_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
+                const ptrdiff_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
 
                 if (k_start >= k_end)
                 {
                     continue;
                 }
 
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
-                    for (size_t jj = 0; jj < b_tile_cols; ++jj)
+                    const ptrdiff_t global_i = a_row_off + ii;
+                    for (ptrdiff_t jj = 0; jj < b_tile_cols; ++jj)
                     {
-                        const  size_t global_j = b_col_off + jj;
+                        const  ptrdiff_t global_j = b_col_off + jj;
                         T sum = T(0);
                         #pragma omp simd reduction(+:sum)
-                        for (size_t kk = k_start; kk < k_end; ++kk)
+                        for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                         {
                             sum += A(global_i,kk)* B(kk,global_j);
                         }
@@ -726,58 +726,58 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     {
 
 
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            const size_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
 
-            const size_t* a_off =  A.pooled_offsets_flat + a_start;
+            const ptrdiff_t* a_off =  A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1- a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1- a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            const size_t a_k_start = a_col_off;
-            const size_t a_k_end   = a_col_off + a_tile_cols;
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a_k_start = a_col_off;
+            const ptrdiff_t a_k_end   = a_col_off + a_tile_cols;
 
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
 
-                const size_t b_start = B.pooled_offsets_starts[jb];
+                const ptrdiff_t b_start = B.pooled_offsets_starts[jb];
 
-                const size_t* b_off = B.pooled_offsets_flat + b_start;
-                const size_t b_row_off = b_off[0];
-                const size_t b_col_off = b_off[1];
+                const ptrdiff_t* b_off = B.pooled_offsets_flat + b_start;
+                const ptrdiff_t b_row_off = b_off[0];
+                const ptrdiff_t b_col_off = b_off[1];
 
-                const size_t b_rem_rows =bext0 - b_row_off;
-                const size_t b_rem_cols =bext1 - b_col_off;
+                const ptrdiff_t b_rem_rows =bext0 - b_row_off;
+                const ptrdiff_t b_rem_cols =bext1 - b_col_off;
 
-                const size_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
-                const size_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
+                const ptrdiff_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
+                const ptrdiff_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
 
 
-                const size_t b_k_start = b_row_off;
-                const size_t b_k_end   = b_row_off + b_tile_rows;
+                const ptrdiff_t b_k_start = b_row_off;
+                const ptrdiff_t b_k_end   = b_row_off + b_tile_rows;
 
-                const size_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
-                const size_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
+                const ptrdiff_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
+                const ptrdiff_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
 
                 if (k_start >= k_end)
                 {
                     continue;
                 }
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
-                    for (size_t jj = 0; jj < b_tile_cols; ++jj)
+                    const ptrdiff_t global_i = a_row_off + ii;
+                    for (ptrdiff_t jj = 0; jj < b_tile_cols; ++jj)
                     {
-                        const  size_t global_j = b_col_off + jj;
+                        const  ptrdiff_t global_j = b_col_off + jj;
                         T sum = T(0);
                         #pragma omp simd reduction(+:sum)
-                        for (size_t kk = k_start; kk < k_end; ++kk)
+                        for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                         {
                             sum += A(global_i,kk)* B(kk,global_j);
                         }
@@ -789,57 +789,57 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     }
     else
     {
-        for (size_t ia = 0; ia < mblocks; ++ia)
+        for (ptrdiff_t ia = 0; ia < mblocks; ++ia)
         {
-            const size_t a_start = A.pooled_offsets_starts[ia];
+            const ptrdiff_t a_start = A.pooled_offsets_starts[ia];
 
-            const size_t* a_off =  A.pooled_offsets_flat + a_start;
+            const ptrdiff_t* a_off =  A.pooled_offsets_flat + a_start;
 
-            const size_t a_row_off = a_off[0];
-            const size_t a_col_off = a_off[1];
+            const ptrdiff_t a_row_off = a_off[0];
+            const ptrdiff_t a_col_off = a_off[1];
 
-            const size_t a_rem_rows = aext0 - a_row_off;
-            const size_t a_rem_cols = aext1- a_col_off;
+            const ptrdiff_t a_rem_rows = aext0 - a_row_off;
+            const ptrdiff_t a_rem_cols = aext1- a_col_off;
 
-            const size_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
-            const size_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
-            const size_t a_k_start = a_col_off;
-            const size_t a_k_end   = a_col_off + a_tile_cols;
-            for (size_t jb = 0; jb < nblocks; ++jb)
+            const ptrdiff_t a_tile_rows = (Ablock_rows < a_rem_rows) ? Ablock_rows : a_rem_rows;
+            const ptrdiff_t a_tile_cols = (Ablock_cols < a_rem_cols) ? Ablock_cols : a_rem_cols;
+            const ptrdiff_t a_k_start = a_col_off;
+            const ptrdiff_t a_k_end   = a_col_off + a_tile_cols;
+            for (ptrdiff_t jb = 0; jb < nblocks; ++jb)
             {
 
-                const size_t b_start = B.pooled_offsets_starts[jb];
+                const ptrdiff_t b_start = B.pooled_offsets_starts[jb];
 
-                const size_t* b_off = B.pooled_offsets_flat + b_start;
-                const size_t b_row_off = b_off[0];
-                const size_t b_col_off = b_off[1];
+                const ptrdiff_t* b_off = B.pooled_offsets_flat + b_start;
+                const ptrdiff_t b_row_off = b_off[0];
+                const ptrdiff_t b_col_off = b_off[1];
 
-                const size_t b_rem_rows =bext0 - b_row_off;
-                const size_t b_rem_cols =bext1 - b_col_off;
+                const ptrdiff_t b_rem_rows =bext0 - b_row_off;
+                const ptrdiff_t b_rem_cols =bext1 - b_col_off;
 
-                const size_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
-                const size_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
+                const ptrdiff_t b_tile_rows = (Bblock_rows < b_rem_rows) ? Bblock_rows : b_rem_rows;
+                const ptrdiff_t b_tile_cols = (Bblock_cols < b_rem_cols) ? Bblock_cols : b_rem_cols;
 
 
-                const size_t b_k_start = b_row_off;
-                const size_t b_k_end   = b_row_off + b_tile_rows;
+                const ptrdiff_t b_k_start = b_row_off;
+                const ptrdiff_t b_k_end   = b_row_off + b_tile_rows;
 
-                const size_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
-                const size_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
+                const ptrdiff_t k_start = (a_k_start >   b_k_start)  ?   a_k_start:   b_k_start;
+                const ptrdiff_t k_end   = (a_k_end   <   b_k_end)    ?   a_k_end:     b_k_end;
 
                 if (k_start >= k_end)
                 {
                     continue;
                 }
-                for (size_t ii = 0; ii < a_tile_rows; ++ii)
+                for (ptrdiff_t ii = 0; ii < a_tile_rows; ++ii)
                 {
-                    const size_t global_i = a_row_off + ii;
-                    for (size_t jj = 0; jj < b_tile_cols; ++jj)
+                    const ptrdiff_t global_i = a_row_off + ii;
+                    for (ptrdiff_t jj = 0; jj < b_tile_cols; ++jj)
                     {
-                        const  size_t global_j = b_col_off + jj;
+                        const  ptrdiff_t global_j = b_col_off + jj;
                         T sum = T(0);
                         #pragma omp unroll partial
-                        for (size_t kk = k_start; kk < k_end; ++kk)
+                        for (ptrdiff_t kk = k_start; kk < k_end; ++kk)
                         {
                             sum += A(global_i,kk)* B(kk,global_j);
                         }
@@ -858,20 +858,20 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t rows=A.dpextents[0];
-    const size_t cols=B.dpextents[1];
-    const size_t inner_dim=A.dpextents[1];
+    const ptrdiff_t rows=A.dpextents[0];
+    const ptrdiff_t cols=B.dpextents[1];
+    const ptrdiff_t inner_dim=A.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = T(0);
                 T c=T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     T y =  A(i,k) *B(k,j) - c;
                     volatile T t = sum + y;
@@ -886,14 +886,14 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(const  DataBlock<T>& A, 
     else
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = T(0);
                 T c=T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     T y =  A(i,k) *B(k,j) - c;
                     volatile T t = sum + y;
@@ -913,21 +913,21 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(const  DataBlock<T>& A, 
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate_kahan(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t rows=A.dpextents[0];
-    const size_t cols=B.dpextents[1];
-    const size_t inner_dim=A.dpextents[1];
+    const ptrdiff_t rows=A.dpextents[0];
+    const ptrdiff_t cols=B.dpextents[1];
+    const ptrdiff_t inner_dim=A.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
 
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = T(0);
                 T c=T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     T y =  A(i,k) *B(k,j) - c;
                     volatile T t = sum + y;
@@ -942,14 +942,14 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate_kahan(const  DataBl
     else     if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = T(0);
                 T c=T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     T y =  A(i,k) *B(k,j) - c;
                     volatile T t = sum + y;
@@ -973,16 +973,16 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate_kahan(const  DataBl
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, DataBlock<T>& L, bool initialize_to_zero)
 {
-    const size_t n = A.dpextents[0];
+    const ptrdiff_t n = A.dpextents[0];
     L.dpconfig.dpconjugate=false;
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                 }
@@ -991,9 +991,9 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
         else if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                 }
@@ -1001,10 +1001,10 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
         }
         else
         {
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp unroll partial
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                 }
@@ -1014,12 +1014,12 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
             T tmp=T(0);
 
             #pragma omp  parallel for simd reduction(+:tmp)
-            for (size_t k = 0; k < c; ++k)
+            for (ptrdiff_t k = 0; k < c; ++k)
             {
                 const T tmp3=L(c,k);
                 tmp+= tmp3 *cond_conj( tmp3);
@@ -1031,11 +1031,11 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
             L(c, c) =tmp4;
 
             #pragma omp parallel for
-            for (size_t i = c + 1; i < n; ++i)
+            for (ptrdiff_t i = c + 1; i < n; ++i)
             {
                 T tmp2 =0;
                 #pragma omp simd reduction(+:tmp2)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     tmp2 += L(i, k) * cond_conj(L(c, k));
                 }
@@ -1047,12 +1047,12 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
     }
     else  if constexpr (Policy == OpenMPVariant::Simd)
     {
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
             T tmp=T(0);
 
             #pragma omp simd reduction(+:tmp)
-            for (size_t k = 0; k < c; ++k)
+            for (ptrdiff_t k = 0; k < c; ++k)
             {
                 const T tmp3=L(c,k);
                 tmp+= tmp3 *cond_conj( tmp3);
@@ -1063,11 +1063,11 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
             const T tmp4=sqrt(tmp);
             L(c, c) =tmp4;
 
-            for (size_t i = c + 1; i < n; ++i)
+            for (ptrdiff_t i = c + 1; i < n; ++i)
             {
                 T tmp2 =0;
                 #pragma omp simd reduction(+:tmp2)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     tmp2 += L(i, k) * cond_conj(L(c, k));
                 }
@@ -1079,12 +1079,12 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
     }
     else
     {
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
             T tmp=T(0);
 
             #pragma omp unroll partial
-            for (size_t k = 0; k < c; ++k)
+            for (ptrdiff_t k = 0; k < c; ++k)
             {
                 const T tmp3=L(c,k);
                 tmp+= tmp3 *cond_conj( tmp3);
@@ -1095,11 +1095,11 @@ void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, Data
             const T tmp4=sqrt(tmp);
             L(c, c) =tmp4;
 
-            for (size_t i = c + 1; i < n; ++i)
+            for (ptrdiff_t i = c + 1; i < n; ++i)
             {
                 T tmp2 =0;
                 #pragma omp unroll partial
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     tmp2 += L(i, k) * cond_conj(L(c, k));
                 }
@@ -1122,7 +1122,7 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock<T>& L, DataBlock<T>& U,bool initialize_to_zero)
 {
 
-    const size_t n = A.dpextents[0];
+    const ptrdiff_t n = A.dpextents[0];
     L.dpconfig.dpconjugate=false;
     U.dpconfig.dpconjugate=false;
 
@@ -1131,9 +1131,9 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp  parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                     U(i,j)=T(0);
@@ -1143,9 +1143,9 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
         else if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp  simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                     U(i,j)=T(0);
@@ -1154,10 +1154,10 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
         }
         else
         {
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp unroll partial
-                for (size_t j = 0; j <n; ++j)
+                for (ptrdiff_t j = 0; j <n; ++j)
                 {
                     L(i,j)=T(0);
                     U(i,j)=T(0);
@@ -1169,14 +1169,14 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
 
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
             #pragma omp parallel for
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp=T(0);
                 #pragma omp  simd reduction(+:temp)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U( k,i) * L( c,k);
                 }
@@ -1186,11 +1186,11 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
 
             const T temp4=U(c,c);
             #pragma omp parallel for
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp =T(0);
                 #pragma omp simd reduction(+:temp)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U(k,c) * L( i,k);
                 }
@@ -1201,13 +1201,13 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
     }
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp=T(0);
                 #pragma omp  simd reduction(+:temp)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U( k,i) * L( c,k);
                 }
@@ -1216,11 +1216,11 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
             }
 
             const T temp4=U(c,c);
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp =T(0);
                 #pragma omp simd reduction(+:temp)
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U(k,c) * L( i,k);
                 }
@@ -1231,13 +1231,13 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
     }
     else
     {
-        for (size_t c = 0; c < n; ++c)
+        for (ptrdiff_t c = 0; c < n; ++c)
         {
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp=T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U( k,i) * L( c,k);
                 }
@@ -1246,11 +1246,11 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
             }
 
             const T temp4=U(c,c);
-            for (size_t i = c; i < n; ++i)
+            for (ptrdiff_t i = c; i < n; ++i)
             {
                 T temp =T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < c; ++k)
+                for (ptrdiff_t k = 0; k < c; ++k)
                 {
                     temp += U(k,c) * L( i,k);
                 }
@@ -1273,8 +1273,8 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<T> Q, DataBlock<T> &R,bool initialize_to_zero, bool with_memmaps)
 {
-    const size_t n = A.dpextents[0];
-    const size_t m = A.dpextents[1];
+    const ptrdiff_t n = A.dpextents[0];
+    const ptrdiff_t m = A.dpextents[1];
 
     Q.dpconfig.dpconjugate=false;
     R.dpconfig.dpconjugate=false;
@@ -1286,12 +1286,14 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         tempM=(T*)omp_alloc(sizeof(T)*A.dpdatalength,omp_default_mem_alloc);
 
 
-    size_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
-    size_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
+    ptrdiff_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
+    ptrdiff_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
               DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
-                                 .data_ondevice=false,
-                                  .devicenum=-INT_MAX,
-                                  .dpconjugate=false});
+                                    .dpconjugate=false,
+                                    .pmemmap=with_memmaps,
+                                 .data_is_devptr=false,
+                                  .devicenum=-INT_MAX
+                                  });
     DataBlock<T> M(tempM,A.dpdatalength,A.dprank,Mext,Mstrides,mconf);
 
 
@@ -1300,13 +1302,13 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp parallel for
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp simd
-                for (size_t j = 0; j < n; ++j)
+                for (ptrdiff_t j = 0; j < n; ++j)
                     Q(i,j) = 0;
                 #pragma omp  simd
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                     R(i,j) = 0;
@@ -1315,13 +1317,13 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         }
         else  if constexpr (Policy == OpenMPVariant::Simd)
         {
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp simd
-                for (size_t j = 0; j < n; ++j)
+                for (ptrdiff_t j = 0; j < n; ++j)
                     Q(i,j) = 0;
                 #pragma omp  simd
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                     R(i,j) = 0;
@@ -1330,13 +1332,13 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         }
         else
         {
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp unroll partial
-                for (size_t j = 0; j < n; ++j)
+                for (ptrdiff_t j = 0; j < n; ++j)
                     Q(i,j) = 0;
                 #pragma omp unroll partial
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                     R(i,j) = 0;
@@ -1349,9 +1351,9 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
         {
             #pragma omp  parallel for simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                 }
@@ -1360,9 +1362,9 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         else if constexpr (Policy == OpenMPVariant::Simd)
         {
             #pragma omp simd collapse(2)
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                 }
@@ -1370,10 +1372,10 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         }
         else
         {
-            for (size_t i = 0; i < n; ++i)
+            for (ptrdiff_t i = 0; i < n; ++i)
             {
                 #pragma omp unroll partial
-                for (size_t j = 0; j < m; ++j)
+                for (ptrdiff_t j = 0; j < m; ++j)
                 {
                     M(i,j)=A(i,j);
                 }
@@ -1381,37 +1383,37 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         }
     }
 
-    const size_t pext0=M.dpextents[0];
+    const ptrdiff_t pext0=M.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        for (size_t c = 0; c < m; ++c)
+        for (ptrdiff_t c = 0; c < m; ++c)
         {
-            size_t pextv[1];
-            size_t pstrv[1];
+            ptrdiff_t pextv[1];
+            ptrdiff_t pstrv[1];
             DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,pextv,pstrv);
-            for (size_t j = 0; j < c; ++j)
+            for (ptrdiff_t j = 0; j < c; ++j)
             {
-                size_t pextu[1];
-                size_t pstru[1];
+                ptrdiff_t pextu[1];
+                ptrdiff_t pstru[1];
 
                 T dot_pr=T(0);
                 DataBlock<T> u = DataBlockUtilities::matrix_column(Q,j,pextu,pstru);
                 #pragma omp parallel for simd reduction(+:dot_pr)
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     dot_pr += cond_conj(u(i)) * v(i);
                 }
 
                 const T cdot_pr=dot_pr;
                 #pragma omp parallel for simd
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     v(i) -= cdot_pr * u(i);
                 }
             }
             T norm=T(0);
             #pragma omp parallel for simd reduction(+:norm)
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 T val=v(i);
                 norm += cond_conj(val) * v(i);
@@ -1419,24 +1421,24 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
 
             const T normc= sqrt(norm);
             #pragma omp parallel for simd
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 Q(i,c) = v(i)/normc;
             }
         }
 
-        const size_t rows = Q.dpextents[0];
-        const size_t cols = A.dpextents[1];
-        const size_t inner_dim = Q.dpextents[1];
+        const ptrdiff_t rows = Q.dpextents[0];
+        const ptrdiff_t cols = A.dpextents[1];
+        const ptrdiff_t inner_dim = Q.dpextents[1];
 
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
                 #pragma omp simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += cond_conj(Q(k,i)) *A(k,j);
                 }
@@ -1446,27 +1448,27 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     }
     else  if constexpr (Policy == OpenMPVariant::Simd)
     {
-        for (size_t c = 0; c < m; ++c)
+        for (ptrdiff_t c = 0; c < m; ++c)
         {
-            size_t pextv[1];
-            size_t pstrv[1];
+            ptrdiff_t pextv[1];
+            ptrdiff_t pstrv[1];
             DataBlock<T> v = M.matrix_column(c,pextv,pstrv);
-            for (size_t j = 0; j < c; ++j)
+            for (ptrdiff_t j = 0; j < c; ++j)
             {
-                size_t pextu[1];
-                size_t pstru[1];
+                ptrdiff_t pextu[1];
+                ptrdiff_t pstru[1];
 
                 T dot_pr=T(0);
                 DataBlock<T> u = Q.matrix_column(j,pextu,pstru);
                 #pragma omp simd reduction(+:dot_pr)
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     dot_pr += cond_conj(u(i)) * v(i);
                 }
 
                 const T cdot_pr=dot_pr;
                 #pragma omp simd
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     v(i) -= cdot_pr * u(i);
                 }
@@ -1474,7 +1476,7 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
             // Normalize v
             T norm=T(0);
             #pragma omp simd reduction(+:norm)
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 T val=v(i);
                 norm += cond_conj(val) * v(i);
@@ -1482,24 +1484,24 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
 
             const T normc= sqrt(norm);
             #pragma omp simd
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 Q(i,c) = v(i)/normc;
             }
         }
 
-        const size_t rows = Q.dpextents[0];
-        const size_t cols = A.dpextents[1];
-        const size_t inner_dim = Q.dpextents[1];
+        const ptrdiff_t rows = Q.dpextents[0];
+        const ptrdiff_t cols = A.dpextents[1];
+        const ptrdiff_t inner_dim = Q.dpextents[1];
 
         #pragma omp tile sizes(16, 16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
                 #pragma omp  simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += cond_conj(Q(k,i)) *A(k,j);
                 }
@@ -1509,34 +1511,34 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     }
     else
     {
-        for (size_t c = 0; c < m; ++c)
+        for (ptrdiff_t c = 0; c < m; ++c)
         {
-            size_t pextv[1];
-            size_t pstrv[1];
+            ptrdiff_t pextv[1];
+            ptrdiff_t pstrv[1];
             DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,pextv,pstrv);
-            for (size_t j = 0; j < c; ++j)
+            for (ptrdiff_t j = 0; j < c; ++j)
             {
-                size_t pextu[1];
-                size_t pstru[1];
+                ptrdiff_t pextu[1];
+                ptrdiff_t pstru[1];
 
                 T dot_pr=T(0);
                 DataBlock<T> u = DataBlockUtilities::matrix_column(Q,j,pextu,pstru);
                 #pragma omp unroll partial
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     dot_pr += cond_conj(u(i)) * v(i);
                 }
 
                 const T cdot_pr=dot_pr;
                 #pragma omp unroll partial
-                for (size_t i = 0; i < pext0; ++i)
+                for (ptrdiff_t i = 0; i < pext0; ++i)
                 {
                     v(i) -= cdot_pr * u(i);
                 }
             }
             T norm=T(0);
             #pragma omp unroll partial
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 T val=v(i);
                 norm += cond_conj(val) * v(i);
@@ -1544,24 +1546,24 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
 
             const T normc= sqrt(norm);
             #pragma omp unroll partial
-            for (size_t i = 0; i < pext0; ++i)
+            for (ptrdiff_t i = 0; i < pext0; ++i)
             {
                 Q(i,c) = v(i)/normc;
             }
         }
 
-        const size_t rows = Q.dpextents[0];
-        const size_t cols = A.dpextents[1];
-        const size_t inner_dim = Q.dpextents[1];
+        const ptrdiff_t rows = Q.dpextents[0];
+        const ptrdiff_t cols = A.dpextents[1];
+        const ptrdiff_t inner_dim = Q.dpextents[1];
 
         #pragma omp tile sizes(16, 16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum = 0;
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += cond_conj(Q(k,i)) *A(k,j);
                 }
@@ -1598,20 +1600,20 @@ void In_Kernel_Mathfunctions::cross_product( const DataBlock<T>& vec1, const  Da
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t rows=A.dpextents[0];
-    const size_t cols=B.dpextents[1];
-    const size_t inner_dim=A.dpextents[1];
+    const ptrdiff_t rows=A.dpextents[0];
+    const ptrdiff_t cols=B.dpextents[1];
+    const ptrdiff_t inner_dim=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k) *B(k,j);
                 }
@@ -1622,13 +1624,13 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k) *B(k,j);
                 }
@@ -1639,13 +1641,13 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
     else
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k) *B(k,j);
                 }
@@ -1665,20 +1667,20 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate( const DataBlock<T>& A, const  DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t rows=A.dpextents[0];
-    const size_t cols=B.dpextents[1];
-    const size_t inner_dim=A.dpextents[1];
+    const ptrdiff_t rows=A.dpextents[0];
+    const ptrdiff_t cols=B.dpextents[1];
+    const ptrdiff_t inner_dim=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for collapse(2)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k)*B(k,j);
                 }
@@ -1690,13 +1692,13 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate( const DataBlock<T>
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp simd reduction(+:sum)
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k) *B(k,j);
                 }
@@ -1707,13 +1709,13 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate( const DataBlock<T>
     else
     {
         #pragma omp tile sizes(16,16)
-        for (size_t i = 0; i < rows; ++i)
+        for (ptrdiff_t i = 0; i < rows; ++i)
         {
-            for (size_t j = 0; j < cols; ++j)
+            for (ptrdiff_t j = 0; j < cols; ++j)
             {
                 T sum =T(0);
                 #pragma omp unroll partial
-                for (size_t k = 0; k < inner_dim; ++k)
+                for (ptrdiff_t k = 0; k < inner_dim; ++k)
                 {
                     sum += A(i,k) *B(k,j);
                 }
@@ -1738,15 +1740,15 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate( const DataBlock<T>
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_add(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t n=A.dpextents[0];
-    const size_t m=A.dpextents[1];
+    const ptrdiff_t n=A.dpextents[0];
+    const ptrdiff_t m=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 C(i,j) =A(i,j)+B(i,j);
             }
@@ -1755,9 +1757,9 @@ void In_Kernel_Mathfunctions::matrix_add(const DataBlock<T>& A,const DataBlock<T
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 C(i,j) =A(i,j)+B(i,j);
             }
@@ -1765,10 +1767,10 @@ void In_Kernel_Mathfunctions::matrix_add(const DataBlock<T>& A,const DataBlock<T
     }
     else
     {
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 C(i,j) =A(i,j)+B(i,j);
             }
@@ -1789,15 +1791,15 @@ void In_Kernel_Mathfunctions::matrix_add(const DataBlock<T>& A,const DataBlock<T
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_add_accumulate( DataBlock<T>& A,const DataBlock<T>& B)
 {
-    const size_t n=A.dpextents[0];
-    const size_t m=A.dpextents[1];
+    const ptrdiff_t n=A.dpextents[0];
+    const ptrdiff_t m=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 A(i,j)+=B(i,j);
             }
@@ -1806,9 +1808,9 @@ void In_Kernel_Mathfunctions::matrix_add_accumulate( DataBlock<T>& A,const DataB
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 A(i,j)+=B(i,j);
             }
@@ -1817,10 +1819,10 @@ void In_Kernel_Mathfunctions::matrix_add_accumulate( DataBlock<T>& A,const DataB
     }
     else
     {
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j <m ; ++j)
+            for (ptrdiff_t j = 0; j <m ; ++j)
             {
                 A(i,j)+=B(i,j);
             }
@@ -1839,16 +1841,16 @@ void In_Kernel_Mathfunctions::matrix_add_accumulate( DataBlock<T>& A,const DataB
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_subtract(const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C)
 {
-    const size_t n=A.dpextents[0];
-    const size_t m=A.dpextents[1];
+    const ptrdiff_t n=A.dpextents[0];
+    const ptrdiff_t m=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
 
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 C(i,j) =A(i,j)-B(i,j);
             }
@@ -1858,9 +1860,9 @@ void In_Kernel_Mathfunctions::matrix_subtract(const DataBlock<T>& A,const  DataB
     {
 
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 C(i,j) =A(i,j)-B(i,j);
             }
@@ -1868,10 +1870,10 @@ void In_Kernel_Mathfunctions::matrix_subtract(const DataBlock<T>& A,const  DataB
     }
     else
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 C(i,j) =A(i,j)-B(i,j);
             }
@@ -1888,15 +1890,15 @@ void In_Kernel_Mathfunctions::matrix_subtract(const DataBlock<T>& A,const  DataB
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_subtract_accumulate( DataBlock<T>& A,const  DataBlock<T>& B)
 {
-    const size_t n=A.dpextents[0];
-    const size_t m=A.dpextents[1];
+    const ptrdiff_t n=A.dpextents[0];
+    const ptrdiff_t m=A.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 A(i,j)-=B(i,j);
             }
@@ -1905,9 +1907,9 @@ void In_Kernel_Mathfunctions::matrix_subtract_accumulate( DataBlock<T>& A,const 
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 A(i,j)-=B(i,j);
             }
@@ -1915,10 +1917,10 @@ void In_Kernel_Mathfunctions::matrix_subtract_accumulate( DataBlock<T>& A,const 
     }
     else
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j < m; ++j)
+            for (ptrdiff_t j = 0; j < m; ++j)
             {
                 A(i,j)-=B(i,j);
             }
@@ -1939,16 +1941,16 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
 {
 
 
-    const size_t n= M.dpextents[0];
-    const size_t m=M.dpextents[1];
+    const ptrdiff_t n= M.dpextents[0];
+    const ptrdiff_t m=M.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp simd reduction(+:sum)
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V(j);
             }
@@ -1959,11 +1961,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
 
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp simd reduction(+:sum)
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V(j);
             }
@@ -1974,11 +1976,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
     else
     {
 
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V(j);
             }
@@ -1998,17 +2000,17 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M,const  DataBlock<T>& V, DataBlock<T>& C)
 {
 
-    const size_t n= M.dpextents[0];
-    const size_t m=M.dpextents[1];
+    const ptrdiff_t n= M.dpextents[0];
+    const ptrdiff_t m=M.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             T c=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 T y = M(i, j) * V(j) - c;
                 volatile T t = sum + y;
@@ -2022,12 +2024,12 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M
     else
     {
 
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             T c=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 T y = M(i, j) * V(j) - c;
                 volatile T t = sum + y;
@@ -2048,18 +2050,18 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M,const T* V, DataBlock<T>& C)
 {
 
-    const size_t n= M.dpextents[0];
-    const size_t m=M.dpextents[1];
+    const ptrdiff_t n= M.dpextents[0];
+    const ptrdiff_t m=M.dpextents[1];
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             T c=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 T y = M(i, j) * V[j] - c;
                 volatile T t = sum + y;
@@ -2072,12 +2074,12 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M
     }
     else
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             T c=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 T y = M(i, j) * V[j] - c;
                 volatile T t = sum + y;
@@ -2097,16 +2099,16 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M, const T*V, DataBlock<T> & C)
 {
-    const size_t n= M.dpextents[0];
-    const size_t m=M.dpextents[1];
+    const ptrdiff_t n= M.dpextents[0];
+    const ptrdiff_t m=M.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp simd reduction(+:sum)
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V[j];
             }
@@ -2115,11 +2117,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M, cons
     }
     if constexpr (Policy == OpenMPVariant::Simd)
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp  simd reduction(+:sum)
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V[j];
             }
@@ -2128,11 +2130,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M, cons
     }
     else
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             T sum=T(0);
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 sum+= M(i, j) * V[j];
             }
@@ -2150,11 +2152,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M, cons
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::vector_add( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
-    const size_t n=vec1.dpextents[0];
+    const ptrdiff_t n=vec1.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i)= vec1(i)+vec2(i);
         }
@@ -2163,7 +2165,7 @@ void In_Kernel_Mathfunctions::vector_add( const DataBlock<T>& vec1,const  DataBl
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec1(i)+vec2(i);
         }
@@ -2171,7 +2173,7 @@ void In_Kernel_Mathfunctions::vector_add( const DataBlock<T>& vec1,const  DataBl
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i)= vec1(i)+vec2(i);
         }
@@ -2186,11 +2188,11 @@ void In_Kernel_Mathfunctions::vector_add( const DataBlock<T>& vec1,const  DataBl
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::vector_add_accumulate( DataBlock<T>& vec1,const  DataBlock<T>& vec2)
 {
-    const size_t n=vec1.dpextents[0];
+    const ptrdiff_t n=vec1.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec1(i)+=vec2(i);
         }
@@ -2198,7 +2200,7 @@ void In_Kernel_Mathfunctions::vector_add_accumulate( DataBlock<T>& vec1,const  D
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec1(i)+=vec2(i);
         }
@@ -2206,7 +2208,7 @@ void In_Kernel_Mathfunctions::vector_add_accumulate( DataBlock<T>& vec1,const  D
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec1(i)+=vec2(i);
         }
@@ -2222,11 +2224,11 @@ void In_Kernel_Mathfunctions::vector_add_accumulate( DataBlock<T>& vec1,const  D
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::vector_subtract( const DataBlock<T>& vec1,const  DataBlock<T>& vec2, DataBlock<T> & res)
 {
-    const size_t n=vec1.dpextents[0];
+    const ptrdiff_t n=vec1.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec1(i)-vec2(i);
         }
@@ -2235,7 +2237,7 @@ void In_Kernel_Mathfunctions::vector_subtract( const DataBlock<T>& vec1,const  D
     {
 
         #pragma omp simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec1(i)-vec2(i);
         }
@@ -2243,7 +2245,7 @@ void In_Kernel_Mathfunctions::vector_subtract( const DataBlock<T>& vec1,const  D
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec1(i)-vec2(i);
         }
@@ -2260,13 +2262,13 @@ void In_Kernel_Mathfunctions::vector_subtract( const DataBlock<T>& vec1,const  D
 template <OpenMPVariant Policy, typename T>
 T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
-    const size_t n=vec1.dpextents[0];
+    const ptrdiff_t n=vec1.dpextents[0];
     T result = T(0);
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
 
         #pragma omp parallel for reduction(+:result)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             result += cond_conj( vec1(i)) * vec2(i);
         }
@@ -2276,7 +2278,7 @@ T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBloc
     {
 
         #pragma omp simd reduction(+:result)
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             result += cond_conj( vec1(i)) * vec2(i);
         }
@@ -2284,7 +2286,7 @@ T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBloc
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             result += cond_conj( vec1(i)) * vec2(i);
         }
@@ -2301,14 +2303,14 @@ T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBloc
 template <OpenMPVariant Policy, typename T>
 T In_Kernel_Mathfunctions::dot_product_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
-    const size_t n=vec1.dpextents[0];
+    const ptrdiff_t n=vec1.dpextents[0];
     T result = T(0);
     T c_final = T(0);
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         const int total_threads = omp_get_max_threads();
-        if (n < (size_t)total_threads)
+        if (n < (ptrdiff_t)total_threads)
         {
             #pragma omp unroll partial
             for (int i = 0; i < n; ++i)
@@ -2342,7 +2344,7 @@ T In_Kernel_Mathfunctions::dot_product_kahan(const DataBlock<T> &vec1, const Dat
                     T local_sum = T(0);
                     T c = T(0);
                     #pragma omp unroll partial
-                    for (size_t i = tid; i < n; i += actual_workers)
+                    for (ptrdiff_t i = tid; i < n; i += actual_workers)
                     {
                         T term= cond_conj( vec1(i)) * vec2(i);
                         T y = term - c;
@@ -2398,14 +2400,14 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_scalar(  const DataBlock<T>& M, const T V, DataBlock<T>& C)
 {
 
-    const size_t n=C.dpextents[0];
-    const size_t m= C.dpextents[1];
+    const ptrdiff_t n=C.dpextents[0];
+    const ptrdiff_t m= C.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 C(i,j)= M(i, j) * V;
             }
@@ -2414,9 +2416,9 @@ void In_Kernel_Mathfunctions::matrix_multiply_scalar(  const DataBlock<T>& M, co
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 C(i,j)= M(i, j) * V;
             }
@@ -2425,10 +2427,10 @@ void In_Kernel_Mathfunctions::matrix_multiply_scalar(  const DataBlock<T>& M, co
     else
     {
 
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 C(i,j)= M(i, j) * V;
             }
@@ -2447,14 +2449,14 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(   DataBlock<T>& M, const T V)
 {
 
-    const size_t n=M.dpextents[0];
-    const size_t m= M.dpextents[1];
+    const ptrdiff_t n=M.dpextents[0];
+    const ptrdiff_t m= M.dpextents[1];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 M(i, j) *= V;
             }
@@ -2463,9 +2465,9 @@ void In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(   DataBlock<T>&
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd collapse(2)
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 M(i, j) *= V;
             }
@@ -2473,10 +2475,10 @@ void In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(   DataBlock<T>&
     }
     else
     {
-        for (size_t i = 0; i <n; ++i)
+        for (ptrdiff_t i = 0; i <n; ++i)
         {
             #pragma omp unroll partial
-            for (size_t j = 0; j <  m; ++j)
+            for (ptrdiff_t j = 0; j <  m; ++j)
             {
                 M(i, j) *= V;
             }
@@ -2491,11 +2493,11 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::vector_multiply_scalar( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res)
 {
 
-    const size_t n=vec.dpextents[0];
+    const ptrdiff_t n=vec.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec(i)*scalar;
         }
@@ -2503,7 +2505,7 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar( const DataBlock<T>& vec,co
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec(i)*scalar;
         }
@@ -2511,7 +2513,7 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar( const DataBlock<T>& vec,co
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             res(i) = vec(i)*scalar;
         }
@@ -2525,11 +2527,11 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar( const DataBlock<T>& vec,co
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::vector_multiply_scalar_accumulate( DataBlock<T>& vec,const T scalar)
 {
-    const size_t n=vec.dpextents[0];
+    const ptrdiff_t n=vec.dpextents[0];
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec(i)*=scalar;
         }
@@ -2537,7 +2539,7 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar_accumulate( DataBlock<T>& v
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec(i)*=scalar;
         }
@@ -2545,7 +2547,7 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar_accumulate( DataBlock<T>& v
     else
     {
         #pragma omp unroll partial
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             vec(i)*=scalar;
         }
@@ -2558,12 +2560,12 @@ void In_Kernel_Mathfunctions::vector_multiply_scalar_accumulate( DataBlock<T>& v
 
 #pragma omp begin declare target
 template <typename T>
-T  In_Kernel_Mathfunctions::kahan_sum(const T *arr, size_t n)
+T  In_Kernel_Mathfunctions::kahan_sum(const T *arr, ptrdiff_t n)
 {
     T sum = T(0);
     T c = T(0);
     #pragma omp unroll partial
-    for (size_t i = 0; i < n; ++i)
+    for (ptrdiff_t i = 0; i < n; ++i)
     {
         T y = arr[i] - c;
         volatile T t = sum + y;
@@ -2577,7 +2579,7 @@ T  In_Kernel_Mathfunctions::kahan_sum(const T *arr, size_t n)
 
 #pragma omp begin declare target
 template <typename T>
-T In_Kernel_Mathfunctions::neumaier_sum(const T* arr, size_t n)
+T In_Kernel_Mathfunctions::neumaier_sum(const T* arr, ptrdiff_t n)
 {
 
     if constexpr (is_complex<T>())
@@ -2588,7 +2590,7 @@ T In_Kernel_Mathfunctions::neumaier_sum(const T* arr, size_t n)
         ValueType r_comp = ValueType(0);
         ValueType i_sum = ValueType(0);
         ValueType i_comp = ValueType(0);
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
 
             ValueType rx = arr[i].real();
@@ -2631,7 +2633,7 @@ T In_Kernel_Mathfunctions::neumaier_sum(const T* arr, size_t n)
     {
         T sum = T(0);
         T comp = T(0);
-        for (size_t i = 0; i < n; ++i)
+        for (ptrdiff_t i = 0; i < n; ++i)
         {
             T x = arr[i];
             volatile T t = sum + x;

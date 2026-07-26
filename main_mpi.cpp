@@ -27,14 +27,14 @@ int main(int argc, char** argv)
 
         {
 
-            size_t rows = 4, cols = 4;
+            ptrdiff_t rows = 4, cols = 4;
             if(process_Rank == 0)
             {
 
                 cout<<"this tests recursive algorithms of the library that use hybrid gpu and cpu mode with Message passing interface and OpenMP on device"<<endl;
 
                 vector<double>A2_data(16,4);
-                auto A2 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A2_data.data(), rows, cols, DataBlockConfig{});
+                auto A2 = mdspan_utilities::create_matrix<double,dynamic_tag>(A2_data.data(), rows, cols, DataBlockConfig{});
                 DataBlock_MPI_Functions::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
                 cout<<"Message Sent:\n";
                 A2.print();
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 
                 cout<<"As a recieve buffer, mdspan_data is very useful, which allocates its own memory in the suitable size." <<endl;
                 cout<<" It can do so on a memory map, on host working memory, or on device memory, which is then accesible only with a device kernel"<<endl;
-                auto B = mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                auto B = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
                 DataBlock_MPI_Functions::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
                 cout<<"Message recieved"<<endl;
                 B.print();
@@ -55,20 +55,20 @@ int main(int argc, char** argv)
         {
 
 
-            size_t rows = 8, cols = 8;
+            ptrdiff_t rows = 8, cols = 8;
             Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,true,true);
             p.update_host=true;
             if(process_Rank == 0)
             {
                 vector<double>A3_data(rows*cols,0);
                 vector<double>B3_data(rows*cols,0);
-                for (size_t i = 0; i < rows * cols; ++i)
+                for (ptrdiff_t i = 0; i < rows * cols; ++i)
                 {
                     A3_data[i] = i + 1;
                     B3_data[i] = i ;
                 }
-                auto A3 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A3_data.data(), rows, cols, DataBlockConfig{});
-                auto B3 = mdspan_utilities::create_matrix<double, std::vector<size_t>>(A3_data.data(), rows, cols, DataBlockConfig{});
+                auto A3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockConfig{});
+                auto B3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockConfig{});
 
                 cout<<"We define two matrices A and B:" <<endl;
                 A3.print();
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 
                     Math_Functions_Policy p1(Math_Functions_Policy::AUTO);
                     cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-                     auto C = mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                     auto C = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
                     Math_Functions::matrix_multiply_dot(A3, B3, C,&p1);
                     C.print();
 
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 
                 {
 
-                    auto C3= mdspan_utilities::create_matrix<double, std::vector<size_t>>(rows, cols, ManagedDataBlockConfig{});
+                    auto C3= mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
                     cout<<"matrix multiplication with the Strassen algorithm over message passing interface"<<std::endl;
                     cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
                     cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
@@ -121,16 +121,16 @@ int main(int argc, char** argv)
 
 
         std::vector<double> A_data,B_data,C_data;
-        size_t extentsA[2],extentsB[2],extentsC[2];
-        size_t stridesA[2],stridesB[2],stridesC[2];
+        ptrdiff_t extentsA[2],extentsB[2],extentsC[2];
+        ptrdiff_t stridesA[2],stridesB[2],stridesC[2];
 
         DataBlock<double> A1,B1,C1;
 
         if (rank == rootrank)
         {
-            size_t M = 11;
-            size_t K = 17;
-            size_t N = 13;
+            ptrdiff_t M = 11;
+            ptrdiff_t K = 17;
+            ptrdiff_t N = 13;
 
             A_data.resize(M*K);
             std::iota(A_data.begin(), A_data.end(), 0);
@@ -230,16 +230,16 @@ endofblock:
             cout<<"\n\n\n this example adds two complex matrices on GPU\n\n";
 
         std::vector<std::complex<double>> A_data,B_data,C_data;
-        size_t extentsA[2],extentsB[2],extentsC[2];
-        size_t stridesA[2],stridesB[2],stridesC[2];
+        ptrdiff_t extentsA[2],extentsB[2],extentsC[2];
+        ptrdiff_t stridesA[2],stridesB[2],stridesC[2];
 
         DataBlock<std::complex<double>> A1,B1,C1;
 
 
         if (rank == rootrank)
         {
-            constexpr size_t M = 11;
-            constexpr size_t K = 17;
+            constexpr ptrdiff_t M = 11;
+            constexpr ptrdiff_t K = 17;
 
             A_data.resize(M*K);
             std::generate(A_data.begin(), A_data.end(), [val = 1.0]() mutable {
@@ -352,8 +352,8 @@ endofblock:
 
 
         std::vector<double> A_data,B_data,C_data;
-        size_t extentsA[1],extentsB[1],extentsC[1];
-        size_t stridesA[1],stridesB[1],stridesC[1];
+        ptrdiff_t extentsA[1],extentsB[1],extentsC[1];
+        ptrdiff_t stridesA[1],stridesB[1],stridesC[1];
 
         DataBlock<double> A1,B1,C1;
 
@@ -486,8 +486,8 @@ endofblock:
         );
 
         std::vector<double> A_data,B_data,C_data;
-        size_t extentsA[2],extentsB[1],extentsC[1];
-        size_t stridesA[2],stridesB[1],stridesC[1];
+        ptrdiff_t extentsA[2],extentsB[1],extentsC[1];
+        ptrdiff_t stridesA[2],stridesB[1],stridesC[1];
 
         DataBlock<double> A1,B1,C1;
 
@@ -591,8 +591,8 @@ endofblock:
 
 
         DataBlock<double> A1;
-        size_t extents[4];
-        size_t strides[4];
+        ptrdiff_t extents[4];
+        ptrdiff_t strides[4];
         std::vector<double> A_data;
 
 
@@ -603,7 +603,7 @@ endofblock:
             extents[2] = 3;
             extents[3] = 2;
 
-            size_t n = 1;
+            ptrdiff_t n = 1;
             for(int i=0; i<4; i++)
                 n *= extents[i];
 
@@ -617,9 +617,9 @@ endofblock:
         }
 
         DistributedDataBlock<double> block;
-        size_t blockrank = 2;
+        ptrdiff_t blockrank = 2;
 
-        size_t blockextents[2] = {2,3};
+        ptrdiff_t blockextents[2] = {2,3};
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
