@@ -47,8 +47,12 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 26.07.26: 20.32 o'clock
+Changed the declaration of some functions that use the MPI from boolean fields to structs to make the code more readable.
+Removed a wrong template parameter introduced on 26.07 that would forbid compilation with clang. Now it compiles again with both compilers.
 
 ### 26.07.2026
+
 Switched the library from size_t to ptrdiff_t. 
 
 This allows negative strides to reverse arrays. The downside is that the maximum of the length that the library can handle is now roughly size_t_max/2 and not size_t anymore. 
