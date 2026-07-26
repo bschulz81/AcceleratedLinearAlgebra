@@ -254,10 +254,10 @@ public:
     friend class DataBlockUtilities;
     friend class mdspan_utilities;
 
-    template <typename U, typename ExtentsContainer, typename StridesContainer>
+    template <typename U, typename Containerr>
     friend class ::mdspan;
 
-    template <typename U, typename ExtentsContainer, typename StridesContainer>
+    template <typename U, typename Container>
     friend class ::mdspan_data;
 
 

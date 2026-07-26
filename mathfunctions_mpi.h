@@ -861,9 +861,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_A,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_B,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
@@ -1046,9 +1046,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         }
 
         if(max_A>0)
-            DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,max_A,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::free_helper2<T>(memmap, ongpu,devnum,max_B,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -1161,9 +1161,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
@@ -1503,9 +1503,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             }
         }
         if(max_A>0)
-            DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::free_helper2<T>(memmap, ongpu,devnum,max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -1562,7 +1562,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
 
     T* x_global=nullptr;
     if(K>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,K,x_global);
+        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},K,x_global);
 
     if (ongpu)
     {
@@ -1633,7 +1633,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
     ptrdiff_t* Aext=nullptr,*Ablockoff=nullptr,*Ablocklinindex=nullptr;
 
     if(M>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,M,y_full);
+        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},M,y_full);
 
 
     const bool rowm=A.Dblockarray.prowm;
@@ -1778,7 +1778,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
     }
 
     if(K>0)
-        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,  K,x_global);
+        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},  K,x_global);
 
     int* recvcounts = new int[size];
 
@@ -1810,7 +1810,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
     T* y_local=nullptr;
 
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(memmap,ongpu,devnum,recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},recvcounts[rank],y_local);
 
 
     MPI_Reduce_scatter(
@@ -1822,7 +1822,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
         y.pctx->comm);
 
     if(M>0)
-        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu, devnum,  M,y_full);
+        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},  M,y_full);
 
     if(ongpu)
     {
@@ -1883,7 +1883,7 @@ inline bool Math_Functions_MPI::Matrix_Vector_multiply_Distributed(
         }
     }
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions::free_helper2<T>(memmap,ongpu,devnum,recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},recvcounts[rank],y_local);
 
     delete[] recvcounts;
 
@@ -5288,8 +5288,8 @@ void Math_Functions_MPI::MPI_recursive_multiplication_helper(const Math_MPI_Recu
 #endif
             }
 
-            A=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 2, policy.comm);
-            B=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(policy.memmapped_files,separate_device_memory,policy.devicenum,status.MPI_SOURCE, 3, policy.comm);
+            A=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(MPI_Sendlocation{.with_memmap=policy.memmapped_files,.ondevice=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 2, policy.comm);
+            B=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(MPI_Sendlocation{.with_memmap=policy.memmapped_files,.ondevice=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 3, policy.comm);
 
 
             bool crowm=true;
@@ -5342,8 +5342,8 @@ void Math_Functions_MPI::MPI_recursive_multiplication_helper(const Math_MPI_Recu
 
             DataBlock_MPI_Functions::MPI_Send_DataBlock_pdata(C,status.MPI_SOURCE,4,policy.comm);
 
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(A,policy.memmapped_files);
-            DataBlock_MPI_Functions::MPI_Free_DataBlock(B,policy.memmapped_files);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(A);
+            DataBlock_MPI_Functions::MPI_Free_DataBlock(B);
             if(separate_device_memory)
             {
                 GPU_Memory_Functions::free_data_device_ptr(C.dpdata,C.dpdatalength,policy.memmapped_files,policy.devicenum);
