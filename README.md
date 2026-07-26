@@ -52,7 +52,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 Switched the library from size_t to ptrdiff_t. 
 
 This allows negative strides to reverse arrays. The downside is that the maximum of the length that the library can handle is now roughly size_t_max/2 and not size_t anymore. 
-Removed the old various copy functions for subtensors and made the deep copy mechanism views more flexible. One can now designate the device or a memory map.
+Removed the old various copy functions for subtensors and made the deep copy mechanism of views more flexible. One can now designate the device or a memory map.
 Cleaned the previous syntax with the boolean variables in the constructors up more.
 
 ### 24.07.2026
