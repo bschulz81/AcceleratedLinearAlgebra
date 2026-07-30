@@ -47,6 +47,60 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 30.07.2026
+
+fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms.
+began to restructure the library to separate declarations from implementations to avoid circular dependencies
+
+Extended the expression parser for vectors and matrices. It can now handle arbitrarily combined and long expressions of the form 
+
+E= alpha(A+B)-C 
+
+for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. Here is an example:
+
+```
+        auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     B_data.data(), rows, cols, DataBlockConfig{ });
+        B.print();
+        cout<<"We load B up"<<endl;
+        B.device_data_upload(true);
+
+        cout << "define C as empty" << endl;
+
+        mdspan_data_t<double,dynamic_tag> C;
+
+        cout << "addition of A and B" << endl;
+        C = A + B+A;
+        C.print();
+
+        cout<<"Define U as empty"<<endl;
+        mdspan_data_t<double,dynamic_tag> U;
+
+        cout<<"is empty U on device? "<<U.data_is_devptr()<<endl;
+        cout << "a combined expression with matrices on device: 2.0*A+A-B*3.0" << endl;
+        U=2.0*A+A-B*3.0;
+        U.print();
+        cout<<"is U on device? "<<U.data_is_devptr()<<endl;
+```
+
+
+Hy now, this is still preliminary.
+
+The parser currently creates too many temporaries. 
+
+This could be prevented with accumulate kernels, which are 
+already implemented in the project, but the parser needs to be updated for these.
+
+
+I also still need to make a similar parser for the distributed versions of the linear algebra functions that can work on gpu clusters. 
+
+
+If that is done, one can think of adding algorithms for eigenvalues, and fully distributed qr,lu and Cholesky decompositions.
+Also, one should add computations of determinants. then the linear algebra part would be closed and one can get more tensor support. 
+
+And then finally to interesting things.
+
+
 ### 26.07.26: 20.32 o'clock
 Changed the declaration of some functions that use the MPI from boolean fields to structs to make the code more readable.
 Removed a wrong template parameter introduced on 26.07 that would forbid compilation with clang. Now it compiles again with both compilers.
