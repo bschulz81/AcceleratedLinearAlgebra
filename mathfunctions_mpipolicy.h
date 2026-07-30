@@ -2,6 +2,7 @@
 #ifndef  MATHFUNCTIONSMPIPOLICY
 #define  MATHFUNCTIONSMPIPOLICY
 #include "omp.h"
+#include "datablock.h"
 #include "mathfunctionspolicy.h"
 #include "gpu_memory_functions.h"
 class Math_MPI_Functions_Policy : public Math_Functions_Policy, public MPI_Policy

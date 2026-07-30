@@ -2,8 +2,7 @@
 #define MATHFUNCTIONSMPI_HPP
 
 #include "datablock.h"
-#include "datablock.hpp"
-#include "mathfunctions_mpi.h"
+#include "datablock_mpifunctions.h"
 
 bool Math_Functions_MPI::matrix_distribution_is_summa_compatible(
     ptrdiff_t grid_r,

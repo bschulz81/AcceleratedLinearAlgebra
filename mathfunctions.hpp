@@ -1,15 +1,15 @@
 #ifndef MATHFUNCTIONS_HPP
 #define MATHFUNCTIONS_HPP
 
-#include "mathfunctions.h"
+
 
 #include "host_memory_functions.h"
 #include "gpu_memory_functions.h"
 #include "gpu_mathfunctions.h"
+
 #include "inkernel_mathfunctions.h"
 
 
-#include "mathfunctionspolicy.h"
 
 
 template <typename T>

@@ -3,18 +3,17 @@
 
 #include "string.h"
 #include <atomic>
-
 #include "datablock.h"
-#include "datablock.hpp"
-
 #include "mdspan_omp.h"
 
-#include "expression_templates.h"
+template <typename T>
+class DataBlock;
+
+template<typename T, typename Container>
+class mdspan;
 
 
 
-
-class mdspan_utilities;
 
 
 
@@ -61,6 +60,6 @@ using mdspan_data_t =
     T,
     typename container_selector<Tag>::template container<ptrdiff_t>>;
 
-
+#include "mdspan_data.hpp"
 #endif
 

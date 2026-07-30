@@ -1,17 +1,18 @@
+
 #ifndef DATABLOCKSPARSEUTILS
 #define DATABLOCKSPARSEUTILS
 
+#include <climits>
+#include<iostream>
+#include <omp.h>
 
 #include "datablock.h"
-#include "datablock.hpp"
-#include<iostream>
+
 
 class GPU_Memory_Functions;
 
 class Host_Memory_Functions;
 
-template<typename T>
-class DataBlock;
 
 
 class In_Kernel_Mathfunctions;
@@ -28,7 +29,7 @@ class mdspan_data;
 
 
 
-#include <iostream>
+
 
 
 #pragma omp begin declare target

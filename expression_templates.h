@@ -1,13 +1,15 @@
 #ifndef EXPRESSION_TEMPLATES
 #define EXPRESSION_TEMPLATES
 
+
 #include <type_traits>
+#include <vector>
 
-
+#include "datablock.h"
 
 #include "mathfunctions.h"
 #include "mathfunctionspolicy.h"
-#include <vector>
+
 template<typename T>
 class DataBlock;
 
@@ -465,5 +467,6 @@ auto dot(const LHS& lhs, const RHS& rhs)
 
 }
 
+#include "expression_templates_impl.hpp"
 
 #endif // EXPRESSION_TEMPLATES

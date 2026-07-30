@@ -1,11 +1,9 @@
 #ifndef EXPRESSION_TEMPLATES_IMPL_HPP
 #define EXPRESSION_TEMPLATES_IMPL_HPP
 
-#include "expression_templates.h"
+
 #include "mdspan_data.h"
-#include "mdspan_data.hpp"
 #include "datablock.h"
-#include "datablock.hpp"
 #include "mathfunctionspolicy.h"
 namespace expr
 {

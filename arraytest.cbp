@@ -280,19 +280,22 @@
 		<Unit filename="datablock.h" />
 		<Unit filename="datablock.hpp" />
 		<Unit filename="datablock_mpifunctions.h" />
+		<Unit filename="datablock_mpifunctions.hpp" />
 		<Unit filename="datablockconfigstructs.h" />
+		<Unit filename="datablockindiceshelperfunctions.hpp" />
 		<Unit filename="datablocksparseutils.h" />
 		<Unit filename="datablocktests.cpp">
 			<Option target="datablocktests" />
 		</Unit>
-		<Unit filename="datablockutilities.h" />
 		<Unit filename="expression_templates.h" />
 		<Unit filename="expression_templates_impl.hpp" />
 		<Unit filename="gpu_mathfunctions.h" />
+		<Unit filename="gpu_mathfunctions.hpp" />
 		<Unit filename="gpu_memory_functions.h" />
+		<Unit filename="gpu_memory_functions.hpp" />
 		<Unit filename="host_memory_functions.h" />
-		<Unit filename="indiceshelperfunctions.h" />
 		<Unit filename="inkernel_mathfunctions.h" />
+		<Unit filename="inkernel_mathfunctions.hpp" />
 		<Unit filename="main_mpi.cpp">
 			<Option target="arraytest_mpi" />
 		</Unit>
@@ -305,6 +308,10 @@
 		<Unit filename="mathfunctions_mpi.hpp" />
 		<Unit filename="mathfunctions_mpipolicy.h" />
 		<Unit filename="mathfunctionspolicy.h" />
+		<Unit filename="mathutilitiesdatablock.h" />
+		<Unit filename="mathutilitiesdatablock.hpp" />
+		<Unit filename="mathutilitiesmdspan.h" />
+		<Unit filename="mathutilitiesmdspan.hpp" />
 		<Unit filename="mdspan.hpp" />
 		<Unit filename="mdspan_data.h" />
 		<Unit filename="mdspan_data.hpp" />
@@ -312,7 +319,6 @@
 		<Unit filename="mdspantests.cpp">
 			<Option target="mdspantests" />
 		</Unit>
-		<Unit filename="mdspanutilities.h" />
 		<Unit filename="sparsetests.cpp">
 			<Option target="sparsetests" />
 		</Unit>

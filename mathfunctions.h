@@ -1,13 +1,9 @@
 #ifndef MATHFUNCTIONS
 #define MATHFUNCTIONS
 
+#include "datablock.h"
+
 #include "mathfunctionspolicy.h"
-
-
-
-
-template <typename T>
-class DataBlock;
 
 
 
@@ -94,7 +90,7 @@ protected:
 };
 
 
-
+#include "mathfunctions.hpp"
 
 
 #endif

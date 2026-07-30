@@ -1,5 +1,10 @@
-#include "mdspan_omp.h"
 
+
+#ifndef MDSPAN_HPP
+#define MDSPAN_HPP
+
+
+#include "gpu_memory_functions.h"
 template <typename T,typename Container>
 mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> & other)
 {
@@ -559,5 +564,5 @@ bool mdspan<T, Container>:: device_data_update()
 
 
 
-
+#endif
 

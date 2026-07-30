@@ -1,3 +1,4 @@
+
 #ifndef MDSPANH
 #define MDSPANH
 
@@ -11,9 +12,6 @@
 #include <memory>
 
 #include <cassert>
-
-
-
 #include <array>
 #include <vector>
 #include <cstddef>
@@ -22,9 +20,14 @@
 #include <set>
 
 #include "datablock.h"
-#include "datablock.hpp"
-#include "gpu_memory_functions.h"
-#include "expression_templates.h"
+
+
+template<typename T, typename Container>class mdspan;
+template<typename T, typename Container>
+class mdspan;
+
+template<typename T>
+class DataBlock;
 
 using namespace std;
 
@@ -246,6 +249,6 @@ using mdspan_t =
         T,
         typename container_selector<Tag>::template container<ptrdiff_t>>;
 
-
+#include "mdspan.hpp"
 
 #endif
