@@ -3,7 +3,7 @@ A library with some linear algebra functions that works with OpenMP and Open-MPI
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
 While mdspan works with compile time set extents, this library uses c++ concepts, so that stl vectors on the heap can be used for extents.
-It has support for rowmajor and column mayor data and rank sizes larger than 2 (but higher ranks are currently slow and not parallelized).
+It has support for rowmajor and column mayor data and rank sizes larger than 2
 
 Currently, the library uses open-mp on cpu and gpu and the message passing interface.
 
