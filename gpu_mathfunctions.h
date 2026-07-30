@@ -2,10 +2,12 @@
 #define GPUMATHFUNCTIONS
 
 #include "datablock.h"
+#include "datablock.hpp"
 
 #include "host_memory_functions.h"
 #include "gpu_memory_functions.h"
-#include "datablockutilities.h"
+
+#include "mathutilitiesdatablock.h"
 
 
 
@@ -1088,7 +1090,7 @@ void GPU_Math_Functions::cholesky_decomposition_g(const DataBlock<T> & A,DataBlo
 
     const ptrdiff_t n = A.dpextents[0];
 
-    L.dpconfig.dpconjugate=false;
+    L.dpconjugate=false;
 
     typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,dev,false);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperL(L,dev,true,update_host);
@@ -1149,8 +1151,8 @@ void GPU_Math_Functions::lu_decomposition_g(const DataBlock<T>& A, DataBlock<T> 
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperU(U,dev,true,update_host);
 
     ptrdiff_t n = A.dpextents[0];
-    L.dpconfig.dpconjugate=false;
-    U.dpconfig.dpconjugate=false;
+    L.dpconjugate=false;
+    U.dpconjugate=false;
     if(initialize_output_to_zero)
     {
         #pragma omp target teams distribute parallel for simd collapse(2) device(dev)
@@ -1210,10 +1212,10 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
 
     ptrdiff_t n = A.dpextents[0];
     ptrdiff_t m = A.dpextents[1];
-    Q.dpconfig.dpconjugate=false;
-    R.dpconfig.dpconjugate=false;
+    Q.dpconjugate=false;
+    R.dpconjugate=false;
 
-    bool aconj=A.dpconfig.dpconjugate;
+    bool aconj=A.dpconjugate;
     // Initialize Q and R matrices
     ptrdiff_t nm=n*m, mm=m*m;
 
@@ -1248,9 +1250,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
         }
         ptrdiff_t aext[2]= {A.dpextents[0],A.dpextents[1]};
         ptrdiff_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-
                   DataBlockConfig aconf({.dprowmajor=A.dpconfig.dprowmajor,
-                                        .dpconjugate=false,
                                         .pmemmap=memmap_tempfiles,
                                  .data_is_devptr=separate_device_memory,
                                   .devicenum=dev,
@@ -1330,8 +1330,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
 
         ptrdiff_t z = 0;
           DataBlockConfig cconf({.dprowmajor=true,
-                                 .dpconjugate=false,
-                                 .pmemmap=memmap_tempfiles,
+                                           .pmemmap=memmap_tempfiles,
                                  .data_is_devptr=separate_device_memory,
                                   .devicenum=dev
                                  });
@@ -1474,6 +1473,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
             omp_free(tempM, omp_default_mem_alloc);
             }
         }
+
 
 
     }

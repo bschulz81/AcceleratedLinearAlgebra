@@ -2,8 +2,16 @@
 #define DATABLOCKGPUMEMHELPERS
 
 #include "datablock.h"
+#include "datablock.hpp"
+
 #include "host_memory_functions.h"
-#include "datablockcontainer.h"
+#include "gpu_memory_functions.h"
+#include "datablocksparseutils.h"
+
+template<typename T>
+class DataBlockArray;
+template<typename T>
+class BlockedDataView;
 
 
 class GPU_Memory_Functions
