@@ -1,90 +1,227 @@
 #ifndef EXPRESSION_TEMPLATES
 #define EXPRESSION_TEMPLATES
 
-#include <optional>
 #include <type_traits>
-#include <complex>
+
+
+
 #include "mathfunctions.h"
-#include "mdspan_omp.h"
-#include "datablock.h"
-// 1. Scalar Validation Traits
+#include "mathfunctionspolicy.h"
+#include <vector>
+template<typename T>
+class DataBlock;
+
+template<typename T, typename Container>
+class mdspan_data;
+
+
+struct ManagedDataBlockConfig;
+
 namespace expr
 {
 
-template<typename T>
-inline constexpr bool is_complex_v = is_complex<T>::value;
-
-template<typename T>
-concept ValidNumericType = std::is_arithmetic_v<T> || is_complex_v<T>;
 
 
-template<typename LHS, typename RHS>
-struct AddExpr;
-
-template<typename LHS, typename RHS>
-struct SubtrExpr;
-
-template<typename LHS, typename RHS>
-struct MulExpr;
-
-template<typename LHS, typename Scalar>
-struct ScaleExpr;
-
-template<typename LHS, typename RHS>
-struct DotExpr;
+class ExpressionExecutionPolicy
+{
+public:
+    Math_Functions_Policy kernel_policy;
+    ManagedDataBlockConfig temporary_placement= {};
+    bool check_locations = true;
+    bool check_sizes = true;
+    bool follow_expression_location = true;
+};
 
 
 
-template<typename T>
-struct is_datablock_type {
+// global default policy
+inline std::optional<ExpressionExecutionPolicy> default_policy;
+
+inline const ExpressionExecutionPolicy& get_default_policy()
+{
+    if (!default_policy)
+    {
+        default_policy.emplace();
+
+        // initialize kernel policy from Math_Functions
+        default_policy->kernel_policy =
+            Math_Functions::get_default_policy();
+    }
+
+    return *default_policy;
+}
+
+inline void set_default_policy(const ExpressionExecutionPolicy& p)
+{
+    default_policy = p;
+}
+
+inline void reset_default_policy()
+{
+    default_policy.reset();
+}
+
+template<typename T,
+         typename Container = std::vector<ptrdiff_t>,
+         typename Expression>
+auto evaluate(const Expression& expr,
+              const ExpressionExecutionPolicy& policy)
+{
+    return evaluate_to_mdspan_data<T, Container>(expr, &policy);
+}
+
+
+struct LocationCheckContext
+{
+    bool check_started = false;
+
+    bool data_is_device = false;
+    int device_number = -INT_MAX;
+
+    template<typename T>
+    bool check(const DataBlock<T>& d)
+    {
+#if defined(Unified_Shared_Memory)
+        return d.dpdata != nullptr;
+#endif
+
+        if (d.data() == nullptr)
+            return false;
+
+        bool this_is_device =
+            d.data_is_devptr();
+
+        if (!check_started)
+        {
+            check_started = true;
+
+            data_is_device = this_is_device;
+
+            if (this_is_device)
+                device_number = d.devptr_num();
+
+            return true;
+        }
+
+        if (data_is_device != this_is_device)
+            return false;
+
+        if (data_is_device &&
+                device_number != d.devptr_num())
+            return false;
+
+        return true;
+
+
+    }
+};
+
+
+template<typename Derived>
+class ExpressionInterface
+{
+public:
+
+    template<typename Expr>
+    Derived& operator=(const Expr& expr)
+    {
+        return static_cast<Derived*>(this)->assign(expr,nullptr);
+    }
+
+
+    template<typename Expr>
+    Derived& assign(
+        const Expr& expr,
+        const expr::ExpressionExecutionPolicy* policy=nullptr)
+    {
+        const auto& pol = policy ? *policy : expr::get_default_policy();
+
+        if (pol.check_locations)
+        {
+            expr::LocationCheckContext ctx;
+
+            if (!expr.location_check(ctx))
+                throw std::runtime_error("Expression location mismatch");
+        }
+
+
+        expr.assign_to(static_cast<Derived&>(*this), &pol);
+
+        return static_cast<Derived&>(*this);
+    }
+};
+
+
+
+
+template<typename T> inline constexpr bool is_complex_v = is_complex<T>::value;
+template<typename T> concept ValidNumericType = std::is_arithmetic_v<T> || is_complex_v<T>;
+
+
+
+
+template<typename LHS, typename RHS> struct AddExpr;
+template<typename LHS, typename RHS> struct SubtrExpr;
+template<typename LHS, typename RHS> struct MulExpr;
+template<typename LHS, typename Scalar> struct ScaleExpr;
+template<typename LHS, typename RHS> struct DotExpr;
+
+
+template<typename T> struct is_datablock_type
+{
 private:
-    template <typename U> static std::true_type  test(const DataBlock<U>*);
+    template <typename U> static std::true_type test(const DataBlock<U>*);
     static std::false_type test(...);
 public:
     static constexpr bool value = decltype(test(std::declval<const T*>()))::value;
 };
+template<typename T> inline constexpr bool is_datablock_type_v = is_datablock_type<std::remove_cvref_t<T>>::value;
 
-template<typename T>
-inline constexpr bool is_datablock_type_v = is_datablock_type<std::remove_cvref_t<T>>::value;
-
-template<typename T>
-struct is_expr_type : std::false_type {};
+template<typename T> struct is_expr_type : std::false_type {};
 template<typename L, typename R> struct is_expr_type<AddExpr<L, R>> : std::true_type {};
 template<typename L, typename R> struct is_expr_type<SubtrExpr<L, R>> : std::true_type {};
 template<typename L, typename R> struct is_expr_type<MulExpr<L, R>> : std::true_type {};
 template<typename L, typename S> struct is_expr_type<ScaleExpr<L, S>> : std::true_type {};
 template<typename L, typename R> struct is_expr_type<DotExpr<L, R>> : std::true_type {};
 
-template<typename T>
-concept IsValidMathOperand = is_datablock_type_v<T> || is_expr_type<std::remove_cvref_t<T>>::value;
+template<typename T> concept IsValidMathOperand = is_datablock_type_v<T> || is_expr_type<std::remove_cvref_t<T>>::value;
 
 
-// 4. Expression Structures
 template<typename LHS, typename RHS>
 struct AddExpr
 {
     const LHS& lhs;
     const RHS& rhs;
-    const Math_Functions_Policy* policy = nullptr;
+
+    inline auto DataShape() const
+    {
+        return lhs.DataShape();
+    }
+    inline size_t rank() const
+    {
+        return lhs.rank();
+    }
+    inline size_t extent(size_t index) const
+    {
+        return lhs.extent(index);
+    }
+    inline size_t datalength() const
+    {
+        return lhs.datalength();
+    }
+
+    bool location_check(
+        LocationCheckContext& state) const
+    {
+        return lhs.location_check(state) &&
+               rhs.location_check(state);
+    }
+
+    template<typename T, typename Container = std::vector<ptrdiff_t>>
+    operator mdspan_data<T, Container>() const;
 
     template<typename T>
-    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
-    {
-        auto pol = override ? override : policy;
-
-        if (lhs.ObjectType() == DataBlock<T>::Matrix)
-        {
-            Math_Functions::matrix_add(lhs, rhs, C, pol);
-        }
-        else if (lhs.ObjectType() == DataBlock<T>::Vector)
-        {
-            Math_Functions::vector_add(lhs, rhs, C, pol);
-        }
-        else
-        {
-            throw std::runtime_error("Unsupported type for addition");
-        }
-    }
+    void assign_to(DataBlock<T>& C, const ExpressionExecutionPolicy* pol = nullptr) const;
 };
 
 template<typename LHS, typename RHS>
@@ -92,20 +229,35 @@ struct SubtrExpr
 {
     const LHS& lhs;
     const RHS& rhs;
-    const Math_Functions_Policy* policy = nullptr;
+
+    inline auto DataShape() const
+    {
+        return lhs.DataShape();
+    }
+    inline size_t rank() const
+    {
+        return lhs.rank();
+    }
+    inline size_t extent(size_t index) const
+    {
+        return lhs.extent(index);
+    }
+    inline size_t datalength() const
+    {
+        return lhs.datalength();
+    }
+    bool location_check(
+        LocationCheckContext& state) const
+    {
+        return lhs.location_check(state) &&
+               rhs.location_check(state);
+    }
+
+    template<typename T, typename Container = std::vector<size_t>>
+    operator mdspan_data<T, Container>() const;
 
     template<typename T>
-    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
-    {
-        auto pol = override ? override : policy;
-
-        if (lhs.ObjectType() == DataBlock<T>::Matrix)
-            Math_Functions::matrix_subtract(lhs, rhs, C, pol);
-        else if (lhs.ObjectType() == DataBlock<T>::Vector)
-            Math_Functions::vector_subtract(lhs, rhs, C, pol);
-        else
-            throw std::runtime_error("Unsupported type for subtraction");
-    }
+    void assign_to(DataBlock<T>& C, const ExpressionExecutionPolicy* pol = nullptr) const;
 };
 
 template<typename LHS, typename Scalar>
@@ -113,25 +265,35 @@ struct ScaleExpr
 {
     const LHS& lhs;
     const Scalar scalar;
-    const Math_Functions_Policy* policy = nullptr;
+
+
+    inline size_t rank() const
+    {
+        return lhs.rank();
+    }
+    inline size_t extent(size_t index) const
+    {
+        return lhs.extent(index);
+    }
+    inline size_t datalength() const
+    {
+        return lhs.datalength();
+    }
+    inline auto DataShape() const
+    {
+        return lhs.DataShape();
+    }
+    bool location_check(
+        LocationCheckContext& state) const
+    {
+        return lhs.location_check(state);
+    }
+
+    template<typename T, typename Container = std::vector<size_t>>
+    operator mdspan_data<T, Container>() const;
 
     template<typename T>
-    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
-    {
-        auto pol = override ? override : policy;
-
-        switch(lhs.ObjectType())
-        {
-            case DataBlock<T>::Vector:
-                Math_Functions::vector_multiply_scalar(lhs, scalar, C, pol);
-                break;
-            case DataBlock<T>::Matrix:
-                Math_Functions::matrix_multiply_scalar(lhs, scalar, C, pol);
-                break;
-            default:
-                throw std::runtime_error("Unsupported type for scalar multiplication");
-        }
-    }
+    void assign_to(DataBlock<T>& C, const ExpressionExecutionPolicy* pol = nullptr) const;
 };
 
 template<typename LHS, typename RHS>
@@ -139,105 +301,168 @@ struct MulExpr
 {
     const LHS& lhs;
     const RHS& rhs;
-    const Math_Functions_Policy* policy = nullptr;
 
-    template<typename T>
-    void assign_to(DataBlock<T>& C, const Math_Functions_Policy* override = nullptr) const
+    inline auto DataShape() const
     {
-        auto pol = override ? override : policy;
+        auto l = lhs.DataShape();
+        auto r = rhs.DataShape();
 
-        if (lhs.ObjectType() == DataBlock<T>::Matrix)
+        if (l == DataBlockObject::Matrix &&
+                r == DataBlockObject::Matrix)
+            return DataBlockObject::Matrix;
+
+        if (l == DataBlockObject::Matrix &&
+                r == DataBlockObject::Vector)
+            return DataBlockObject::Vector;
+
+        if (l == DataBlockObject::Vector &&
+                r == DataBlockObject::Matrix)
+            return DataBlockObject::Vector;
+        if (l == DataBlockObject::Vector &&
+                r == DataBlockObject::Vector)
+            return DataBlockObject::Scalar;
+
+        if (l == DataBlockObject::Scalar &&
+                r == DataBlockObject::Scalar)
+            return DataBlockObject::Scalar;
+
+
+        return DataBlockObject::Tensor;
+    }
+
+    inline size_t rank() const
+    {
+        if (lhs.DataShape() == DataBlockObject::Matrix && rhs.DataShape() == DataBlockObject::Matrix)
         {
-            if (rhs.ObjectType() == DataBlock<T>::Matrix)
-                Math_Functions::matrix_multiply_dot(lhs, rhs, C, pol);
-            else if (rhs.ObjectType() == DataBlock<T>::Vector)
-                Math_Functions::matrix_multiply_vector(lhs, rhs, C, pol);
-            else
-                throw std::runtime_error("Unsupported RHS for matrix multiplication");
+            return 2;
         }
-        else if (lhs.ObjectType() == DataBlock<T>::Vector && rhs.ObjectType() == DataBlock<T>::Vector)
+        else if
+        ((lhs.DataShape() == DataBlockObject::Matrix && rhs.DataShape() == DataBlockObject::Vector)||
+                (lhs.DataShape() == DataBlockObject::Vector && rhs.DataShape() == DataBlockObject::Matrix))
         {
-            throw std::runtime_error("Dot product is scalar, use dot() or eval_scalar()");
+            return 1;
         }
         else
         {
-            throw std::runtime_error("Unsupported type combination for multiplication");
+            return lhs.rank();
         }
     }
+
+    inline size_t extent(size_t index) const
+    {
+        auto lhs_type = lhs.DataShape();
+        auto rhs_type = rhs.DataShape();
+
+        // matrix * matrix
+        if (lhs_type == DataBlockObject::Matrix &&
+                rhs_type == DataBlockObject::Matrix)
+        {
+            if (index == 0)
+                return lhs.extent(0);
+
+            if (index == 1)
+                return rhs.extent(1);
+        }
+
+        // matrix * vector
+        if (lhs_type == DataBlockObject::Matrix &&
+                rhs_type == DataBlockObject::Vector)
+        {
+            return lhs.extent(0);
+        }
+
+        // vector * matrix
+        if (lhs_type == DataBlockObject::Vector &&
+                rhs_type == DataBlockObject::Matrix)
+        {
+            return rhs.extent(1);
+        }
+
+        throw std::runtime_error("Invalid multiplication extent");
+    }
+
+
+    inline size_t datalength() const
+    {
+        return lhs.extent(0)*lhs.extent(1);
+    }
+    bool location_check(
+        LocationCheckContext& state) const
+    {
+        return lhs.location_check(state) &&
+               rhs.location_check(state);
+    }
+    template<typename T, typename Container = std::vector<size_t>>
+    operator mdspan_data<T, Container>() const;
+
+    template<typename T>
+    void assign_to(DataBlock<T>& C, const ExpressionExecutionPolicy* pol = nullptr) const;
 };
 
+
 template<typename LHS, typename RHS>
-struct DotExpr {
+struct DotExpr
+{
     const LHS& lhs;
     const RHS& rhs;
-    const Math_Functions_Policy* policy = nullptr;
 
-    template<typename T>
-    T eval_scalar(const Math_Functions_Policy* override = nullptr) const
+    bool location_check(
+        LocationCheckContext& state) const
     {
-        auto pol = override ? override : policy;
-        if (lhs.ObjectType() == DataBlock<T>::Vector && rhs.ObjectType() == DataBlock<T>::Vector)
-        {
-            return Math_Functions::dot_product(lhs, rhs, pol);
-        }
-        throw std::runtime_error("DotExpr only works for vectors");
+        return lhs.location_check(state) &&
+               rhs.location_check(state);
     }
 
     template<typename T>
-    operator T() const {
+    T eval_scalar(const ExpressionExecutionPolicy* pol = nullptr) const;
+
+    template<typename T>
+    operator T() const
+    {
         return eval_scalar<T>();
     }
 };
 
 
-template<typename LHS, typename Scalar>
-requires IsValidMathOperand<LHS> && ValidNumericType<std::remove_cvref_t<Scalar>>
-auto operator*(const LHS& lhs, Scalar scalar)
+
+template<typename LHS, typename Scalar> requires IsValidMathOperand<LHS> && ValidNumericType<std::remove_cvref_t<Scalar>>
+        auto operator*(const LHS& lhs, Scalar scalar)
 {
     return ScaleExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<Scalar>> {lhs, scalar};
 }
 
-template<typename Scalar, typename RHS>
-requires ValidNumericType<std::remove_cvref_t<Scalar>> && IsValidMathOperand<RHS>
-auto operator*(Scalar scalar, const RHS& rhs)
+template<typename Scalar, typename RHS> requires ValidNumericType<std::remove_cvref_t<Scalar>> && IsValidMathOperand<RHS>
+        auto operator*(Scalar scalar, const RHS& rhs)
 {
     return ScaleExpr<std::remove_cvref_t<RHS>, std::remove_cvref_t<Scalar>> {rhs, scalar};
 }
 
-template<typename LHS, typename RHS>
-requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
+
+
+template<typename LHS, typename RHS> requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator*(const LHS& lhs, const RHS& rhs)
 {
     return MulExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<typename LHS, typename RHS>
-requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
+template<typename LHS, typename RHS> requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator+(const LHS& lhs, const RHS& rhs)
 {
     return AddExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<typename LHS, typename RHS>
-requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
+template<typename LHS, typename RHS> requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto operator-(const LHS& lhs, const RHS& rhs)
 {
     return SubtrExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-template<typename LHS, typename RHS>
-requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
+template<typename LHS, typename RHS> requires IsValidMathOperand<LHS> && IsValidMathOperand<RHS>
 auto dot(const LHS& lhs, const RHS& rhs)
 {
-    return DotExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>>{lhs, rhs};
+    return DotExpr<std::remove_cvref_t<LHS>, std::remove_cvref_t<RHS>> {lhs, rhs};
 }
 
-}
-template<typename Expr>
-auto with_policy(const Expr& expr, const Math_Functions_Policy* policy) {
-    auto e = expr;
-    e.policy = policy;
-    return e;
 }
 
 

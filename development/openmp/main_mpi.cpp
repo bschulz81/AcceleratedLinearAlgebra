@@ -4,10 +4,15 @@
 #include <cstddef>
 
 #include "mdspan_data.h"
+#include "mdspan_data.hpp"
+#include "mdspan_omp.h"
+#include "mdspan.hpp"
 #include "mathfunctions.h"
 #include "datablock_mpifunctions.h"
 #include "mathfunctions_mpi.h"
-#include "mdspanutilities.h"
+#include "mathfunctions_mpi.hpp"
+
+#include "mathutilitiesmdspan.h"
 
 using namespace std;
 

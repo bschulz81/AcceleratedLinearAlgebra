@@ -11,6 +11,8 @@
 #include <cstring>
 #include <cmath>
 #include "datablock.h"
+#include "datablock.hpp"
+
 #include "host_memory_functions.h"
 #include "gpu_memory_functions.h"
 
@@ -114,18 +116,16 @@ MPI_Datatype create_mpi_DataBlockConfig_type() {
     MPI_Datatype mpi_config_type;
 
 
-    const int count = 2;
+    const int count = 1;
 
 
-    int blocklengths[count] = {1, 1};
+    int blocklengths[count] = {1};
 
 
-    MPI_Datatype types[count] = {MPI_CXX_BOOL, MPI_CXX_BOOL};
+    MPI_Datatype types[count] = {MPI_CXX_BOOL};
 
     MPI_Aint offsets[count];
     offsets[0] = offsetof(DataBlockConfig, dprowmajor);
-    offsets[1] = offsetof(DataBlockConfig, dpconjugate);
-
 
     MPI_Type_create_struct(count, blocklengths, offsets, types, &mpi_config_type);
 
@@ -383,7 +383,7 @@ public:
 
                 if(Dblockarray.pdata != nullptr)
                 {
-                    DataBlock<T> block =get_datablock_from_arrays(i,Dblockarray);
+                    DataBlock<T> block =Dblockarray.get_datablock_from_arrays(i);
                     len += block.print_required_size();
                 }
                 else
@@ -439,7 +439,7 @@ public:
                 if(Dblockarray.pdata != nullptr)
                 {
                     DataBlock<T> block =
-                        get_datablock_from_arrays(i,Dblockarray);
+                        Dblockarray.get_datablock_from_arrays(i);
 
                     ptrdiff_t tensor_len =
                         block.print_required_size();
@@ -863,7 +863,7 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_C
     MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (db.dpdata, db.dpdatalength,  mpi_get_type<T>(), rootrank, com);
-
+    MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Bcast(&db.dpconfig, 1, MPI_SELECTIVE_TYPE, rootrank,com);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
@@ -895,6 +895,7 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock_meta (DataBlock<T> &db,
     MPI_Bcast (&db.dprank,1,  mpi_get_type<ptrdiff_t>(), rootrank, com);
 
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
+    MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
     MPI_Bcast(&db.dpconfig, 1, MPI_SELECTIVE_TYPE, rootrank,com);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
 }
@@ -926,10 +927,10 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db
     MPI_Comm_rank(com, &rank);
     MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (&db.dprank,    1,    mpi_get_type<ptrdiff_t>(), rootrank, com);
+     MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
 
     DataBlockConfig conf{
     .rowmajor=db.dpconfig.dprowmajor,
-    .dpconjugate=db.dpconfig.dpconjugate,
     .data_is_devptr=loc.ondevice,
     .devicenum=loc.ondevice?loc.devicenum:-INT_MAX,
     .memmap=loc.ondevice? false: loc.with_memmap};
@@ -1061,7 +1062,7 @@ MPI_Scatter_matrix_to_submatrices_alloc(
         recv_db.pglobal_strides[0]=send_db->dpstrides[0];
         recv_db.pglobal_strides[1]=send_db->dpstrides[1];
         recv_db.Dblockarray.prowm=       send_db->dpconfig.dprowmajor;
-        recv_db.Dblockarray.pconjugate = send_db->dpconfig.dpconjugate;
+        recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
         recv_db.pblock_extents[0]=abs(br);
         recv_db.pblock_extents[1]=abs(bc);
 
@@ -1372,9 +1373,10 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
                        ext,
                        str,DataBlockConfig{
                            .dprowmajor=rowmajor,
-                       .dpconjugate=send_db.Dblockarray.pconjugate,
                        .data_is_devptr=loc.ondevice,
                        .devicenum=loc.devicenum});
+
+        recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
     }
 
 
@@ -1533,7 +1535,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
 
         recv_db.Dblockarray.ptensor_rank = send_db->dprank;
         recv_db.Dblockarray.prowm = send_db->dpconfig.dprowmajor;
-        recv_db.Dblockarray.pconjugate = send_db->dpconfig.dpconjugate;
+        recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
         recv_db.pglobal_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank);
         recv_db.pglobal_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank);
         recv_db.pblock_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.pblock_rank);
@@ -1944,7 +1946,8 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
                        rank_t,
                        ext,
                        str,
-                       DataBlockConfig{.dprowmajor=rowmajor,.dpconjugate=send_db.Dblockarray.pconjugate, .data_is_devptr=loc.ondevice,.devicenum=loc.devicenum});
+                       DataBlockConfig{.dprowmajor=rowmajor, .data_is_devptr=loc.ondevice,.devicenum=loc.devicenum});
+        recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
     }
 
 
@@ -2125,7 +2128,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
         recv_db.pglobal_extents[0] = send_db->dpextents[0];
         recv_db.pglobal_strides[0] = send_db->dpstrides[0];
         recv_db.pblock_extents[0] = blocksize;
-        recv_db.Dblockarray.pconjugate = send_db->dpconfig.dpconjugate;
+        recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
     }
 
 
@@ -2385,7 +2388,8 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
                        1,
                        ext,
                        str,
-                       DataBlockConfig{.dprowmajor=rowmajor,.dpconjugate=send_db.Dblockarray.pconjugate,.data_is_devptr=loc.ondevice,.devicenum=loc.devicenum});
+                       DataBlockConfig{.dprowmajor=rowmajor,.data_is_devptr=loc.ondevice,.devicenum=loc.devicenum});
+        recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
 
     }
 
@@ -2473,7 +2477,7 @@ inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock(DataBlock<T> &m, int de
     MPI_Send(m.dpextents, m.dprank, mpi_get_type<ptrdiff_t>(), dest, tag, pcomm);
     MPI_Send(m.dpstrides, m.dprank, mpi_get_type<ptrdiff_t>(), dest, tag, pcomm);
     MPI_Send(m.dpdata,sizeof(T)* m.dpdatalength, MPI_BYTE, dest, tag, pcomm);
-
+    MPI_Send(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), dest, tag, pcomm);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Send(&m.dpconfig, 1, MPI_SELECTIVE_TYPE, dest, tag, pcomm);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
@@ -2488,7 +2492,7 @@ inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock_meta(DataBlock<T> &m, i
 
     MPI_Send(m.dpextents, m.dprank, mpi_get_type<ptrdiff_t>(), dest, tag, pcomm);
     MPI_Send(m.dpstrides, m.dprank, mpi_get_type<ptrdiff_t>(), dest, tag, pcomm);
-
+    MPI_Send(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), dest, tag, pcomm);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Send(&m.dpconfig, 1, MPI_SELECTIVE_TYPE, dest, tag, pcomm);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
@@ -2529,12 +2533,16 @@ inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(MPI_Sendl
     MPI_Recv(pstrides,prank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
 
     MPI_Recv(pdata,sizeof(T)*pdatalength, MPI_BYTE, source, tag, pcomm, &status);
+    bool conjugate;
+    MPI_Recv(&conjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
 
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Recv(&conf, 1, MPI_SELECTIVE_TYPE, source, tag, pcomm, &status);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
 
-    return DataBlock<T>(pdata,pdatalength,prank,pextents,pstrides,conf);
+    DataBlock<T> tempt(pdata,pdatalength,prank,pextents,pstrides,conf);
+    tempt.dpconjugate=conjugate;
+    return tempt;
 
 }
 
@@ -2578,6 +2586,7 @@ void DataBlock_MPI_Functions::MPI_Recv_DataBlock(DataBlock<T>& m,const int sourc
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpdata,sizeof(T)*m.dpdatalength, MPI_BYTE, source, tag, pcomm, &status);
+    MPI_Recv(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Recv(&m.dpconfig, 1, MPI_SELECTIVE_TYPE, source, tag, pcomm, &status);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
@@ -2594,11 +2603,13 @@ void DataBlock_MPI_Functions::MPI_Recv_DataBlock_meta(DataBlock<T>& m,const int 
     MPI_Recv(&m.dprank, 1, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
+     MPI_Recv(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Recv(&m.dpconfig, 1, MPI_SELECTIVE_TYPE, source, tag, pcomm, &status);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
 
 }
+
 
 
 

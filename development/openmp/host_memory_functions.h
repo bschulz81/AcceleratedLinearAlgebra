@@ -5,6 +5,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+
+#include "datablock.h"
+#include "datablock.hpp"
+template<typename T>
+class DataBlock;
+
+
 class Host_Memory_Functions
 {
 public:
@@ -29,7 +36,7 @@ T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
 {
     ptrdiff_t file_size = array_size * sizeof(T);
 
-    // Create a temporary file using std::tmpfile()
+
     FILE* tmpf = tmpfile();
     if (!tmpf)
     {
@@ -37,7 +44,7 @@ T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
         return NULL;
     }
 
-    // Get the file descriptor from the FILE*
+
     int fd = fileno(tmpf);
     if (fd == -1)
     {
@@ -46,7 +53,7 @@ T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
         return NULL;
     }
 
-    // Resize the file to the required size
+
     if (ftruncate(fd, file_size) == -1)
     {
         perror("ftruncate");
@@ -54,7 +61,7 @@ T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
         return NULL;
     }
 
-    // Memory map the file
+
     T* mmap_ptr = (T*)mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (mmap_ptr == MAP_FAILED)
     {
@@ -63,10 +70,10 @@ T* Host_Memory_Functions::create_temp_mmap(const ptrdiff_t array_size)
         return NULL;
     }
 
-    // Close the FILE* but keep the memory mapping valid
+
     fclose(tmpf);
 
-    // Return the pointer to the mapped memory
+
     return mmap_ptr;
 }
 
@@ -170,6 +177,7 @@ void Host_Memory_Functions::free_copy(DataBlock<T>&m)
         if(m.dpdata!=nullptr)
             omp_free(m.dpdata,omp_default_mem_alloc);
 }
+
 
 
 #endif

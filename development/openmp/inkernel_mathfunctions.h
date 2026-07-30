@@ -3,8 +3,10 @@
 
 #include "cmath"
 #include "datablock.h"
-#include "datablockcontainer.h"
-#include "datablockutilities.h"
+#include "datablock.hpp"
+#include "datablocksparseutils.h"
+
+#include "mathutilitiesdatablock.h"
 #include "host_memory_functions.h"
 using namespace std;
 
@@ -974,7 +976,7 @@ template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::cholesky_decomposition(const DataBlock<T>& A, DataBlock<T>& L, bool initialize_to_zero)
 {
     const ptrdiff_t n = A.dpextents[0];
-    L.dpconfig.dpconjugate=false;
+    L.dpconjugate=false;
     if(initialize_to_zero)
     {
         if constexpr (Policy == OpenMPVariant::ParallelSimd)
@@ -1123,8 +1125,8 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
 {
 
     const ptrdiff_t n = A.dpextents[0];
-    L.dpconfig.dpconjugate=false;
-    U.dpconfig.dpconjugate=false;
+    L.dpconjugate=false;
+    U.dpconjugate=false;
 
     if(initialize_to_zero)
     {
@@ -1269,6 +1271,7 @@ void In_Kernel_Mathfunctions::lu_decomposition(const  DataBlock<T>& A, DataBlock
 
 
 
+
 #pragma omp begin declare target
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<T> Q, DataBlock<T> &R,bool initialize_to_zero, bool with_memmaps)
@@ -1276,8 +1279,8 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     const ptrdiff_t n = A.dpextents[0];
     const ptrdiff_t m = A.dpextents[1];
 
-    Q.dpconfig.dpconjugate=false;
-    R.dpconfig.dpconjugate=false;
+    Q.dpconjugate=false;
+    R.dpconjugate=false;
     T* tempM;
 
     if(with_memmaps)
@@ -1289,7 +1292,6 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     ptrdiff_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
     ptrdiff_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
               DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
-                                    .dpconjugate=false,
                                     .pmemmap=with_memmaps,
                                  .data_is_devptr=false,
                                   .devicenum=-INT_MAX

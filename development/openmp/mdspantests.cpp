@@ -4,8 +4,11 @@
 #include <iostream>
 
 #include "mdspan_omp.h"
+#include "mdspan.hpp"
 #include "mdspan_data.h"
-#include "mdspanutilities.h"
+#include "mdspan_data.hpp"
+#include "mathutilitiesmdspan.h"
+
 int main()
 {
 
@@ -247,7 +250,8 @@ int main()
 
 
             cout<<"copy of mdspan on device";
-            auto newcopy=mdspan_data_matrix.copy(ManagedDataBlockConfig{.data_ondevice=true,});
+            ManagedDataBlockConfig m={.data_ondevice=true};
+            auto newcopy=mdspan_data_matrix.copy(&m);
 
             newcopy.print();
 
@@ -328,9 +332,11 @@ int main()
             transpose.print();
 
             cout<<"copy of a view of mdspan_data with help of a constructor";
-            mdspan_data_t<double,dynamic_tag>newcopy(transpose,ManagedDataBlockConfig{.memmap=false,.data_ondevice=true});
+            ManagedDataBlockConfig m2={.memmap=false,.data_ondevice=true};
+            mdspan_data_t<double,dynamic_tag>newcopy(transpose,&m2);
 
             newcopy.print();
+            cout<<"on device:" <<newcopy.data_is_devptr();
 
         }
     }

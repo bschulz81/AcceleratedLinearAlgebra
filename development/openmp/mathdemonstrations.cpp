@@ -1,14 +1,21 @@
-#include "datablock.h"
-#include "mdspan_omp.h"
-#include "mathfunctions.h"
-#include "mathfunctions_mpi.h"
-#include "expression_templates.h"
-#include "mdspan_omp.h"
-#include "datablockutilities.h"
-#include "mdspanutilities.h"
 #include <vector>
 #include <iostream>
 
+#include "datablock.h"
+#include "datablock.hpp"
+
+#include "mdspan_omp.h"
+#include "mathfunctions.h"
+#include "mathfunctions_mpi.h"
+#include "mathfunctions_mpi.hpp"
+#include "mdspan.hpp"
+#include "mdspan_data.h"
+#include "mdspan_data.hpp"
+
+#include "mathutilitiesdatablock.h"
+#include "mathutilitiesmdspan.h"
+#include "expression_templates.h"
+#include "expression_templates_impl.hpp"
 using namespace std;
 
 
@@ -27,9 +34,6 @@ int main()
         cout << "We can also use a more simplified interface for writing expressions. Although evaluations of more than one operator are not yet supported." << endl;
         using namespace expr;
 
-        // --------------------------
-        // Matrix initialization
-        // --------------------------
         std::vector<double> A_data = { 1, 2, 3, 4, 5, 6 };
         std::vector<double> B_data = { 6, 5, 4, 3, 2, 1 };
         std::vector<double> C_data(6, 0);
@@ -37,48 +41,67 @@ int main()
 
         cout << "define A" << endl;
 
-        auto A = mdspan_utilities::create_matrix<double,static_tag<2>>(
+        auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      A_data.data(), rows, cols, DataBlockConfig{  }
                  );
         A.print();
+    cout<<"We load A up"<<endl;
+        A.device_data_upload(true);
 
         cout << "define B" << endl;
 
-        auto B = mdspan_utilities::create_matrix<double,static_tag<2>>(
+        auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      B_data.data(), rows, cols, DataBlockConfig{  }
                  );
         B.print();
+        cout<<"We load B up"<<endl;
+        B.device_data_upload(true);
 
+        cout << "define C as empty" << endl;
 
-        cout << "define C" << endl;
-
-        auto C = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     rows, cols, ManagedDataBlockConfig{  }
-                 );
+        mdspan_data_t<double,dynamic_tag> C;
 
         cout << "addition of A and B" << endl;
-        C = A + B;
+        C = A + B+A;
         C.print();
 
+        cout<<"Define U as empty"<<endl;
+        mdspan_data_t<double,dynamic_tag> U;
 
-        auto D = mdspan_utilities::create_matrix<double,static_tag<2>>(
-                     rows, rows, ManagedDataBlockConfig{ }
-                 );
+        cout<<"is empty U on device? "<<U.data_is_devptr()<<endl;
+        cout << "a combined expression with matrices on device: 2.0*A+A-B*3.0" << endl;
+        U=2.0*A+A-B*3.0;
+        U.print();
+        cout<<"is U on device? "<<U.data_is_devptr()<<endl;
+
+
+
+
+        mdspan_data_t<double,dynamic_tag> D;
+
+
+        std::vector<double> V_data = { 6, 5, 4, 3 };
+        auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
+                 rows, rows, DataBlockConfig{  }  );
+        V.device_data_upload(true);
 
         cout << "multiplication of A and transpose of B" << endl;
 
-        ptrdiff_t newext[2];
-        ptrdiff_t newstr[2];
-        DataBlock<double> H = DataBlockUtilities::matrix_transpose(B, newext, newstr);
+        mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
 
-        D = A * H;
+        D = A * H+V;
         D.print();
 
-        auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
+
+
+
+
+        auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ::ManagedDataBlockConfig{});
+
 
         cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
         cout << "But here we set a policy to do this on gpu" << endl;
-        Math_Functions_Policy mypol(Math_Functions_Policy::AUTO);
+        expr::ExpressionExecutionPolicy mypol;
         auto expr = A - B;
         expr.assign_to(E, &mypol);
         E.print();
@@ -99,6 +122,351 @@ int main()
         cout << c << endl;
         double d = dot(vecA, vecB);
         cout << d << endl;
+    }
+    {
+        cout << "\n==============================\n";
+        cout << "Testing nested expression templates\n";
+        cout << "==============================\n";
+
+        using namespace expr;
+
+        ptrdiff_t rows = 2;
+        ptrdiff_t cols = 3;
+
+
+// ----------------------------
+// Matrices A B C D
+// ----------------------------
+
+        std::vector<double> A_data =
+        {
+            1,2,3,
+            4,5,6
+        };
+
+        std::vector<double> B_data =
+        {
+            6,5,4,
+            3,2,1
+        };
+
+        std::vector<double> C_data =
+        {
+            1,1,1,
+            2,2,2
+        };
+
+        std::vector<double> D_data =
+        {
+            2,3,4,
+            5,6,7
+        };
+
+
+        auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     A_data.data(), rows, cols, DataBlockConfig{}
+                 );
+
+        auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     B_data.data(), rows, cols, DataBlockConfig{}
+                 );
+
+        auto C = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     C_data.data(), rows, cols, DataBlockConfig{}
+                 );
+
+        auto D = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     D_data.data(), rows, cols, DataBlockConfig{}
+                 );
+
+
+        cout << "A" << endl;
+        A.print();
+
+        cout << "B" << endl;
+        B.print();
+
+        cout << "C" << endl;
+        C.print();
+
+        cout << "D" << endl;
+        D.print();
+
+
+
+        mdspan_data_t<double,dynamic_tag> U;
+
+
+// ----------------------------
+// A+B+C+D
+// ----------------------------
+
+        cout << "\nTesting U=A+B+C+D" << endl;
+
+        U = A+B+C+D;
+
+        U.print();
+
+
+
+// ----------------------------
+// 2*(A+B)-3*(C-D)
+// ----------------------------
+
+        cout << "\nTesting U=2*(A+B)-3*(C-D)" << endl;
+
+        U = 2.0*(A+B)-3.0*(C-D);
+
+        U.print();
+
+
+
+// ----------------------------
+// repeated scaling
+// ----------------------------
+
+        cout << "\nTesting U=5*A-2*B+C" << endl;
+
+        U = 5.0*A - 2.0*B + C;
+
+        U.print();
+
+
+
+// ----------------------------
+// Matrix multiplication
+// ----------------------------
+
+        cout << "\nTesting matrix multiplication expression" << endl;
+
+
+// make a compatible 3x2 matrix
+
+        std::vector<double> M_data =
+        {
+            1,2,
+            3,4,
+            5,6
+        };
+
+
+        auto M = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     M_data.data(), cols, rows, DataBlockConfig{}
+                 );
+
+
+      mdspan_data_t<double,dynamic_tag> MM;
+
+
+        cout << "Testing MM=A*M" << endl;
+
+        MM = A*M;
+
+        MM.print();
+
+
+
+// ----------------------------
+// Matrix multiplication + addition
+// ----------------------------
+
+        cout << "\nTesting MM=A*M + identity-like matrix" << endl;
+
+
+        std::vector<double> I_data =
+        {
+            1,0,
+            0,1
+        };
+
+
+        auto I = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     I_data.data(), rows, rows, DataBlockConfig{}
+                 );
+
+
+        MM = A*M + I;
+
+        MM.print();
+
+
+
+
+        cout << "\nTesting dot product as scalar multiplier" << endl;
+
+
+        std::vector<double> v1_data = {1,2,3};
+        std::vector<double> v2_data = {4,5,6};
+
+
+        auto v1 =
+            mdspan_utilities::create_vector<double,static_tag<1>>(
+                v1_data.data(),3,DataBlockConfig{}
+            );
+
+        auto v2 =
+            mdspan_utilities::create_vector<double,static_tag<1>>(
+                v2_data.data(),3,DataBlockConfig{}
+            );
+        cout<<"v1 and v2";
+        v1.print();
+        v2.print();
+
+        double alpha = dot(v1,v2).eval_scalar<double>();
+
+        cout << "dot(v1,v2)=" << alpha << endl;
+
+
+// if scalar expression is supported:
+        cout << "\nTesting U=dot(v1,v2)*A" << endl;
+
+        U = alpha*A;
+
+        U.print();
+
+
+
+// ----------------------------
+// nested scalar expression
+// ----------------------------
+
+        cout << "\nTesting U=(dot(v1,v2)-1)*A+B" << endl;
+
+        U = (alpha-1.0)*A+B;
+
+        U.print();
+
+        cout << "\nTesting U=A+(B+(C+D))" << endl;
+
+        U = A + (B + (C + D));
+
+        U.print();
+
+
+
+        cout << "\nTesting U=((A+B)+C)+D" << endl;
+
+        U = ((A + B) + C) + D;
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Nested scaling
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=2*(A+B+C)" << endl;
+
+        U = 2.0 * (A + B + C);
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Addition/Subtraction combinations
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=(A+B)-(C+D)" << endl;
+
+        U = (A + B) - (C + D);
+
+        U.print();
+
+
+
+        cout << "\nTesting U=(A+B)+(C-D)" << endl;
+
+        U = (A + B) + (C - D);
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Matrix multiplication inside larger expressions
+// ------------------------------------------------------------
+
+        cout << "\nTesting MM=2*(A*M+I)" << endl;
+
+        MM = 2.0 * (A * M + I);
+
+        MM.print();
+
+
+
+// ------------------------------------------------------------
+// Deeply nested expression
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=3*(A+B)-2*(C-D)+A" << endl;
+
+        U = 3.0 * (A + B) - 2.0 * (C - D) + A;
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Multiple scalings
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=2*A+3*B-4*C+D" << endl;
+
+        U = 2.0 * A + 3.0 * B - 4.0 * C + D;
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Redundant parentheses
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=(((((A+B)))))" << endl;
+
+        U = (((((A + B)))));
+
+        U.print();
+
+
+
+// ------------------------------------------------------------
+// Dot product reused as scalar
+// ------------------------------------------------------------
+
+        cout << "\nTesting U=(dot(v1,v2)+5)*A" << endl;
+
+        U = (alpha + 5.0) * A;
+
+        U.print();
+
+
+
+        cout << "\nTesting U=(2*dot(v1,v2)-10)*A+B" << endl;
+
+        U = (2.0 * alpha - 10.0) * A + B;
+
+        U.print();
+
+
+        cout << "\nTesting U=(A+B)*(M+I2)" << endl;
+
+// I2 is a 3x2 matrix, same shape as M
+std::vector<double> I2_data = {
+    1,0,
+    0,1,
+    0,0
+};
+
+auto I2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
+    I2_data.data(), cols, rows, DataBlockConfig{}
+);
+
+MM = (A+B) * (M+I2);
+MM.print();
+
     }
 
     {
@@ -121,20 +489,28 @@ int main()
 
 
         mdspan_data_t<std::complex<double>, dynamic_tag> C =
-            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ManagedDataBlockConfig{  });
+            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockConfig{  });
 
         cout << "addition of A and B" << endl;
         C = vecA + vecB;
         C.print();
 
-        mdspan_data_t<std::complex<double>, dynamic_tag> D =
-            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ManagedDataBlockConfig{  });
-        Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
+        mdspan_data_t<std::complex<double>, dynamic_tag> U =
+            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockConfig{  });
+        std::complex<double>x= {2,2};
+        cout<<"scaling of A by "<< x<<endl;
+        U=vecA*x;
+        U.print();
 
-        cout << "subtraction" << endl;
-        auto expr = vecA - vecB;
-        expr.assign_to(D, &mypol);
-        D.print();
+
+//        mdspan_data_t<std::complex<double>, dynamic_tag> D =
+//            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ManagedDataBlockConfig{  });
+//        Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
+//
+//        cout << "subtraction" << endl;
+//        auto expr = vecA - vecB;
+//        expr.assign_to(D, &mypol);
+//        D.print();
     }
     //
 
@@ -357,10 +733,10 @@ int main()
         O.print();
         O2.print();
     }
-//
-//
-//
-//
+
+
+
+
     {
         vector<double>A_data= {210, -92, 68, -33, -34, -4, 118, -6, -92, 318, -100, 130, -153, -64, 160, 33, 68, -100, 204, -96, 41, -69, -16, -26, -33, 130, -96, 338, -152, -51, 12, 22, -34, -153, 41, -152, 346, 11, -30, -25, -4, -64, -69, -51, 11, 175, -79, 5, 118, 160, -16, 12, -30, -79, 320, 7, -6, 33, -26, 22, -25, 5, 7, 239};
         ptrdiff_t rows2 = 8, cols2 = 8;

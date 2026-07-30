@@ -1,167 +1,13 @@
 #ifndef MATHFUNCTIONS
 #define MATHFUNCTIONS
 
-#include "datablock.h"
-#include "mdspan_omp.h"
-#include "mdspan_data.h"
-
-#include "host_memory_functions.h"
-#include "gpu_memory_functions.h"
-
-#include "gpu_mathfunctions.h"
-#include "inkernel_mathfunctions.h"
-#include "indiceshelperfunctions.h"
-
-
-struct DeviceInfo {
-    int dev_id;
-    int num_teams;
-    int threads_per_team;
-};
-
-// Query function
-inline void query_device_team_thread_counts(int dev, DeviceInfo &info) {
-    info.dev_id = dev;
-    info.num_teams = 0;
-    info.threads_per_team = 0;
-
-    #pragma omp target map(from: info) device(dev)
-    {
-        #pragma omp teams
-        {
-            if (omp_get_team_num() == 0) {
-                info.num_teams = omp_get_num_teams();
-            }
-            #pragma omp parallel
-            {
-                if (omp_get_thread_num() == 0) {
-                    info.threads_per_team = omp_get_num_threads();
-                }
-            }
-        }
-    }
-}
+#include "mathfunctionspolicy.h"
 
 
 
 
-
-
-class Math_Functions_Policy
-{
-    public:
-    enum Mode { CPU_ONLY, GPU_ONLY, AUTO } mode = AUTO;
-    bool update_host = true;
-    bool memmapped_files = false;
-    bool initialize_output_to_zeros = true;
-    ptrdiff_t precision=1;
-    int devicenum = omp_get_default_device();
-    int num_gpus = 0;
-
-    static constexpr ptrdiff_t max_problem_size_for_gpu = SIZE_MAX;
-    static constexpr ptrdiff_t default_cubic_treshold = 256;
-    static constexpr ptrdiff_t default_square_treshold = 1000;
-    static constexpr ptrdiff_t default_linear_treshold = 1000000;
-
-    Math_Functions_Policy(Mode m = AUTO) : mode(m)
-    {
-        num_gpus = detect_num_gpus();
-    }
-
-
-
-
-
-    inline int detect_num_gpus() const
-    {
-        int n = omp_get_num_devices();
-        return (n > 0) ? n : 0;
-    }
-
-    bool should_use_gpu(const ptrdiff_t problem_size,
-                        const ptrdiff_t threshold,
-                        const bool any_input_output_on_device)const
-    {
-        switch (mode)
-        {
-        case CPU_ONLY:
-            return false;
-        case GPU_ONLY:
-            return (num_gpus > 0);  // use cached value
-        case AUTO:
-            return (any_input_output_on_device) || ((num_gpus > 0) && (problem_size <= max_problem_size_for_gpu) && (problem_size >= threshold));
-        }
-        return false;
-    }
-
-    template <typename T>
-    bool should_use_gpu(const DataBlock<T>& A,
-                        const  DataBlock<T>& B,
-                        const DataBlock<T>& C,
-                        const ptrdiff_t threshold)const
-    {
-        ptrdiff_t problem_size = A.datalength();
-
-        switch (mode)
-        {
-        case CPU_ONLY:
-            return false;
-        case GPU_ONLY:
-            return (num_gpus > 0);  // use cached value
-        case AUTO:
-            const bool A_on_dev = GPU_Memory_Functions::is_on_gpu(A, devicenum);
-            const bool B_on_dev = GPU_Memory_Functions::is_on_gpu(B, devicenum);
-            const bool C_on_dev = GPU_Memory_Functions::is_on_gpu(C, devicenum);
-            return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev || C_on_dev);
-        }
-
-        return false;
-    }
-
-    template <typename T>
-    bool should_use_gpu( const DataBlock<T>& v1,
-                         const DataBlock<T>& v2,
-                         const ptrdiff_t threshold)const
-    {
-        ptrdiff_t problem_size = v1.datalength();
-
-        switch (mode)
-        {
-        case CPU_ONLY:
-            return false;
-        case GPU_ONLY:
-
-            return (num_gpus > 0);  // use cached value
-        case AUTO:
-            bool A_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
-            bool B_on_dev = GPU_Memory_Functions::is_on_gpu(v2, devicenum);
-            return should_use_gpu(problem_size, threshold, A_on_dev || B_on_dev);
-
-        }
-        return false;
-    }
-
-    template <typename T>
-    bool should_use_gpu( const DataBlock<T>& v1,
-                         const ptrdiff_t threshold)const
-    {
-        ptrdiff_t problem_size = v1.datalength();
-
-        switch (mode)
-        {
-        case CPU_ONLY:
-            return false;
-        case GPU_ONLY:
-            return (num_gpus > 0);  // use cached value
-        case AUTO:
-            bool A_on_dev = GPU_Memory_Functions::is_on_gpu(v1, devicenum);
-            return should_use_gpu(problem_size, threshold, A_on_dev);
-
-        }
-    }
-
-
-};
+template <typename T>
+class DataBlock;
 
 
 
@@ -190,11 +36,11 @@ public:
     inline static void matrix_multiply_vector(const  DataBlock<T>&M,const  DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy* policy=nullptr);
     template<typename T>
     inline static void matrix_multiply_vector(const  DataBlock<T>&M,const T*V,  DataBlock<T> & C, const Math_Functions_Policy* policy=nullptr);
-template<typename T>
+    template<typename T>
     inline static void matrix_multiply_scalar(const   DataBlock<T>& M,const T V, DataBlock<T>& C, const Math_Functions_Policy* policy=nullptr);
     template<typename T>
     inline static void matrix_multiply_scalar_accumulate(  DataBlock<T>& M,const T V, const Math_Functions_Policy* policy=nullptr);
-template<typename T>
+    template<typename T>
     inline static void vector_multiply_scalar( const DataBlock<T>& vec,const T scalar,DataBlock<T>& res,const Math_Functions_Policy* policy=nullptr);
     template<typename T>
     inline static void vector_add( const DataBlock<T>& vec1,  const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy* policy=nullptr);
@@ -202,6 +48,8 @@ template<typename T>
     inline static void vector_subtract( const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,  const Math_Functions_Policy* policy=nullptr);
     template<typename T>
     inline static void vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy* policy=nullptr);
+    template<typename T>
+    inline static void vector_multiply_scalar(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy* policy=nullptr);
     template<typename T>
     inline static void vector_add_accumulate(  DataBlock<T>& vec1,  const DataBlock<T>& vec2,const Math_Functions_Policy* policy=nullptr);
     template<typename T>
@@ -215,10 +63,11 @@ template<typename T>
     template<typename T>
     inline static void qr_decomposition(const DataBlock<T> &A,DataBlock<T>& Q, DataBlock<T> & R,  const Math_Functions_Policy* policy=nullptr);
 
-    // optional default policy (initially empty = not constructed)
+
+
     inline static std::optional<Math_Functions_Policy> default_policy;
 
-    // helper to access it with lazy init
+
     static const Math_Functions_Policy& get_default_policy()
     {
         if (!default_policy.has_value())
@@ -244,209 +93,6 @@ protected:
 
 };
 
-
-template <typename T>
-void Math_Functions::matrix_multiply_dot_accumulate( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
-    {
-        GPU_Math_Functions::matrix_multiply_dot_accumulate_g(A,B,C, policy.devicenum,policy.update_host);
-    }
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate(A,B,C);
-}
-
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_dot( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
-    {
-        GPU_Math_Functions::matrix_multiply_dot_g(A,B,C, policy.devicenum,policy.update_host);
-    }
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C);
-}
-
-
-template <typename T>
-void Math_Functions::matrix_add( const DataBlock<T>& A,const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_add_g(A,B,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_add(A,B,C);
-}
-
-template <typename T>
-void Math_Functions::matrix_add_accumulate( DataBlock<T>& A,const DataBlock<T>& B,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_add_accumulate_g(A,B, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_add_accumulate(A,B);
-}
-
-
-template <typename T>
-void Math_Functions::matrix_subtract(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_subtract_g(A,B,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_subtract(A,B,C);
-
-}
-
-template <typename T>
-void Math_Functions::matrix_subtract_accumulate(  DataBlock<T>& A, const DataBlock<T>& B,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B,  Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_subtract_accumulate_g(A,B, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_subtract_accumulate(A,B);
-
-}
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_vector( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M, V, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
-}
-
-template <typename T>
-void Math_Functions::matrix_multiply_vector(  const DataBlock<T>&M, const T*V, DataBlock<T> & C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
-}
-
-
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar(M,V,C);
-}
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_scalar_accumulate( DataBlock<T>& M, const T V,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(M,V, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(M,V);
-}
-
-template <typename T>
-void Math_Functions::vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(vec,scalar, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(vec,scalar);
-}
-
-
-
-
-template <typename T>
-inline void Math_Functions::vector_add(  const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::vector_add_g(vec1,vec2,res, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::vector_add(vec1,vec2,res);
-}
-
-
-template <typename T>
-inline void Math_Functions::vector_subtract(const DataBlock<T>& vec1,const DataBlock<T>& vec2, DataBlock<T> & res, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::vector_subtract_g(vec1,vec2,res, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::vector_subtract(vec1,vec2,res);
-}
-
-
-template <typename T>
-inline T Math_Functions::dot_product( const DataBlock<T> &vec1, const DataBlock<T> &vec2, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2, Math_Functions_Policy::default_square_treshold))
-        return GPU_Math_Functions::dot_product_g(vec1,vec2, policy.devicenum);
-    else
-        return In_Kernel_Mathfunctions::dot_product(vec1,vec2);
-}
-
-
-template <typename T>
-void Math_Functions::cholesky_decomposition(const DataBlock<T> & A, DataBlock<T> & L, const Math_Functions_Policy*pol)
-{
-
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A,L, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::cholesky_decomposition_g(A,L, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
-    else
-    {
-        In_Kernel_Mathfunctions::cholesky_decomposition(A,L,policy.initialize_output_to_zeros);
-    }
-
-}
-
-template <typename T>
-void Math_Functions::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
-
-    if (policy.should_use_gpu(A,L,U, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions::lu_decomposition_g(A,L,U, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
-    else
-    {
-        In_Kernel_Mathfunctions::lu_decomposition(A,L,U,policy.initialize_output_to_zeros);
-    }
-
-}
-// Fast QR Decomposition Algorithm for mdspan
-template <typename T>
-void Math_Functions::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,   const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A,Q,R, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions::qr_decomposition_g(A,Q,R, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros,policy.memmapped_files);
-    else
-    {
-        In_Kernel_Mathfunctions::qr_decomposition(A,Q,R,policy.initialize_output_to_zeros,policy.memmapped_files);
-    }
-}
 
 
 
