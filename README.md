@@ -81,6 +81,23 @@ for real and complex vectors and matrices on gpu and cpu. The syntax is rather e
         U=2.0*A+A-B*3.0;
         U.print();
         cout<<"is U on device? "<<U.data_is_devptr()<<endl;
+
+        mdspan_data_t<double,dynamic_tag> D;
+
+
+        std::vector<double> V_data = { 6, 5, 4, 3 };
+        auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
+                 rows, rows, DataBlockConfig{  }  );
+        V.device_data_upload(true);
+
+        cout << "multiplication of A and transpose of B" << endl;
+
+        mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
+
+        D = A * H+V;
+        D.print();
+
+
 ```
 
 
