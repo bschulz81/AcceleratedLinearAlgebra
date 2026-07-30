@@ -6,6 +6,16 @@ Todo:
 2) add functions for expression handling with more than one operator, add an autodiff mechanism
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+30.07.2026
+
+fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms. began to restructure the library to separate declarations from implementations to avoid circular dependencies
+Extended the expression parser for vectors and matrices. It can now handle arbitrarily combined and long expressions of the form
+
+E= alpha(A+B)-C
+
+for real and complex vectors and matrices on gpu and cpu.
+
+
 24.07.2026
 replaced the bool fields in the datablock, mdspan,mdspan_data constructors with structs to make code more readable,
 fixed bugs in copy and move operators in mdspan and mdspan_data
