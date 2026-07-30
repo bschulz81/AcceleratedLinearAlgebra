@@ -59,35 +59,32 @@ E= alpha(A+B)-C
 for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. Here is an example:
 
 ```
+        std::vector<double> A_data = { 1, 2, 3, 4, 5, 6 };
+        std::vector<double> B_data = { 6, 5, 4, 3, 2, 1 };
+
+        ptrdiff_t rows = 2, cols = 3;
+
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      B_data.data(), rows, cols, DataBlockConfig{ });
         B.print();
-        cout<<"We load B up"<<endl;
         B.device_data_upload(true);
-
-        cout << "define C as empty" << endl;
 
         mdspan_data_t<double,dynamic_tag> C;
 
-        cout << "addition of A and B" << endl;
         C = A + B+A;
         C.print();
 
-        cout<<"Define U as empty"<<endl;
         mdspan_data_t<double,dynamic_tag> U;
 
-        cout<<"is empty U on device? "<<U.data_is_devptr()<<endl;
-        cout << "a combined expression with matrices on device: 2.0*A+A-B*3.0" << endl;
         U=2.0*A+A-B*3.0;
         U.print();
-        cout<<"is U on device? "<<U.data_is_devptr()<<endl;
-
+       
         mdspan_data_t<double,dynamic_tag> D;
-
 
         std::vector<double> V_data = { 6, 5, 4, 3 };
         auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
                  rows, rows, DataBlockConfig{  }  );
+
         V.device_data_upload(true);
 
         cout << "multiplication of A and transpose of B" << endl;
