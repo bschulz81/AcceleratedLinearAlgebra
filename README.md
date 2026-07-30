@@ -98,7 +98,7 @@ for real and complex vectors and matrices on gpu and cpu. The syntax is rather e
 ```
 
 
-Hy now, this is still preliminary.
+By now, this is still preliminary.
 
 The parser currently creates too many temporaries. 
 
