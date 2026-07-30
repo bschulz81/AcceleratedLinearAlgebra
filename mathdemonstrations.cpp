@@ -85,11 +85,11 @@ int main()
         auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
                  rows, rows, DataBlockConfig{  }  );
         V.device_data_upload(true);
-
+        V.print();
         cout << "multiplication of A and transpose of B" << endl;
 
         mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
-    cout << "multiplication of A and transpose of B+V" << endl;
+    cout << "multiplication of A and transpose(B)+V" << endl;
         D = A * H+V;
         D.print();
 

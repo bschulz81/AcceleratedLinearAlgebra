@@ -7,6 +7,7 @@
 
 template <typename T>
 class DataBlock;
+
 template<typename T>
 class DistributedDataBlock;
 

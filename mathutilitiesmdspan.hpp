@@ -147,9 +147,7 @@ mdspan<T,Container>  mdspan_utilities::matrix_transpose(const mdspan<T,Container
 {
     ptrdiff_t tempext[2];
     ptrdiff_t tempstr[2];
-    cout<<"extents before:"<< d.extent(0)<<" and " <<d.extent(1);
     mdspan<T,Container> result(DataBlockUtilities::matrix_transpose(d,tempext,tempstr),d.offload_registry);
-    cout<<"extents before:"<< d.extent(0)<<" and " <<d.extent(1);
 
     return result;
 }
