@@ -47,6 +47,11 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 30.07.2026 13:48 o'clock
+Cleaned the header files from unnecessary includes
+separated two  large headers into declarations *h and implementation *hpp
+
+
 ### 30.07.2026
 
 fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms.
