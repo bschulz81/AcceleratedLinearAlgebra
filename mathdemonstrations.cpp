@@ -51,8 +51,7 @@ int main()
         cout << "define B" << endl;
 
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     B_data.data(), rows, cols, DataBlockConfig{  }
-                 );
+                     B_data.data(), rows, cols, DataBlockConfig{ });
         B.print();
         cout<<"We load B up"<<endl;
         B.device_data_upload(true);
@@ -61,7 +60,7 @@ int main()
 
         mdspan_data_t<double,dynamic_tag> C;
 
-        cout << "addition of A and B" << endl;
+        cout << "addition of A and B+A" << endl;
         C = A + B+A;
         C.print();
 
@@ -88,7 +87,7 @@ int main()
         cout << "multiplication of A and transpose of B" << endl;
 
         mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
-
+    cout << "multiplication of A and transpose of B+V" << endl;
         D = A * H+V;
         D.print();
 
