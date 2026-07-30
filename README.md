@@ -69,6 +69,13 @@ for real and complex vectors and matrices on gpu and cpu. The syntax is rather e
 
         ptrdiff_t rows = 2, cols = 3;
 
+        auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                     A_data.data(), rows, cols, DataBlockConfig{  }
+                 );
+        A.print();
+
+        A.device_data_upload(true);
+
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      B_data.data(), rows, cols, DataBlockConfig{ });
         B.print();
