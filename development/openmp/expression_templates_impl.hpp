@@ -81,7 +81,7 @@ inline bool same_extents(const auto& a, const auto& b)
         return false;
 
 
-    for(size_t i=0;i<a.rank();++i)
+    for(size_t i=0;i<(size_t)a.rank();++i)
         if(a.extent(i)!=b.extent(i))
             return false;
 
