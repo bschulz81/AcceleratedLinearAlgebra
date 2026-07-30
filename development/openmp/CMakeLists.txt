@@ -37,11 +37,7 @@ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-sta
 #it is to be run with  mpirun -np 8 ./arraytest_mpi
 
 
-include_directories(datablocktests      ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(mdspantests         ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(mathdemonstrations  ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(arraytest_mpi       ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(sparsetests         ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(datablocktests           ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/datablocktests.cpp)
 add_executable(mdspantests              ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/mdspantests.cpp)
