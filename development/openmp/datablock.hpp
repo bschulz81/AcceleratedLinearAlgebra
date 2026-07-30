@@ -1,3 +1,4 @@
+
 #ifndef DATABLOCKIMPL
 #define DATABLOCKIMPL
 
@@ -5,7 +6,7 @@
 
 #include <stdio.h>
 
-#include "datablock.h"
+
 #include "expression_templates.h"
 
 #pragma omp begin declare target

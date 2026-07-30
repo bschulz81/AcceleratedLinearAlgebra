@@ -4,19 +4,11 @@
 #include "mpi.h"
 #include <math.h>
 
-#include "datablock.h"
-#include "datablock.hpp"
-#include "mathfunctions.h"
-#include "mathfunctions.hpp"
-#include "host_memory_functions.h"
-#include "gpu_memory_functions.h"
 
-#include "datablock_mpifunctions.h"
-#include "inkernel_mathfunctions.h"
-
-#include "mathutilitiesdatablock.h"
-#include "gpu_mathfunctions.h"
-
+template <typename T>
+class DataBlock;
+template<typename T>
+class DistributedDataBlock;
 
 #include "mathfunctions_mpipolicy.h"
 
@@ -167,6 +159,6 @@ protected:
     }
 };
 
-
+#include "mathfunctions_mpi.hpp"
 #endif
 

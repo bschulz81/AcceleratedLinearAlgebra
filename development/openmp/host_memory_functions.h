@@ -7,9 +7,6 @@
 
 
 #include "datablock.h"
-#include "datablock.hpp"
-template<typename T>
-class DataBlock;
 
 
 class Host_Memory_Functions

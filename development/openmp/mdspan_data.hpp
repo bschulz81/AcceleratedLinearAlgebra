@@ -1,7 +1,7 @@
 #ifndef MDSPANDATAHPP
 #define MDSPANDATAHPP
 
-#include "mdspan_data.h"
+
 #include "mdspan_omp.h"
 
 template <typename T, typename Container>

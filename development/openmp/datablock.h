@@ -1,3 +1,4 @@
+
 #ifndef DATABLOCK
 #define DATABLOCK
 #include <climits>
@@ -260,5 +261,7 @@ public:
 
 };
 #pragma omp end declare target
+
+#include "datablock.hpp"
 
 #endif

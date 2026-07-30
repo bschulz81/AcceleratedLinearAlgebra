@@ -1,5 +1,7 @@
+
 #ifndef MATHFUNCTIONSPOLICY
 #define MATHFUNCTIONSPOLICY
+
 #include "gpu_memory_functions.h"
 
 template<typename T>

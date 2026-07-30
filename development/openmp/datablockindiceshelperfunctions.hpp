@@ -1,3 +1,4 @@
+
 #ifndef HELPERFUNCTIONS
 #define HELPERFUNCTIONS
 
