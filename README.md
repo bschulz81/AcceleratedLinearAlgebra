@@ -96,10 +96,10 @@ for real and complex vectors and matrices on gpu and cpu. The syntax is rather e
         std::vector<double> V_data = { 6, 5, 4, 3 };
         auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
                  rows, rows, DataBlockConfig{  }  );
-
+        
         V.device_data_upload(true);
-
-        cout << "multiplication of A and transpose of B" << endl;
+        V.print();
+        cout << "multiplication of A and transpose of B+V" << endl;
 
         mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
 
