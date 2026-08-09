@@ -3,8 +3,14 @@ Version History:
 
 Todo:
 1) restructure the library to make additions of new functions more easy. Add more functions for tensors.
-2) add functions for expression handling with more than one operator, add an autodiff mechanism
+2) add an autodiff mechanism, tensor contraction, unary function nodes
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+
+10.08.2026
+added accumulate  kernels for faster calculation of composite expressions
+reduced temporaries of expressions with an added modified Sethi Ullmann algorithm, 
+made the profile evaluations that decide whether computations are done on gpu more precise
+fixed a bug in the strassen and winograd algorithm for rectangular matrices.
 
 30.07.2026
 
