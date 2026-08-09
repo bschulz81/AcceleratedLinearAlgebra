@@ -11,7 +11,7 @@ inline bool DataBlockUtilities::same_extents(const DataBlock<T>&d1,const DataBlo
 {
 
 ptrdiff_t r=  d1.dprank;
-if (r=d2.dprank) return false;
+if (r==d2.dprank) return false;
 
 for (size_t i=0;i<r;i++)
 {
@@ -264,26 +264,26 @@ DataBlock<T>DataBlockUtilities::tensor_subspan(const  DataBlock<T>&d,const ptrdi
 
 #pragma omp begin declare target
 template<typename T>
-void DataBlockUtilities::copy(DataBlock<T>&target,DataBlock<T> source,DataBlockConfig targetcfg)
+void DataBlockUtilities::copy(DataBlock<T>&target,const DataBlock<T>& source)
 {
 
     int targetdev, sourcedev;
     bool useomptargetmemcpy = false;
     if(omp_is_initial_device())
     {
-        if(targetcfg.data_is_devptr && source.dpconfig.data_is_devptr)
+        if(target.dpconfig.data_is_devptr && source.dpconfig.data_is_devptr)
         {
-            targetdev = targetcfg.devicenum;
+            targetdev = target.dpconfig.devicenum;
             sourcedev = source.dpconfig.devicenum;
             useomptargetmemcpy = true;
         }
-        else if(targetcfg.data_is_devptr && !source.dpconfig.data_is_devptr)
+        else if(target.dpconfig.data_is_devptr && !source.dpconfig.data_is_devptr)
         {
-            targetdev = targetcfg.devicenum;
+            targetdev = target.dpconfig.devicenum;
             sourcedev = omp_get_initial_device();
             useomptargetmemcpy = true;
         }
-        else if(!targetcfg.data_is_devptr &&source.dpconfig.data_is_devptr)
+        else if(!target.dpconfig.data_is_devptr &&source.dpconfig.data_is_devptr)
         {
             targetdev = omp_get_initial_device();
             sourcedev = source.dpconfig.devicenum;
@@ -297,7 +297,7 @@ void DataBlockUtilities::copy(DataBlock<T>&target,DataBlock<T> source,DataBlockC
     }
     else
     {
-        #pragma omp parallel for simd
+        #pragma omp target teams distribute parallel for simd device(target.dpconfig.devicenum)
         for(ptrdiff_t i=0; i<source.dpdatalength; i++)
             target.dpdata[i]=source.dpdata[i];
     }
@@ -309,13 +309,9 @@ void DataBlockUtilities::copy(DataBlock<T>&target,DataBlock<T> source,DataBlockC
     memcpy(target.dpstrides, source.dpstrides,sizeof(ptrdiff_t)*source.dprank);
 
     target.dpconfig.dprowmajor=source.dpconfig.dprowmajor;
-    target.dpconfig.data_is_devptr=targetcfg.data_is_devptr;
-    target.dpconfig.devicenum=targetcfg.devicenum;
-    target.dpconfig.pmemmap=targetcfg.data_is_devptr? false: targetcfg.pmemmap;
     return;
 }
 #pragma omp end declare target
-
 
 
 

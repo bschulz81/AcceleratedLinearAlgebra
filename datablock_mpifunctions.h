@@ -166,20 +166,6 @@ public:
 
 
 
-class MPI_Policy
-{
-public:
-    MPI_Comm comm = MPI_COMM_WORLD;
-    bool mpi_enabled = true;
-
-    int mpi_rank = 0;
-    int mpi_size = 1;
-
-
-    MPI_Policy(bool mpi=true, MPI_Comm com = MPI_COMM_WORLD);
-};
-
-
 
 
 class DataBlock_MPI_Functions;
@@ -335,11 +321,6 @@ public:
     inline static void MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,MPI_Request *request);
 
 
-
-    inline static std::optional<MPI_Policy> default_policy;
-
-
-    static const MPI_Policy& get_default_policy(MPI_Comm com,ptrdiff_t blockrank);
 
     template<typename T>
     inline static void alloc_helper( MPI_Sendlocation loc, ptrdiff_t rank,ptrdiff_t datalength,ptrdiff_t* &pextents,ptrdiff_t *&pstrides,T *&pdata);

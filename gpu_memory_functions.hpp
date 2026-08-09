@@ -299,6 +299,16 @@ bool GPU_Memory_Functions::is_on_gpu(const DataBlock<T> &m,const int devicenum)
 }
 
 template<typename T>
+bool GPU_Memory_Functions::is_on_gpu(const DataBlockArray<T> &m,const int devicenum)
+{
+    if(m.pdata_is_devptr)
+        return true;
+    if (omp_target_is_present(m.pdata,devicenum))
+        return true;
+    return false;
+}
+
+template<typename T>
 bool GPU_Memory_Functions::is_on_gpu_ptr(const T* pdata,const int devicenum)
 {
     if (omp_target_is_present(pdata,devicenum))

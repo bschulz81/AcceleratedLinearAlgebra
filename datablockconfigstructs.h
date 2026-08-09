@@ -39,6 +39,42 @@ struct DataBlockConfig
 };
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+DataBlockObject object_type(
+    ptrdiff_t rank,
+    const auto& extents)
+{
+    if (rank == 1)
+    {
+        if (abs(extents[0]) == 1)
+            return DataBlockObject::Scalar;
+
+        return DataBlockObject::Vector;
+    }
+
+    if (rank == 2)
+    {
+        if (abs(extents[0]) == 1 &&
+            abs(extents[1]) == 1)
+            return DataBlockObject::Scalar;
+
+        if (abs(extents[0]) == 1 ||
+            abs(extents[1]) == 1)
+            return DataBlockObject::Vector;
+
+        return DataBlockObject::Matrix;
+    }
+
+    if (rank > 2)
+        return DataBlockObject::Tensor;
+
+    return DataBlockObject::Scalar;
+}
+#pragma omp end declare target
+
+
+
 struct ManagedDataBlockConfig
 {
     bool dprowmajor=true;
@@ -71,4 +107,6 @@ struct ManagedDataBlockConfig
         };
     }
 };
+
+
 #endif

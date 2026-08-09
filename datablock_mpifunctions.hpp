@@ -2260,39 +2260,5 @@ inline int BlockMappingPolicy::owner(const ptrdiff_t *grid_coords, const MPI_Car
     return ctx.rank_from_coords(temp_coords);
 }
 
-inline MPI_Policy::MPI_Policy(bool mpi, MPI_Comm com) {
-    if (mpi)
-    {
-        int init;
-        MPI_Initialized(&init);
-        if(init)
-        {
-            comm=com;
-            MPI_Comm_rank(comm, &mpi_rank);
-            MPI_Comm_size(comm, &mpi_size);
-        }
-        else
-        {
-            mpi_enabled=false;
-            mpi_size=0;
-            mpi_rank=0;
-        }
-    }
-    else
-    {
-        mpi_enabled=false;
-        mpi_size=0;
-        mpi_rank=0;
-    }
-}
-
-inline const MPI_Policy & DataBlock_MPI_Functions::get_default_policy(MPI_Comm com, ptrdiff_t blockrank) {
-    if (!default_policy.has_value())
-    {
-
-        default_policy.emplace(true,com);
-    }
-    return *default_policy;
-}
 
 #endif

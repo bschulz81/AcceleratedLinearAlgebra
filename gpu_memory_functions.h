@@ -207,6 +207,10 @@ public:
 
     template<typename T>
     inline static bool is_on_gpu(const DataBlock<T>&m,const int devicenum);
+
+     template<typename T>
+    inline static bool is_on_gpu(const DataBlockArray<T>&m,const int devicenum);
+
     template<typename T>
     inline static bool is_on_gpu_ptr(const T* pdata,const int devicenum);
     template<typename T>

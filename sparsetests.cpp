@@ -118,7 +118,7 @@ BlockedDataView<double> Ablocks1(Aspan, block_shape3,true);
 BlockedDataView<double> Bblocks2(Bspan, block_shape4,true);
 
 
-GPU_Math_Functions::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,omp_get_default_device(),true,true);
+GPU_Math_Functions::matrix_multiply_dot_sparse_g(Ablocks1,Bblocks2,Cspan,GPUOptions{.device=omp_get_default_device(),.update_host=true});
 
 Cspan.print();
 

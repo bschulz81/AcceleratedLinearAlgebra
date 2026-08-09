@@ -33,7 +33,7 @@ int main()
 
 
 
-        cout << "We can also use a more simplified interface for writing expressions. Although evaluations of more than one operator are not yet supported." << endl;
+        cout << "We can also use a more simplified interface for writing expressions." << endl;
         using namespace expr;
 
         std::vector<double> A_data = { 1, 2, 3, 4, 5, 6 };
@@ -41,24 +41,24 @@ int main()
         std::vector<double> C_data(6, 0);
         ptrdiff_t rows = 2, cols = 3;
 
-        cout << "define A" << endl;
+     //   cout << "define A" << endl;
 
         auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      A_data.data(), rows, cols, DataBlockConfig{  }
                  );
         A.print();
-    cout<<"We load A up"<<endl;
+    //cout<<"We load A up"<<endl;
         A.device_data_upload(true);
 
-        cout << "define B" << endl;
+      //  cout << "define B" << endl;
 
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      B_data.data(), rows, cols, DataBlockConfig{ });
         B.print();
-        cout<<"We load B up"<<endl;
+     //   cout<<"We load B up"<<endl;
         B.device_data_upload(true);
 
-        cout << "define C as empty" << endl;
+       // cout << "define C as empty" << endl;
 
         mdspan_data_t<double,dynamic_tag> C;
 
@@ -69,11 +69,11 @@ int main()
         cout<<"Define U as empty"<<endl;
         mdspan_data_t<double,dynamic_tag> U;
 
-        cout<<"is empty U on device? "<<U.data_is_devptr()<<endl;
+    //    cout<<"is empty U on device? "<<U.data_is_devptr()<<endl;
         cout << "a combined expression with matrices on device: 2.0*A+A-B*3.0" << endl;
         U=2.0*A+A-B*3.0;
         U.print();
-        cout<<"is U on device? "<<U.data_is_devptr()<<endl;
+      //  cout<<"is U on device? "<<U.data_is_devptr()<<endl;
 
 
 
@@ -100,9 +100,11 @@ int main()
         auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ::ManagedDataBlockConfig{});
 
 
-        cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
-        cout << "But here we set a policy to do this on gpu" << endl;
+  //      cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
+    //    cout << "But here we set a policy to do this on gpu" << endl;
+cout<<"expr=A-B"<<endl;
         expr::ExpressionExecutionPolicy mypol;
+
         auto expr = A - B;
         expr.assign_to(E, &mypol);
         E.print();
@@ -465,6 +467,7 @@ auto I2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
     I2_data.data(), cols, rows, DataBlockConfig{}
 );
 
+
 MM = (A+B) * (M+I2);
 MM.print();
 
@@ -700,9 +703,9 @@ MM.print();
         mdspan_data_t<double,dynamic_tag> C3 = mdspan_utilities::create_matrix<double, dynamic_tag>(rowsA, colsA, ManagedDataBlockConfig{});
 
         cout << "we now set it on gpu and set the size when to stop recursion to 2, per default, this is at 64" << endl;
-        Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY, false, false);
+        Math_MPI_RecursiveMultiplication_Policy p(false,Math_Functions_Policy::GPU_ONLY);
         p.size_to_stop_recursion = 2;
-        Math_Functions_MPI::winograd_multiply(A, B, C3, &p);
+        Math_Functions_MPI::strassen_multiply(A, B, C3,MPI_COMM_WORLD, &p);
         C3.print();
     }
 //
@@ -809,13 +812,10 @@ MM.print();
 
             A.print();
 
-            Math_MPI_Decomposition_Policy p(
-                Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
-                Math_MPI_Decomposition_Policy::Naive);
+            Math_MPI_Decomposition_Policy p(false,
+                Math_Functions_Policy::GPU_ONLY,Math_MPI_RecursiveMultiplication_Policy::Naive);
             p.size_to_stop_recursion=2;
-            Math_Functions_MPI::cholesky_decomposition(A,L,&p);
+            Math_Functions_MPI::cholesky_decomposition(A,L,MPI_COMM_WORLD,&p);
             L.print();
 
 
@@ -892,14 +892,12 @@ MM.print();
 
             cout<<"With the advanced algorithms on GPU"<<std::endl;
 
-            Math_MPI_Decomposition_Policy p(
+            Math_MPI_Decomposition_Policy p(false,
                 Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
-                Math_MPI_Decomposition_Policy::Strassen);
+                Math_MPI_RecursiveMultiplication_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
-            Math_Functions_MPI::lu_decomposition(A,L,U,&p);
+            Math_Functions_MPI::lu_decomposition(A,L,U,MPI_COMM_WORLD,&p);
             L.print();
 
 
@@ -973,16 +971,14 @@ MM.print();
             auto Q = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
             auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
 
-            Math_MPI_Decomposition_Policy p(
+            Math_MPI_Decomposition_Policy p(false,
                 Math_Functions_Policy::GPU_ONLY,
-                false,
-                false,
                 Math_MPI_Decomposition_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
 
 
-            Math_Functions_MPI::qr_decomposition(A,Q,R,&p);
+            Math_Functions_MPI::qr_decomposition(A,Q,R,MPI_COMM_WORLD,&p);
             Q.print();
             R.print();
             vector<double>verifydata(64,0);

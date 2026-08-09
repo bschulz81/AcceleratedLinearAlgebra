@@ -1,4 +1,3 @@
-
 #ifndef MDSPANH
 #define MDSPANH
 
@@ -61,7 +60,8 @@ concept DynamicContainer =
 struct dynamic_tag {};
 
 template <std::ptrdiff_t N>
-struct static_tag {
+struct static_tag
+{
     static constexpr std::ptrdiff_t rank = N;
 };
 
@@ -83,11 +83,93 @@ struct container_selector<static_tag<N>>
 };
 
 
+struct LocationCheckContext
+{
+    bool check_started = false;
+
+    bool data_is_device = false;
+    int device_number = -INT_MAX;
+
+    template<typename T>
+    bool check(const DataBlock<T>& d)
+    {
+#if defined(Unified_Shared_Memory)
+        return d.dpdata != nullptr;
+#endif
+
+        if (d.data() == nullptr)
+            return false;
+
+        bool this_is_device =
+            d.data_is_devptr();
+
+        if (!check_started)
+        {
+            check_started = true;
+
+            data_is_device = this_is_device;
+
+            if (this_is_device)
+                device_number = d.devptr_num();
+
+            return true;
+        }
+
+        if (data_is_device != this_is_device)
+            return false;
+
+        if (data_is_device &&
+                device_number != d.devptr_num())
+            return false;
+
+        return true;
+    }
+};
+
+
+
 class mdspan_utilities;
 
+
+template<typename Container>
+struct Layout
+{
+
+    ptrdiff_t rank = 0;
+    bool rowmajor=true;
+    Container extents;
+    Container strides;
+    template<typename OtherContainer>
+    bool operator==(const Layout<OtherContainer>& other) const
+    {
+        if (rank != other.rank)
+            return false;
+        if(rowmajor!=other.rowmajor)
+            return false;
+
+        if (extents.size() != other.extents.size())
+            return false;
+
+        for (size_t i = 0; i < extents.size(); ++i)
+        {
+            if (extents[i] != other.extents[i])
+                return false;
+
+            if (strides[i] != other.strides[i])
+                return false;
+        }
+
+        return true;
+    }
+template<typename OtherContainer>
+    bool operator!=(const Layout<OtherContainer>& other) const
+    {
+        return !(*this == other);
+    }
+};
+
 template <typename T, typename Container>
-class mdspan:public DataBlock<T>,
-            public  expr::ExpressionInterface<mdspan_data<T,Container>>
+class mdspan:public DataBlock<T>
 {
 
 protected:
@@ -162,6 +244,7 @@ protected:
 
     };
 
+
     void initialize_extents_and_strides(const Container & extents,const Container & strides);
     void initialize_extents(const Container&extents);
     void compute_initialize_strides(const Container& extents,const bool rowmajor);
@@ -181,6 +264,8 @@ public:
 
     mdspan(const mdspan<T, Container>& other);
     mdspan(mdspan<T, Container>&& other)noexcept;
+
+
     mdspan<T, Container> &operator=(const mdspan<T,Container> & other);
     mdspan<T, Container> &operator=(const DataBlock<T> & other);
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
@@ -189,7 +274,7 @@ public:
     mdspan(T* data, const ptrdiff_t datalength, const Container& extents, const Container& strides, const DataBlockConfig  config);
     mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config);
     mdspan(T* data, const Container& extents,const DataBlockConfig  config);
-
+Layout<Container> layout()const;
 
     virtual ~mdspan();
 
@@ -206,38 +291,18 @@ public:
     bool  host_data_update();
     bool  device_data_update();
 
-    ptrdiff_t extent(const ptrdiff_t dim) const
-    {
-        return pextents[dim];
-    };
-    ptrdiff_t rank() const
-    {
-        return this->dprank;
-    };
-    ptrdiff_t stride(const ptrdiff_t dim) const
-    {
-        return pstrides[dim];
-    };
+    ptrdiff_t extent(const ptrdiff_t dim) const;
+    ptrdiff_t rank() const;
+    ptrdiff_t stride(const ptrdiff_t dim) const;
 
-    // Member function declarations
-    const Container& extents()const
-    {
-        return pextents;
-    };
-    const Container& strides()const
-    {
-        return pstrides;
-    };
+    const Container& extents()const;
+    const Container& strides()const;
 
-    ptrdiff_t datalength() const
-    {
-        return this->dpdatalength;
-    };
 
-bool location_check(expr::LocationCheckContext& ctx) const
-{
-    return ctx.check(*this);
-}
+
+    ptrdiff_t datalength() const;
+    bool location_check(LocationCheckContext& ctx) const;
+
 
 
 };
@@ -246,8 +311,8 @@ bool location_check(expr::LocationCheckContext& ctx) const
 template<typename T, typename Tag>
 using mdspan_t =
     mdspan<
-        T,
-        typename container_selector<Tag>::template container<ptrdiff_t>>;
+    T,
+    typename container_selector<Tag>::template container<ptrdiff_t>>;
 
 #include "mdspan.hpp"
 
