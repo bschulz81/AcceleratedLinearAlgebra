@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
 
             ptrdiff_t rows = 8, cols = 8;
-            Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY,true,true);
+            Math_MPI_RecursiveMultiplication_Policy p(Math_Functions_Policy::GPU_ONLY);
             p.update_host=true;
             if(process_Rank == 0)
             {
@@ -101,14 +101,14 @@ int main(int argc, char** argv)
                     cout<< " default_square_treshold = 1000;"<<"The default number of elements at which matrices are auto offloaded for addition"<< std::endl;
                     cout <<" default_linear_treshold = 1000000;"<<"The default number of elements at which vectors are auto offloaded for addition"<<std::endl<<endl;
 
-                    Math_Functions_MPI::strassen_multiply(A3, B3, C3,&p);
+                    Math_Functions_MPI::strassen_multiply(A3, B3, C3,MPI_COMM_WORLD, &p);
                     C3.print();
-                    Math_Functions_MPI::MPI_recursion_helper_end<double>(p.comm);
+                    Math_Functions_MPI::MPI_recursion_helper_end<double>(MPI_COMM_WORLD);
                 }
             }
             else
             {
-                Math_Functions_MPI::MPI_recursive_multiplication_helper<double>(&p);
+                Math_Functions_MPI::MPI_recursive_multiplication_helper<double>(MPI_COMM_WORLD,&p);
             }
 
         }
@@ -315,7 +315,7 @@ endofblock:
         block3.print();
 
 
-        Math_Functions_MPI::matrix_add_Distributed(block1,block2,block3);
+        Math_Functions_MPI::matrix_linear_combination_Distributed(block1,block2,block3);
         Math_Functions_MPI::conjugate(block3);
         DataBlock<std::complex<double>> A1copy;
 
@@ -428,7 +428,7 @@ endofblock:
         Math_Functions_MPI::dot_product_Distributed(block1,block2,0,&result);
 
 
-        Math_Functions_MPI::vector_add_Distributed(block1,block2,block3);
+        Math_Functions_MPI::vector_linear_combination_Distributed(block1,block2,block3);
 
         block3.print();
 
@@ -538,7 +538,7 @@ endofblock:
         block1.print();
         block2.print();
 
-        Math_Functions_MPI::Matrix_Vector_multiply_Distributed(block1,block2,block3);
+        Math_Functions_MPI::matrix_multiply_vector_Distributed(block1,block2,block3);
         block3.print();
         DataBlock<double> A1copy;
 

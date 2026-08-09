@@ -103,13 +103,13 @@ public:
     inline T* data();
     inline const T* data() const;
 
-    inline ptrdiff_t* extents();
+    inline ptrdiff_t* extents_ptr();
 
-    inline const ptrdiff_t* extents() const;
+    inline const ptrdiff_t* extents_ptr() const;
 
-    inline ptrdiff_t* strides();
+    inline ptrdiff_t* strides_ptr();
 
-    inline const ptrdiff_t* strides() const;
+    inline const ptrdiff_t* strides_ptr() const;
 
     inline T& operator()(const ptrdiff_t* indices);
 
@@ -129,7 +129,7 @@ public:
     ptrdiff_t print_required_size() const;
 
 
-    inline DataBlockObject DataShape() const;
+    inline DataBlockObject ObjectType() const;
     inline bool is_scalar() const;
     inline bool is_vector() const;
     inline bool is_matrix() const;

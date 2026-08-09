@@ -103,6 +103,25 @@ public:
         return *this;
     }
 
+inline ptrdiff_t number_of_blocks() const
+{
+    return usedblocks;
+}
+
+inline ptrdiff_t block_volume() const
+{
+    ptrdiff_t volume = 1;
+
+    for(ptrdiff_t i=0;i<this->dprank;i++)
+        volume *= block_shape[i];
+
+    return volume;
+}
+
+inline ptrdiff_t sparse_work_size() const
+{
+    return usedblocks * block_volume();
+}
 
 protected:
     ptrdiff_t* block_shape;

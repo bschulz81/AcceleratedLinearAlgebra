@@ -22,61 +22,187 @@ class Math_Functions_MPI
 public:
 
     template <typename T>
-    inline static void strassen_multiply(const DataBlock<T> &aA, const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void strassen_multiply(const DataBlock<T> &aA, const DataBlock<T> &aB,DataBlock<T>& aC,MPI_Comm pcomm, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
     template <typename T>
-    inline static void winograd_multiply(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
+    inline static void winograd_multiply(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,MPI_Comm pcomm, const Math_MPI_RecursiveMultiplication_Policy *par=nullptr);
     template <typename T>
-    inline static void cholesky_decomposition(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void cholesky_decomposition(const DataBlock<T>& aA, DataBlock<T> & aL, MPI_Comm pcomm, Math_MPI_Decomposition_Policy *par=nullptr);
     template <typename T>
-    inline static void lu_decomposition(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void lu_decomposition(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, MPI_Comm pcomm,Math_MPI_Decomposition_Policy *par=nullptr);
     template <typename T>
-    inline static void qr_decomposition(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy *par=nullptr);
+    inline static void qr_decomposition(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,MPI_Comm pcomm,    Math_MPI_Decomposition_Policy *par=nullptr);
     template<typename T>
-    inline static void MPI_recursive_multiplication_helper( const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
+    inline static void MPI_recursive_multiplication_helper( MPI_Comm pcom,const Math_MPI_RecursiveMultiplication_Policy*par=nullptr);
     template<typename T>
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
 
-    template <typename T>
-    inline static bool matrix_multiply_dot_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool Matrix_Vector_multiply_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& x,  DistributedDataBlock<T>& y,   const Math_MPI_Functions_Policy* pol=nullptr);
+    template<typename T>
+    inline static void scale_local_blocks(T* cdata,
+        const ptrdiff_t* coffsets,const ptrdiff_t* cstrides,const ptrdiff_t* cextents,const ptrdiff_t numblocks,const T alpha,  const bool ongpu,   const int devnum);
 
-    template <typename T>
-    inline static bool matrix_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool matrix_add_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool matrix_subtract_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool matrix_subtract_accumulate_Distributed(  DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool matrix_multiply_scalar_Distributed (const DistributedDataBlock<T>& A, const T scalar,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool matrix_multiply_scalar_accumulate_Distributed ( DistributedDataBlock<T>& A, const  T scalar,  const Math_MPI_Functions_Policy* pol = nullptr);
+    template<typename T>
+    inline static bool matrix_multiply_dot_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientB=T(1),const T CoefficientC=T(0),
+        const Math_MPI_Functions_Policy* policy=nullptr);
 
-    template <typename T>
-    inline static bool vector_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  const T scalar,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool vector_multiply_scalar_accumulate_Distributed(DistributedDataBlock<T>& A, const  T scalar,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool vector_add_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool vector_add_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool vector_subtract_Distributed( const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool vector_subtract_accumulate_Distributed( DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,  const Math_MPI_Functions_Policy* pol = nullptr);
-    template <typename T>
-    inline static bool dot_product_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B, int root,T* result,   const Math_MPI_Functions_Policy* pol = nullptr);
+    template<typename T>
+    inline static bool matrix_multiply_dot_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return  matrix_multiply_dot_Distributed(A,B,C,T(1),T(0),policy);
+    }
+
+
+    template<typename T>
+    inline static bool matrix_multiply_vector_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& x,DistributedDataBlock<T>& y,
+        const T Coefficientx=T(1),const T Coefficienty=T(0),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+     template<typename T>
+    inline static bool matrix_multiply_vector_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& x,DistributedDataBlock<T>& y,
+        const Math_MPI_Functions_Policy* policy)
+        {
+           return matrix_multiply_vector_Distributed(A,x,y,T(1),T(0),policy);
+        }
+
+
+    template<typename T>
+    inline static bool matrix_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(0),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool matrix_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const T CoefficientA=T(1),const T CoefficientC=T(1),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool matrix_add_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+        return matrix_linear_combination_Distributed(A,C,T(1),T(1),policy);
+    }
+
+
+
+
+    template<typename T>
+    inline static bool matrix_add_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return matrix_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static bool matrix_subtract_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return matrix_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+    }
+
+
+    template<typename T>
+    inline static bool vector_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(0),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+
+    template<typename T>
+    inline static bool vector_add_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+        return vector_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static bool vector_subtract_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return vector_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+    }
+
+
+
+    template<typename T>
+    inline static bool vector_add_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+        return vector_linear_combination_Distributed(A,C,T(1),T(1),policy);
+    }
+
+    template<typename T>
+    inline static bool vector_subtract_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+        return vector_linear_combination_Distributed(A,C,-T(1),T(1),policy);
+    }
+
+
+
+    template<typename T>
+    inline static bool vector_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,const T CoefficientA=T(1),const T CoefficientC=T(1),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+
+    template<typename T>
+    inline static bool matrix_multiply_scalar_Distributed(
+        const DistributedDataBlock<T>& A,const T scalar,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+    template<typename T>
+    inline static bool matrix_multiply_scalar_Distributed(
+        DistributedDataBlock<T>& A,const T scalar,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+    template<typename T>
+    inline static bool vector_multiply_scalar_Distributed(
+        const DistributedDataBlock<T>& A,const T scalar,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+    template<typename T>
+    inline static bool vector_multiply_scalar_Distributed(
+        DistributedDataBlock<T>& A,const T scalar,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+
+    template<typename T>
+    inline static bool dot_product_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,
+        int root,T* result,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
     template <typename T>
     inline static T dot_product_Allreduce_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol = nullptr);
+
+    template <typename T>
+    inline static bool dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
+
+
     template <typename T>
     inline static MPI_Comm create_summa_communicator(ptrdiff_t br,ptrdiff_t bc,const DataBlock<T>* A,const DataBlock<T>* B,const DataBlock<T>* C,int rootrank = 0, MPI_Comm parent = MPI_COMM_WORLD, SummaGridPolicy policy=SummaGridPolicy::Compatible,bool printgrid=false);
 
     inline static bool matrix_distribution_is_summa_compatible( ptrdiff_t grid_r, ptrdiff_t grid_c,  ptrdiff_t Pr,   ptrdiff_t Pc);
 
-    template <typename T>
-    inline static bool dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
     template <typename T>
     inline static void conjugate_from_root(  DistributedDataBlock<T>& A,int rootrank, MPI_Comm com);
     template <typename T>
@@ -120,22 +246,7 @@ public:
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
                 A.pblock_extents[0] == B.pblock_extents[0]);
     }
-
-protected:
-    template <typename T>
-    inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
-    template <typename T>
-    inline static void winograd_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory, const Math_MPI_RecursiveMultiplication_Policy &par);
-    template <typename T>
-    inline static void cholesky_decomposition_h(const DataBlock<T>& aA, DataBlock<T> & aL,  Math_MPI_Decomposition_Policy &par);
-    template <typename T>
-    inline static void lu_decomposition_h(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, Math_MPI_Decomposition_Policy &par);
-    template <typename T>
-    inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR,    Math_MPI_Decomposition_Policy &par);
-
-
-
-    inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
+inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
 
 
 
@@ -144,7 +255,7 @@ protected:
         if (!default_policy.has_value())
         {
 
-            default_policy.emplace(Math_Functions_Policy::AUTO);
+            default_policy.emplace(true,Math_Functions_Policy::AUTO,Math_MPI_RecursiveMultiplication_Policy::Naive);
         }
         return *default_policy;
     }
@@ -158,6 +269,21 @@ protected:
     {
         default_policy.reset();
     }
+protected:
+    template <typename T>
+    inline static void strassen_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory,MPI_Comm pcom, const Math_MPI_RecursiveMultiplication_Policy &par);
+    template <typename T>
+    inline static void winograd_multiply_h(const DataBlock<T> &aA,const DataBlock<T> &aB,DataBlock<T>& aC,bool ongpu, bool separate_device_memory,MPI_Comm pcom, const Math_MPI_RecursiveMultiplication_Policy &par);
+    template <typename T>
+    inline static void cholesky_decomposition_h(const DataBlock<T>& aA, DataBlock<T> & aL,MPI_Comm pcom,  Math_MPI_Decomposition_Policy &par);
+    template <typename T>
+    inline static void lu_decomposition_h(const DataBlock<T> &aA, DataBlock<T> & aL,DataBlock<T> & aU, MPI_Comm pcom,Math_MPI_Decomposition_Policy &par);
+    template <typename T>
+    inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR, MPI_Comm pcom,   Math_MPI_Decomposition_Policy &par);
+
+
+
+
 };
 
 #include "mathfunctions_mpi.hpp"

@@ -62,7 +62,7 @@ public:
     inline static DataBlock<T>create_matrix(T* data,  const ptrdiff_t rows,  const ptrdiff_t cols,  ptrdiff_t* extents,  ptrdiff_t* strides,  DataBlockConfig config,   const StridesCalculation computestrides);
 
     template<typename T>
-    inline static void copy(DataBlock<T>&target,DataBlock<T> source,DataBlockConfig targetcfg);
+    inline static void copy(DataBlock<T>&target,const DataBlock<T>& source);
 };
 #pragma omp end declare target
 

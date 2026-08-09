@@ -9,222 +9,513 @@
 
 #include "inkernel_mathfunctions.h"
 
-
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_dot_accumulate( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
+template<typename T>
+inline void Math_Functions::matrix_multiply_dot(
+    const DataBlock<T>& A,
+    const DataBlock<T>& B,
+    DataBlock<T>& C,
+    const T CoefficientB,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
 {
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
+    const auto& policy = pol ? *pol : get_default_policy();
 
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
+    if(policy.should_use_gpu_matrix_multiply(A,B,C))
     {
-        GPU_Math_Functions::matrix_multiply_dot_accumulate_g(A,B,C, policy.devicenum,policy.update_host);
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+
+        if(policy.accumulation_precision > 1)
+            GPU_Math_Functions::matrix_multiply_dot_kahan_g(A,B,C,CoefficientB,CoefficientC,options);
+        else
+            GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,CoefficientB,CoefficientC,options);
     }
     else
-        In_Kernel_Mathfunctions::matrix_multiply_dot_accumulate(A,B,C);
+    {
+        if(policy.accumulation_precision > 1)
+            In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(A,B,C,CoefficientB,CoefficientC);
+        else
+            In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C,CoefficientB,CoefficientC);
+    }
 }
 
 
 
-template <typename T>
-void Math_Functions::matrix_multiply_dot( const DataBlock<T>& A,const  DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
+template<typename T>
+inline void Math_Functions::matrix_multiply_vector(
+    const DataBlock<T>& A,
+    const DataBlock<T>& x,
+    DataBlock<T>& y,
+    const T Coefficientx,
+    const T Coefficienty,
+    const Math_Functions_Policy* pol)
 {
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
+    const auto& policy = pol ? *pol : get_default_policy();
 
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_cubic_treshold))
+    if(policy.should_use_gpu_matrix_vector(A,x,y))
     {
-        GPU_Math_Functions::matrix_multiply_dot_g(A,B,C, policy.devicenum,policy.update_host);
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+
+        if(policy.accumulation_precision > 1)
+            GPU_Math_Functions::matrix_multiply_vector_kahan_g(A,x,y,Coefficientx,Coefficienty,options);
+        else
+            GPU_Math_Functions::matrix_multiply_vector_g(A,x,y,Coefficientx,Coefficienty,options);
     }
     else
-        In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C);
-}
-
-
-template <typename T>
-void Math_Functions::matrix_add( const DataBlock<T>& A,const DataBlock<T>& B,  DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_add_g(A,B,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_add(A,B,C);
-}
-
-template <typename T>
-void Math_Functions::matrix_add_accumulate( DataBlock<T>& A,const DataBlock<T>& B,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_add_accumulate_g(A,B, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_add_accumulate(A,B);
-}
-
-
-template <typename T>
-void Math_Functions::matrix_subtract(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_subtract_g(A,B,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_subtract(A,B,C);
-
-}
-
-
-template <typename T>
-void Math_Functions::matrix_subtract_accumulate(  DataBlock<T>& A, const DataBlock<T>& B,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A, B,  Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_subtract_accumulate_g(A,B, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_subtract_accumulate(A,B);
-
-}
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_vector( const DataBlock<T>&M, const DataBlock<T> V, DataBlock<T> C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M, V, C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
-}
-
-template <typename T>
-void Math_Functions::matrix_multiply_vector(  const DataBlock<T>&M, const T*V, DataBlock<T> & C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_vector_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_vector(M,V,C);
+    {
+        if(policy.accumulation_precision > 1)
+            In_Kernel_Mathfunctions::matrix_multiply_vector_kahan(A,x,y,Coefficientx,Coefficienty);
+        else
+            In_Kernel_Mathfunctions::matrix_multiply_vector(A,x,y,Coefficientx,Coefficienty);
+    }
 }
 
 
 
-
-template <typename T>
-void Math_Functions::matrix_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C,const Math_Functions_Policy*pol)
+template<typename T>
+inline void Math_Functions::matrix_linear_combination(
+    const DataBlock<T>& A,
+    const DataBlock<T>& B,
+    DataBlock<T>& C,
+    const T CoefficientA,
+    const T CoefficientB,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
 {
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar(M,V,C);
-}
+    const auto& policy = pol ? *pol : get_default_policy();
 
-
-
-
-template <typename T>
-void Math_Functions::matrix_multiply_scalar_accumulate( DataBlock<T>& M, const T V,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(M,V, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(M,V);
-}
-
-template <typename T>
-void Math_Functions::vector_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(M,C, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::vector_multiply_scalar_g(M,V,C, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::vector_multiply_scalar(M,V,C);
-}
-
-
-template <typename T>
-void Math_Functions::vector_multiply_scalar_accumulate(  DataBlock<T>& vec,const T scalar,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::matrix_multiply_scalar_accumulate_g(vec,scalar, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::matrix_multiply_scalar_accumulate(vec,scalar);
-}
-
-
-
-
-template <typename T>
-inline void Math_Functions::vector_add(  const DataBlock<T>& vec1, const DataBlock<T>& vec2, DataBlock<T> & res,const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::vector_add_g(vec1,vec2,res, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::vector_add(vec1,vec2,res);
-}
-
-
-template <typename T>
-inline void Math_Functions::vector_subtract(const DataBlock<T>& vec1,const DataBlock<T>& vec2, DataBlock<T> & res, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2,res, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::vector_subtract_g(vec1,vec2,res, policy.devicenum,policy.update_host);
-    else
-        In_Kernel_Mathfunctions::vector_subtract(vec1,vec2,res);
-}
-
-
-template <typename T>
-inline T Math_Functions::dot_product( const DataBlock<T> &vec1, const DataBlock<T> &vec2, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(vec1,vec2, Math_Functions_Policy::default_square_treshold))
-        return GPU_Math_Functions::dot_product_g(vec1,vec2, policy.devicenum);
-    else
-        return In_Kernel_Mathfunctions::dot_product(vec1,vec2);
-}
-
-
-template <typename T>
-void Math_Functions::cholesky_decomposition(const DataBlock<T> & A, DataBlock<T> & L, const Math_Functions_Policy*pol)
-{
-
-    const Math_Functions_Policy &policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A,L, Math_Functions_Policy::default_square_treshold))
-        GPU_Math_Functions::cholesky_decomposition_g(A,L, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
+    if(policy.should_use_gpu_matrix(A,B,C))
+    {
+        GPU_Math_Functions::matrix_linear_combination_g(A,B,C,CoefficientA,CoefficientB,CoefficientC, {policy.devicenum,policy.update_host});
+    }
     else
     {
-        In_Kernel_Mathfunctions::cholesky_decomposition(A,L,policy.initialize_output_to_zeros);
+        In_Kernel_Mathfunctions::matrix_linear_combination(A,B,C,CoefficientA,CoefficientB,CoefficientC);
     }
-
 }
 
-template <typename T>
-void Math_Functions::lu_decomposition(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U, const Math_Functions_Policy*pol)
-{
-    const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
 
-    if (policy.should_use_gpu(A,L,U, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions::lu_decomposition_g(A,L,U, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros);
+template<typename T>
+inline void Math_Functions::matrix_linear_combination(
+    const DataBlock<T>& A,
+    DataBlock<T>& C,
+    const T CoefficientA,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix(A,C))
+    {
+        GPU_Math_Functions::matrix_linear_combination_g(A,C,CoefficientA,CoefficientC, {policy.devicenum,policy.update_host});
+    }
     else
     {
-        In_Kernel_Mathfunctions::lu_decomposition(A,L,U,policy.initialize_output_to_zeros);
+        In_Kernel_Mathfunctions::matrix_linear_combination(A,C,CoefficientA,CoefficientC);
     }
-
 }
-// Fast QR Decomposition Algorithm for mdspan
-template <typename T>
-void Math_Functions::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q, DataBlock<T>& R,   const Math_Functions_Policy*pol)
+
+
+
+template<typename T>
+inline void Math_Functions::vector_linear_combination(
+    const DataBlock<T>& A,
+    const DataBlock<T>& B,
+    DataBlock<T>& C,
+    const T CoefficientA,
+    const T CoefficientB,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
 {
-    const Math_Functions_Policy&policy =  (pol != nullptr) ? *pol : get_default_policy();
-    if (policy.should_use_gpu(A,Q,R, Math_Functions_Policy::default_cubic_treshold))
-        GPU_Math_Functions::qr_decomposition_g(A,Q,R, policy.devicenum,policy.update_host,policy.initialize_output_to_zeros,policy.memmapped_files);
-    else
-        In_Kernel_Mathfunctions::qr_decomposition(A,Q,R,policy.initialize_output_to_zeros,policy.memmapped_files);
+    const auto& policy = pol ? *pol : get_default_policy();
 
+    if(policy.should_use_gpu_vector(A,B,C))
+    {
+        GPU_Math_Functions::vector_linear_combination_g(A,B,C,CoefficientA,CoefficientB,CoefficientC,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::vector_linear_combination(A,B,C,CoefficientA,CoefficientB,CoefficientC);
+    }
 }
+
+
+template<typename T>
+inline void Math_Functions::vector_linear_combination(const DataBlock<T>& A,DataBlock<T>& C,const T CoefficientA,const T CoefficientC,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_vector(A,C))
+    {
+        GPU_Math_Functions::vector_linear_combination_g(A,C,CoefficientA,CoefficientC,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::vector_linear_combination(A,C,CoefficientA,CoefficientC);
+    }
+}
+
+
+
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_scalar(
+    const DataBlock<T>& M,
+    const T scalar,
+    DataBlock<T>& C,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix(M,C))
+    {
+        GPU_Math_Functions::matrix_multiply_scalar_g(M,scalar,C,   GPUOptions{.device=policy.devicenum,.update_host=policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_scalar(M,scalar,C);
+    }
+}
+
+
+
+template<typename T>
+inline void Math_Functions::vector_multiply_scalar(
+    const DataBlock<T>& vec,
+    const T scalar,
+    DataBlock<T>& res,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_vector(vec,res))
+    {
+        GPU_Math_Functions::vector_multiply_scalar_g(
+            vec,scalar,res, {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::vector_multiply_scalar(vec,scalar,res);
+    }
+}
+
+
+
+template<typename T>
+inline T Math_Functions::dot_product(
+    const DataBlock<T>& A,
+    const DataBlock<T>& B,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_vector(A,B))
+    {
+        GPUOptions options
+        {
+            policy.devicenum,
+            policy.update_host
+        };
+
+        if(policy.accumulation_precision > 1)
+            return GPU_Math_Functions::dot_product_kahan_g(A,B,options);
+        else
+            return GPU_Math_Functions::dot_product_g(A,B,options);
+    }
+    else
+    {
+        if(policy.accumulation_precision > 1)
+            return In_Kernel_Mathfunctions::dot_product_kahan(A,B);
+        else
+            return In_Kernel_Mathfunctions::dot_product(A,B);
+    }
+}
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_dot_sparse(
+    const BlockedDataView<T>& Ablocks,
+    const DataBlock<T>& B,
+    DataBlock<T>& C,
+    const T CoefficientB,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_sparse_matrix_multiply(Ablocks,B,C))
+    {
+        GPU_Math_Functions::matrix_multiply_dot_sparse_g(
+            Ablocks,
+            B,
+            C,
+            CoefficientB,
+            CoefficientC,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_dot_sparse(
+            Ablocks,
+            B,
+            C,
+            CoefficientB,
+            CoefficientC);
+    }
+}
+
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_vector_sparse(
+    const BlockedDataView<T>& A,
+    const DataBlock<T>& x,
+    DataBlock<T>& y,
+    const T Coefficientx,
+    const T Coefficienty,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_sparse_matrix_vector(A,x,y))
+    {
+        GPU_Math_Functions::matrix_multiply_vector_sparse_g(
+            A,
+            x,
+            y,
+            Coefficientx,
+            Coefficienty,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_vector_sparse(
+            A,
+            x,
+            y,
+            Coefficientx,
+            Coefficienty);
+    }
+}
+
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_vector_sparse(
+    const BlockedDataView<T>& A,
+    const BlockedDataView<T>& x,
+    DataBlock<T>& y,
+    const T Coefficientx,
+    const T Coefficienty,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_sparse_matrix_vector(A,x,y))
+    {
+        GPU_Math_Functions::matrix_multiply_vector_sparse_g(
+            A,
+            x,
+            y,
+            Coefficientx,
+            Coefficienty,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_vector_sparse(
+            A,
+            x,
+            y,
+            Coefficientx,
+            Coefficienty);
+    }
+}
+template<typename T>
+inline void Math_Functions::matrix_multiply_scalar(
+    DataBlock<T>& M,
+    const T scalar,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_elementwise(M,M,M))
+    {
+        GPU_Math_Functions::matrix_multiply_scalar_g(
+            M,
+            scalar,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_scalar(
+            M,
+            scalar);
+    }
+}
+
+
+
+template<typename T>
+inline void Math_Functions::vector_multiply_scalar(
+    DataBlock<T>& vec,
+    const T scalar,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_elementwise(vec,vec,vec))
+    {
+        GPU_Math_Functions::vector_multiply_scalar_g(
+            vec,
+            scalar,
+        {policy.devicenum,policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::vector_multiply_scalar(
+            vec,
+            scalar);
+    }
+}
+
+template<typename T>
+inline void Math_Functions::cholesky_decomposition(
+    const DataBlock<T>& A,
+    DataBlock<T>& L,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    const bool initialize_to_zero =
+        policy.initialize_output_to_zeros;
+
+    if(policy.should_use_gpu_decomposition(A))
+    {
+        GPU_Math_Functions::cholesky_decomposition_g(
+            A,
+            L,
+            initialize_to_zero,
+        {
+            policy.devicenum,
+            policy.update_host
+        });
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::cholesky_decomposition(
+            A,
+            L,
+            initialize_to_zero);
+    }
+}
+
+
+template<typename T>
+inline void Math_Functions::lu_decomposition(
+    const DataBlock<T>& A,
+    DataBlock<T>& L,
+    DataBlock<T>& U,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    const bool initialize_to_zero =
+        policy.initialize_output_to_zeros;
+
+
+    if(policy.should_use_gpu_decomposition(A))
+    {
+        GPU_Math_Functions::lu_decomposition_g(
+            A,
+            L,
+            U,
+            initialize_to_zero,
+        {
+            policy.devicenum,
+            policy.update_host
+        });
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::lu_decomposition(
+            A,
+            L,
+            U,
+            initialize_to_zero);
+    }
+}
+
+template<typename T>
+inline void Math_Functions::qr_decomposition(
+    const DataBlock<T>& A,
+    DataBlock<T>& Q,
+    DataBlock<T>& R,
+
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+
+    const bool initialize_to_zero =
+        policy.initialize_output_to_zeros;
+
+
+    const bool with_memmaps =
+        policy.memmapped_files;
+
+    if(policy.should_use_gpu_decomposition(A))
+    {
+        GPU_Math_Functions::qr_decomposition_g(A,Q,R,initialize_to_zero,with_memmaps,GPUOptions{.device=policy.devicenum,.update_host=policy.update_host});
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::qr_decomposition(A,Q,R,initialize_to_zero,with_memmaps);
+    }
+}
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_dot_sparse(
+    const BlockedDataView<T>& A,
+    const BlockedDataView<T>& B,
+    DataBlock<T>& C,
+    const T CoefficientB,
+    const T CoefficientC,
+    const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+
+    if(policy.should_use_gpu_sparse_matrix_multiply(A,B,C))
+    {
+        GPU_Math_Functions::matrix_multiply_dot_sparse_g(
+            A,
+            B,
+            C,
+            CoefficientB,
+            CoefficientC,
+        {
+            policy.devicenum,
+            policy.update_host
+        });
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_dot_sparse(
+            A,
+            B,
+            C,
+            CoefficientB,
+            CoefficientC);
+    }
+}
+
+
+
+
 #endif

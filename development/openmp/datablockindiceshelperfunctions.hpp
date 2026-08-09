@@ -308,5 +308,33 @@ inline bool is_row_major(const ptrdiff_t*extents, const ptrdiff_t* strides, cons
 #pragma omp end declare target
 
 
+#pragma omp begin declare target
+template<typename A, typename B>
+bool has_same_layout(const A& a, const B& b)
+{
+    if (a.rank() != b.rank())
+        return false;
+
+    if (a.rowmajor() != b.rowmajor())
+        return false;
+
+const ptrdiff_t* extA = a.extents_ptr();
+const ptrdiff_t* strA = a.strides_ptr();
+const ptrdiff_t* extB = b.extents_ptr();
+const ptrdiff_t* strB = b.strides_ptr();
+
+    for (ptrdiff_t i = 0; i < a.rank(); ++i)
+    {
+        if (extA[i]!=extB[i])
+            return false;
+
+        if (strA[i] != strB[i])
+                return false;
+    }
+
+    return true;
+}
+#pragma omp end declare target
+
 
 #endif

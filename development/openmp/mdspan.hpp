@@ -5,6 +5,57 @@
 
 
 #include "gpu_memory_functions.h"
+
+
+
+
+
+template <typename T,typename Container>
+ ptrdiff_t  mdspan<T, Container>:: extent(const ptrdiff_t dim) const
+    {
+        return pextents[dim];
+    };
+    template <typename T,typename Container>
+
+    ptrdiff_t  mdspan<T, Container>:: rank() const
+    {
+        return this->dprank;
+    };
+    template <typename T,typename Container>
+
+    ptrdiff_t  mdspan<T, Container>:: stride(const ptrdiff_t dim) const
+    {
+        return pstrides[dim];
+    };
+
+template <typename T,typename Container>
+    const Container&  mdspan<T, Container>:: extents()const
+    {
+        return pextents;
+    };
+    template <typename T,typename Container>
+
+    const Container&  mdspan<T, Container>:: strides()const
+    {
+        return pstrides;
+    };
+template <typename T,typename Container>
+    ptrdiff_t  mdspan<T, Container>:: datalength() const
+    {
+        return this->dpdatalength;
+    };
+
+template <typename T,typename Container>
+    bool  mdspan<T, Container>:: location_check(LocationCheckContext& ctx) const
+    {
+        return ctx.check(*this);
+    }
+
+
+
+
+
+
 template <typename T,typename Container>
 mdspan<T,Container>& mdspan<T, Container>:: operator=(const mdspan<T,Container> & other)
 {

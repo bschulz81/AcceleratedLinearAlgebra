@@ -5,7 +5,7 @@
 #include "mdspan_omp.h"
 
 template <typename T, typename Container>
-void mdspan_data<T,Container>::initialization_helper(const ManagedDataBlockConfig& config)
+void mdspan_data<T,Container>::allocate_storage(const ManagedDataBlockConfig& config)
 {
     this->dpconfig.pmemmap = config.memmap;
     this->p_owns_device_offload = false;
@@ -54,21 +54,21 @@ template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides, ManagedDataBlockConfig config)
     : mdspan<T,Container>(nullptr, extents, strides, config)
 {
-    initialization_helper(config);
+    allocate_storage(config);
 }
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockConfig config)
     : mdspan<T,Container>(nullptr, extents, strides, config.Get_DataBlockConfig())
 {
-    initialization_helper(config);
+    allocate_storage(config);
 }
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data(const Container& extents, ManagedDataBlockConfig config)
     : mdspan<T,Container>(nullptr, extents, config.Get_DataBlockConfig())
 {
-    initialization_helper(config);
+    allocate_storage(config);
 }
 
 
@@ -341,6 +341,47 @@ mdspan_data<T,Container>::mdspan_data(mdspan_data<T,Container>&& other) noexcept
       p_ref_count(other.p_ref_count)
 {
     other.p_ref_count = nullptr;
+}
+
+
+
+template<typename T, typename Container>
+template<typename Expr>
+void mdspan_data<T,Container>::recreate(
+    const Expr& expr,
+    const ManagedDataBlockConfig& config)
+{
+    release_all_data();
+
+    this->dprank = expr.rank();
+
+    if constexpr (DynamicContainer<Container>)
+    {
+        this->pextents.resize(this->dprank);
+        this->pstrides.resize(this->dprank);
+    }
+
+    const ptrdiff_t* ext=expr.extents_ptr();
+    const ptrdiff_t* str=expr.strides_ptr();
+    #pragma omp unroll partial
+    for (ptrdiff_t i = 0; i < this->dprank; ++i)
+    {
+        this->pextents[i] = ext[i];
+        this->pstrides[i] = str[i];
+    }
+
+    this->dpextents = this->pextents.data();
+    this->dpstrides = this->pstrides.data();
+
+    this->dpdatalength =
+        compute_data_length(
+            this->dpextents,
+            this->dpstrides,
+            this->dprank);
+
+    this->dpconfig = config.Get_DataBlockConfig();
+
+    allocate_storage(config);
 }
 
 

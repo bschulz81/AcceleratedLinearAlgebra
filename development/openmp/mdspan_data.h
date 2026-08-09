@@ -19,8 +19,10 @@ class mdspan;
 
 
 
+
 template <typename T,typename Container>
-class mdspan_data : public mdspan<T,Container>
+class mdspan_data : public mdspan<T,Container>,
+    public expr::ExpressionInterface<mdspan_data<T,Container>>
 {
 public:
 
@@ -28,6 +30,7 @@ public:
 
     mdspan_data() {};
 
+    using expr::ExpressionInterface<mdspan_data<T,Container>>::operator=;
 
     mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides,ManagedDataBlockConfig config);
 
@@ -42,23 +45,29 @@ public:
 
     mdspan_data(mdspan_data<T, Container>&& other) noexcept;
     mdspan_data<T,Container>& operator=( mdspan_data<T, Container>&& other) noexcept;
+    void allocate(const Container& extents,
+                  const Container& strides,
+                  const ManagedDataBlockConfig& config);
+
+    template<typename Expr>
+    void recreate( const Expr& expr, const ManagedDataBlockConfig& config);
+
+
 
     ~mdspan_data();
 
     mdspan_data<T,Container> copy( ManagedDataBlockConfig *config);
 
     void release_all_data();
+    void allocate_storage(const ManagedDataBlockConfig& config);
 protected:
     std::atomic<int>* p_ref_count = nullptr;
-    void initialization_helper(const ManagedDataBlockConfig& config);
+
 };
 
 
 template<typename T, typename Tag>
-using mdspan_data_t =
-    mdspan_data<
-    T,
-    typename container_selector<Tag>::template container<ptrdiff_t>>;
+using mdspan_data_t =mdspan_data<T,typename container_selector<Tag>::template container<ptrdiff_t>>;
 
 #include "mdspan_data.hpp"
 #endif

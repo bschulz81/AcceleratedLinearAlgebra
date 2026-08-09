@@ -214,7 +214,7 @@ inline const T* DataBlock<T>::data() const
 
 #pragma omp begin declare target
 template<typename T>
-inline ptrdiff_t* DataBlock<T>:: extents()
+inline ptrdiff_t* DataBlock<T>:: extents_ptr()
 {
     return dpextents;
 }
@@ -222,7 +222,7 @@ inline ptrdiff_t* DataBlock<T>:: extents()
 
 #pragma omp begin declare target
 template<typename T>
-inline const ptrdiff_t* DataBlock<T>:: extents() const
+inline const ptrdiff_t* DataBlock<T>:: extents_ptr() const
 {
     return dpextents;
 }
@@ -230,7 +230,7 @@ inline const ptrdiff_t* DataBlock<T>:: extents() const
 
 #pragma omp begin declare target
 template<typename T>
-inline ptrdiff_t* DataBlock<T>:: strides()
+inline ptrdiff_t* DataBlock<T>:: strides_ptr()
 {
     return dpstrides;
 }
@@ -238,7 +238,7 @@ inline ptrdiff_t* DataBlock<T>:: strides()
 
 #pragma omp begin declare target
 template<typename T>
-inline const ptrdiff_t* DataBlock<T>:: strides() const
+inline const ptrdiff_t* DataBlock<T>:: strides_ptr() const
 {
     return dpstrides;
 }
@@ -321,7 +321,7 @@ inline T DataBlock<T>:: operator()(const ptrdiff_t* indices) const
 template<typename T>
 inline bool DataBlock<T>::is_tensor() const
 {
-    return DataShape() == DataBlockObject::Tensor;
+    return ObjectType() == DataBlockObject::Tensor;
 }
 #pragma omp end declare target
 
@@ -337,7 +337,7 @@ inline bool DataBlock<T>::is_conjugate() const
 template<typename T>
 inline bool DataBlock<T>:: is_scalar() const
 {
-    return DataShape() == DataBlockObject::Scalar;
+    return ObjectType() == DataBlockObject::Scalar;
 }
 #pragma omp end declare target
 
@@ -345,7 +345,7 @@ inline bool DataBlock<T>:: is_scalar() const
 template<typename T>
 inline bool DataBlock<T>::  is_vector() const
 {
-    return DataShape() == DataBlockObject::Vector;
+    return ObjectType() == DataBlockObject::Vector;
 }
 #pragma omp end declare target
 
@@ -354,7 +354,7 @@ inline bool DataBlock<T>::  is_vector() const
 template<typename T>
 inline bool DataBlock<T>::  is_matrix() const
 {
-    return DataShape() == DataBlockObject::Matrix;
+    return ObjectType() == DataBlockObject::Matrix;
 }
 #pragma omp end declare target
 
@@ -363,23 +363,9 @@ inline bool DataBlock<T>::  is_matrix() const
 
 #pragma omp begin declare target
 template <typename T>
-DataBlockObject DataBlock<T>::DataShape() const
+DataBlockObject DataBlock<T>::ObjectType() const
 {
-    if (abs(dprank) == 1)
-    {
-        if (abs(dpextents[0]) == 1) return DataBlockObject::Scalar;
-        return DataBlockObject::Vector;
-    }
-    if (abs(dprank) == 2)
-    {
-        if (abs(dpextents[0]) == 1 && abs(dpextents[1]) == 1) return DataBlockObject::Scalar;
-        if (abs(dpextents[0]) == 1 || abs(dpextents[1]) == 1) return DataBlockObject::Vector;
-        return DataBlockObject::Matrix;
-    }
-    if (abs(dprank) > 2) return DataBlockObject::Tensor;
-
-    // fallback
-    return DataBlockObject::Scalar;
+   return object_type(this->dprank,this->dpextents);
 }
 #pragma omp end declare target
 
