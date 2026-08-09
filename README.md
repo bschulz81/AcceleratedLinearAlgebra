@@ -57,7 +57,8 @@ Added accumulate kernels for faster calculation of composite expressions on gpu 
 Reduced the creation of temporary files during expression evaluation with help of a modified Sethi Ullmann algorithm, 
 
 Made the profile evaluations that decide whether computations are done on gpu more precise,
-Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices,
+
+Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices.
 
 ### 30.07.2026 13:48 o'clock
 Cleaned the header files from unnecessary includes
