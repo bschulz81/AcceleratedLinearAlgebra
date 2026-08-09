@@ -45,7 +45,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 3) Add more functions for tensors including tensor contraction and Einsums
 4) add the expression mechanism for the distributed tensorclasses...
 5) restructure the library, including the expression interface to make additions of new functions more easy.
-6) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+6) add functions for statistics, function minimization, optimization, differential equations
 
 
 # Version history
