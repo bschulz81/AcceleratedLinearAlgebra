@@ -40,13 +40,25 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-1) restructure the library to make additions of new functions more easy.
-2) Add more functions for tensors.
-3) add functions for expression handling with more than one operator, add an autodiff mechanism
-4) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
+1) add an autodiff mechanism to the expressions to allow some support for differential equations,
+2) add unary function nodes in expressions,
+3) Add more functions for tensors including tensor contraction and Einsums
+4) add the expression mechanism for the distributed tensorclasses...
+5) restructure the library, including the expression interface to make additions of new functions more easy.
+6) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
 
 # Version history
+
+### 10.08.2026
+
+Added accumulate kernels for faster calculation of composite expressions on gpu and cpu,
+
+Reduced the creation of temporary files during expression evaluation with help of a modified Sethi Ullmann algorithm, 
+
+Made the profile evaluations that decide whether computations are done on gpu more precise,
+Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices,
+
 ### 30.07.2026 13:48 o'clock
 Cleaned the header files from unnecessary includes
 separated two  large headers into declarations *h and implementation *hpp
