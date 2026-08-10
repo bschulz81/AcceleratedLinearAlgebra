@@ -221,7 +221,7 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
         {
             std::cout<< "[make_accumulator] Expression -> evaluate directly into owning accumulator \n";
         }
-
+        source.assign_to(result, &policy);
     }
 
     return result;
@@ -302,12 +302,12 @@ void AddExpr<LHS, RHS>::assign_to(
             default:
                 throw std::runtime_error("Unsupported type for addition");
             }
+
         }
 
         DataBlockUtilities::copy(
             C,
             static_cast<const DataBlock<T>&>(L));
-
         return;
     }
 
@@ -341,6 +341,7 @@ void AddExpr<LHS, RHS>::assign_to(
     default:
         throw std::runtime_error(
             "Unsupported type for addition");
+
     }
 }
 

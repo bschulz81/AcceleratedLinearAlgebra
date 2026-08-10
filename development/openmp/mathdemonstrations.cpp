@@ -62,8 +62,8 @@ int main()
 
         mdspan_data_t<double,dynamic_tag> C;
 
-        cout << "addition of A and B+A" << endl;
-        C = A + B+A;
+        cout << "addition of A and B+A+A+A+A" << endl;
+        C = A + B+A+A+A;
         C.print();
 
         cout<<"Define U as empty"<<endl;
