@@ -12,6 +12,9 @@ reduced temporaries of expressions with an added modified Sethi Ullmann algorith
 made the profile evaluations that decide whether computations are done on gpu more precise
 fixed a bug in the strassen and winograd algorithm for rectangular matrices.
 
+04:33 o'clock: 
+added a small fix to the assign operator to ensure that the result of an expression is always located on the device where the other operands are
+
 30.07.2026
 
 fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms. began to restructure the library to separate declarations from implementations to avoid circular dependencies
