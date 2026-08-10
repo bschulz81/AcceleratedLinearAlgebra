@@ -248,9 +248,9 @@ EvaluationInfo analyze(const MulExpr<LHS, RHS>& e)
     result.result_source  = ResultSource::Node;
     result.result_storage = StorageKind::materialized_buffer;
 
-   result.temporaries =
-    l.temporaries +
-    r.temporaries;
+    result.temporaries =
+        l.temporaries +
+        r.temporaries;
 
     return result;
 }
@@ -305,9 +305,12 @@ inline const char* result_source_name(ResultSource source)
 {
     switch (source)
     {
-        case ResultSource::Node: return "Node";
-        case ResultSource::LHS:  return "LHS";
-        case ResultSource::RHS:  return "RHS";
+    case ResultSource::Node:
+        return "Node";
+    case ResultSource::LHS:
+        return "LHS";
+    case ResultSource::RHS:
+        return "RHS";
     }
 
     return "?";
@@ -317,9 +320,12 @@ inline const char* storage_kind_name(StorageKind storage)
 {
     switch (storage)
     {
-        case StorageKind::None:        return "None";
-        case StorageKind::Destination: return "Destination";
-        case StorageKind::materialized_buffer:   return "materialized_buffer";
+    case StorageKind::None:
+        return "None";
+    case StorageKind::Destination:
+        return "Destination";
+    case StorageKind::materialized_buffer:
+        return "materialized_buffer";
     }
 
     return "?";
@@ -342,10 +348,10 @@ void print_expression(
     print_indent(level);
 
     std::cout
-        << "mdspan "
-        << "source=" << result_source_name(info.result_source)
-        << " storage=" << storage_kind_name(info.result_storage)
-        << "\n";
+            << "mdspan "
+            << "source=" << result_source_name(info.result_source)
+            << " storage=" << storage_kind_name(info.result_storage)
+            << "\n";
 }
 
 template<typename LHS, typename RHS>
@@ -358,14 +364,14 @@ void print_expression(
     print_indent(level);
 
     std::cout
-        << "Add "
-        << "peak_tmp=" << info.temporaries
-        << " inplace=("
-        << info.inplace_left << ","
-        << info.inplace_right << ")"
-        << " source=" << result_source_name(info.result_source)
-        << " storage=" << storage_kind_name(info.result_storage)
-        << "\n";
+            << "Add "
+            << "peak_tmp=" << info.temporaries
+            << " inplace=("
+            << info.inplace_left << ","
+            << info.inplace_right << ")"
+            << " source=" << result_source_name(info.result_source)
+            << " storage=" << storage_kind_name(info.result_storage)
+            << "\n";
 
     print_expression(e.lhs, level + 1);
     print_expression(e.rhs, level + 1);
@@ -381,14 +387,14 @@ void print_expression(
     print_indent(level);
 
     std::cout
-        << "Scale "
-        << "peak_tmp=" << info.temporaries
-        << " inplace=("
-        << info.inplace_left << ","
-        << info.inplace_right << ")"
-        << " source=" << result_source_name(info.result_source)
-        << " storage=" << storage_kind_name(info.result_storage)
-        << "\n";
+            << "Scale "
+            << "peak_tmp=" << info.temporaries
+            << " inplace=("
+            << info.inplace_left << ","
+            << info.inplace_right << ")"
+            << " source=" << result_source_name(info.result_source)
+            << " storage=" << storage_kind_name(info.result_storage)
+            << "\n";
 
     print_expression(e.lhs, level + 1);
 }
@@ -404,14 +410,14 @@ void print_expression(
     print_indent(level);
 
     std::cout
-        << "Sub "
-        << "peak_tmp=" << info.temporaries
-        << " inplace=("
-        << info.inplace_left << ","
-        << info.inplace_right << ")"
-        << " source=" << result_source_name(info.result_source)
-        << " storage=" << storage_kind_name(info.result_storage)
-        << "\n";
+            << "Sub "
+            << "peak_tmp=" << info.temporaries
+            << " inplace=("
+            << info.inplace_left << ","
+            << info.inplace_right << ")"
+            << " source=" << result_source_name(info.result_source)
+            << " storage=" << storage_kind_name(info.result_storage)
+            << "\n";
 
     print_expression(e.lhs, level + 1);
     print_expression(e.rhs, level + 1);
@@ -427,11 +433,11 @@ void print_expression(
     print_indent(level);
 
     std::cout
-        << "Mul "
-        << "peak_tmp=" << info.temporaries
-        << " source=" << result_source_name(info.result_source)
-        << " storage=" << storage_kind_name(info.result_storage)
-        << "\n";
+            << "Mul "
+            << "peak_tmp=" << info.temporaries
+            << " source=" << result_source_name(info.result_source)
+            << " storage=" << storage_kind_name(info.result_storage)
+            << "\n";
 
     print_expression(e.lhs, level + 1);
     print_expression(e.rhs, level + 1);
@@ -483,32 +489,39 @@ public:
         const auto& pol = policy ? *policy : expr::get_default_policy();
 
 
+        ManagedDataBlockConfig placement =pol.temporary_placement;
 
+        LocationCheckContext ctx;
         if (pol.check_locations)
         {
-            LocationCheckContext ctx;
-
             if (!expr.location_check(ctx))
                 throw std::runtime_error("Expression location mismatch");
+
+           placement.data_ondevice = ctx.data_is_device;
+
+            if (ctx.data_is_device)
+            placement.devicenum = ctx.device_number;
         }
+
+
         auto info = expr::analyze(expr);
         if (pol.debugoutput)
         {
 
-        std::cout << "[expression] analysis:\n";
-        expr::print_expression(expr,0);
+            std::cout << "[expression] analysis:\n";
+            expr::print_expression(expr,0);
 
-        std::cout
-                << "[expression]Peak temporaries = "
-                << info.temporaries
-                << "\n";
+            std::cout
+                    << "[expression]Peak temporaries = "
+                    << info.temporaries
+                    << "\n";
         }
 
         Derived& out = static_cast<Derived&>(*this);
 
         if (!has_same_layout(out, expr))
         {
-            out.recreate(expr,pol.temporary_placement);
+            out.recreate(expr,placement);
         }
 
 

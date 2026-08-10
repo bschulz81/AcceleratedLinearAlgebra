@@ -186,8 +186,7 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
             ctx.data_is_device;
 
         if (ctx.data_is_device)
-            placement.devicenum =
-                ctx.device_number;
+            placement.devicenum =ctx.device_number;
 
         if (policy.debugoutput)
         {
@@ -211,8 +210,10 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
         {
             std::cout<< "[make_accumulator] DataBlock -> copy into owning accumulator \n";
         }
-        // Source already contains data.
+
+
         DataBlockUtilities::copy(static_cast<DataBlock<T>&>(result),static_cast<const DataBlock<T>&>(source));
+
     }
     else
     {
@@ -220,9 +221,7 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
         {
             std::cout<< "[make_accumulator] Expression -> evaluate directly into owning accumulator \n";
         }
-        // Source is an expression.
-        // Evaluate directly into our one owning result.
-        source.assign_to(result, &policy);
+
     }
 
     return result;
