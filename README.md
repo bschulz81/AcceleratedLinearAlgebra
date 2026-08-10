@@ -108,6 +108,8 @@ Made the profile evaluations that decide whether computations are done on gpu mo
 
 Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices.
 
+fixed the assign operator of expressions to ensure that the result of an expression is always located at the place where the other operands are
+
 ### 30.07.2026 13:48 o'clock
 Cleaned the header files from unnecessary includes
 separated two  large headers into declarations *h and implementation *hpp
