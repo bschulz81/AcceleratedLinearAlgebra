@@ -36,44 +36,8 @@ The compiler bug, which I discovered led to variales of template types being bro
 
 A short tutorial how to configure clang and gcc for gpu-offload is here for the gentoo linux distribution: https://forums.gentoo.org/viewtopic-p-8848457.html?sid=7f023fe73bf270b0617ea00bcc1a4ea1
 
+# Example for evaluated expressions with the library on GPU
 
-# Todo:
-
-1) add an autodiff mechanism to the expressions to allow some support for differential equations,
-2) add unary function nodes in expressions,
-3) Add more functions for tensors including tensor contraction and Einsums
-4) add the expression mechanism for the distributed tensorclasses...
-5) restructure the library, including the expression interface to make additions of new functions more easy.
-6) add functions for statistics, function minimization, optimization, differential equations
-
-
-# Version history
-
-### 10.08.2026
-
-Added accumulate kernels for faster calculation of composite expressions on gpu and cpu,
-
-Reduced the creation of temporary files during expression evaluation with help of a modified Sethi Ullmann algorithm, 
-
-Made the profile evaluations that decide whether computations are done on gpu more precise,
-
-Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices.
-
-### 30.07.2026 13:48 o'clock
-Cleaned the header files from unnecessary includes
-separated two  large headers into declarations *h and implementation *hpp
-
-
-### 30.07.2026
-
-fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms.
-began to restructure the library to separate declarations from implementations to avoid circular dependencies
-
-Extended the expression parser for vectors and matrices. It can now handle arbitrarily combined and long expressions of the form 
-
-E= alpha(A+B)-C 
-
-for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. Here is an example:
 
 ```
         std::vector<double> A_data = { 1, 2, 3, 4, 5, 6 };
@@ -121,6 +85,44 @@ for real and complex vectors and matrices on gpu and cpu. The syntax is rather e
 
 ```
 
+
+# Todo:
+
+1) add an autodiff mechanism to the expressions to allow some support for differential equations,
+2) add unary function nodes in expressions,
+3) Add more functions for tensors including tensor contraction and Einsums
+4) add the expression mechanism for the distributed tensorclasses...
+5) restructure the library, including the expression interface to make additions of new functions more easy.
+6) add functions for statistics, function minimization, optimization, differential equations
+
+
+# Version history
+
+### 10.08.2026
+
+Added accumulate kernels for faster calculation of composite expressions on gpu and cpu,
+
+Reduced the creation of temporary files during expression evaluation with help of a modified Sethi Ullmann algorithm, 
+
+Made the profile evaluations that decide whether computations are done on gpu more precise,
+
+Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular matrices.
+
+### 30.07.2026 13:48 o'clock
+Cleaned the header files from unnecessary includes
+separated two  large headers into declarations *h and implementation *hpp
+
+
+### 30.07.2026
+
+fixed bugs in the copy constructor and the use of the conjugate flag in some algorithms.
+began to restructure the library to separate declarations from implementations to avoid circular dependencies
+
+Extended the expression parser for vectors and matrices. It can now handle arbitrarily combined and long expressions of the form 
+
+E= alpha(A+B)-C 
+
+for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. Here is an example:
 
 By now, this is still preliminary.
 
