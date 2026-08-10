@@ -122,9 +122,7 @@ Extended the expression parser for vectors and matrices. It can now handle arbit
 
 E= alpha(A+B)-C 
 
-for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. Here is an example:
-
-By now, this is still preliminary.
+for real and complex vectors and matrices on gpu and cpu. The syntax is rather easy. By now, this is still preliminary.
 
 The parser currently creates too many temporaries. 
 
