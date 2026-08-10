@@ -488,7 +488,6 @@ public:
     {
         const auto& pol = policy ? *policy : expr::get_default_policy();
 
-
         ManagedDataBlockConfig placement =pol.temporary_placement;
 
         LocationCheckContext ctx;
@@ -502,7 +501,6 @@ public:
             if (ctx.data_is_device)
             placement.devicenum = ctx.device_number;
         }
-
 
         auto info = expr::analyze(expr);
         if (pol.debugoutput)
@@ -524,9 +522,7 @@ public:
             out.recreate(expr,placement);
         }
 
-
         expr.assign_to(static_cast<Derived&>(*this), &pol);
-
         return static_cast<Derived&>(*this);
     }
 };
