@@ -99,7 +99,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 
 ### 10.08.2026, 14:21 o'clock
-Fixed a critical bug in the expression accumulator for repeated operations of the same type (i.e. C=B+A+A+A+A+A+...+)
+Fixed a critical bug in the newly added expression accumulator of the Sethi Ullman algorithm for repeated operations of the same type (i.e. C=B+A+A+A+A+A+...+)
 
 ### 10.08.2026
 
