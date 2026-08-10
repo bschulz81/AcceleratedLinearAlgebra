@@ -7,7 +7,6 @@ It has support for rowmajor and column mayor data and rank sizes larger than 2
 
 Currently, the library uses open-mp on cpu and gpu and the message passing interface.
 
-An older version that contains openmp code for the host and open-acc code for the gpu offload is in the archive folder.
 
 Apart from usual BLAS computations, the library contains advanced and fast algorithms from https://arxiv.org/abs/1812.02056 for Cholesky, LU and QR decomposition (besides the usual vector and matrix calculations). The library also has Strassen's algorithm for matrix multiplication implemented, as well as its Winograd Variant from https://arxiv.org/abs/1410.1599 . The algorithms can be set up such that they revert to naive multiplication on host or on gpu when the matrix size is small enough. And the library can work with data from any object with a pointer, including memory mapped files. 
 
