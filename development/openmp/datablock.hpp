@@ -126,7 +126,7 @@ inline bool DataBlock<T>::   rowmajor() const
 
 #pragma omp begin declare target
 template<typename T>
-inline int DataBlock<T>::  devptr_num()const
+inline int DataBlock<T>::devptr_num()const
 {
     return dpconfig.devicenum;
 }

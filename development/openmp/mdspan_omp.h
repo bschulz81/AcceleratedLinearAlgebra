@@ -274,7 +274,6 @@ public:
     mdspan(T* data, const ptrdiff_t datalength, const Container& extents, const Container& strides, const DataBlockConfig  config);
     mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config);
     mdspan(T* data, const Container& extents,const DataBlockConfig  config);
-Layout<Container> layout()const;
 
     virtual ~mdspan();
 
