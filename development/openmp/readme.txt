@@ -14,6 +14,8 @@ fixed a bug in the strassen and winograd algorithm for rectangular matrices.
 
 04:33 o'clock: 
 added a small fix to the assign operator to ensure that the result of an expression is always located on the device where the other operands are
+14:20 o'clock:
+fixed a critical bug in the expression accumulator
 
 30.07.2026
 
