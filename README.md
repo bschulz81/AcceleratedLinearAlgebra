@@ -98,6 +98,9 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Version history
 
+### 10.08.2026, 14:21 o'clock
+Fixed a critical bug in the expression accumulator for repeated operations of the same type (i.e. C=B+A+A+A+A+A+...+)
+
 ### 10.08.2026
 
 Added accumulate kernels for faster calculation of composite expressions on gpu and cpu,
@@ -110,6 +113,7 @@ Fixed a bug in the Strassen and Winograd algorithm for a case of rectangular mat
 
 04:32 o'clock:
 modified the assign operator of expressions to ensure that the result of an expression is always located at the place where the other operands are
+
 
 ### 30.07.2026 13:48 o'clock
 Cleaned the header files from unnecessary includes
