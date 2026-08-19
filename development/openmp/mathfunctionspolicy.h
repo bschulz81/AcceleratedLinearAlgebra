@@ -134,6 +134,46 @@ public:
                    on_device,
                    gpu_linear_threshold);
     }
+ template<typename T>
+    bool should_use_gpu_elementwise(
+        const DataBlock<T>& A,
+        const DataBlock<T>& C) const
+    {
+        ptrdiff_t work = A.datalength();
+
+        size_t memory_bytes =
+            sizeof(T) *
+            (A.datalength() +
+             C.datalength());
+
+        bool on_device =
+            GPU_Memory_Functions::is_on_gpu(A, devicenum) ||
+            GPU_Memory_Functions::is_on_gpu(C, devicenum);
+
+        return should_use_gpu_work(
+                   work,
+                   memory_bytes,
+                   on_device,
+                   gpu_linear_threshold);
+    }
+
+    template<typename T>
+    bool should_use_gpu_elementwise(
+        const DataBlock<T>& C) const
+    {
+        ptrdiff_t work = C.datalength();
+
+        size_t memory_bytes =sizeof(T) *C.datalength();
+
+        bool on_device =GPU_Memory_Functions::is_on_gpu(C, devicenum);
+
+        return should_use_gpu_work(
+                   work,
+                   memory_bytes,
+                   on_device,
+                   gpu_linear_threshold);
+    }
+
 
     template<typename T>
     bool should_use_gpu_vector(

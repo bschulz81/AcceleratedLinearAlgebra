@@ -1,4 +1,3 @@
-
 #ifndef DATABLOCKIMPL
 #define DATABLOCKIMPL
 
@@ -252,6 +251,24 @@ inline T& DataBlock<T>:: operator()(const ptrdiff_t* indices)
 };
 #pragma omp end declare target
 
+
+
+#pragma omp begin declare target
+template<typename T>
+inline T DataBlock<T>:: operator()(const ptrdiff_t* indices) const
+{
+    T retval= dpdata[compute_offset<OpenMPVariant::Sequential>(indices, dpstrides, dprank)];
+    if constexpr (is_complex<T>::value)
+    {
+        retval=this->dpconjugate?std::conj(retval):retval;
+
+    }
+    return retval;
+
+}
+#pragma omp end declare target
+
+
 #pragma omp begin declare target
 template<typename T>
 inline T& DataBlock<T>:: operator()(const ptrdiff_t row,  const ptrdiff_t col)
@@ -260,61 +277,50 @@ inline T& DataBlock<T>:: operator()(const ptrdiff_t row,  const ptrdiff_t col)
 };
 #pragma omp end declare target
 
-#pragma omp begin declare target
-template<typename T>
-inline T& DataBlock<T>:: operator()(const ptrdiff_t i)
-{
-    return dpdata[i*dpstrides[0]];
-};
-#pragma omp end declare target
 
 #pragma omp begin declare target
 template<typename T>
 inline T DataBlock<T>:: operator()(const ptrdiff_t row, const ptrdiff_t col) const
 {
+    T retval=dpdata[row * dpstrides[0] + col * dpstrides[1]];
     if constexpr (is_complex<T>::value)
     {
-        if (this->dpconjugate)
-        {
-            return std::conj(dpdata[row * dpstrides[0] + col * dpstrides[1]]);
-        }
+        retval=this->dpconjugate? std::conj(retval):retval;
     }
-
-    return dpdata[row * dpstrides[0] + col * dpstrides[1]];
+    return retval;
 }
+#pragma omp end declare target
+
+
+
+
+
+#pragma omp begin declare target
+template<typename T>
+
+inline T& DataBlock<T>:: operator()(const ptrdiff_t i)
+{
+    const ptrdiff_t offset=(dprank==1)? i*dpstrides[0] : compute_offset(dpextents,dpstrides,dprank,i);
+    return dpdata[offset];
+};
 #pragma omp end declare target
 
 #pragma omp begin declare target
 template<typename T>
 inline T DataBlock<T>:: operator()(const ptrdiff_t i) const
 {
+    const ptrdiff_t offset=(dprank==1) ? i * dpstrides[0]: compute_offset(dpextents,dpstrides,dprank,i);
+    T retval= dpdata[offset];
+
     if constexpr (is_complex<T>::value)
     {
-        if (this->dpconjugate)
-        {
-            return std::conj(dpdata[i * dpstrides[0]]);
-        }
+        retval=dpconjugate?std::conj(retval):retval;
     }
-
-    return  dpdata[i * dpstrides[0]];;
+    return retval;
 }
 #pragma omp end declare target
 
-#pragma omp begin declare target
-template<typename T>
-inline T DataBlock<T>:: operator()(const ptrdiff_t* indices) const
-{
-    if constexpr (is_complex<T>::value)
-    {
-        if (this->dpconjugate)
-        {
-            return std::conj( dpdata[compute_offset<OpenMPVariant::Sequential>(indices, dpstrides, dprank)]);
-        }
-    }
 
-    return  dpdata[compute_offset<OpenMPVariant::Sequential>(indices, dpstrides, dprank)];
-}
-#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -365,7 +371,7 @@ inline bool DataBlock<T>::  is_matrix() const
 template <typename T>
 DataBlockObject DataBlock<T>::ObjectType() const
 {
-   return object_type(this->dprank,this->dpextents);
+    return object_type(this->dprank,this->dpextents);
 }
 #pragma omp end declare target
 
@@ -812,8 +818,108 @@ void DataBlock<T>::printtensor_recursive(ptrdiff_t* indices, ptrdiff_t depth,boo
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+template <typename T>
+inline T& DataBlockArray<T>::operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber)
+{
+    return pdata[compute_offset_datablockarray<OpenMPVariant::Sequential>(indices, pstridesbuffer, ptensor_rank,blocknumber)];
+}
+#pragma omp end declare target
 
 
+
+#pragma omp begin declare target
+template <typename T>
+inline T DataBlockArray<T>:: operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber) const
+{
+    T retval=  pdata[compute_offset_datablockarray<OpenMPVariant::Sequential>(indices, pstridesbuffer, ptensor_rank,blocknumber)];
+    if constexpr (is_complex<T>::value)
+    {
+        retval=pconjugate? std::conj(retval):retval;
+    }
+    return retval;
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+inline T& DataBlockArray<T>:: operator()(const ptrdiff_t row,  const ptrdiff_t col,const ptrdiff_t blocknumber)
+{
+    T* const data_ptr=pdata+pblock_offsets[blocknumber];
+    const ptrdiff_t stride0=pstridesbuffer[2*blocknumber];
+    const ptrdiff_t stride1=pstridesbuffer[2*blocknumber+1];
+
+    return data_ptr[row*stride0+col*stride1];
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+inline T DataBlockArray<T>::  operator()(const ptrdiff_t row, const ptrdiff_t col, const ptrdiff_t blocknumber) const
+{
+    const T* data_ptr=pdata+pblock_offsets[blocknumber];
+    const ptrdiff_t stride0=pstridesbuffer[2*blocknumber];
+    const ptrdiff_t stride1=pstridesbuffer[2*blocknumber+1];
+    T retval=data_ptr[row*stride0+col*stride1];
+
+    if constexpr (is_complex<T>::value)
+    {
+        retval=this->pconjugate? std::conj(retval):retval;
+    }
+
+    return retval;
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+inline T& DataBlockArray<T>::  operator()(const ptrdiff_t i,const ptrdiff_t blocknumber)
+{
+    const ptrdiff_t offset=(ptensor_rank==1)?i*pstridesbuffer[blocknumber]:compute_offset_datablockarray(pextentsbuffer,pstridesbuffer,ptensor_rank,blocknumber,i);
+    T* const data_ptr=pdata+pblock_offsets[blocknumber];
+    return data_ptr[offset];
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <typename T>
+inline T DataBlockArray<T>::  operator()(const ptrdiff_t i,const ptrdiff_t blocknumber) const
+{
+
+    const ptrdiff_t offset=(ptensor_rank==1)?i*pstridesbuffer[blocknumber]:compute_offset_datablockarray(pextentsbuffer,pstridesbuffer,ptensor_rank,blocknumber,i);
+    const T* data_ptr=pdata+pblock_offsets[blocknumber];
+    T retval=data_ptr[offset];
+    if constexpr (is_complex<T>::value)
+    {
+        retval=pconjugate?std::conj(retval):retval;
+    }
+    return retval;
+}
+#pragma omp end declare target
+
+#pragma omp begin declare target
+template <typename T>
+inline DataBlock<T> DataBlockArray<T>::  get_datablock_from_arrays(const ptrdiff_t blocknumber)const
+{
+    ptrdiff_t len =(blocknumber + 1 <pnumblocks)? pblock_offsets[blocknumber+1] - pblock_offsets[blocknumber]: pdatalength - pblock_offsets[blocknumber];
+    DataBlock<T>tempt(pdata + pblock_offsets[blocknumber],
+                      len,  ptensor_rank,
+                      pextentsbuffer + blocknumber*ptensor_rank,
+                      pstridesbuffer + blocknumber*ptensor_rank,
+                      ::DataBlockConfig{.dprowmajor=prowm,.data_is_devptr=pdata_is_devptr,.devicenum=pdata_is_devptr? pdevnum:-INT_MAX}
+                     );
+    tempt.dpconjugate=pconjugate;
+    return tempt;
+
+}
+#pragma omp end declare target
 
 
 #endif // DATABLOCKIMPL

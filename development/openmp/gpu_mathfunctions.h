@@ -107,8 +107,7 @@ public:
     }
     template <typename T>
 
-    inline static void matrix_subtract(const DataBlock<T>& A,DataBlock<T>& C,
-                                       GPUOptions opt)
+    inline static void matrix_subtract(const DataBlock<T>& A,DataBlock<T>& C,GPUOptions opt)
     {
         matrix_linear_combination_g(A,C,-T(1),T(1),opt);
     }
@@ -121,13 +120,10 @@ public:
     inline static void matrix_multiply_scalar_g(DataBlock<T>& M,const T scalar,GPUOptions opt= {});
 
     template <typename T>
-    inline static T dot_product_g(const DataBlock<T>& vec1,const DataBlock<T>& vec2,GPUOptions opt= {});
+    inline static T vector_dot_product_g(const DataBlock<T>& vec1,const DataBlock<T>& vec2,GPUOptions opt= {});
 
     template <typename T>
-    inline static T dot_product_kahan_g(const DataBlock<T>& vec1,const DataBlock<T>& vec2,GPUOptions opt= {});
-
-    template <typename T>
-    inline static T dot_product_g_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2, int dev, int nteams, int nthreads_per_team);
+    inline static T vector_dot_product_kahan_g(const DataBlock<T>& vec1,const DataBlock<T>& vec2,GPUOptions opt= {});
 
     template <typename T>
     inline static void vector_linear_combination_g(const DataBlock<T>& vecA,const DataBlock<T>& vecB,DataBlock<T>& vecC,
@@ -167,12 +163,10 @@ public:
     }
 
     template <typename T>
-    inline static void vector_multiply_scalar_g(const DataBlock<T>& vec,const T scalar,DataBlock<T>& res,
-            GPUOptions opt= {});
+    inline static void vector_multiply_scalar_g(const DataBlock<T>& vec,const T scalar,DataBlock<T>& res,GPUOptions opt= {});
 
     template <typename T>
-    inline static void vector_multiply_scalar_g(DataBlock<T>& vec,const T scalar,
-            GPUOptions opt= {});
+    inline static void vector_multiply_scalar_g(DataBlock<T>& vec,const T scalar,GPUOptions opt= {});
 
 
 
@@ -236,6 +230,49 @@ public:
     template <typename T>
     inline static void qr_decomposition_g(const DataBlock<T> &A,  DataBlock<T>& Q, DataBlock<T> & R,  bool initialize_output_to_zero=true, bool memmap_tempfiles=false,
                                           GPUOptions opt= {});
+
+
+
+    template <typename T>
+    inline static void tensor_linear_combination_g(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+            const T CoefficientA = T(1),const T CoefficientB  = T(1),const T CoefficientC = T(0),
+            GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_linear_combination_g(const DataBlock<T>& A,DataBlock<T>& C,
+                            const T CoefficientA = T(1),const T CoefficientC = T(0),
+                            GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_add(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,  GPUOptions opt)
+    {
+        tensor_linear_combination_g(A,B,C,T(1),T(1),T(0),opt);
+    }
+    template <typename T>
+    inline static void tensor_add(const DataBlock<T>& A,DataBlock<T>& C,  GPUOptions opt)
+    {
+        tensor_linear_combination_g(A,C,T(1),T(1),opt);
+    }
+
+    template <typename T>
+    inline static void tensor_subtract(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                       GPUOptions opt)
+    {
+        tensor_linear_combination_g(A,B,C,T(1),-T(1),T(0),opt);
+    }
+
+    template <typename T>
+    inline static void tensor_subtract(const DataBlock<T>& A,DataBlock<T>& C,GPUOptions opt)
+    {
+        tensor_linear_combination_g(A,C,-T(1),T(1),opt);
+    }
+
+    template <typename T>
+    inline static void tensor_multiply_scalar_g(const DataBlock<T>& M,const T scalar,DataBlock<T>& C,GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_multiply_scalar_g(DataBlock<T>& M,const T scalar,GPUOptions opt= {});
+
 
 };
 

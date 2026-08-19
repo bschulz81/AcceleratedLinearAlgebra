@@ -130,8 +130,11 @@ DataBlock<T>DataBlockUtilities::conjugate(const  DataBlock<T>&d)
 {
 
     DataBlock<T> tempt(d.dpdata, d.dpdatalength, d.dprank,      d.dpextents,d.dpstrides,d.dpconfig  );
+    if constexpr (is_complex<T>::value)
+    {
         tempt.dpconjugate=!d.dpconjugate;
-        return tempt;
+    }
+    return tempt;
 }
 #pragma omp end declare target
 
@@ -164,9 +167,12 @@ inline DataBlock<T> DataBlockUtilities::matrix_hermitian_transpose(const  DataBl
     newstrides[1]=d.dpstrides[0];
 
     DataBlock<T> tempt (d.dpdata,d.dpdatalength,2,newextents,newstrides, d.dpconfig);
-
+    if constexpr (is_complex<T>::value)
+    {
         tempt.dpconjugate=!d.dpconjugate;
-        return tempt;
+    }
+
+    return tempt;
 }
 #pragma omp end declare target
 

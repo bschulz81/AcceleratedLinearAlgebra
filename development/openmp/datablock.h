@@ -1,4 +1,3 @@
-
 #ifndef DATABLOCK
 #define DATABLOCK
 #include <climits>
@@ -113,15 +112,18 @@ public:
 
     inline T& operator()(const ptrdiff_t* indices);
 
-    inline T& operator()(const ptrdiff_t row,  const ptrdiff_t col);
+    inline T operator()(const ptrdiff_t* indices) const;
 
     inline T& operator()(const ptrdiff_t i);
 
-    inline T operator()(const ptrdiff_t row, const ptrdiff_t col) const;
-
     inline T operator()(const ptrdiff_t i) const;
 
-    inline T operator()(const ptrdiff_t* indices) const;
+    inline T operator()(const ptrdiff_t row, const ptrdiff_t col) const;
+
+    inline T& operator()(const ptrdiff_t row,  const ptrdiff_t col);
+
+
+
     inline bool is_conjugate() const;
 
     inline void print()const;
@@ -163,89 +165,19 @@ class DataBlockArray
 {
 public:
 
+    inline T& operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber);
 
-    inline T& operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber)
-    {
-        return pdata[compute_offset<OpenMPVariant::Sequential>(indices, pstridesbuffer, ptensor_rank,blocknumber)];
-    };
+    inline T operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber) const;
 
-    inline T operator()(const ptrdiff_t* indices,const ptrdiff_t blocknumber) const
-    {
-        if constexpr (is_complex<T>::value)
-        {
-            if (pconjugate)
-            {
-                return std::conj( pdata[compute_offset<OpenMPVariant::Sequential>(indices, pstridesbuffer, ptensor_rank,blocknumber)]);
-            }
-        }
-        return  pdata[compute_offset<OpenMPVariant::Sequential>(indices, pstridesbuffer, ptensor_rank,blocknumber)];
-    }
+    inline T& operator()(const ptrdiff_t row,  const ptrdiff_t col,const ptrdiff_t blocknumber);
 
+    inline T operator()(const ptrdiff_t row, const ptrdiff_t col, const ptrdiff_t blocknumber) const;
 
-    inline T& operator()(const ptrdiff_t row,  const ptrdiff_t col,const ptrdiff_t blocknumber)
-    {
-        T* const data_ptr=pdata+pblock_offsets[blocknumber];
-        const ptrdiff_t stride0=pstridesbuffer[2*blocknumber];
-        const ptrdiff_t stride1=pstridesbuffer[2*blocknumber+1];
+    inline T& operator()(const ptrdiff_t i,const ptrdiff_t blocknumber);
 
-        return data_ptr[row*stride0+col*stride1];
-    };
+    inline T operator()(const ptrdiff_t i,const ptrdiff_t blocknumber) const;
 
-    inline T operator()(const ptrdiff_t row, const ptrdiff_t col, const ptrdiff_t blocknumber) const
-    {
-        const T* data_ptr=pdata+pblock_offsets[blocknumber];
-        const ptrdiff_t stride0=pstridesbuffer[2*blocknumber];
-        const ptrdiff_t stride1=pstridesbuffer[2*blocknumber+1];
-
-        if constexpr (is_complex<T>::value)
-        {
-            if (pconjugate)
-            {
-                return std::conj(data_ptr[row*stride0+col*stride1]);
-            }
-        }
-
-        return data_ptr[row*stride0+col*stride1];
-    }
-
-    inline T& operator()(const ptrdiff_t i,const ptrdiff_t blocknumber)
-    {
-        T* const data_ptr=pdata+pblock_offsets[blocknumber];
-        const ptrdiff_t stride0=pstridesbuffer[blocknumber];
-        return data_ptr[i*stride0];
-    };
-
-    inline T operator()(const ptrdiff_t i,const ptrdiff_t blocknumber) const
-    {
-        const T* data_ptr=pdata+pblock_offsets[blocknumber];
-        const ptrdiff_t stride0=pstridesbuffer[blocknumber];
-        if constexpr (is_complex<T>::value)
-        {
-            if (pconjugate)
-            {
-                return std::conj(data_ptr[i*stride0]);
-            }
-        }
-
-        return  data_ptr[i*stride0];
-    }
-
-    inline DataBlock<T> get_datablock_from_arrays(const ptrdiff_t i)const
-    {
-
-        ptrdiff_t len =(i + 1 <pnumblocks)? pblock_offsets[i+1] - pblock_offsets[i]: pdatalength - pblock_offsets[i];
-        DataBlock<T>tempt(pdata + pblock_offsets[i],
-                          len,  ptensor_rank,
-                          pextentsbuffer + i*ptensor_rank,
-                          pstridesbuffer + i*ptensor_rank,
-                          ::DataBlockConfig{.dprowmajor=prowm,
-                                            .data_is_devptr=pdata_is_devptr,
-                                            .devicenum=pdata_is_devptr? pdevnum:-INT_MAX
-                                           } );
-        tempt.dpconjugate=pconjugate;
-        return tempt;
-
-    }
+    inline DataBlock<T> get_datablock_from_arrays(const ptrdiff_t blocknumber)const;
 
     T* pdata=nullptr;
     ptrdiff_t pdatalength=0;

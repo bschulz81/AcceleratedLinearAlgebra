@@ -1,4 +1,3 @@
-
 #ifndef INKERNELMATHFUNCTIONShpp
 #define INKERNELMATHFUNCTIONShpp
 
@@ -26,36 +25,34 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_sparse(  const BlockedDataV
     const ptrdiff_t ystr0 = y.dpstrides[0];
 
 
-    if(Coeffy!=T(1))
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if constexpr (Policy == OpenMPVariant::ParallelSimd)
+        #pragma omp parallel for simd
+        for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
         {
-            #pragma omp parallel for simd
-            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
-            {
-                size_t index=i*ystr0;
-                y.dpdata[index]=Coeffy*y.dpdata[index];
-            }
-        }
-        else  if constexpr (Policy == OpenMPVariant::Simd)
-        {
-            #pragma omp  simd
-            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
-            {
-                size_t index=i*ystr0;
-                y.dpdata[index]=Coeffy*y.dpdata[index];
-            }
-        }
-        else
-        {
-            #pragma omp  unroll partial
-            for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
-            {
-                size_t index=i*ystr0;
-                y.dpdata[index]=Coeffy*y.dpdata[index];
-            }
+            size_t index=i*ystr0;
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
         }
     }
+    else  if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp  simd
+        for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
+        {
+            size_t index=i*ystr0;
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
+        }
+    }
+    else
+    {
+        #pragma omp  unroll partial
+        for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
+        {
+            size_t index=i*ystr0;
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
+        }
+    }
+
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
@@ -228,15 +225,14 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_sparse( const BlockedDataVi
     const ptrdiff_t ystr0 = y.dpstrides[0];
 
 
-    if(Coeffy!=T(1))
-    {
+
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd
         for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
         {
             size_t index=i*ystr0;
-            y.dpdata[index]=Coeffy*y.dpdata[index];
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
         }
 
     }
@@ -246,7 +242,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_sparse( const BlockedDataVi
         for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
         {
             size_t index=i*ystr0;
-            y.dpdata[index]=Coeffy*y.dpdata[index];
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
         }
     }
     else
@@ -255,11 +251,11 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_sparse( const BlockedDataVi
         for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
         {
             size_t index=i*ystr0;
-            y.dpdata[index]=Coeffy*y.dpdata[index];
+            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy*y.dpdata[index];
         }
     }
 
-    }
+
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
@@ -383,45 +379,44 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     const ptrdiff_t bext0 = B.dpextents[0]; // must equal aext1
     const ptrdiff_t bext1 = B.dpextents[1];
 
-    if(CoeffC!=T(1))
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-        if constexpr (Policy == OpenMPVariant::ParallelSimd)
+        #pragma omp parallel for simd collapse(2)
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
         {
-            #pragma omp parallel for simd collapse(2)
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
             {
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
-            }
-        }
-        else if constexpr (Policy == OpenMPVariant::Simd)
-        {
-            #pragma omp simd collapse(2)
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
-            {
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
-            }
-        }
-        else
-        {
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
-            {
-                #pragma omp unroll partial
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
             }
         }
     }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd collapse(2)
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+        {
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
+            {
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
+            }
+        }
+    }
+    else
+    {
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+        {
+            #pragma omp unroll partial
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
+            {
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
+            }
+        }
+    }
+
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for
@@ -547,47 +542,45 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_sparse( const BlockedDataView<
     const ptrdiff_t bext0=B.dpextents[0];
     const ptrdiff_t bext1=B.dpextents[1];
 
-    if(CoeffC!=T(1))
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
-
-        if constexpr (Policy == OpenMPVariant::ParallelSimd)
+        #pragma omp parallel for simd collapse(2)
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
         {
-            #pragma omp parallel for simd collapse(2)
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
             {
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
-            }
-        }
-        else if constexpr (Policy == OpenMPVariant::Simd)
-        {
-            #pragma omp simd collapse(2)
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
-            {
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
-            }
-        }
-        else
-        {
-            for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
-            {
-                #pragma omp unroll partial
-                for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-                {
-const size_t index=i*Cstr0+j*Cstr1;
-                                       C.dpdata[index]=CoeffC*C.dpdata[index];
-                }
-
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
             }
         }
     }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd collapse(2)
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+        {
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
+            {
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC=T(0)?T(0): CoeffC*C.dpdata[index];
+            }
+        }
+    }
+    else
+    {
+        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+        {
+            #pragma omp unroll partial
+            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
+            {
+                const size_t index=i*Cstr0+j*Cstr1;
+                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
+            }
+
+        }
+    }
+
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
@@ -1237,8 +1230,7 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
             #pragma omp parallel for simd reduction(+:norm)
             for (ptrdiff_t i = 0; i < pext0; ++i)
             {
-                T val=v(i);
-                norm += cond_conj(val) * v(i);
+                norm += cond_conj(v(i)) * v(i);
             }
 
             const T normc= sqrt(norm);
@@ -1272,13 +1264,11 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     {
         for (ptrdiff_t c = 0; c < m; ++c)
         {
-            ptrdiff_t pextv[1];
-            ptrdiff_t pstrv[1];
+            ptrdiff_t pextv[1],pstrv[1];
             DataBlock<T> v = M.matrix_column(c,pextv,pstrv);
             for (ptrdiff_t j = 0; j < c; ++j)
             {
-                ptrdiff_t pextu[1];
-                ptrdiff_t pstru[1];
+                ptrdiff_t pextu[1],pstru[1];
 
                 T dot_pr=T(0);
                 DataBlock<T> u = Q.matrix_column(j,pextu,pstru);
@@ -1300,8 +1290,7 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
             #pragma omp simd reduction(+:norm)
             for (ptrdiff_t i = 0; i < pext0; ++i)
             {
-                T val=v(i);
-                norm += cond_conj(val) * v(i);
+                norm += cond_conj(v(i)) * v(i);
             }
 
             const T normc= sqrt(norm);
@@ -1315,7 +1304,6 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
         const ptrdiff_t rows = Q.dpextents[0];
         const ptrdiff_t cols = A.dpextents[1];
         const ptrdiff_t inner_dim = Q.dpextents[1];
-
         #pragma omp tile sizes(16, 16)
         for (ptrdiff_t i = 0; i < rows; ++i)
         {
@@ -1335,13 +1323,11 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
     {
         for (ptrdiff_t c = 0; c < m; ++c)
         {
-            ptrdiff_t pextv[1];
-            ptrdiff_t pstrv[1];
+            ptrdiff_t pextv[1],pstrv[1];
             DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,pextv,pstrv);
             for (ptrdiff_t j = 0; j < c; ++j)
             {
-                ptrdiff_t pextu[1];
-                ptrdiff_t pstru[1];
+                ptrdiff_t pextu[1],pstru[1];
 
                 T dot_pr=T(0);
                 DataBlock<T> u = DataBlockUtilities::matrix_column(Q,j,pextu,pstru);
@@ -1362,8 +1348,7 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
             #pragma omp unroll partial
             for (ptrdiff_t i = 0; i < pext0; ++i)
             {
-                T val=v(i);
-                norm += cond_conj(val) * v(i);
+                norm += cond_conj(v(i)) * v(i);
             }
 
             const T normc= sqrt(norm);
@@ -1425,7 +1410,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
                 {
                     sum += A(i,k) *B(k,j);
                 }
-                C(i,j)=CoeffC* C(i,j)+CoeffB*sum;
+                C(i,j) =CoeffC == T(0)? CoeffB * sum: CoeffC * C(i,j) + CoeffB * sum;
             }
         }
     }
@@ -1442,7 +1427,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
                 {
                     sum += A(i,k) *B(k,j);
                 }
-                C(i,j)=CoeffC* C(i,j)+CoeffB*sum;
+                C(i,j) =CoeffC == T(0)? CoeffB * sum: CoeffC * C(i,j) + CoeffB * sum;
             }
         }
     }
@@ -1459,7 +1444,8 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot( const DataBlock<T>& A, const 
                 {
                     sum += A(i,k) *B(k,j);
                 }
-                C(i,j)=CoeffC* C(i,j)+CoeffB*sum;
+
+                C(i,j) =CoeffC == T(0)? CoeffB * sum: CoeffC * C(i,j) + CoeffB * sum;
             }
         }
     }
@@ -1492,7 +1478,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(const  DataBlock<T>& A, 
                     c = z - y;
                     sum = t;
                 }
-                C(i,j)=CoeffC* C(i,j)+CoeffB*sum;
+                C(i,j) =CoeffC == T(0)? CoeffB * sum: CoeffC * C(i,j) + CoeffB * sum;
             }
         }
     }
@@ -1514,7 +1500,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(const  DataBlock<T>& A, 
                     c = z - y;
                     sum = t;
                 }
-                C(i,j)=CoeffC* C(i,j)+CoeffB*sum;
+                C(i,j) =CoeffC == T(0)? CoeffB * sum: CoeffC * C(i,j) + CoeffB * sum;
             }
         }
     }
@@ -1535,7 +1521,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A,co
         {
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                C(i,j) =CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j)+CoeffB*B(i,j): CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
             }
         }
     }
@@ -1546,7 +1532,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A,co
         {
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                C(i,j) =CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j)+CoeffB*B(i,j): CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
             }
         }
     }
@@ -1557,7 +1543,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A,co
             #pragma omp unroll partial
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                 C(i,j) =CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j)+CoeffB*B(i,j): CoeffC*C(i,j)+CoeffA*A(i,j)+CoeffB*B(i,j);
             }
         }
     }
@@ -1584,7 +1570,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A, D
         {
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                C(i,j) =CoeffC*C(i,j)+CoeffA*A(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j): CoeffC*C(i,j)+CoeffA*A(i,j);
             }
         }
     }
@@ -1595,7 +1581,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A, D
         {
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                C(i,j) =CoeffC*C(i,j)+CoeffA*A(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j): CoeffC*C(i,j)+CoeffA*A(i,j);
             }
         }
     }
@@ -1606,7 +1592,7 @@ void In_Kernel_Mathfunctions::matrix_linear_combination(const DataBlock<T>& A, D
             #pragma omp unroll partial
             for (ptrdiff_t j = 0; j <m ; ++j)
             {
-                 C(i,j) =CoeffC(i,j)*C+CoeffA*A(i,j);
+                C(i,j) =CoeffC == T(0)? CoeffA*A(i,j): CoeffC*C(i,j)+CoeffA*A(i,j);
             }
         }
     }
@@ -1637,7 +1623,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
             {
                 sum+= M(i, j) * V(j);
             }
-            C(i)=CoeffC*C(i)+CoeffV*sum;
+            C(i)=CoeffC == T(0)?CoeffV*sum: CoeffC*C(i)+CoeffV*sum;
         }
 
     }
@@ -1652,7 +1638,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
             {
                 sum+= M(i, j) * V(j);
             }
-                C(i)=CoeffC*C(i)+CoeffV*sum;
+            C(i)=CoeffC == T(0)?CoeffV*sum: CoeffC*C(i)+CoeffV*sum;
         }
 
     }
@@ -1667,7 +1653,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector( const DataBlock<T>&M,const
             {
                 sum+= M(i, j) * V(j);
             }
-            C(i)=CoeffC*C(i)+CoeffV*sum;
+            C(i)=CoeffC == T(0)?CoeffV*sum: CoeffC*C(i)+CoeffV*sum;
         }
     }
 
@@ -1700,7 +1686,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M
                 c = z - y;
                 sum = t;
             }
-            C(i)=CoeffC*C(i)+CoeffV*sum;
+            C(i)=CoeffC == T(0)?CoeffV*sum: CoeffC*C(i)+CoeffV*sum;
         }
     }
     else
@@ -1719,7 +1705,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_vector_kahan( const DataBlock<T>&M
                 c = z - y;
                 sum = t;
             }
-              C(i)=CoeffC*C(i)+CoeffV*sum;
+            C(i)=CoeffC == T(0)?CoeffV*sum: CoeffC*C(i)+CoeffV*sum;
         }
     }
 
@@ -1739,7 +1725,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp parallel for simd
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-            vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i)+CoeffB*vecB(i):CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
         }
 
     }
@@ -1748,7 +1734,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp simd
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-           vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i)+CoeffB*vecB(i):CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
         }
     }
     else
@@ -1756,7 +1742,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp unroll partial
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-          vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i)+CoeffB*vecB(i):CoeffC* vecC(i)+CoeffA*vecA(i)+CoeffB*vecB(i);
         }
     }
 
@@ -1776,7 +1762,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp parallel for simd
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-            vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i):CoeffC* vecC(i)+CoeffA*vecA(i);
         }
 
     }
@@ -1785,7 +1771,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp simd
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-           vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i):CoeffC* vecC(i)+CoeffA*vecA(i);
         }
     }
     else
@@ -1793,7 +1779,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
         #pragma omp unroll partial
         for (ptrdiff_t i = 0; i < n; ++i)
         {
-          vecC(i)=CoeffC* vecC(i)+CoeffA*vecA(i);
+            vecC(i)=CoeffC == T(0)?CoeffA*vecA(i):CoeffC* vecC(i)+CoeffA*vecA(i);
         }
     }
 
@@ -1805,7 +1791,7 @@ void In_Kernel_Mathfunctions::vector_linear_combination( const DataBlock<T>& vec
 
 #pragma omp begin declare target
 template <OpenMPVariant Policy, typename T>
-T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
+T In_Kernel_Mathfunctions::vector_dot_product(const  DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const ptrdiff_t n=vec1.dpextents[0];
     T result = T(0);
@@ -1846,7 +1832,7 @@ T In_Kernel_Mathfunctions::dot_product(const  DataBlock<T> &vec1, const DataBloc
 
 #pragma omp begin declare target
 template <OpenMPVariant Policy, typename T>
-T In_Kernel_Mathfunctions::dot_product_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2)
+T In_Kernel_Mathfunctions::vector_dot_product_kahan(const DataBlock<T> &vec1, const DataBlock<T> &vec2)
 {
     const ptrdiff_t n=vec1.dpextents[0];
     T result = T(0);
@@ -1954,6 +1940,7 @@ void In_Kernel_Mathfunctions::matrix_multiply_scalar(  const DataBlock<T>& M, co
         {
             for (ptrdiff_t j = 0; j <  m; ++j)
             {
+
                 C(i,j)= M(i, j) * alpha;
             }
         }
@@ -2205,4 +2192,216 @@ T In_Kernel_Mathfunctions::neumaier_sum(const T* arr, ptrdiff_t n)
     }
 }
 #pragma omp end declare target
+
+
+
+
+
+
+
+
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A,const DataBlock<T>& B, DataBlock<T>& C,const T CoeffA,const T CoeffB, const T CoeffC)
+{
+
+    const ptrdiff_t rank=C.dprank;
+    ptrdiff_t max_index=1;
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i < max_index; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i)+CoeffB*B(i): CoeffC*C(i)+CoeffA*A(i)+CoeffB*B(i);
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i < max_index; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i)+CoeffB*B(i): CoeffC*C(i)+CoeffA*A(i)+CoeffB*B(i);
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < max_index; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i)+CoeffB*B(i): CoeffC*C(i)+CoeffA*A(i)+CoeffB*B(i);
+        }
+    }
+
+
+}
+#pragma omp end declare target
+
+
+
+
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A, DataBlock<T>& C,const T CoeffA, const T CoeffC)
+{
+    const ptrdiff_t rank=C.dprank;
+    ptrdiff_t max_index=1;
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i <max_index ; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i): CoeffC*C(i)+CoeffA*A(i);
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i <max_index ; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i): CoeffC*C(i)+CoeffA*A(i);
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i <max_index ; ++i)
+        {
+            C(i) =CoeffC==0? CoeffA*A(i): CoeffC*C(i)+CoeffA*A(i);
+        }
+
+    }
+
+
+}
+#pragma omp end declare target
+
+
+
+
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_multiply_scalar(  const DataBlock<T>& M, const T alpha, DataBlock<T>& C)
+{
+
+    const ptrdiff_t rank=C.dprank;
+    ptrdiff_t max_index=1;
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= M(i) * alpha;
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= M(i) * alpha;
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= M(i) * alpha;
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T alpha)
+{
+    const ptrdiff_t rank=C.dprank;
+    ptrdiff_t max_index=1;
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= C(i) * alpha;
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(*:max_index)
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= C(i) * alpha;
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for(ptrdiff_t i=0; i<=rank; i++)
+            max_index*=C.dpextents[i];
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i <max_index; ++i)
+        {
+            C(i)= C(i) * alpha;
+        }
+    }
+
+}
+#pragma omp end declare target
+
+
+
 #endif
