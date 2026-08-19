@@ -6,6 +6,16 @@ Todo:
 2) add an autodiff mechanism, tensor contraction, unary function nodes
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+19.08.2026
+guarded the more flexible blas kernels for coeffC=0 to guarantee correct execution if C is uninitialized.
+Apparently, uninitialized values can be nan and then propagate with CoeffC=0, CoeffC*nan would yield nan values under gcc. Now the execution works as before.
+
+Added first tensor kernels for higher ranks, but they are currently untested so far. I added a flat index for parallelization. 
+the (i) operator for vectors now checks the rank and assumes that for higher ranks, (i) is a flat tensor index whose offset it computes in a while loop
+
+I will add more tensor kernels soon and then test them. Tensor product is next, and then an einsum and after that an autodiff.. 
+
+
 10.08.2026
 added accumulate  kernels for faster calculation of composite expressions
 reduced temporaries of expressions with an added modified Sethi Ullmann algorithm, 
