@@ -68,6 +68,7 @@ inline constexpr auto cond_conj(const T& val)
 }
 #pragma omp end declare target
 
+
 #pragma omp begin declare target
 template <typename T>
 inline constexpr auto returnval(const T& val,bool conj)
@@ -87,6 +88,7 @@ inline constexpr auto returnval(const T& val,bool conj)
 
 
 #pragma omp begin declare target
+
 template <typename T, typename = std::void_t<>>
 struct has_print : std::false_type {};
 #pragma omp end declare target
@@ -212,16 +214,44 @@ inline ptrdiff_t compute_offset(const ptrdiff_t *  indices,
 #pragma omp end declare target
 
 
+#pragma omp begin declare target
+inline ptrdiff_t compute_offset(
+    const ptrdiff_t* extents,
+    const ptrdiff_t* strides,
+    const ptrdiff_t rank,
+    const ptrdiff_t flatIndex
+) {
+    ptrdiff_t remainingIndex = flatIndex;
+    ptrdiff_t offset = 0;
+
+    ptrdiff_t axis = rank - 1;
+    while (axis >= 0) {
+        ptrdiff_t currentExtent = extents[axis];
+
+        ptrdiff_t coordinate = remainingIndex % currentExtent;
+
+        offset += coordinate * strides[axis];
+
+        remainingIndex /= currentExtent;
+
+        axis--;
+    }
+
+    return offset;
+}
+#pragma omp end declare target
+
+
 
 #pragma omp begin declare target
 template <OpenMPVariant variant = OpenMPVariant::Sequential>
-inline ptrdiff_t compute_offset(const ptrdiff_t*  indices,
+inline ptrdiff_t compute_offset_datablockarray(const ptrdiff_t*  indices,
                                const ptrdiff_t*  strides_buffer,
                                const ptrdiff_t rank,
                                const ptrdiff_t blocknumber)
 {
 
-    const ptrdiff_t* block_strides = strides_buffer + (blocknumber * rank);
+    const ptrdiff_t* block_strides = strides_buffer + blocknumber * rank;
 
     ptrdiff_t offset = 0;
 
@@ -253,6 +283,36 @@ inline ptrdiff_t compute_offset(const ptrdiff_t*  indices,
 }
 #pragma omp end declare target
 
+#pragma omp begin declare target
+ptrdiff_t compute_offset_datablockarray(
+    const ptrdiff_t* extents_buffer,
+    const ptrdiff_t* strides_buffer,
+    const ptrdiff_t rank,
+    const ptrdiff_t blocknumber,
+    const ptrdiff_t flatIndex
+) {
+    ptrdiff_t remainingIndex = flatIndex;
+    ptrdiff_t offset = 0;
+
+    ptrdiff_t axis = rank - 1;
+    const ptrdiff_t* extents_ptr=extents_buffer+blocknumber*rank;
+    const ptrdiff_t* strides_ptr=strides_buffer+blocknumber*rank;
+
+    while (axis >= 0) {
+        ptrdiff_t currentExtent = extents_ptr[axis];
+
+        ptrdiff_t coordinate = remainingIndex % currentExtent;
+
+        offset += coordinate * strides_ptr[axis];
+
+        remainingIndex /= currentExtent;
+
+        axis--;
+    }
+
+    return offset;
+}
+#pragma omp end declare target
 
 
 

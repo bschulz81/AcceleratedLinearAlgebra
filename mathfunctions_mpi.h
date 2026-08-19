@@ -36,9 +36,6 @@ public:
     template<typename T>
     inline static void MPI_recursion_helper_end(MPI_Comm pcomm);
 
-    template<typename T>
-    inline static void scale_local_blocks(T* cdata,
-        const ptrdiff_t* coffsets,const ptrdiff_t* cstrides,const ptrdiff_t* cextents,const ptrdiff_t numblocks,const T alpha,  const bool ongpu,   const int devnum);
 
     template<typename T>
     inline static bool matrix_multiply_dot_Distributed(
@@ -186,16 +183,16 @@ public:
 
 
     template<typename T>
-    inline static bool dot_product_Distributed(
+    inline static bool vector_dot_product_Distributed(
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,
         int root,T* result,
         const Math_MPI_Functions_Policy* policy=nullptr);
 
     template <typename T>
-    inline static T dot_product_Allreduce_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol = nullptr);
+    inline static T vector_dot_product_Allreduce_Distributed(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B,   const Math_MPI_Functions_Policy* pol = nullptr);
 
     template <typename T>
-    inline static bool dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
+    inline static bool vector_dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,T* result,const Math_MPI_Functions_Policy* pol);
 
 
     template <typename T>
@@ -246,6 +243,63 @@ public:
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
                 A.pblock_extents[0] == B.pblock_extents[0]);
     }
+
+
+
+
+    template<typename T>
+    inline static bool tensor_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(0),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool tensor_linear_combination_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const T CoefficientA=T(1),const T CoefficientC=T(1),
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool tensor_add_Distributed(
+        const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+        return tensor_linear_combination_Distributed(A,C,T(1),T(1),policy);
+    }
+
+
+
+
+    template<typename T>
+    inline static bool tensor_add_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return tensor_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static bool tensor_subtract_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy)
+    {
+       return tensor_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+    }
+
+     template<typename T>
+    inline static bool tensor_multiply_scalar_Distributed(
+        const DistributedDataBlock<T>& A,const T scalar,DistributedDataBlock<T>& C,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+    template<typename T>
+    inline static bool tensor_multiply_scalar_Distributed(
+        DistributedDataBlock<T>& A,const T scalar,
+        const Math_MPI_Functions_Policy* policy=nullptr);
+
+
+
+
 inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
 
 
@@ -281,6 +335,9 @@ protected:
     template <typename T>
     inline static void qr_decomposition_h(const DataBlock<T> &aA,DataBlock<T>& aQ, DataBlock<T> & aR, MPI_Comm pcom,   Math_MPI_Decomposition_Policy &par);
 
+    template<typename T>
+    inline static void scale_local_blocks(T* cdata,const ptrdiff_t* coffsets,const ptrdiff_t* cstrides,const ptrdiff_t* cextents,
+                                          const ptrdiff_t numblocks,const T alpha,  const bool ongpu,   const int devnum);
 
 
 

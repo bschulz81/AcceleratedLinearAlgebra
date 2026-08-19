@@ -893,7 +893,7 @@ MM.print();
             cout<<"With the advanced algorithms on GPU"<<std::endl;
 
             Math_MPI_Decomposition_Policy p(false,
-                Math_Functions_Policy::GPU_ONLY,
+                Math_Functions_Policy::CPU_ONLY,
                 Math_MPI_RecursiveMultiplication_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
@@ -910,8 +910,8 @@ MM.print();
         }
     }
 //
-    {
-//
+   {
+
         cout<< "Now we do the same with the qr decomposition"<<std::endl;
         vector<double>A_data= {-4, 9, 4, 0, -3, -4, 8, 0, 0, -7, -3, -8, -9, 1, -5, -9, -10, 1, 1, 6, -1, 5, 4, 4, 8, 1, 9, -8, -6, 8, -4, -2, -4, 7, -7, 3, 7, -2, -9, 9, 4, -4, 1, -3, 4, -8, 3, 6, -7, 7, -3, -7, -9, -5, -1, -7, 7, 1, -9, -1, -7, 3, 5, 4};
         ptrdiff_t rows4 = 8, cols4 = 8;
@@ -973,7 +973,7 @@ MM.print();
 
             Math_MPI_Decomposition_Policy p(false,
                 Math_Functions_Policy::GPU_ONLY,
-                Math_MPI_Decomposition_Policy::Strassen);
+                Math_MPI_Decomposition_Policy::WinogradVariant);
 
             p.size_to_stop_recursion=2;
 

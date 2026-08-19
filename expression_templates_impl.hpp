@@ -646,7 +646,7 @@ T DotExpr<LHS, RHS>::eval_scalar(
         throw std::runtime_error("Wrong vector sizes");
     }
 
-    return Math_Functions::dot_product(L,R,&mathpol);
+    return Math_Functions::vector_dot_product(L,R,&mathpol);
 }
 
 

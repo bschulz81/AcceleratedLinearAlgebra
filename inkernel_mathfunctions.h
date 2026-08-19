@@ -30,10 +30,6 @@ public:
 
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
-    inline static void matrix_multiply_dot(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0));
-
-
-    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_multiply_dot_kahan(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0));
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
@@ -42,8 +38,15 @@ public:
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_multiply_vector_kahan( const DataBlock<T>& A,  const DataBlock<T>& x,  DataBlock<T>& y, const T Coefficientx=T(1),  const T CoefficientC=T(0));
 
+
+
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
-    inline static void matrix_linear_combination(    const DataBlock<T>& A,    const DataBlock<T>& B,    DataBlock<T>& C,  const T CoefficientA=T(1),  const T CoefficientB=T(1),const T CoefficientC=T(0));
+    inline static void matrix_linear_combination(    const DataBlock<T>& A,    const DataBlock<T>& B,    DataBlock<T>& C,
+                                                 const T CoefficientA=T(1),  const T CoefficientB=T(1),const T CoefficientC=T(0));
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void matrix_linear_combination(    const DataBlock<T>& A,      DataBlock<T>& C,
+                                                 const T CoefficientA=T(1),const T CoefficientC=T(1));
 
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
@@ -58,8 +61,6 @@ public:
         matrix_linear_combination<Policy>(A,B,C,T(1),-T(1),T(0));
     }
 
-    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
-    inline static void matrix_linear_combination(    const DataBlock<T>& A,      DataBlock<T>& C,  const T CoefficientA=T(1),const T CoefficientC=T(1));
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_add(    const DataBlock<T>& A,      DataBlock<T>& C)
@@ -74,17 +75,22 @@ public:
     }
 
 
+
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C);
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_multiply_scalar( DataBlock<T>& M, const T alpha);
 
-    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
-    inline static T dot_product( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
+
+
+
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
-    inline static T dot_product_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2);
+    inline static T vector_dot_product( const DataBlock<T> &vec1,const  DataBlock<T> &vec2);
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static T vector_dot_product_kahan(const  DataBlock<T> &vec1, const DataBlock<T> &vec2);
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void vector_linear_combination(const  DataBlock<T>& vecA,const  DataBlock<T>& vecB, DataBlock<T> & vecC, const T CoefficientA=T(1),  const T CoefficientB=T(1),const T CoefficientC=T(0));
@@ -125,6 +131,12 @@ public:
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void vector_multiply_scalar(  DataBlock<T>& vec,const T scalar);
 
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void matrix_multiply_dot(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0));
+
+
+
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static void matrix_multiply_dot_sparse(const BlockedDataView<T>& Ablocks, const BlockedDataView<T>& Bblocks, DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0));
 
@@ -136,6 +148,35 @@ public:
 
     template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
     inline static  void matrix_multiply_vector_sparse(const BlockedDataView<T>& A, const BlockedDataView<T>& x, DataBlock<T>& y,const T Coefficientx= T(1),const T Coefficienty  = T(0));
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_linear_combination(    const DataBlock<T>& A,  const DataBlock<T>& B,    DataBlock<T>& C,  const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(1));
+
+
+        template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_linear_combination(    const DataBlock<T>& A,      DataBlock<T>& C,  const T CoefficientA=T(1),const T CoefficientC=T(1));
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_add(    const DataBlock<T>& A,      DataBlock<T>& C)
+    {
+          tensor_linear_combination<Policy>(A,C,T(1),T(1));
+    }
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_subtract(    const DataBlock<T>& A,      DataBlock<T>& C)
+    {
+         tensor_linear_combination<Policy>(A,C,-T(1),T(1));
+    }
+
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_multiply_scalar( const  DataBlock<T>& M, const T V, DataBlock<T>& C);
+
+    template <OpenMPVariant Policy=OpenMPVariant::ParallelSimd, typename T>
+    inline static void tensor_multiply_scalar( DataBlock<T>& M, const T alpha);
+
+
+
 
     template <typename T>
     inline static T kahan_sum(const T *arr,ptrdiff_t n);

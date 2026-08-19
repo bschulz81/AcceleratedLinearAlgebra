@@ -425,7 +425,7 @@ endofblock:
 
 
         double result=0;
-        Math_Functions_MPI::dot_product_Distributed(block1,block2,0,&result);
+        Math_Functions_MPI::vector_dot_product_Distributed(block1,block2,0,&result);
 
 
         Math_Functions_MPI::vector_linear_combination_Distributed(block1,block2,block3);

@@ -75,6 +75,14 @@ public:
         matrix_linear_combination(A,C,-T(1),T(1),policy);
     }
 
+   template<typename T>
+    inline static void matrix_multiply_scalar(const DataBlock<T>& M,const T scalar,DataBlock<T>& C,
+            const Math_Functions_Policy* policy=nullptr);
+
+
+    template<typename T>
+    inline static void matrix_multiply_scalar(DataBlock<T>& M,const T scalar,
+            const Math_Functions_Policy* policy=nullptr);
 
     template<typename T>
     inline static void matrix_multiply_vector(const DataBlock<T>& A,const DataBlock<T>& x,DataBlock<T>& y,
@@ -90,17 +98,9 @@ public:
     }
 
 
-    template<typename T>
-    inline static void matrix_multiply_scalar(const DataBlock<T>& M,const T scalar,DataBlock<T>& C,
-            const Math_Functions_Policy* policy=nullptr);
 
 
     template<typename T>
-    inline static void matrix_multiply_scalar(DataBlock<T>& M,const T scalar,
-            const Math_Functions_Policy* policy=nullptr);
-
-    template<typename T>
-
     inline static void vector_multiply_scalar(const DataBlock<T>& vec,const T scalar,
             DataBlock<T>& res,
             const Math_Functions_Policy* policy=nullptr);
@@ -112,7 +112,7 @@ public:
 
 
     template<typename T>
-    inline static T dot_product(const DataBlock<T>& vec1,const DataBlock<T>& vec2,const Math_Functions_Policy* policy=nullptr);
+    inline static T vector_dot_product(const DataBlock<T>& vec1,const DataBlock<T>& vec2,const Math_Functions_Policy* policy=nullptr);
 
 
 
@@ -193,18 +193,55 @@ public:
     }
 
     template<typename T>
-    inline void matrix_multiply_vector_sparse(
-        const BlockedDataView<T>& A,const BlockedDataView<T>& x,DataBlock<T>& y,
-        const T Coefficientx,const T Coefficienty,
-        const Math_Functions_Policy* pol);
+    inline void matrix_multiply_vector_sparse(const BlockedDataView<T>& A,const BlockedDataView<T>& x,DataBlock<T>& y,
+        const T Coefficientx,const T Coefficienty,const Math_Functions_Policy* pol);
 
 
     template<typename T>
     inline static void matrix_multiply_vector_sparse(const BlockedDataView<T>& A,const BlockedDataView<T>& x,DataBlock<T>& y,
-            const Math_Functions_Policy* policy)
+    const Math_Functions_Policy* policy)
     {
         matrix_multiply_vector_sparse(A,x,y,T(1),T(0),policy);
     }
+
+    template<typename T>
+    inline static void tensor_linear_combination(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+            const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(0),
+            const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void tensor_linear_combination(const DataBlock<T>& A,DataBlock<T>& C,const T CoefficientA=T(1),const T CoefficientC=T(0),
+            const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void tensor_add(const DataBlock<T>& A,DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr)
+    {
+        tensor_linear_combination(A,C,T(1),T(1),policy);
+    }
+
+    template<typename T>
+    inline static void tensor_add(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr)
+    {
+        tensor_linear_combination(A,B,C,T(1),T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static void tensor_subtract(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr)
+    {
+        tensor_linear_combination(A,B,C,T(1),-T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static void tensor_subtract(const DataBlock<T>& A,DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr)
+    {
+        tensor_linear_combination(A,C,-T(1),T(1),policy);
+    }
+
+    template<typename T>
+    inline static void tensor_multiply_scalar(const DataBlock<T>& M,const T scalar,DataBlock<T>& C,const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void tensor_multiply_scalar(DataBlock<T>& M,const T scalar,const Math_Functions_Policy* policy=nullptr);
 
 
 

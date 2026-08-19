@@ -291,6 +291,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
 
     return cart_comm;
 }
+
 template<typename T>
 inline void Math_Functions_MPI::scale_local_blocks(
     T* cdata,
@@ -308,9 +309,7 @@ inline void Math_Functions_MPI::scale_local_blocks(
 
     if(ongpu)
     {
-        #pragma omp target teams distribute \
-        device(devnum) \
-        is_device_ptr(cdata,coffsets,cstrides,cextents)
+        #pragma omp target teams distribute device(devnum) is_device_ptr(cdata,coffsets,cstrides,cextents)
         for(ptrdiff_t b = 0; b < numblocks; ++b)
         {
             const ptrdiff_t rows = cextents[2*b];
@@ -363,12 +362,8 @@ inline void Math_Functions_MPI::scale_local_blocks(
 
 template <typename T>
 bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    DistributedDataBlock<T>& C,
-    const T CoefficientB,
-    const T CoefficientC,
-    const Math_MPI_Functions_Policy* pol)
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+    const T CoefficientB,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 {
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
@@ -801,6 +796,8 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             }
         }
 
+        scale_local_blocks( cdata, coffsets, cstrides,  C.Dblockarray.pextentsbuffer,  C.Dblockarray.pnumblocks,  CoefficientC,  ongpu, devnum);
+
         struct BlockMeta
         {
             ptrdiff_t block_row;
@@ -1104,12 +1101,8 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
 template<typename T>
 inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& x,
-    DistributedDataBlock<T>& y,
-    const T Coefficientx,
-    const T Coefficienty,
-    const Math_MPI_Functions_Policy*pol)
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& x,DistributedDataBlock<T>& y,
+    const T Coefficientx,const T Coefficienty,const Math_MPI_Functions_Policy*pol)
 {
     const Math_MPI_Functions_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
     if (A.pctx->comm == MPI_COMM_NULL)
@@ -1302,7 +1295,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
                         total += sum;
                     }
                 }
-               y_full[global_row] =Coefficientx * total +Coefficienty * y_full[global_row];
+                y_full[global_row] =Coefficienty==T(0)?Coefficientx * total:Coefficienty * y_full[global_row]+Coefficientx * total;
             }
         }
         else
@@ -1361,7 +1354,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
                         total += sum;
                     }
                 }
-               y_full[global_row] =Coefficientx * total +Coefficienty * y_full[global_row];
+                y_full[global_row] =Coefficienty==T(0)?Coefficientx * total: Coefficienty * y_full[global_row]+Coefficientx * total;
             }
         }
     }
@@ -1483,13 +1476,8 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
 
 template<typename T>
 inline bool Math_Functions_MPI::matrix_linear_combination_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    DistributedDataBlock<T>& C,
-    const T CoefficientA,
-    const T CoefficientB,
-    const T CoefficientC,
-    const Math_MPI_Functions_Policy* pol)
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+    const T CoefficientA,const T CoefficientB,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 {
 
 
@@ -1534,7 +1522,8 @@ inline bool Math_Functions_MPI::matrix_linear_combination_Distributed(
             {
                 for (ptrdiff_t j = 0; j <m ; ++j)
                 {
-                    Cblockarray(i,j,b) =CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b);
+                    Cblockarray(i,j,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b):
+                                    CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b);
                 }
             }
         }
@@ -1551,7 +1540,8 @@ inline bool Math_Functions_MPI::matrix_linear_combination_Distributed(
             {
                 for (ptrdiff_t j = 0; j <m ; ++j)
                 {
-                    Cblockarray(i,j,b) =CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b);
+                    Cblockarray(i,j,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b):
+                                    CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b)+CoefficientB*Bblockarray(i,j,b);
                 }
             }
         }
@@ -1563,12 +1553,8 @@ inline bool Math_Functions_MPI::matrix_linear_combination_Distributed(
 
 
 template<typename T>
-inline bool matrix_linear_combination_Distributed(
-    const DistributedDataBlock<T>& A,
-    DistributedDataBlock<T>& C,
-    const T CoefficientA,
-    const T CoefficientC,
-    const Math_MPI_Functions_Policy* pol)
+inline bool matrix_linear_combination_Distributed(const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const T CoefficientA,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 {
 
 
@@ -1610,7 +1596,7 @@ inline bool matrix_linear_combination_Distributed(
             {
                 for (ptrdiff_t j = 0; j <m ; ++j)
                 {
-                    Cblockarray(i,j,b) =CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b);
+                    Cblockarray(i,j,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,j,b): CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b);
                 }
             }
         }
@@ -1627,7 +1613,7 @@ inline bool matrix_linear_combination_Distributed(
             {
                 for (ptrdiff_t j = 0; j <m ; ++j)
                 {
-                    Cblockarray(i,j,b) =CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b);
+                    Cblockarray(i,j,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,j,b): CoefficientC*Cblockarray(i,j,b)+CoefficientA* Ablockarray(i,j,b);
                 }
             }
         }
@@ -1811,15 +1797,11 @@ inline bool Math_Functions_MPI::vector_multiply_scalar_Distributed(const Distrib
         #pragma omp parallel for
         for (ptrdiff_t b=0; b<cblocknum; b++)
         {
-            const ptrdiff_t n = Ablockarray.pextentsbuffer[2 * b];
-            const ptrdiff_t m = Ablockarray.pextentsbuffer[2 * b + 1];
-            #pragma omp simd collapse(2)
+            const ptrdiff_t n = Ablockarray.pextentsbuffer[b];
+            #pragma omp simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
-                for (ptrdiff_t j = 0; j <m ; ++j)
-                {
-                    Cblockarray(i,j,b)  =Ablockarray(i,j,b) *B;
-                }
+                    Cblockarray(i,b)  =Ablockarray(i,b) *B;
             }
         }
     }
@@ -1882,13 +1864,8 @@ inline bool Math_Functions_MPI::vector_multiply_scalar_Distributed(DistributedDa
 
 template<typename T>
 inline bool Math_Functions_MPI::Math_Functions_MPI::vector_linear_combination_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    DistributedDataBlock<T>& C,
-    const T CoefficientA,
-    const T CoefficientB,
-    const T CoefficientC,
-    const Math_MPI_Functions_Policy* pol)
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+    const T CoefficientA,const T CoefficientB,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 
 {
     const Math_MPI_Functions_Policy policy =
@@ -1928,7 +1905,7 @@ inline bool Math_Functions_MPI::Math_Functions_MPI::vector_linear_combination_Di
             #pragma omp parallel for simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
-                Cblockarray(i,b) =CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b);
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b);
             }
         }
     }
@@ -1941,7 +1918,7 @@ inline bool Math_Functions_MPI::Math_Functions_MPI::vector_linear_combination_Di
             #pragma omp simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
-                Cblockarray(i,b) =CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b);
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB* Bblockarray(i,b);
             }
         }
     }
@@ -1951,12 +1928,8 @@ inline bool Math_Functions_MPI::Math_Functions_MPI::vector_linear_combination_Di
 
 
 template<typename T>
-inline bool Math_Functions_MPI::vector_linear_combination_Distributed(
-    const DistributedDataBlock<T>& A,
-    DistributedDataBlock<T>& C,
-    const T CoefficientA,
-    const T CoefficientC,
-    const Math_MPI_Functions_Policy* pol)
+inline bool Math_Functions_MPI::vector_linear_combination_Distributed(const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const T CoefficientA,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 
 {
     const Math_MPI_Functions_Policy policy =
@@ -1993,7 +1966,7 @@ inline bool Math_Functions_MPI::vector_linear_combination_Distributed(
             #pragma omp parallel for simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
-                Cblockarray(i,b) =CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
             }
         }
     }
@@ -2006,7 +1979,7 @@ inline bool Math_Functions_MPI::vector_linear_combination_Distributed(
             #pragma omp simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
-                Cblockarray(i,b) =CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
             }
         }
     }
@@ -2018,12 +1991,9 @@ inline bool Math_Functions_MPI::vector_linear_combination_Distributed(
 
 
 template <typename T>
-inline bool Math_Functions_MPI::dot_product_localblock(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    T* result,
-    const Math_MPI_Functions_Policy* pol
-)
+inline bool Math_Functions_MPI::vector_dot_product_localblock(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,
+        T* result,const Math_MPI_Functions_Policy* pol
+                                                             )
 {
     const Math_MPI_Functions_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
@@ -2082,12 +2052,9 @@ inline bool Math_Functions_MPI::dot_product_localblock(
 
 
 template <typename T>
-inline bool Math_Functions_MPI::dot_product_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    int root,
-    T* result,
-    const Math_MPI_Functions_Policy* pol
+inline bool Math_Functions_MPI::vector_dot_product_Distributed(
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,
+    int root,T* result,const Math_MPI_Functions_Policy* pol
 )
 {
     T sum=0;
@@ -2100,14 +2067,11 @@ inline bool Math_Functions_MPI::dot_product_Distributed(
 }
 
 template <typename T>
-inline T Math_Functions_MPI::dot_product_Allreduce_Distributed(
-    const DistributedDataBlock<T>& A,
-    const DistributedDataBlock<T>& B,
-    const Math_MPI_Functions_Policy* pol
-)
+inline T Math_Functions_MPI::vector_dot_product_Allreduce_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,
+        const Math_MPI_Functions_Policy* pol)
 {
     T sum=0;
-    if(!Math_Functions_MPI::dot_product_localblock(A,B,&sum,pol)) return false;
+    if(!Math_Functions_MPI::vector_dot_product_localblock(A,B,&sum,pol)) return false;
 
     T global_result = T(0);
     MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
@@ -2137,14 +2101,14 @@ void Math_Functions_MPI::strassen_multiply( const DataBlock<T> & A,const  DataBl
     bool ongpu=policy.should_use_gpu_winograd_start(A,B,C);
     bool separate_device_memory=false;
     if(ongpu)
-{
+    {
 #if !defined(Unified_Shared_Memory)
-    separate_device_memory=true;
+        separate_device_memory=true;
 #endif
-}
-if(separate_device_memory)
-{
-    GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadA(A, policy.devicenum, false);
+    }
+    if(separate_device_memory)
+    {
+        GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadA(A, policy.devicenum, false);
         GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadB(B, policy.devicenum, false);
         GPU_Memory_Functions::DataBlockdpdataoffloader<T> offloadC(C, policy.devicenum, policy.update_host);
 
@@ -2500,12 +2464,12 @@ void Math_Functions_MPI::strassen_multiply_h(const DataBlock<T> & A, const DataB
     }
     else
     {
-    int myrank = 0;
-    int mpi_size = 1;
+        int myrank = 0;
+        int mpi_size = 1;
 
-    MPI_Comm_rank(pcom, &myrank);
-    MPI_Comm_size(pcom, &mpi_size);
-    usempi=policy.should_use_mpi_for_recursion(myrank, mpi_size);
+        MPI_Comm_rank(pcom, &myrank);
+        MPI_Comm_size(pcom, &mpi_size);
+        usempi=policy.should_use_mpi_for_recursion(myrank, mpi_size);
     }
 
     if(usempi)
@@ -2519,7 +2483,7 @@ void Math_Functions_MPI::strassen_multiply_h(const DataBlock<T> & A, const DataB
 
 
         MPI_Send(&message, 1, MPI_INT, childdest+1,0, pcom);
-        ptrdiff_t dims[3] ={half_n,half_m,half_p};
+        ptrdiff_t dims[3] = {half_n,half_m,half_p};
 
 
         MPI_Send(dims, 3, mpi_get_type<ptrdiff_t>(), childdest+1,1, pcom);
@@ -3150,21 +3114,21 @@ void Math_Functions_MPI::winograd_multiply_h(const DataBlock<T>& A,const DataBlo
     {
 
 
-    MPI_Comm_rank(pcom, &myrank);
-    MPI_Comm_size(pcom, &mpi_size);
-    usempi=policy.should_use_mpi_for_recursion(myrank, mpi_size);
+        MPI_Comm_rank(pcom, &myrank);
+        MPI_Comm_size(pcom, &mpi_size);
+        usempi=policy.should_use_mpi_for_recursion(myrank, mpi_size);
     }
 
     if(usempi)
     {
 
-       int childdest=myrank*7;
+        int childdest=myrank*7;
 
 
         int message=Math_MPI_RecursiveMultiplication_Policy::WinogradVariant;
 
         MPI_Send(&message, 1, MPI_INT, childdest+1,0, pcom);
-        ptrdiff_t dims[3] ={half_n,half_m,half_p};
+        ptrdiff_t dims[3] = {half_n,half_m,half_p};
         MPI_Send(dims, 3, mpi_get_type<ptrdiff_t>(), childdest+1,1, pcom);
         DataBlock_MPI_Functions::MPI_Send_DataBlock(S2,childdest+1,2,pcom);
         DataBlock_MPI_Functions::MPI_Send_DataBlock(S6,childdest+1,3,pcom);
@@ -4295,7 +4259,7 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
 
                 ptrdiff_t cz=c-z;
                 ptrdiff_t mc=m-c;
-                // Extract submatrices
+
 
                 ptrdiff_t extBQ[2];
                 ptrdiff_t strBQ[2];
@@ -4326,18 +4290,16 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
 
                 DataBlock<T>  S(tempS,n*mc,2,sextt,sstrt,cconf);
 
-
-
                 switch (policy.algorithm_version)
                 {
                 case Math_MPI_Decomposition_Policy::Naive:
                     GPU_Math_Functions::matrix_multiply_dot_g(BQ,C,S,GPUOptions{.device=policy.devicenum,.update_host=false});
                     break;
                 case Math_MPI_Decomposition_Policy::Strassen:
-                    strassen_multiply_h(BQ,C,S,ongpu,separate_device_memory,pcomm,policy);
+                    strassen_multiply_h(BQ,C,S,true,separate_device_memory,pcomm,policy);
                     break;
                 case Math_MPI_Decomposition_Policy::WinogradVariant:
-                    winograd_multiply_h(BQ,C,S,ongpu,separate_device_memory,pcomm,policy);
+                    winograd_multiply_h(BQ,C,S,true,separate_device_memory,pcomm,policy);
                     break;
                 }
 
@@ -4352,7 +4314,7 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 }
                 z = c;
             }
-//            // Extract column c of M
+
 
             ptrdiff_t vext[1];
             ptrdiff_t vstr[1];
@@ -4372,7 +4334,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 {
                     dot_pr +=cond_conj( udptr[i*ustr[0]]) * vdptr[i*vstr[0]];
                 }
-
                 const T cdot_pr = dot_pr;
                 #pragma omp target teams distribute parallel for simd is_device_ptr(udptr,vdptr)device(policy.devicenum)
                 for (ptrdiff_t i = 0; i < pextv0; ++i)
@@ -4381,31 +4342,22 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 }
 
             }
-
             T norm = T(0);
             #pragma omp target  teams distribute parallel for simd map(tofrom:norm) is_device_ptr(vdptr)reduction(+:norm)device(policy.devicenum)
             for (ptrdiff_t i = 0; i < pextv0; ++i)
             {
-                T val=vdptr[i*vstr[0]] ;
+                T val=vdptr[i*vstr[0]];
                 norm += cond_conj(val) *vdptr[i*vstr[0]];
             }
-
             const T normc = sqrt(norm);
-
             #pragma omp target teams distribute parallel for simd is_device_ptr(tQdptr,vdptr) device(policy.devicenum)
             for (ptrdiff_t i = 0; i < pextv0; ++i)
             {
                 tQdptr[i*Qstr0+c*Qstr1] = vdptr[i*vstr[0]]/normc;
             }
-
         }
-        // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
-        // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
-
-        ptrdiff_t extQT[2];
-        ptrdiff_t strQT[2];
+        ptrdiff_t extQT[2],strQT[2];
         DataBlock<T> QT=DataBlockUtilities::matrix_hermitian_transpose(tQ,extQT,strQT);
-
         switch (policy.algorithm_version)
         {
         case Math_MPI_Decomposition_Policy::Naive:
@@ -4419,9 +4371,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
             break;
         }
 
-
-
-
         if(separate_device_memory)
         {
             if(policy.update_host)
@@ -4432,7 +4381,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
             GPU_Memory_Functions::release(A,policy.devicenum);
             GPU_Memory_Functions::release(Q,policy.devicenum);
             GPU_Memory_Functions::release(R,policy.devicenum);
-
             omp_target_free(tempS, policy.devicenum);
             omp_target_free(tempC, policy.devicenum);
             omp_target_free(tempM, policy.devicenum);
@@ -4452,12 +4400,9 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 omp_free(tempM, omp_default_mem_alloc);
             }
         }
-
-
     }
     else
     {
-
         DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
                                .pmemmap=policy.memmapped_files,
                                .data_is_devptr=false,
@@ -4469,8 +4414,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
 
         T * tempC= Host_Memory_Functions::alloc_data_ptr<T>(mm,policy.memmapped_files);
         T * tempS= Host_Memory_Functions::alloc_data_ptr<T>(nm,policy.memmapped_files);
-
-
         if(policy.initialize_output_to_zeros)
         {
             #pragma omp parallel for
@@ -4499,8 +4442,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 }
             }
         }
-
-
         ptrdiff_t z = 0;
         DataBlockConfig cconf({.dprowmajor=true,
                                .pmemmap=policy.memmapped_files,
@@ -4509,19 +4450,15 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                               });
         for (ptrdiff_t c = 0; c < m; ++c)
         {
+
             if (c == z +step_size)
             {
                 ptrdiff_t cz=c-z;
                 ptrdiff_t mc=m-c;
-                // Extract submatrices
 
-                ptrdiff_t extBQ[2];
-                ptrdiff_t strBQ[2];
-
-                ptrdiff_t extBM[2];
-                ptrdiff_t strBM[2];
-
+                ptrdiff_t extBQ[2], strBQ[2],extBM[2], strBM[2];
                 DataBlock<T> BQ = DataBlockUtilities::matrix_subspan(Q,0, z, n, cz,extBQ,strBQ);
+
                 DataBlock<T> BM = DataBlockUtilities::matrix_subspan(M,0, c, n,mc,extBM,strBM);
 
                 ptrdiff_t Cextt[2]= {cz,mc};
@@ -4532,23 +4469,24 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
 
                 ptrdiff_t extBQT[2];
                 ptrdiff_t strBQT[2];
+
                 DataBlock<T> BQT=DataBlockUtilities::matrix_hermitian_transpose(BQ,extBQT,strBQT);
 
                 if(policy.should_use_gpu_matrix_multiply(BQT,BM,C))
                 {
-                    GPU_Math_Functions::matrix_multiply_dot_g(BQT,BM,C,GPUOptions{.device=policy.devicenum,.update_host=false});
+                    GPU_Math_Functions::matrix_multiply_dot_g(BQT,BM,C,GPUOptions{.device=policy.devicenum,.update_host=true});
                 }
                 else
                 {
                     In_Kernel_Mathfunctions::matrix_multiply_dot(BQT,BM,C);
                 }
-                    ptrdiff_t sexttt[2]= {n,mc};
-                    ptrdiff_t sstrtt[2]= {mc,1};
-
-                    DataBlock<T>  S(tempS,n*mc,2,sexttt,sstrtt,cconf);
 
 
 
+                ptrdiff_t sexttt[2]= {n,mc};
+                ptrdiff_t sstrtt[2]= {mc,1};
+
+                DataBlock<T>  S(tempS,n*mc,2,sexttt,sstrtt,cconf);
 
                 switch (policy.algorithm_version)
                 {
@@ -4565,7 +4503,6 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                     winograd_multiply_h(BQ,C,S,false,false,pcomm,policy);
                 }
 
-
                 #pragma omp parallel for simd collapse(2)
                 for (ptrdiff_t i = 0; i < n; ++i)
                 {
@@ -4577,16 +4514,15 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                 z = c;
             }
 
-            ptrdiff_t vext[1];
-            ptrdiff_t vstr[1];
-            DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,vext,vstr);
 
+
+            ptrdiff_t vext[1],vstr[1];
+            DataBlock<T> v = DataBlockUtilities::matrix_column(M,c,vext,vstr);
             for (ptrdiff_t j = z; j < c; ++j)
             {
-                ptrdiff_t uext[1];
-                ptrdiff_t ustr[1];
+                ptrdiff_t uext[1],ustr[1];
                 DataBlock<T>  u = DataBlockUtilities::matrix_column(Q,j,uext,ustr);
-                const T dot_pr =Math_Functions::dot_product(u,v,&policy);
+                const T dot_pr =Math_Functions::vector_dot_product(u,v,&policy);
 
                 #pragma omp parallel for simd
                 for (ptrdiff_t i = 0; i < n; ++i)
@@ -4594,27 +4530,15 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
                     v(i) -= dot_pr * u(i);
                 }
             }
-
-            // Normalize v
-            const T norm = sqrt(Math_Functions::dot_product(v,v,&policy));
-
-            // Set column c of Q
-
+            const T norm = sqrt(Math_Functions::vector_dot_product(v,v,&policy));
             #pragma omp parallel for simd
             for (ptrdiff_t i = 0; i < n; ++i)
             {
                 Q(i,c) = v(i)/norm;
             }
         }
-
-
-        // Compute R = Q^T * A for real values and Q^\dagger for complex values... i have no algorithm for conjugate transpose multiplication...
-        // the conjugate is done at best on the fly instead of making a separate copy... so make the conjugate transpose multiplication explicitely here.
-
-        ptrdiff_t extQT[2];
-        ptrdiff_t strQT[2];
+        ptrdiff_t extQT[2],strQT[2];
         DataBlock<T> QT=DataBlockUtilities::matrix_hermitian_transpose(Q,extQT,strQT);
-
         switch (policy.algorithm_version)
         {
         case Math_MPI_Decomposition_Policy::Naive:
@@ -4626,11 +4550,9 @@ void Math_Functions_MPI::qr_decomposition(const DataBlock<T>& A, DataBlock<T>& Q
         case Math_MPI_Decomposition_Policy::WinogradVariant:
             winograd_multiply_h(QT,A,R,false,false,pcomm,policy);
         }
-
         Host_Memory_Functions::free_data_ptr<T>(tempC,mm,policy.memmapped_files);
         Host_Memory_Functions::free_data_ptr<T>(tempS,nm,policy.memmapped_files);
         Host_Memory_Functions::free_copy<T>(M);
-
     }
 }
 
@@ -4762,4 +4684,292 @@ void Math_Functions_MPI::MPI_recursion_helper_end(MPI_Comm pcomm)
         MPI_Send(&message,1,MPI_INT,i,0,pcomm);
     }
 }
+
+
+
+
+
+template <typename T>
+inline bool Math_Functions_MPI::tensor_multiply_scalar_Distributed(const DistributedDataBlock<T>& A,  const T B,  DistributedDataBlock<T>& C,   const Math_MPI_Functions_Policy* pol )
+{
+    const Math_MPI_Functions_Policy policy =
+        (pol != nullptr) ? *pol : get_default_policy();
+
+
+    bool ongpu=policy.Math_Functions_Policy::should_use_gpu_elementwise(A,B,C);
+    bool memmap=policy.memmapped_files;
+    int devnum=policy.devicenum;
+
+    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
+    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.pdevnum!=B.Dblockarray.pdevnum ||A.Dblockarray.pdevnum!=C.Dblockarray.pdevnum) return false;
+
+    if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
+
+    const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
+
+    if (cblocknum == 0) return true;
+
+    const  DataBlockArray Ablockarray=A.Dblockarray;
+    DataBlockArray Cblockarray=C.Dblockarray;
+
+    const ptrdiff_t rank=Cblockarray.ptensor_rank;
+    if (ongpu)
+    {
+
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, true, true);
+
+        #pragma omp target teams distribute
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp parallel for simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                    Cblockarray(i,b) = Ablockarray(i,b)*B;
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Cblockarray(i,b)  =Ablockarray(i,b) *B;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+template <typename T>
+inline bool Math_Functions_MPI::tensor_multiply_scalar_Distributed(DistributedDataBlock<T>& A,  const T B,   const Math_MPI_Functions_Policy* pol)
+{
+    const Math_MPI_Functions_Policy policy =
+        (pol != nullptr) ? *pol : get_default_policy();
+
+
+    bool ongpu=policy.should_use_gpu_matrix(A);
+    bool memmap=policy.memmapped_files;
+    int devnum=policy.devicenum;
+
+    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+
+
+    DataBlockArray Ablockarray=A.Dblockarray;
+    const ptrdiff_t ablocknum=A.Dblockarray.pnumblocks;
+
+    const ptrdiff_t rank=Ablockarray.ptensor_rank;
+
+    if (ongpu)
+    {
+
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadA(Ablockarray, devnum, true, true);
+        #pragma omp target teams distribute
+        for (ptrdiff_t b=0; b<ablocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp parallel for simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Ablockarray(i,b)*=B;
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for
+        for (ptrdiff_t b=0; b<ablocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Ablockarray(i,b) *=B;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+template<typename T>
+inline bool Math_Functions_MPI::tensor_linear_combination_Distributed(
+    const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+    const T CoefficientA,const T CoefficientB,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
+{
+
+
+
+    const Math_MPI_Functions_Policy policy =
+        (pol != nullptr) ? *pol : Math_Functions_MPI::get_default_policy();
+
+
+    bool ongpu=policy.should_use_gpu_elementwise(A, B, C);
+    bool memmap=policy.memmapped_files;
+    int devnum=policy.devicenum;
+
+
+
+    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
+    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.pdevnum!=B.Dblockarray.pdevnum ||A.Dblockarray.pdevnum!=C.Dblockarray.pdevnum) return false;
+
+    if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
+
+    const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
+    if (cblocknum == 0) return true;
+
+    const DataBlockArray Ablockarray=A.Dblockarray;
+    const DataBlockArray Bblockarray=B.Dblockarray;
+    DataBlockArray Cblockarray=C.Dblockarray;
+
+    const ptrdiff_t rank=Cblockarray.ptensor_rank;
+    if (ongpu)
+    {
+
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadB(Bblockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, CoefficientC==T(0), true);
+
+        #pragma omp target teams distribute
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp parallel for simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b)+CoefficientB*Bblockarray(i,b):
+                     CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB*Bblockarray(i,b);
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b)+CoefficientB*Bblockarray(i,b):
+                     CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b)+CoefficientB*Bblockarray(i,b);
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+template<typename T>
+inline bool tensor_linear_combination_Distributed(const DistributedDataBlock<T>& A,DistributedDataBlock<T>& C,
+        const T CoefficientA,const T CoefficientC,const Math_MPI_Functions_Policy* pol)
+{
+
+    const Math_MPI_Functions_Policy policy =
+        (pol != nullptr) ? *pol : Math_Functions_MPI::get_default_policy();
+
+
+    bool ongpu=policy.Math_Functions_Policy::should_use_gpu_elementwise(A,  C);
+    bool memmap=policy.memmapped_files;
+    int devnum=policy.devicenum;
+
+    if (!matrix_extents_equal(A,C)) return false;
+
+    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.pdevnum!=C.Dblockarray.pdevnum) return false;
+
+    if(A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
+
+    const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
+    if (cblocknum == 0) return true;
+
+    const DataBlockArray Ablockarray=A.Dblockarray;
+    DataBlockArray Cblockarray=C.Dblockarray;
+
+    const ptrdiff_t rank=Cblockarray.ptensor_rank;
+    if (ongpu)
+    {
+
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T> offloadA(Ablockarray, devnum);
+        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>      offloadC(Cblockarray, devnum, CoefficientC==T(0), true);
+
+        #pragma omp target teams distribute
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp parallel for simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                 Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
+            }
+        }
+    }
+    else
+    {
+        #pragma omp parallel for
+        for (ptrdiff_t b=0; b<cblocknum; b++)
+        {
+            ptrdiff_t max_index=1;
+            #pragma omp simd reduction(*:max_index)
+            for(ptrdiff_t i=0; i<=rank; i++)
+                max_index*=Ablockarray.pextentsbuffer[i];
+
+            #pragma omp simd
+            for (ptrdiff_t i = 0; i < max_index; ++i)
+            {
+                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientA* Ablockarray(i,b): CoefficientC*Cblockarray(i,b)+CoefficientA* Ablockarray(i,b);
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+
+
 #endif
