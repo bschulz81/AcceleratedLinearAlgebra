@@ -97,6 +97,21 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+
+### 19.08.2026
+Guarded the updated flexible blas kernels for coeffC=0 to guarantee correct execution for gcc compiled binaries if C is uninitialized.
+Apparently, uninitialized values can be nan and then propagate CoeffC*nan would yield nan values under gcc even if CoeffC=0. Clang does not show this behavior but makes dead code elimination instead.
+Gcc is mathematically correct. Infinity times 0 can be anything. With the fix, the execution of the Kernels works as before.
+
+Added first tensor kernels for higher ranks, but they are currently untested so far. I added a flat index for parallelization. 
+
+the (i) operator of the datablock class for vectors now checks the rank. For rank==1 it works as usual but for higher ranks, (i) is assumed to be a flat tensor index whose data offset it computes in a while loop
+This should allow parallelization of tensor operations in a single loop once the maximum index is calculated. But this is currently entirely untested...
+
+I will add more tensor kernels soon and then test them. Tensor product is next, and then an einsum and if that works comes an autodiff.. 
+Views of subtensors for the distributed classes must also be implemented.. and fully distributed qr,cholesky and lu decompositions...
+
+
 ### 10.08.2026, 15:58 o'clock
 Fixed a printout that wrongly described a calculation in the test application (the test application adds B+4 A, not B+5 A...)
 
