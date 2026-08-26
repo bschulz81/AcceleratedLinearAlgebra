@@ -88,11 +88,10 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-1) add an autodiff mechanism to the expressions to allow some support for differential equations,
+1) Add more functions for tensors including tensor contraction and Einsums
 2) add unary function nodes in expressions,
-3) Add more functions for tensors including tensor contraction and Einsums
-4) add the expression mechanism for the distributed tensorclasses...
-5) restructure the library, including the expression interface to make additions of new functions more easy.
+3) add an autodiff mechanism to the expressions to allow some support for differential equations,
+4) add the expression mechanism for the distributed tensorclasses and views of subsets of distributed tensors
 6) add functions for statistics, function minimization, optimization, differential equations
 
 
