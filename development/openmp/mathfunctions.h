@@ -36,6 +36,19 @@ public:
         matrix_multiply_dot(A,B,C,T(1),T(0),policy);
     }
 
+
+    template<typename T>
+    inline static void matrix_multiply_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const T CoefficientB=T(1),const T CoefficientC=T(0),
+                                           const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void matrix_multiply_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const Math_Functions_Policy* policy)
+    {
+        matrix_multiply_hadamard(A,B,C,T(1),T(0),policy);
+    }
+
     template<typename T>
     inline static void matrix_linear_combination(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
             const T CoefficientA=T(1),const T CoefficientB=T(1),const T CoefficientC=T(0),
@@ -243,6 +256,29 @@ public:
     template<typename T>
     inline static void tensor_multiply_scalar(DataBlock<T>& M,const T scalar,const Math_Functions_Policy* policy=nullptr);
 
+    template<typename T>
+    inline static void tensor_product_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const T CoefficientB=T(1),const T CoefficientC=T(0),
+                                           const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void tensor_product_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const Math_Functions_Policy* policy)
+    {
+        tensor_product_hadamard(A,B,C,T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static void tensor_product(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const T CoefficientB=T(1),const T CoefficientC=T(0),
+                                           const Math_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static void tensor_product(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+                                           const Math_Functions_Policy* policy)
+    {
+        tensor_product(A,B,C,T(1),T(0),policy);
+    }
 
 
     static const Math_Functions_Policy& get_default_policy()

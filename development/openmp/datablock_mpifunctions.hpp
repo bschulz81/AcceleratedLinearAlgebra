@@ -94,11 +94,11 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
         m.Dblockarray.pblock_offsets=nullptr;
     }
 
- if(m.pblock_starts)
-{
-    free(m.pblock_starts);
-    m.pblock_starts=nullptr;
-}
+    if(m.pblock_starts)
+    {
+        free(m.pblock_starts);
+        m.pblock_starts=nullptr;
+    }
 
 
 
@@ -206,37 +206,44 @@ void DataBlock_MPI_Functions::free_helper2( MPI_Sendlocation loc, ptrdiff_t data
 
 
 template<typename T>
-ptrdiff_t DistributedDataBlock<T>::block_rank() const {
+ptrdiff_t DistributedDataBlock<T>::block_rank() const
+{
     return pblock_rank;
 }
 
 template<typename T>
-bool DistributedDataBlock<T>::global_rowmajor() const {
+bool DistributedDataBlock<T>::global_rowmajor() const
+{
     return Dblockarray.prowm;
 }
 
 template<typename T>
-ptrdiff_t * DistributedDataBlock<T>::global_extents() const {
+ptrdiff_t * DistributedDataBlock<T>::global_extents() const
+{
     return Dblockarray.pglobal_extents;
 }
 
 template<typename T>
-ptrdiff_t * DistributedDataBlock<T>::global_strides() const {
+ptrdiff_t * DistributedDataBlock<T>::global_strides() const
+{
     return pglobal_strides;
 }
 
 template<typename T>
-ptrdiff_t DistributedDataBlock<T>::local_blocknumber() const {
+ptrdiff_t DistributedDataBlock<T>::local_blocknumber() const
+{
     return Dblockarray.pnumblocks;
 }
 
 template<typename T>
-DataBlockArray<T> & DistributedDataBlock<T>::Blockarray() {
+DataBlockArray<T> & DistributedDataBlock<T>::Blockarray()
+{
     return Dblockarray;
 }
 
 template<typename T>
-void DistributedDataBlock<T>::print(int rootrank) const {
+void DistributedDataBlock<T>::print(int rootrank) const
+{
     int rank, size;
     MPI_Comm_rank(pctx->comm,&rank);
     MPI_Comm_size(pctx->comm,&size);
@@ -326,10 +333,10 @@ void DistributedDataBlock<T>::print(int rootrank) const {
             if(Dblockarray.pdata != nullptr)
             {
                 DataBlock<T> block =
-                        Dblockarray.get_datablock_from_arrays(i);
+                    Dblockarray.get_datablock_from_arrays(i);
 
                 ptrdiff_t tensor_len =
-                        block.print_required_size();
+                    block.print_required_size();
 
                 block.print_to_buffer(cur, tensor_len + 1);
 
@@ -384,6 +391,8 @@ void DistributedDataBlock<T>::print(int rootrank) const {
     }
     free(buffer);
 }
+
+
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock (DataBlock<T> &db,MPI_Comm com, int rootrank)
@@ -461,13 +470,14 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db
     MPI_Comm_rank(com, &rank);
     MPI_Bcast (&db.dpdatalength,1,  mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (&db.dprank,    1,    mpi_get_type<ptrdiff_t>(), rootrank, com);
-     MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
+    MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
 
-    DataBlockConfig conf{
-    .rowmajor=db.dpconfig.dprowmajor,
-    .data_is_devptr=loc.ondevice,
-    .devicenum=loc.ondevice?loc.devicenum:-INT_MAX,
-    .memmap=loc.ondevice? false: loc.with_memmap};
+    DataBlockConfig conf
+    {
+        .rowmajor=db.dpconfig.dprowmajor,
+        .data_is_devptr=loc.ondevice,
+        .devicenum=loc.ondevice?loc.devicenum:-INT_MAX,
+        .memmap=loc.ondevice? false: loc.with_memmap};
 
     if (rank != rootrank)
     {
@@ -529,7 +539,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_rows_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank, MPI_Sendlocation loc,
     DataBlock<T>* recv_db
-   )
+)
 {
     MPI_Gather_matrix_from_submatrices_alloc(send_db,rootrank, recv_db,loc);
 }
@@ -540,7 +550,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_columns_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,MPI_Sendlocation loc,
     DataBlock<T>* recv_db
-    )
+)
 {
     MPI_Gather_matrix_from_submatrices_alloc(send_db,rootrank, recv_db,loc);
 }
@@ -633,8 +643,7 @@ MPI_Scatter_matrix_to_submatrices_alloc(
 
         bcoords[0]=bi;
         bcoords[1]=bj;
-        policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-        int owner = policy->owner(grid_coords, *ctx, temp_coords);
+        int owner =policy->owner(bcoords,2,*ctx,temp_coords);
 
         if(owner == rank)
         {
@@ -767,14 +776,13 @@ MPI_Scatter_matrix_to_submatrices_alloc(
 
                 bcoords[0] = bi;
                 bcoords[1] = bj;
-                policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-                int owner = policy->owner(grid_coords, *ctx, temp_coords);
+                int owner = policy->owner(bcoords,2, *ctx, temp_coords);
 
                 ptrdiff_t r0 = bi * br;
                 ptrdiff_t c0 = bj * bc;
 
                 ptrdiff_t diff1=M-r0,
-                       diff2=N-c0;
+                          diff2=N-c0;
 
                 bool edgecase=false;
 
@@ -854,7 +862,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,MPI_Sendlocation loc,
     DataBlock<T>* recv_db
-    )
+)
 {
 
     if (send_db.pctx->comm == MPI_COMM_NULL)
@@ -905,16 +913,17 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
                        datalen,
                        2,
                        ext,
-                       str,DataBlockConfig{
-                           .dprowmajor=rowmajor,
-                       .data_is_devptr=loc.ondevice,
-                       .devicenum=loc.devicenum});
+                       str,DataBlockConfig
+        {
+            .dprowmajor=rowmajor,
+            .data_is_devptr=loc.ondevice,
+            .devicenum=loc.devicenum});
 
         recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
     }
 
 
- MPI_Request *reqs=nullptr;
+    MPI_Request *reqs=nullptr;
     ptrdiff_t recv_idx=0;
     if(rank==rootrank)
     {
@@ -941,8 +950,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
 
                 ptrdiff_t bcoords[2] = {bi, bj};
 
-                send_db.ppolicy->create_coords(bcoords, grid_coords, send_db.Dblockarray.ptensor_rank);
-                int owner = send_db.ppolicy->owner(grid_coords,*send_db.pctx, tempcoords);
+                int owner = send_db.ppolicy->owner(bcoords,2,*send_db.pctx, tempcoords);
 
                 ptrdiff_t r0 = bi*br;
                 ptrdiff_t c0 = bj*bc;
@@ -1147,8 +1155,8 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
             tmp /= grid[d];
         }
 
-        policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-        int owner = policy->owner(grid_coords, *ctx, tmpcoords);
+        int owner = policy->owner(bcoords,recv_db.Dblockarray.ptensor_rank,*ctx, tmpcoords);
+
 
         if (owner != rank)
         {
@@ -1280,8 +1288,8 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
                 tmp /= grid[d];
             }
 
-            policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-            int owner = policy->owner(grid_coords, *ctx, tmpcoords);
+            int owner = policy->owner(bcoords,recv_db.Dblockarray.ptensor_rank, *ctx, tmpcoords);
+
 
             MPI_Datatype tmp_type, blocktype;
             int* sizes  = new int[recv_db.Dblockarray.ptensor_rank];
@@ -1398,7 +1406,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,MPI_Sendlocation loc,
     DataBlock<T>* recv_db
-    )
+)
 {
     if (send_db.pctx->comm == MPI_COMM_NULL)
         return;
@@ -1519,8 +1527,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
                 tmp /= grid[d];
             }
 
-            send_db.ppolicy->create_coords(bcoords, grid_coords, send_db.Dblockarray.ptensor_rank);
-            int owner = send_db.ppolicy->owner(grid_coords,*send_db.pctx, tempcoords);
+            int owner = send_db.ppolicy->owner(bcoords,send_db.Dblockarray.ptensor_rank,*send_db.pctx, tempcoords);
 
             #pragma omp parallel for simd if(parallel:blockrank>30)
             for(ptrdiff_t d=0; d<blockrank; d++)
@@ -1595,7 +1602,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
         ptrdiff_t elems=1;
 
         #pragma omp parallel for simd reduction(*:elems) if(parallel:rank_t>30)
-       for(ptrdiff_t d=0; d<rank_t; d++)
+        for(ptrdiff_t d=0; d<rank_t; d++)
             elems *= ext[d];
 
         T* buffer=send_db.Dblockarray.pdata + send_db.Dblockarray.pblock_offsets[i];
@@ -1623,7 +1630,32 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     delete[] grid;
 }
 
+template<typename T>
+inline void DataBlock_MPI_Functions::MPI_All_Gather_tensor_from_subtensors_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+{
+    int rootrank=0;
+    MPI_Gather_tensor_from_subtensors_alloc(send_db,0,loc,&recv_db);
+    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db->pcom,0 );
+}
 
+template<typename T>
+inline void DataBlock_MPI_Functions::MPI_All_Gather_matrix_from_submatrices_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+{
+    int rootrank=0;
+    MPI_Gather_matrix_from_submatrices_alloc(send_db,0,loc,&recv_db);
+    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db->pcom,0 );
+}
+
+template<typename T>
+inline void DataBlock_MPI_Functions::MPI_All_Gather_vector_from_subvectors_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+{
+    int rootrank=0;
+    MPI_Gather_vector_from_subvectors_alloc(send_db,0,loc,&recv_db);
+    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db->pcom,0 );
+}
 
 
 template<typename T>
@@ -1687,8 +1719,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
     for (ptrdiff_t b = 0; b < total_blocks; b++)
     {
         ptrdiff_t bcoords[1] = {b};
-        policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-        int owner = policy->owner(grid_coords, *ctx, temp_coords);
+        int owner = policy->owner(bcoords,1, *ctx, temp_coords);
 
         if (owner == rank)
             local_block_indices[local_blocks++] = b;
@@ -1803,8 +1834,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
         {
             ptrdiff_t bcoords[1] = { b };
 
-            policy->create_coords(bcoords, grid_coords, recv_db.Dblockarray.ptensor_rank);
-            int owner = policy->owner(grid_coords, *ctx, temp_coords);
+            int owner = policy->owner(bcoords,1, *ctx, temp_coords);
 
 
             ptrdiff_t start = b * bs;
@@ -1880,7 +1910,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
     const DistributedDataBlock<T>& send_db,
     int rootrank,MPI_Sendlocation loc,
     DataBlock<T>* recv_db
-    )
+)
 {
     if(send_db.pctx==nullptr)
         return;
@@ -1907,11 +1937,11 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
         ptrdiff_t datalen = N;
 
         alloc_helper(loc,
-            1,
-            datalen,
-            ext,
-            str,
-            pdata);
+                     1,
+                     datalen,
+                     ext,
+                     str,
+                     pdata);
 
         ext[0] = N;
         str[0] = 1;
@@ -1943,9 +1973,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
         {
             ptrdiff_t bcoords[1] = { b };
 
-            send_db.ppolicy->create_coords(bcoords,grid_coords,send_db.Dblockarray.ptensor_rank);
-
-            int owner = send_db.ppolicy->owner(grid_coords,*send_db.pctx,temp_coords);
+            int owner = send_db.ppolicy->owner(bcoords,1,*send_db.pctx,temp_coords);
             ptrdiff_t start = b * bs;
             ptrdiff_t diff=N - start;
             ptrdiff_t len   = bs<diff?bs:diff;
@@ -2057,7 +2085,7 @@ inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(MPI_Sendl
     MPI_Recv(&prank, 1, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
 
     ptrdiff_t *pextents=nullptr,
-            *pstrides=nullptr;
+               *pstrides=nullptr;
     T* pdata=nullptr;
 
     alloc_helper(loc,prank,pdatalength,pextents,pstrides,pdata);
@@ -2137,7 +2165,7 @@ void DataBlock_MPI_Functions::MPI_Recv_DataBlock_meta(DataBlock<T>& m,const int 
     MPI_Recv(&m.dprank, 1, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpextents,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
     MPI_Recv(m.dpstrides,m.dprank, mpi_get_type<ptrdiff_t>(), source, tag, pcomm, &status);
-     MPI_Recv(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
+    MPI_Recv(&m.dpconjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
     MPI_Datatype MPI_SELECTIVE_TYPE=create_mpi_DataBlockConfig_type();
     MPI_Recv(&m.dpconfig, 1, MPI_SELECTIVE_TYPE, source, tag, pcomm, &status);
     MPI_Type_free(&MPI_SELECTIVE_TYPE);
@@ -2161,7 +2189,8 @@ inline  void DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(DataBlock<T>& mds
 }
 
 
-inline MPI_Datatype create_mpi_DataBlockConfig_type() {
+inline MPI_Datatype create_mpi_DataBlockConfig_type()
+{
     MPI_Datatype mpi_config_type;
 
 
@@ -2183,7 +2212,8 @@ inline MPI_Datatype create_mpi_DataBlockConfig_type() {
     return mpi_config_type;
 }
 
-inline MPI_CartesianContext::MPI_CartesianContext(MPI_Comm comm_): comm(comm_) {
+inline MPI_CartesianContext::MPI_CartesianContext(MPI_Comm comm_): comm(comm_)
+{
     MPI_Comm_size(comm, &size);
 
     int ndims;
@@ -2204,22 +2234,26 @@ inline MPI_CartesianContext::MPI_CartesianContext(MPI_Comm comm_): comm(comm_) {
     delete[] tmp_coords;
 }
 
-inline MPI_CartesianContext::~MPI_CartesianContext() {
+inline MPI_CartesianContext::~MPI_CartesianContext()
+{
     delete[] dims;
     delete[] periods;
 }
 
-inline int MPI_CartesianContext::rank_from_coords(int *coords) const {
+inline int MPI_CartesianContext::rank_from_coords(int *coords) const
+{
     int rank;
     MPI_Cart_rank(comm, coords, &rank);
     return rank;
 }
 
 inline BlockMappingPolicy::BlockMappingPolicy(ptrdiff_t gridrank_, const int *index_map_,
-                                              const ptrdiff_t *cyclic_block_): gridrank(gridrank_) {
+        const ptrdiff_t *cyclic_block_): gridrank(gridrank_)
+{
     index_map = new int[gridrank];
     cyclic_block = new ptrdiff_t[gridrank];
 
+    #pragma omp unroll partial
     for (ptrdiff_t d = 0; d < gridrank; d++)
     {
         cyclic_block[d] = cyclic_block_ ? cyclic_block_[d] : 1;
@@ -2227,38 +2261,52 @@ inline BlockMappingPolicy::BlockMappingPolicy(ptrdiff_t gridrank_, const int *in
 
     if (index_map_ != nullptr)
     {
+        #pragma omp unroll partial
         for (ptrdiff_t d = 0; d < gridrank; d++)
             index_map[d] = index_map_[d];
     }
     else
     {
+        #pragma omp unroll partial
         for (ptrdiff_t d = 0; d < gridrank; d++)
             index_map[d] = (int)d;
     }
 }
 
-inline void BlockMappingPolicy::create_coords(const ptrdiff_t *in, ptrdiff_t *out, ptrdiff_t in_rank) const {
-    for (ptrdiff_t g = 0; g < gridrank; g++)
-    {
-        int idx = index_map[g];
 
-        if (idx >= 0 && (ptrdiff_t)idx < in_rank)
-            out[g] = in[idx];
-        else
-            out[g] = 0;
+
+inline void BlockMappingPolicy::owner_coords(
+    const ptrdiff_t* block_coords,
+    ptrdiff_t block_rank,
+    const MPI_CartesianContext& ctx,
+    int* coords) const
+{
+    #pragma omp unroll partial
+    for (ptrdiff_t d = 0; d < gridrank; ++d)
+    {
+        const int idx = index_map[d];
+
+        ptrdiff_t x =(idx >= 0 && (ptrdiff_t)idx < block_rank)? block_coords[idx]: 0;
+
+        const ptrdiff_t grouped =x / cyclic_block[d];
+
+        coords[d] =static_cast<int>(grouped % ctx.dims[d]);
     }
 }
 
-inline int BlockMappingPolicy::owner(const ptrdiff_t *grid_coords, const MPI_CartesianContext &ctx,
-                                     int *temp_coords) const {
-    for (ptrdiff_t d = 0; d < gridrank; d++)
-    {
-        ptrdiff_t grouped = grid_coords[d] / cyclic_block[d];
-        temp_coords[d] = (int)(grouped % ctx.dims[d]);
-    }
+inline int BlockMappingPolicy::owner(
+    const ptrdiff_t* block_coords,
+    ptrdiff_t block_rank,
+    const MPI_CartesianContext& ctx,
+    int* temp_coords) const
+{
+    owner_coords(
+        block_coords,
+        block_rank,
+        ctx,
+        temp_coords);
 
     return ctx.rank_from_coords(temp_coords);
 }
-
 
 #endif

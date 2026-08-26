@@ -221,11 +221,12 @@ inline ptrdiff_t compute_offset(
     const ptrdiff_t rank,
     const ptrdiff_t flatIndex
 ) {
+
     ptrdiff_t remainingIndex = flatIndex;
     ptrdiff_t offset = 0;
 
-    ptrdiff_t axis = rank - 1;
-    while (axis >= 0) {
+    #pragma omp unroll partial
+    for (ptrdiff_t axis = rank - 1; axis >= 0; --axis) {
         ptrdiff_t currentExtent = extents[axis];
 
         ptrdiff_t coordinate = remainingIndex % currentExtent;
@@ -233,8 +234,6 @@ inline ptrdiff_t compute_offset(
         offset += coordinate * strides[axis];
 
         remainingIndex /= currentExtent;
-
-        axis--;
     }
 
     return offset;
@@ -294,11 +293,11 @@ ptrdiff_t compute_offset_datablockarray(
     ptrdiff_t remainingIndex = flatIndex;
     ptrdiff_t offset = 0;
 
-    ptrdiff_t axis = rank - 1;
     const ptrdiff_t* extents_ptr=extents_buffer+blocknumber*rank;
     const ptrdiff_t* strides_ptr=strides_buffer+blocknumber*rank;
 
-    while (axis >= 0) {
+    #pragma omp unroll partial
+    for (ptrdiff_t axis = rank - 1; axis >= 0; --axis) {
         ptrdiff_t currentExtent = extents_ptr[axis];
 
         ptrdiff_t coordinate = remainingIndex % currentExtent;
@@ -306,8 +305,6 @@ ptrdiff_t compute_offset_datablockarray(
         offset += coordinate * strides_ptr[axis];
 
         remainingIndex /= currentExtent;
-
-        axis--;
     }
 
     return offset;
@@ -394,6 +391,59 @@ const ptrdiff_t* strB = b.strides_ptr();
 
     return true;
 }
+#pragma omp end declare target
+
+
+#pragma omp begin declare target
+inline ptrdiff_t local_to_global_tensor_index(
+    const ptrdiff_t* pextentsbuffer,
+    const ptrdiff_t* global_strides,
+    const ptrdiff_t* block_starts,
+    const ptrdiff_t pblock_rank,
+    const ptrdiff_t ptensor_rank,
+    const ptrdiff_t blocknumber,
+    const ptrdiff_t local_index,
+    const bool prowm)
+{
+    const ptrdiff_t* block_extents =pextentsbuffer + blocknumber *ptensor_rank ;
+
+    ptrdiff_t tmp = local_index;
+    ptrdiff_t global_index = 0;
+
+    if (prowm)
+    {
+        #pragma omp unroll partial
+        for (ptrdiff_t d = ptensor_rank - 1; d >= 0; --d)
+        {
+            const ptrdiff_t local_coord = tmp % block_extents[d];
+            tmp /= block_extents[d];
+
+            const ptrdiff_t global_coord =
+                local_coord +
+                (d < pblock_rank ? block_starts[d] : 0);
+
+            global_index += global_coord * global_strides[d];
+        }
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (ptrdiff_t d = 0; d < ptensor_rank; ++d)
+        {
+            const ptrdiff_t local_coord = tmp % block_extents[d];
+            tmp /= block_extents[d];
+
+            const ptrdiff_t global_coord =
+                local_coord +
+                (d < pblock_rank ? block_starts[d] : 0);
+
+            global_index += global_coord * global_strides[d];
+        }
+    }
+
+    return global_index;
+}
+
 #pragma omp end declare target
 
 

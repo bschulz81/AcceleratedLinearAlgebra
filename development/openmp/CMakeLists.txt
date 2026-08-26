@@ -1,4 +1,4 @@
- cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.10)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23 )
 
@@ -10,7 +10,7 @@ set (LANGUAGES "C;CXX")
 
 #GCC compiler flags.
 SET (CMAKE_CXX_COMPILER "/usr/bin/g++" CACHE STRING "C++ compiler" FORCE)
-SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-stack-protector -O1 -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -foffload=nvptx-none  -fno-stack-protector -O1  -Wall")
 
 
 #mpicc compiler flags.

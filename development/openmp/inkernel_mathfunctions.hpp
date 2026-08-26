@@ -2212,7 +2212,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A,co
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp parallel for simd
@@ -2224,7 +2224,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A,co
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp simd
@@ -2236,7 +2236,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A,co
     else
     {
         #pragma omp unroll partial
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp unroll partial
@@ -2264,7 +2264,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A, D
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp parallel for simd
@@ -2276,7 +2276,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A, D
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp simd
@@ -2288,7 +2288,7 @@ void In_Kernel_Mathfunctions::tensor_linear_combination(const DataBlock<T>& A, D
     else
     {
         #pragma omp unroll partial
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp unroll partial
@@ -2317,7 +2317,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  const DataBlock<T>& M, co
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp parallel for simd
@@ -2329,7 +2329,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  const DataBlock<T>& M, co
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp simd
@@ -2341,7 +2341,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  const DataBlock<T>& M, co
     else
     {
         #pragma omp unroll partial
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp unroll partial
@@ -2365,7 +2365,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp parallel for simd
@@ -2377,7 +2377,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T 
     else if constexpr (Policy == OpenMPVariant::Simd)
     {
         #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp simd
@@ -2389,7 +2389,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T 
     else
     {
         #pragma omp unroll partial
-        for(ptrdiff_t i=0; i<=rank; i++)
+        for(ptrdiff_t i=0; i<rank; i++)
             max_index*=C.dpextents[i];
 
         #pragma omp unroll partial
@@ -2402,6 +2402,145 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T 
 }
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_product(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC)
+{
+    const ptrdiff_t rankA = A.dprank;
+    const ptrdiff_t rankB = B.dprank;
+    const ptrdiff_t rankC = C.dprank;
+
+    ptrdiff_t max_index_B = 1;
+    ptrdiff_t max_index_C = 1;
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*: max_index_B)
+        for (ptrdiff_t i = 0; i < rankB; ++i)
+        {
+            max_index_B *= B.dpextents[i];
+        }
+        #pragma omp simd reduction(*: max_index_C)
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            const ptrdiff_t idxA = i / max_index_B;
+            const ptrdiff_t idxB = i % max_index_B;
+            C(i) =CoeffC==T(0)? CoeffB* A(idxA) * B(idxB):CoeffC*C(i)+CoeffB* A(idxA) * B(idxB);
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+        #pragma omp simd reduction(*: max_index_B)
+        for (ptrdiff_t i = 0; i < rankB; ++i)
+        {
+            max_index_B *= B.dpextents[i];
+        }
+
+        #pragma omp simd reduction(*: max_index_C)
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            const ptrdiff_t idxA = i / max_index_B;
+            const ptrdiff_t idxB = i % max_index_B;
+            C(i) =CoeffC==T(0)? CoeffB* A(idxA) * B(idxB):CoeffC*C(i)+CoeffB* A(idxA) * B(idxB);
+        }
+
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < rankB; ++i)
+        {
+            max_index_B *= B.dpextents[i];
+        }
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            const ptrdiff_t idxA = i / max_index_B;
+            const ptrdiff_t idxB = i % max_index_B;
+            C(i) =CoeffC==T(0)? CoeffB* A(idxA) * B(idxB):CoeffC*C(i)+CoeffB* A(idxA) * B(idxB);
+        }
+    }
+}
+#pragma omp end declare target
+
+
+
+#pragma omp begin declare target
+template <OpenMPVariant Policy, typename T>
+void In_Kernel_Mathfunctions::tensor_product_hadamard(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC)
+{
+    const ptrdiff_t rankA = A.dprank;
+    const ptrdiff_t rankB = B.dprank;
+    const ptrdiff_t rankC = C.dprank;
+
+    ptrdiff_t max_index_B = 1;
+    ptrdiff_t max_index_C = 1;
+
+    if constexpr (Policy == OpenMPVariant::ParallelSimd)
+    {
+        #pragma omp simd reduction(*: max_index_C)
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp parallel for simd
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            C(i) =CoeffC==T(0)? CoeffB* A(i) * B(i):CoeffC*C(i)+CoeffB* A(i) * B(i);
+        }
+    }
+    else if constexpr (Policy == OpenMPVariant::Simd)
+    {
+
+        #pragma omp simd reduction(*: max_index_C)
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp simd
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            C(i) =CoeffC==T(0)? CoeffB* A(i) * B(i):CoeffC*C(i)+CoeffB* A(i) * B(i);
+        }
+
+    }
+    else
+    {
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < rankC; ++i)
+        {
+            max_index_C *= C.dpextents[i];
+        }
+
+        #pragma omp unroll partial
+        for (ptrdiff_t i = 0; i < max_index_C; ++i)
+        {
+            C(i) =CoeffC==T(0)? CoeffB* A(i) * B(i):CoeffC*C(i)+CoeffB* A(i) * B(i);
+        }
+    }
+}
+#pragma omp end declare target
 
 
 #endif

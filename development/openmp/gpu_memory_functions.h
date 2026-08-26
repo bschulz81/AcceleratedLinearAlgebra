@@ -39,7 +39,7 @@ public:
         const DataBlock<T> &pdL;
         int pdevicenum;
     public:
-        OffloadHelperConst(const DataBlock<T>& dL, int devicenum, bool just_alloc);
+        OffloadHelperConst(const DataBlock<T>& dL, int devicenum);
 
         ~OffloadHelperConst();
 
