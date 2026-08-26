@@ -39,7 +39,7 @@ GPU_Memory_Functions::OffloadHelper<T>::~OffloadHelper() {
 
 template<typename T>
 GPU_Memory_Functions::OffloadHelperConst<T>::
-OffloadHelperConst(const DataBlock<T> &dL, int devicenum, bool just_alloc):pdL(dL),pdevicenum(devicenum) {
+OffloadHelperConst(const DataBlock<T> &dL, int devicenum):pdL(dL),pdevicenum(devicenum) {
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::create_in(dL, devicenum);
 #endif

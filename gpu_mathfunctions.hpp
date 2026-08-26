@@ -21,16 +21,16 @@ void  GPU_Math_Functions::matrix_multiply_vector_sparse_g( const BlockedDataView
     const ptrdiff_t ystr0 = y.dpstrides[0];
 
     typename GPU_Memory_Functions::BlockedDataViewOffloadHelper<T> offloadA(A, opt.device);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadx(x, opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadx(x, opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloady(y, opt.device, false, opt.update_host);
 
 
-        #pragma omp target teams distribute parallel for simd device(opt.device)
-        for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
-        {
-            const size_t index=i*ystr0;
-            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy* y.dpdata[index];
-        }
+    #pragma omp target teams distribute parallel for simd device(opt.device)
+    for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
+    {
+        const size_t index=i*ystr0;
+        y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy* y.dpdata[index];
+    }
 
 
 
@@ -90,12 +90,12 @@ void GPU_Math_Functions::matrix_multiply_vector_sparse_g( const BlockedDataView<
     typename GPU_Memory_Functions::OffloadHelper<T> offloady(y, opt.device, false, opt.update_host);
 
 
-        #pragma omp target teams distribute parallel for simd device(opt.device)
-        for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
-        {
-            const size_t index=i*ystr0;
-            y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy* y.dpdata[index];
-        }
+    #pragma omp target teams distribute parallel for simd device(opt.device)
+    for(ptrdiff_t i=0; i<y.dpextents[0]; i++)
+    {
+        const size_t index=i*ystr0;
+        y.dpdata[index]=Coeffy==T(0)?T(0): Coeffy* y.dpdata[index];
+    }
 
 
     #pragma omp target teams distribute parallel for collapse(2)   device(opt.device)
@@ -167,19 +167,19 @@ void GPU_Math_Functions::matrix_multiply_dot_sparse_g( const BlockedDataView<T>&
     const ptrdiff_t bext1 = B.dpextents[1];
 
     typename GPU_Memory_Functions::BlockedDataViewOffloadHelper<T> offloadA(A, opt.device);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadC(C, opt.device, false, opt.update_host);
 
 
-        #pragma omp target teams distribute parallel for simd collapse(2)  device(opt.device)
-        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+    #pragma omp target teams distribute parallel for simd collapse(2)  device(opt.device)
+    for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+    {
+        for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
         {
-            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-            {
-                const size_t index=i*Cstr0+j*Cstr1;
-                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
-            }
+            const size_t index=i*Cstr0+j*Cstr1;
+            C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
         }
+    }
 
 
     #pragma omp target teams distribute parallel for device(opt.device)
@@ -249,15 +249,15 @@ void GPU_Math_Functions::matrix_multiply_dot_sparse_g( const BlockedDataView<T>&
     typename GPU_Memory_Functions::OffloadHelper<T> offloadC(C, opt.device, false, opt.update_host);
 
 
-        #pragma omp target teams distribute parallel for simd collapse(2) device(opt.device)
-        for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+    #pragma omp target teams distribute parallel for simd collapse(2) device(opt.device)
+    for(ptrdiff_t i=0; i<C.dpextents[0]; i++)
+    {
+        for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
         {
-            for(ptrdiff_t j=0; j<C.dpextents[1]; j++)
-            {
-                const size_t index=i*str0+j*str1;
-                C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
-            }
+            const size_t index=i*str0+j*str1;
+            C.dpdata[index]=CoeffC==T(0)?T(0): CoeffC*C.dpdata[index];
         }
+    }
 
 
     #pragma omp target teams distribute parallel for collapse(2) device(opt.device)
@@ -333,8 +333,8 @@ void GPU_Math_Functions::matrix_multiply_dot_g( const DataBlock<T>& A, const Dat
     const ptrdiff_t cols=B.dpextents[1];
     const ptrdiff_t inner_dim=A.dpextents[1];
 
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(A, opt.device, false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device, false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(A, opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadC(C, opt.device, CoeffC==T(0), opt.update_host);
 
 
@@ -355,6 +355,28 @@ void GPU_Math_Functions::matrix_multiply_dot_g( const DataBlock<T>& A, const Dat
 }
 
 
+template <typename T>
+void GPU_Math_Functions::matrix_multiply_hadamard_g( const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const T CoeffB,const T CoeffC,GPUOptions opt)
+{
+    const ptrdiff_t rows=A.dpextents[0];
+    const ptrdiff_t cols=B.dpextents[1];
+
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(A, opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device);
+    typename GPU_Memory_Functions::OffloadHelper<T> offloadC(C, opt.device, CoeffC==T(0), opt.update_host);
+
+
+    #pragma omp target teams distribute parallel for simd collapse(2)  device(opt.device)
+    for (ptrdiff_t i = 0; i < rows; ++i)
+    {
+        for (ptrdiff_t j = 0; j < cols; ++j)
+        {
+            C(i,j)=CoeffC==T(0)?CoeffB*A(i,j)*B(i,j):  CoeffC*C(i,j)+CoeffB*A(i,j)*B(i,j);
+        }
+    }
+}
+
+
 
 template <typename T>
 void GPU_Math_Functions::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C,const T CoeffB,const T CoeffC,GPUOptions opt)
@@ -364,8 +386,8 @@ void GPU_Math_Functions::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, con
     const ptrdiff_t inner_dim=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(A, opt.device, false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device, false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(A, opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(B, opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadC(C, opt.device, CoeffC==T(0), opt.update_host);
 
     #pragma omp target teams distribute parallel for collapse(2) device(opt.device)
@@ -383,7 +405,7 @@ void GPU_Math_Functions::matrix_multiply_dot_kahan_g(const  DataBlock<T>& A, con
                 c = z - y;
                 sum = t;
             }
-             C(i,j)=CoeffC==T(0)?CoeffB*sum:  CoeffC*C(i,j)+CoeffB*sum;
+            C(i,j)=CoeffC==T(0)?CoeffB*sum:  CoeffC*C(i,j)+CoeffB*sum;
         }
     }
 
@@ -400,8 +422,8 @@ void GPU_Math_Functions::matrix_linear_combination_g( const DataBlock<T>& A,cons
     const ptrdiff_t m=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for simd collapse(2)  device(opt.device)
@@ -423,7 +445,7 @@ void GPU_Math_Functions::matrix_linear_combination_g( const DataBlock<T>& A, Dat
     const ptrdiff_t m=A.dpextents[1];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for simd collapse(2)  device(opt.device)
@@ -431,7 +453,7 @@ void GPU_Math_Functions::matrix_linear_combination_g( const DataBlock<T>& A, Dat
     {
         for (ptrdiff_t j = 0; j <m ; ++j)
         {
-           C(i,j) =CoeffC==T(0)?CoeffA*A(i,j): CoeffC*C(i,j)+CoeffA*A(i,j);
+            C(i,j) =CoeffC==T(0)?CoeffA*A(i,j): CoeffC*C(i,j)+CoeffA*A(i,j);
         }
     }
 
@@ -445,8 +467,8 @@ void GPU_Math_Functions::matrix_multiply_vector_g( const DataBlock<T>&M, const D
     const ptrdiff_t n= M.dpextents[0];
     const ptrdiff_t m=V.dpextents[0];
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperV(V,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperV(V,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
     #pragma omp target teams distribute parallel for device(opt.device)
     for (ptrdiff_t i = 0; i <n; ++i)
@@ -472,8 +494,8 @@ void GPU_Math_Functions::matrix_multiply_vector_kahan_g( const DataBlock<T>&M, c
     const ptrdiff_t m=V.dpextents[0];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperV(V,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperV(V,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelpery(y,opt.device,Coeffy==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for device(opt.device)
@@ -506,7 +528,7 @@ void GPU_Math_Functions::matrix_multiply_vector_g( const DataBlock<T>&M, const T
 
     #pragma omp target enter data map (to:V[0:n])device(opt.device)
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for device(opt.device)
@@ -536,7 +558,7 @@ void GPU_Math_Functions::matrix_multiply_vector_kahan_g( const DataBlock<T>&M, c
 
     #pragma omp target enter data map (to:V[0:n])device(opt.device)
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for  device(opt.device)
@@ -568,7 +590,7 @@ void GPU_Math_Functions::matrix_multiply_scalar_g( const  DataBlock<T>& M,const 
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,true,opt.update_host);
 
     #pragma omp target teams distribute parallel for simd collapse(2) device(opt.device)
@@ -617,7 +639,7 @@ void GPU_Math_Functions::vector_multiply_scalar_g( const DataBlock<T>& vec,const
 
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec(vec,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec(vec,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperres(res,opt.device,true,opt.update_host);
 
     #pragma omp target teams distribute parallel for simd device(opt.device)
@@ -654,8 +676,8 @@ inline void GPU_Math_Functions::vector_linear_combination_g(const   DataBlock<T>
 {
     const ptrdiff_t n=vecA.dpextents[0];
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vecA,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vecB,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vecA,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vecB,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperres(vecC,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for simd device(opt.device)
@@ -674,7 +696,7 @@ inline void GPU_Math_Functions::vector_linear_combination_g(const   DataBlock<T>
 {
     const ptrdiff_t n=vecA.dpextents[0];
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vecA,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vecA,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperres(vecC,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for simd device(opt.device)
@@ -695,8 +717,8 @@ inline T GPU_Math_Functions::vector_dot_product_g(const  DataBlock<T> &vec1, con
 
     T result=T(0);
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vec1,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vec2,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vec1,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vec2,opt.device);
 
 
     if constexpr (is_complex<T>::value)
@@ -734,8 +756,8 @@ inline T GPU_Math_Functions::vector_dot_product_kahan_g(const DataBlock<T>& vec1
     const ptrdiff_t n = vec1.dpextents[0];
     const int total_threads = info.num_teams * info.threads_per_team;
 
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vec1, info.dev_id, false);
-    typename  GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vec2, info.dev_id, false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec1(vec1, info.dev_id);
+    typename  GPU_Memory_Functions::OffloadHelperConst<T> offloadhelpervec2(vec2, info.dev_id);
 
     if (n < (ptrdiff_t)total_threads)
     {
@@ -862,7 +884,7 @@ void GPU_Math_Functions::cholesky_decomposition_g(const DataBlock<T> & A,DataBlo
 
     L.dpconjugate=false;
 
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperL(L,opt.device,true,opt.update_host);
 
     T* dataA=(T*)omp_get_mapped_ptr(A.dpdata,opt.device);
@@ -916,7 +938,7 @@ template <typename T>
 void GPU_Math_Functions::lu_decomposition_g(const DataBlock<T>& A, DataBlock<T> &L,DataBlock<T>& U,  bool initialize_output_to_zero,GPUOptions opt)
 {
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperL(L,opt.device,true,opt.update_host);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperU(U,opt.device,true,opt.update_host);
 
@@ -1256,12 +1278,12 @@ void GPU_Math_Functions::tensor_linear_combination_g( const DataBlock<T>& A,cons
     ptrdiff_t max_index=1;
 
     #pragma omp simd reduction(*:max_index)
-    for(ptrdiff_t i=0; i<=rank; i++)
+    for(ptrdiff_t i=0; i<rank; i++)
         max_index*=C.dpextents[i];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for simd  device(opt.device)
@@ -1277,15 +1299,15 @@ template <typename T>
 void GPU_Math_Functions::tensor_linear_combination_g( const DataBlock<T>& A, DataBlock<T>& C,const T CoeffA,const T CoeffC,GPUOptions opt)
 {
 
-const ptrdiff_t rank=C.dprank;
+    const ptrdiff_t rank=C.dprank;
     ptrdiff_t max_index=1;
 
     #pragma omp simd reduction(*:max_index)
-    for(ptrdiff_t i=0; i<=rank; i++)
+    for(ptrdiff_t i=0; i<rank; i++)
         max_index*=C.dpextents[i];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
 
     #pragma omp target teams distribute parallel for device(opt.device)
@@ -1301,15 +1323,15 @@ template <typename T>
 void GPU_Math_Functions::tensor_multiply_scalar_g( const  DataBlock<T>& M,const T alpha,DataBlock<T>&C,GPUOptions opt)
 {
 
- const ptrdiff_t rank=C.dprank;
+    const ptrdiff_t rank=C.dprank;
     ptrdiff_t max_index=1;
 
     #pragma omp simd reduction(*:max_index)
-    for(ptrdiff_t i=0; i<=rank; i++)
+    for(ptrdiff_t i=0; i<rank; i++)
         max_index*=C.dpextents[i];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
-    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device,false);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperM(M,opt.device);
     typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,true,opt.update_host);
 
     #pragma omp target teams distribute parallel for simd device(opt.device)
@@ -1326,11 +1348,11 @@ void GPU_Math_Functions::tensor_multiply_scalar_g( const  DataBlock<T>& M,const 
 template <typename T>
 void GPU_Math_Functions::tensor_multiply_scalar_g( DataBlock<T>& M,const  T scalar,GPUOptions opt)
 {
-const ptrdiff_t rank=M.dprank;
+    const ptrdiff_t rank=M.dprank;
     ptrdiff_t max_index=1;
 
     #pragma omp simd reduction(*:max_index)
-    for(ptrdiff_t i=0; i<=rank; i++)
+    for(ptrdiff_t i=0; i<rank; i++)
         max_index*=M.dpextents[i];
 
     //these functions check isdevptr to see whether data was allocated with malloc. they do only offload if that is not the case.
@@ -1344,6 +1366,71 @@ const ptrdiff_t rank=M.dprank;
 
 
 }
+
+template <typename T>
+void GPU_Math_Functions::tensor_product_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC,GPUOptions opt)
+{
+    const ptrdiff_t rankA = A.dprank;
+    const ptrdiff_t rankB = B.dprank;
+    const ptrdiff_t rankC = C.dprank;
+
+    ptrdiff_t max_index_B = 1;
+    ptrdiff_t max_index_C = 1;
+
+    #pragma omp simd reduction(*: max_index_B)
+    for (ptrdiff_t i = 0; i < rankB; ++i)
+    {
+        max_index_B *= B.dpextents[i];
+    }
+
+    #pragma omp simd reduction(*: max_index_C)
+    for (ptrdiff_t i = 0; i < rankC; ++i)
+    {
+        max_index_C *= C.dpextents[i];
+    }
+
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device);
+    typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
+
+
+    #pragma omp target teams distribute parallel for device(opt.device)
+    for (ptrdiff_t i = 0; i < max_index_C; ++i)
+    {
+        const ptrdiff_t idxA = i / max_index_B;
+        const ptrdiff_t idxB = i % max_index_B;
+        C(i) =CoeffC==T(0)? CoeffB* A(idxA) * B(idxB):CoeffC*C(i)+CoeffB* A(idxA) * B(idxB);
+    }
+
+}
+
+template <typename T>
+void GPU_Math_Functions::tensor_product_hadamard_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC,GPUOptions opt)
+{
+    const ptrdiff_t rankC = C.dprank;
+
+    ptrdiff_t max_index_C = 1;
+
+    #pragma omp simd reduction(*: max_index_C)
+    for (ptrdiff_t i = 0; i < rankC; ++i)
+    {
+        max_index_C *= C.dpextents[i];
+    }
+
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperA(A,opt.device);
+    typename GPU_Memory_Functions::OffloadHelperConst<T> offloadhelperB(B,opt.device);
+    typename GPU_Memory_Functions::OffloadHelper<T> offloadhelperC(C,opt.device,CoeffC==T(0),opt.update_host);
+
+
+    #pragma omp target teams distribute parallel for device(opt.device)
+    for (ptrdiff_t i = 0; i < max_index_C; ++i)
+    {
+        C(i) =CoeffC==T(0)? CoeffB* A(i) * B(i):CoeffC*C(i)+CoeffB* A(i) * B(i);
+    }
+
+}
+
+
 
 
 

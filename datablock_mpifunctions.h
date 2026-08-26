@@ -153,15 +153,9 @@ public:
         delete[] cyclic_block;
     }
 
-    void create_coords(
-        const ptrdiff_t* in,
-        ptrdiff_t* out,
-        ptrdiff_t in_rank) const;
+  inline void owner_coords(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* coords) const;
 
-    int owner(
-        const ptrdiff_t* grid_coords,
-        const MPI_CartesianContext& ctx,
-        int* temp_coords) const;
+  inline int owner(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* temp_coords) const;
 };
 
 
@@ -287,6 +281,19 @@ public:
     inline static void MPI_Gather_tensor_from_subtensors_alloc(  const DistributedDataBlock<T>& send_db,  int rootrank,
             MPI_Sendlocation loc,DataBlock<T>* recv_db = nullptr  );
 
+
+    template<typename T>
+    inline static void MPI_All_Gather_tensor_from_subtensors_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+
+    template<typename T>
+    inline static void MPI_All_Gather_matrix_from_submatrices_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+
+      template<typename T>
+    inline static void MPI_All_Gather_vector_from_subvectors_alloc(
+    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+
     template<typename T>
     inline static DataBlock<T> MPI_Recv_alloc_DataBlock( MPI_Sendlocation loc, const int source,const  int tag, MPI_Comm pcomm);
 
@@ -320,8 +327,6 @@ public:
     template<typename T>
     inline static void MPI_Irecv_DataBlock_pdata(DataBlock<T> &mds, const int source, const int tag,const  MPI_Comm pcomm,MPI_Request *request);
 
-
-
     template<typename T>
     inline static void alloc_helper( MPI_Sendlocation loc, ptrdiff_t rank,ptrdiff_t datalength,ptrdiff_t* &pextents,ptrdiff_t *&pstrides,T *&pdata);
     template<typename T>
@@ -332,9 +337,6 @@ public:
 
     template<typename T>
     inline static void free_helper2( MPI_Sendlocation loc, ptrdiff_t datalength,T *&pdata);
-
-    template<typename T>
-    inline static int compute_owner(const ptrdiff_t* bcoords,const ptrdiff_t* proc_grid, const ptrdiff_t* cyclic_block,ptrdiff_t gridrank);
 };
 
 

@@ -9,34 +9,6 @@
 
 #include "inkernel_mathfunctions.h"
 
-template<typename T>
-inline void Math_Functions::matrix_multiply_dot(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
-        const T CoefficientB,const T CoefficientC,
-        const Math_Functions_Policy* pol)
-{
-    const auto& policy = pol ? *pol : get_default_policy();
-
-    if(policy.should_use_gpu_matrix_multiply(A,B,C))
-    {
-        GPUOptions options
-        {
-            policy.devicenum,policy.update_host
-        };
-
-        if(policy.accumulation_precision > 1)
-            GPU_Math_Functions::matrix_multiply_dot_kahan_g(A,B,C,CoefficientB,CoefficientC,options);
-        else
-            GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,CoefficientB,CoefficientC,options);
-    }
-    else
-    {
-        if(policy.accumulation_precision > 1)
-            In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(A,B,C,CoefficientB,CoefficientC);
-        else
-            In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C,CoefficientB,CoefficientC);
-    }
-}
-
 
 
 template<typename T>
@@ -67,6 +39,58 @@ inline void Math_Functions::matrix_multiply_vector(const DataBlock<T>& A,const D
     }
 }
 
+
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_dot(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+        const T CoefficientB,const T CoefficientC,
+        const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix_multiply(A,B,C))
+    {
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+
+        if(policy.accumulation_precision > 1)
+            GPU_Math_Functions::matrix_multiply_dot_kahan_g(A,B,C,CoefficientB,CoefficientC,options);
+        else
+            GPU_Math_Functions::matrix_multiply_dot_g(A,B,C,CoefficientB,CoefficientC,options);
+    }
+    else
+    {
+        if(policy.accumulation_precision > 1)
+            In_Kernel_Mathfunctions::matrix_multiply_dot_kahan(A,B,C,CoefficientB,CoefficientC);
+        else
+            In_Kernel_Mathfunctions::matrix_multiply_dot(A,B,C,CoefficientB,CoefficientC);
+    }
+}
+
+
+template<typename T>
+inline void Math_Functions::matrix_multiply_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+        const T CoefficientB,const T CoefficientC,
+        const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix(A,B,C))
+    {
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+
+        GPU_Math_Functions::matrix_multiply_hadamard_g(A,B,C,CoefficientB,CoefficientC,options);
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::matrix_multiply_hadamard(A,B,C,CoefficientB,CoefficientC);
+    }
+}
 
 
 template<typename T>
@@ -446,6 +470,51 @@ inline void Math_Functions::tensor_multiply_scalar(DataBlock<T>& M,const T scala
         In_Kernel_Mathfunctions::tensor_multiply_scalar(M,scalar);
     }
 }
+
+
+template<typename T>
+inline void Math_Functions::tensor_product(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+        const T CoefficientB,const T CoefficientC,
+        const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix_multiply(A,B,C))
+    {
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+        GPU_Math_Functions::tensor_product_g(A,B,C,CoefficientB,CoefficientC,options);
+    }
+    else
+    {
+        In_Kernel_Mathfunctions::tensor_product(A,B,C,CoefficientB,CoefficientC);
+    }
+}
+
+template<typename T>
+inline void Math_Functions::tensor_product_hadamard(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,
+        const T CoefficientB,const T CoefficientC,
+        const Math_Functions_Policy* pol)
+{
+    const auto& policy = pol ? *pol : get_default_policy();
+
+    if(policy.should_use_gpu_matrix_multiply(A,B,C))
+    {
+        GPUOptions options
+        {
+            policy.devicenum,policy.update_host
+        };
+            GPU_Math_Functions::tensor_product_hadamard_g(A,B,C,CoefficientB,CoefficientC,options);
+    }
+    else
+    {
+            In_Kernel_Mathfunctions::tensor_product_hadamard(A,B,C,CoefficientB,CoefficientC);
+    }
+}
+
+
 
 
 #endif

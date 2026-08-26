@@ -23,6 +23,15 @@ public:
         matrix_multiply_dot_g(A,B,C,T(1),T(0),opt);
     }
 
+      template <typename T>
+    inline static void matrix_multiply_hadamard_g(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0),GPUOptions opt= {});
+
+    template <typename T>
+    inline static void matrix_multiply_hadamard_g(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,GPUOptions opt)
+    {
+        matrix_multiply_dot_g(A,B,C,T(1),T(0),opt);
+    }
+
     template <typename T>
     inline static void matrix_multiply_dot_kahan_g(const DataBlock<T>& A,const DataBlock<T>& B,DataBlock<T>& C,const T CoefficientB = T(1),const T CoefficientC  = T(0),
             GPUOptions opt= {});
@@ -196,6 +205,7 @@ public:
     }
 
 
+
     template <typename T>
     inline static void matrix_multiply_vector_sparse_g(const BlockedDataView<T>& A, const DataBlock<T>& x,DataBlock<T>& y,
             const T CoefficientX = T(1),const T Coefficienty = T(0),
@@ -272,6 +282,26 @@ public:
 
     template <typename T>
     inline static void tensor_multiply_scalar_g(DataBlock<T>& M,const T scalar,GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_product_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB=T(1), T CoeffC=T(0),GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_product_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, GPUOptions opt)
+    {
+        tensor_product_g(A,B,C,T(1),T(0),opt);
+    }
+
+    template <typename T>
+    inline static void tensor_product_hadamard_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB=T(1), T CoeffC=T(0),GPUOptions opt= {});
+
+    template <typename T>
+    inline static void tensor_product_hadamard_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, GPUOptions opt)
+    {
+        tensor_product_hadamard_g(A,B,C,T(1),T(0),opt);
+    }
+
+
 
 
 };

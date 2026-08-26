@@ -45,9 +45,21 @@ public:
 
     template<typename T>
     inline static bool matrix_multiply_dot_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
-        const Math_MPI_Functions_Policy* policy)
+            const Math_MPI_Functions_Policy* policy)
     {
-       return  matrix_multiply_dot_Distributed(A,B,C,T(1),T(0),policy);
+        return  matrix_multiply_dot_Distributed(A,B,C,T(1),T(0),policy);
+    }
+
+    template<typename T>
+    inline static bool matrix_multiply_hadamard_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientB=T(1),const T CoefficientC=T(0),const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool matrix_multiply_hadamard_Distributed(
+        const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,const Math_MPI_Functions_Policy* policy)
+    {
+        return  matrix_multiply_dot_hadamard(A,B,C,T(1),T(0),policy);
     }
 
 
@@ -57,13 +69,13 @@ public:
         const T Coefficientx=T(1),const T Coefficienty=T(0),
         const Math_MPI_Functions_Policy* policy=nullptr);
 
-     template<typename T>
+    template<typename T>
     inline static bool matrix_multiply_vector_Distributed(
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& x,DistributedDataBlock<T>& y,
         const Math_MPI_Functions_Policy* policy)
-        {
-           return matrix_multiply_vector_Distributed(A,x,y,T(1),T(0),policy);
-        }
+    {
+        return matrix_multiply_vector_Distributed(A,x,y,T(1),T(0),policy);
+    }
 
 
     template<typename T>
@@ -94,7 +106,7 @@ public:
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy)
     {
-       return matrix_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
+        return matrix_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
     }
 
     template<typename T>
@@ -102,7 +114,7 @@ public:
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy)
     {
-       return matrix_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+        return matrix_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
     }
 
 
@@ -127,7 +139,7 @@ public:
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy)
     {
-       return vector_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+        return vector_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
     }
 
 
@@ -275,7 +287,7 @@ public:
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy)
     {
-       return tensor_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
+        return tensor_linear_combination_Distributed(A,B,C,T(1),T(1),T(0),policy);
     }
 
     template<typename T>
@@ -283,10 +295,10 @@ public:
         const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy)
     {
-       return tensor_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
+        return tensor_linear_combination_Distributed(A,B,C,T(1),-T(1),T(0),policy);
     }
 
-     template<typename T>
+    template<typename T>
     inline static bool tensor_multiply_scalar_Distributed(
         const DistributedDataBlock<T>& A,const T scalar,DistributedDataBlock<T>& C,
         const Math_MPI_Functions_Policy* policy=nullptr);
@@ -299,8 +311,7 @@ public:
 
 
 
-
-inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
+    inline static std::optional<Math_MPI_Decomposition_Policy> default_policy;
 
 
 

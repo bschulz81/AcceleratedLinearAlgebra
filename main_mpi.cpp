@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
         }
 
-        MPI_Comm cart_comm =  Math_Functions_MPI::create_summa_communicator(6,6, rank == rootrank ? &A1 : nullptr,
+        MPI_Comm cart_comm =  Math_Functions_MPI::create_summa_communicator(5,5, rank == rootrank ? &A1 : nullptr,
                                                         rank == rootrank ? &B1 : nullptr,
                                                           rank == rootrank ? &C1 : nullptr,
                                                           rootrank);
@@ -183,9 +183,9 @@ int main(int argc, char** argv)
 
 
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}  ,&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}  ,&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
         block3.print();
