@@ -97,6 +97,19 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 26.08.2026
+
+Fixes of typos for the (still untested) tensor kernels (including a typo where a <= instead of a < was written in some loops).
+
+I Added the tensor product and Hadamard product  (all higher rank tensor functions are still untested).
+
+The tensor product for mpi distributed clusters is, however, by now, only implemented for a very slow default which gathers the smaller tensors on all machines. 
+This is inefficient. Unfortunately, the smaller tensors can have different edge cases than the larger tensor. 
+Gathering the right subsets of the data for the tensors of different ranks in an efficient way from the mpi nodes is unfortunately difficult to do if one wants to do this very fast.
+
+I after I add an Einsum in the next days, I will test the tensor kernels and perhaps optimize the distributed tensor product further.
+
+The summa algorithm uses the distribution profile better which could, in the future, account for different distribution cycles if other functions are changed too..
 
 ### 19.08.2026
 Guarded the updated flexible blas kernels for coeffC=0 to guarantee correct execution for gcc compiled binaries.
