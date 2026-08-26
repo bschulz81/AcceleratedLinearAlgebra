@@ -6,6 +6,16 @@ Todo:
 2) add an autodiff mechanism, tensor contraction, unary function nodes
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+26.08.2026
+Fixes of typos for the (still untested) tensor kernels (including a typo where a <= instead of a < was written in some loops),
+
+I Added the tensor product and hadamard product  (higher rank tensor functions are still untested).
+
+The distributed tensor product is, however, by now, only implemented for a very slow default which gathers the smaller tensors on all machines. 
+I after I add an Einsum in the next days, i will test the tensor kernels and perhaps optimize the distributed tensor product further.
+
+The summa algorithm uses the distribution profile better which could, in the future, account for different distribution cycles if other functions are changed too..
+
 19.08.2026
 guarded the more flexible blas kernels for coeffC=0 to guarantee correct execution if C is uninitialized.
 Apparently, uninitialized values can be nan and then propagate with CoeffC=0, CoeffC*nan would yield nan values under gcc. Now the execution works as before.
