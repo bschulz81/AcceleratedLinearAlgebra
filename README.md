@@ -102,21 +102,21 @@ The library can now work with general strided and not only with contiguous tenso
 
 A designation whether the data is rowmajor/colmajor or strided flag is now only used during construction. 
 Functions are provided to find out the layout (row/col major or strided) from strides,extents and rank. 
+The constructors of the DataBlock class have init and config structs which are better to read.
 
-The removal of the rowmajor flag fixes a bug with computations after transpose (which exchanged strides and thus would have changed row and colmajor orders). 
-Once one does more general operations like reversals with negative strides, and generally strided tensors, the rowmajor boolean became a problem and had to be removed.
+The removal of the rowmajor flag fixes a bug with computations after matrix transpose (which exchanged strides and thus would have changed row and colmajor orders). 
+Once one does more general operations like reversals with negative strides, and generally strided tensors,
+the rowmajor boolean became a problem and had to be removed from the DataBlock class, and all functions needing it had to be adapted.
 
 The lenght calculation for tensors can now also work if the strides are negative (e.g. for reverse views).
-
 The data scatterers and gatherers were adapted to generally strided tensors.
 
 Memory bugs were fixed in the vector*matrix multiplication.
 
-After the library handles generally strided tensors, 
-I can now go on to improve the tensor engine.
 
+After the library handles generally strided tensors, I can now go on to improve the tensor engine.
 I want to add a mechanism where an mpi rank can request indices from a tensor and gets these from the ranks that have them.
-Before this is not done distributed tensor contractions are just too slow and require too much communication.
+Before this is not done, distributed tensor contractions are just too slow and require too much communication.
 
 
 Clang 22 and earlier seem to have a severe bug with complex number calculations:
