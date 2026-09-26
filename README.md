@@ -96,7 +96,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
-### 26.08.2026
+### 26.09.2026
 
 The library can now work with general strided and not only with contiguous tensors
 
