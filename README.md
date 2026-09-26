@@ -121,9 +121,7 @@ Before this is not done, distributed tensor contractions are just too slow and r
 
 Clang 22 and earlier seem to have a severe bug with complex number calculations:
 https://releases.llvm.org/23.1.0/tools/clang/docs/ReleaseNotes.html#openmp-support
-
 For clang 23, Nvidia debuggers don't seem to record any openmp or gpu kernels from the test applications in this repository, 
-
 whereas gcc shows that there are many gpu calculations done and clang 22 does so too.
 I guess I will ask the clang developers what the reason for this is. Either a compiler problem with clang or one with Nvidia...
 
