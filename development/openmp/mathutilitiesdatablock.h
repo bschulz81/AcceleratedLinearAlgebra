@@ -4,13 +4,7 @@
 #include "datablock.h"
 #include "mathutilitiesdatablock.h"
 
-#pragma omp begin declare target
-enum class StridesCalculation
-{
-    NoComputation,
-    Compute
-};
-#pragma omp end declare target
+
 
 template <typename T>
 class DataBlock;
@@ -56,10 +50,10 @@ public:
     inline static float sparsity(const  DataBlock<T>&d);
 
     template<typename T>
-    inline static DataBlock<T> create_vector(T* data, ptrdiff_t* extents, ptrdiff_t* strides, DataBlockConfig config, const StridesCalculation computestrides);
+    inline static DataBlock<T> create_vector(T* data, ptrdiff_t* extents, ptrdiff_t* strides,  DataBlockInit config);
 
     template<typename T>
-    inline static DataBlock<T>create_matrix(T* data,  const ptrdiff_t rows,  const ptrdiff_t cols,  ptrdiff_t* extents,  ptrdiff_t* strides,  DataBlockConfig config,   const StridesCalculation computestrides);
+    inline static DataBlock<T>create_matrix(T* data,  const ptrdiff_t rows,  const ptrdiff_t cols,  ptrdiff_t* extents,  ptrdiff_t* strides,  DataBlockInit config);
 
     template<typename T>
     inline static void copy(DataBlock<T>&target,const DataBlock<T>& source);

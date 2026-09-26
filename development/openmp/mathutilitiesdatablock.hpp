@@ -29,20 +29,18 @@ DataBlock<T>DataBlockUtilities::create_vector(
     T* data,
     ptrdiff_t* extents,
     ptrdiff_t* strides,
-    DataBlockConfig config,
-    const StridesCalculation stride_mode)
+     DataBlockInit config)
 {
-    config.dprowmajor =true;
     ptrdiff_t calculated_length = 0;
     if (extents!=nullptr && strides!=nullptr)
     {
-        if(stride_mode == StridesCalculation::Compute)
+        if( config.ComputeStrides== StridesLayout::RowMajor)
             strides[0] = 1;
 
         calculated_length = (abs(extents[0]) - 1) * strides[0] + 1;
     }
 
-    return DataBlock<T>(data, calculated_length, 1, extents, strides, config);
+    return DataBlock<T>(data, calculated_length, 1, extents, strides, config.get_datablock_config());
 }
 
 
@@ -57,12 +55,10 @@ inline DataBlock<T>DataBlockUtilities::create_matrix(
     const ptrdiff_t cols,
     ptrdiff_t* extents,
     ptrdiff_t* strides,
-    DataBlockConfig config,
-    const StridesCalculation stride_mode)
+    DataBlockInit config)
 {
     ptrdiff_t final_rank = 0;
     ptrdiff_t final_length = 0;
-    const bool rowm = config.dprowmajor;
 
 
     if (rows > 1 && cols > 1)
@@ -75,14 +71,15 @@ inline DataBlock<T>DataBlockUtilities::create_matrix(
         }
         if (strides!=nullptr)
         {
-            if (stride_mode == StridesCalculation::Compute)
+            if (config.ComputeStrides == StridesLayout::RowMajor)
             {
-                strides[0] = rowm ? abs(cols) : 1;
-                strides[1] = rowm ? 1 : abs(rows);
+                strides[0] =abs(cols) ;
+                strides[1] = 1;
             }
-            else
+            else if (config.ComputeStrides  == StridesLayout::ColMajor)
             {
-                config.dprowmajor = (abs(strides[1]) < abs(strides[0])) ? true : false;
+                strides[0] =  1;
+                strides[1] =abs(rows);
             }
             if (extents!=nullptr)
             {
@@ -90,18 +87,14 @@ inline DataBlock<T>DataBlockUtilities::create_matrix(
             }
         }
     }
-
     else if (rows == 0 && cols == 0)
     {
         final_rank = 0;
         final_length = 0;
-        config.dprowmajor = true;
     }
-
     else
     {
         final_rank = 1;
-        config.dprowmajor =true;
         const ptrdiff_t length = (abs(rows) > 1) ? abs(rows) : abs(cols);
 
         if (extents!=nullptr)
@@ -109,14 +102,14 @@ inline DataBlock<T>DataBlockUtilities::create_matrix(
 
         if (strides!=nullptr)
         {
-            if (stride_mode == StridesCalculation::Compute)
+            if (config.ComputeStrides  ==  StridesLayout::RowMajor||config.ComputeStrides == StridesLayout::ColMajor)
                 strides[0] = 1;
             if (extents!=nullptr)
                 final_length = (abs(extents[0]) - 1) * strides[0] + 1;
         }
     }
 
-    return DataBlock<T>(data, final_length, final_rank, extents, strides, config);
+    return DataBlock<T>(data, final_length, final_rank, extents, strides, config.get_datablock_config());
 }
 
 #pragma omp end declare target
@@ -149,7 +142,6 @@ inline DataBlock<T> DataBlockUtilities::matrix_transpose(const  DataBlock<T>&d,p
     newextents[1]=d.dpextents[0];
     newstrides[0]=d.dpstrides[1];
     newstrides[1]=d.dpstrides[0];
-
     return DataBlock(d.dpdata,d.dpdatalength,2,newextents,newstrides,d.dpconfig);
 
 }
@@ -314,7 +306,6 @@ void DataBlockUtilities::copy(DataBlock<T>&target,const DataBlock<T>& source)
     memcpy(target.dpextents, source.dpextents,sizeof(ptrdiff_t)*source.dprank);
     memcpy(target.dpstrides, source.dpstrides,sizeof(ptrdiff_t)*source.dprank);
 
-    target.dpconfig.dprowmajor=source.dpconfig.dprowmajor;
     return;
 }
 #pragma omp end declare target

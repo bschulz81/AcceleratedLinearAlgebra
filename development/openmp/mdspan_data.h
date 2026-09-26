@@ -32,13 +32,13 @@ public:
 
     using expr::ExpressionInterface<mdspan_data<T,Container>>::operator=;
 
-    mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides,ManagedDataBlockConfig config);
+    mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides,ManagedDataBlockInit config);
 
-    mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockConfig config);
+    mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockInit config);
 
-    mdspan_data(const Container& extents,ManagedDataBlockConfig config);
+    mdspan_data(const Container& extents,ManagedDataBlockInit config);
 
-    mdspan_data( const DataBlock<T>& view, ManagedDataBlockConfig* alloc_config=nullptr) ;
+    mdspan_data( const DataBlock<T>& view, ManagedDataBlockInit* alloc_config=nullptr) ;
 
     mdspan_data(const mdspan_data<T, Container>& other);
     mdspan_data<T, Container>&operator=(const mdspan_data<T,Container> & other);
@@ -47,19 +47,19 @@ public:
     mdspan_data<T,Container>& operator=( mdspan_data<T, Container>&& other) noexcept;
     void allocate(const Container& extents,
                   const Container& strides,
-                  const ManagedDataBlockConfig& config);
+                  const ManagedDataBlockInit& config);
 
     template<typename Expr>
-    void recreate( const Expr& expr, const ManagedDataBlockConfig& config);
+    void recreate( const Expr& expr, const ManagedDataBlockInit& config);
 
 
 
     ~mdspan_data();
 
-    mdspan_data<T,Container> copy( ManagedDataBlockConfig *config);
+    mdspan_data<T,Container> copy( ManagedDataBlockInit *config);
 
     void release_all_data();
-    void allocate_storage(const ManagedDataBlockConfig& config);
+    void allocate_storage(const ManagedDataBlockInit& config);
 protected:
     std::atomic<int>* p_ref_count = nullptr;
 

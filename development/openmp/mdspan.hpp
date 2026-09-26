@@ -306,7 +306,6 @@ mdspan<T, Container>::mdspan(mdspan<T, Container>&& other)noexcept
     other.dpstrides            = nullptr;
     other.dpextents            = nullptr;
     other.devptr_former_hostptr=nullptr;
-    other.dpconfig.dprowmajor=false;
     other.dpconfig.data_is_devptr=false;
     other.dpconfig.devicenum = -INT_MAX;
     other.dpconjugate=false;
@@ -364,7 +363,7 @@ T mdspan<T, Container>::operator()(const Container& indices)const
 
 
 template <typename T, typename Container>
-void mdspan<T, Container>::compute_initialize_strides(const Container& extents,const bool rowmajor)
+void mdspan<T, Container>::compute_initialize_strides(const Container& extents,StridesLayout calc)
 {
     const ptrdiff_t n = extents.size();
     if (n == 0)
@@ -389,7 +388,7 @@ void mdspan<T, Container>::compute_initialize_strides(const Container& extents,c
         return;
     }
 
-    if (rowmajor)
+    if (calc==StridesLayout::RowMajor)
     {
         pstrides[n - 1] = 1;
         #pragma omp unroll partial
@@ -398,7 +397,7 @@ void mdspan<T, Container>::compute_initialize_strides(const Container& extents,c
             pstrides[i] = pstrides[i + 1] * extents[i + 1];
         }
     }
-    else
+    else if (calc==StridesLayout::ColMajor)
     {
 
         pstrides[0] = 1;
@@ -479,7 +478,7 @@ void mdspan<T, Container>::initialize_extents(const Container& extents)
 
 
 template <typename T,typename Container>
-mdspan<T, Container>::mdspan(T* data, const  ptrdiff_t datalength, const Container& extents, const Container& strides,const DataBlockConfig  config)
+mdspan<T, Container>::mdspan(T* data, const  ptrdiff_t datalength, const Container& extents, const Container& strides,const DataBlockInit  config)
     :DataBlock<T>(data,datalength,extents.size(),nullptr,nullptr, config)
 {
     initialize_extents_and_strides(extents,strides);
@@ -488,22 +487,22 @@ mdspan<T, Container>::mdspan(T* data, const  ptrdiff_t datalength, const Contain
 
 
 template <typename T,typename Container>
-mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config)
+mdspan<T, Container>::mdspan(T* data, const Container& extents, const Container& strides,const DataBlockInit  config)
     : DataBlock<T>(data, 0,extents.size(),nullptr,nullptr,config)
 {
     initialize_extents_and_strides(extents,strides);
-    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
+    this->dpdatalength=compute_storage_span(this->dpextents,this->dpstrides,this->dprank);
 }
 
 
 
 template <typename T,typename Container>
-mdspan<T, Container>::mdspan(T* data, const  Container& extents,const DataBlockConfig  config)
-    :  DataBlock<T>(data,0,extents.size(),nullptr,nullptr,  config)
+mdspan<T, Container>::mdspan(T* data, const  Container& extents,const DataBlockInit config)
+    :  DataBlock<T>(data,0,extents.size(),nullptr,nullptr,  config )
 {
     initialize_extents(extents);
-    compute_initialize_strides(pextents,config.dprowmajor);
-    this->dpdatalength=compute_data_length(this->dpextents,this->dpstrides,this->dprank);
+    compute_initialize_strides(pextents,config.ComputeStrides);
+    this->dpdatalength=compute_storage_span(this->dpextents,this->dpstrides,this->dprank);
 }
 
 

@@ -30,7 +30,7 @@ int main()
     std::vector<ptrdiff_t> extA{M,K}, extB{K,N},extC{M,N};
     std::vector<ptrdiff_t> stridesA{K,1}, stridesB{N,1}, stridesC{N,1};
 
-    auto Ad=DataBlock<double> (A.data(),M*K,2, extA.data(),stridesA.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+    auto Ad=DataBlock<double> (A.data(),M*K,2, extA.data(),stridesA.data(), DataBlockInit{.ComputeLength=false});
 
 
     ptrdiff_t sub_ext[2],sub_strides[2];
@@ -52,7 +52,7 @@ int main()
 
     ptrdiff_t sub_ext2[2],sub_strides2[2];
 
-    auto Bd=DataBlock<double> (B.data(),K*N,2, extB.data(),stridesB.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+    auto Bd=DataBlock<double> (B.data(),K*N,2, extB.data(),stridesB.data(), DataBlockInit{.ComputeLength=false});
 
 
     DataBlock<double> B1 =  DataBlockUtilities::matrix_subspan(Bd,0, 0, 4, 4, sub_ext2, sub_strides2);
@@ -76,9 +76,9 @@ int main()
 cout <<"sparsity "<< DataBlockUtilities::sparsity(Bd)<<endl;
 
 
-    auto C1d=DataBlock<double> (C1.data(),M*N,2, extC.data(),stridesC.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+    auto C1d=DataBlock<double> (C1.data(),M*N,2, extC.data(),stridesC.data(), DataBlockInit{.ComputeLength=false});
 
-    auto C2d=DataBlock<double> (C2.data(),M*N,2, extC.data(),stridesC.data(),DataBlockConfig{},ComputeMetadata{.ComputeLength=false});
+    auto C2d=DataBlock<double> (C2.data(),M*N,2, extC.data(),stridesC.data(), DataBlockInit{.ComputeLength=false});
 cout<<"naive matrix multiplication"<<endl;
     In_Kernel_Mathfunctions::matrix_multiply_dot(Ad, Bd, C1d);
     C1d.print();
@@ -99,11 +99,11 @@ cout<<"We now do a sparse multiplication"<<endl;
 cout<<"now an example with sparse matrx multiplication and the mdspan class"<<endl;
 
 
-mdspan<double, std::vector<ptrdiff_t>> Aspan(A.data(),  {M,K},DataBlockConfig{});
-mdspan<double, std::vector<ptrdiff_t>> Bspan(B.data(),  {K,N},DataBlockConfig{});
+mdspan<double, std::vector<ptrdiff_t>> Aspan(A.data(),  {M,K}, DataBlockInit{});
+mdspan<double, std::vector<ptrdiff_t>> Bspan(B.data(),  {K,N}, DataBlockInit{});
 
 
-mdspan_data<double, std::vector<ptrdiff_t>> Cspan({M,N},ManagedDataBlockConfig{});
+mdspan_data<double, std::vector<ptrdiff_t>> Cspan({M,N},ManagedDataBlockInit{});
 
 cout<<"of course we offload the data first to device"<<endl;
 

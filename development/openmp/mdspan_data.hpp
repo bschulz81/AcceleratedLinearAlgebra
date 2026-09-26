@@ -5,12 +5,12 @@
 #include "mdspan_omp.h"
 
 template <typename T, typename Container>
-void mdspan_data<T,Container>::allocate_storage(const ManagedDataBlockConfig& config)
+void mdspan_data<T,Container>::allocate_storage(const ManagedDataBlockInit& config)
 {
     this->dpconfig.pmemmap = config.memmap;
     this->p_owns_device_offload = false;
 
-    this->dpconfig= config.Get_DataBlockConfig();
+    this->dpconfig= config.Get_DataBlockInit().get_datablock_config();
 
     int target_device = config.devicenum;
 
@@ -51,22 +51,22 @@ void mdspan_data<T,Container>::allocate_storage(const ManagedDataBlockConfig& co
 
 
 template <typename T, typename Container>
-mdspan_data<T,Container>::mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides, ManagedDataBlockConfig config)
+mdspan_data<T,Container>::mdspan_data(ptrdiff_t datalength, const Container& extents, const Container& strides, ManagedDataBlockInit config)
     : mdspan<T,Container>(nullptr, extents, strides, config)
 {
     allocate_storage(config);
 }
 
 template <typename T, typename Container>
-mdspan_data<T,Container>::mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockConfig config)
-    : mdspan<T,Container>(nullptr, extents, strides, config.Get_DataBlockConfig())
+mdspan_data<T,Container>::mdspan_data(const Container& extents, const Container& strides, ManagedDataBlockInit config)
+    : mdspan<T,Container>(nullptr, extents, strides, config.Get_DataBlockInit())
 {
     allocate_storage(config);
 }
 
 template <typename T, typename Container>
-mdspan_data<T,Container>::mdspan_data(const Container& extents, ManagedDataBlockConfig config)
-    : mdspan<T,Container>(nullptr, extents, config.Get_DataBlockConfig())
+mdspan_data<T,Container>::mdspan_data(const Container& extents, ManagedDataBlockInit config)
+    : mdspan<T,Container>(nullptr, extents, config.Get_DataBlockInit())
 {
     allocate_storage(config);
 }
@@ -122,7 +122,7 @@ mdspan_data<T,Container>::~mdspan_data()
 
 template <typename T, typename Container>
 mdspan_data<T,Container>::mdspan_data( const DataBlock<T>& view,
-                                       ManagedDataBlockConfig* alloc_config)
+                                       ManagedDataBlockInit* alloc_config)
 {
 
     this->dpconfig = view.dpconfig;
@@ -191,7 +191,6 @@ mdspan_data<T,Container>::mdspan_data( const DataBlock<T>& view,
     int sourcedev= view.dpconfig.data_is_devptr? view.dpconfig.devicenum:omp_get_initial_device();
     if (this->dpconfig.data_is_devptr)
     {
-        cout<<"targetdev"<< this->dpconfig.devicenum<<"sourcedev"<< view.dpconfig.devicenum<<endl;
         omp_target_memcpy(this->dpdata,  view.dpdata,    sizeof(T) * this->dpdatalength,     0, 0,  this->dpconfig.devicenum,  sourcedev);
     }
     else
@@ -204,20 +203,19 @@ mdspan_data<T,Container>::mdspan_data( const DataBlock<T>& view,
 }
 
 template <typename T, typename Container>
-mdspan_data<T,Container> mdspan_data<T,Container>::copy(ManagedDataBlockConfig *alloc_config)
+mdspan_data<T,Container> mdspan_data<T,Container>::copy(ManagedDataBlockInit *alloc_config)
 {
 
 
     int targetdev, sourcedev;
     bool useomptargetmemcpy = false;
-    ManagedDataBlockConfig mcfg;
+    ManagedDataBlockInit mcfg;
 
 
     if (alloc_config!=nullptr)
     {
         mcfg=*alloc_config;
     }
-    mcfg.dprowmajor=this->dpconfig.dprowmajor;
 
     if(mcfg.data_ondevice && this->dpconfig.data_is_devptr)
     {
@@ -349,7 +347,7 @@ template<typename T, typename Container>
 template<typename Expr>
 void mdspan_data<T,Container>::recreate(
     const Expr& expr,
-    const ManagedDataBlockConfig& config)
+    const ManagedDataBlockInit& config)
 {
     release_all_data();
 
@@ -374,12 +372,12 @@ void mdspan_data<T,Container>::recreate(
     this->dpstrides = this->pstrides.data();
 
     this->dpdatalength =
-        compute_data_length(
+        compute_storage_span(
             this->dpextents,
             this->dpstrides,
             this->dprank);
 
-    this->dpconfig = config.Get_DataBlockConfig();
+    this->dpconfig = config.Get_DataBlockInit().get_datablock_config();
 
     allocate_storage(config);
 }

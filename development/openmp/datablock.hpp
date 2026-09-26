@@ -16,14 +16,13 @@ DataBlock<T>::DataBlock(
     ptrdiff_t rank,
     ptrdiff_t* extents,
     ptrdiff_t* strides,
-    DataBlockConfig config,
-    ComputeMetadata method
+    DataBlockInit config
 ) : dpdata(data),
     dpdatalength(abs(datalength)),
     dpextents(extents),
     dpstrides(strides),
     dprank(abs(rank)),
-    dpconfig(config),
+    dpconfig(config.get_datablock_config()),
     dpconjugate(false)
 {
 #if defined(Unified_Shared_Memory)
@@ -37,28 +36,11 @@ DataBlock<T>::DataBlock(
 
         if( strides != nullptr)
         {
-            if(method.ComputeStrides)
-                fill_strides(dpextents, dpstrides, rank, dpconfig.dprowmajor);
-            else
-            {
-                switch (dprank)
-                {
-                case 0:
-                    dpconfig.dprowmajor=true;
-                    break;
-                case 1:
-                    dpconfig.dprowmajor = true;
-                    break;
-                case 2:
-                    dpconfig.dprowmajor = (abs(dpstrides[1]) < abs(dpstrides[0])) ? true : false;
-                    break;
-                default:
-                    dpconfig.dprowmajor = is_row_major(extents, strides, dprank) ? true : false;
-                    break;
-                }
-            }
-            if(method.ComputeLength)
-                dpdatalength=abs(compute_data_length<OpenMPVariant::Sequential>(extents, strides, abs(rank)));
+            if(config.ComputeStrides==StridesLayout::RowMajor|| config.ComputeStrides==StridesLayout::ColMajor)
+                fill_strides(dpextents, dpstrides, rank, config.ComputeStrides);
+
+            if(config.ComputeLength)
+                dpdatalength=abs(compute_storage_span<OpenMPVariant::Sequential>(extents, strides, abs(rank)));
             else
                 dpdatalength =abs(datalength);
         }
@@ -112,14 +94,6 @@ template<typename T>
 inline ptrdiff_t DataBlock<T>::  rank() const
 {
     return dprank;
-}
-#pragma omp end declare target
-
-#pragma omp begin declare target
-template<typename T>
-inline bool DataBlock<T>::   rowmajor() const
-{
-    return dpconfig.dprowmajor;
 }
 #pragma omp end declare target
 
@@ -379,7 +353,6 @@ DataBlockObject DataBlock<T>::ObjectType() const
 
 
 
-
 #pragma omp begin declare target
 template<typename T>
 bool DataBlock<T>::is_contiguous() const
@@ -389,29 +362,24 @@ bool DataBlock<T>::is_contiguous() const
         return dpdatalength == 1;
     }
     ptrdiff_t expected_stride = 1;
-
-    if (dpconfig.dprowmajor)
-    {
-
-        for (int i = (int)abs(dprank) - 1; i >= 0; --i)
-        {
-            if (abs(dpstrides[i]) != expected_stride)return false;
-            expected_stride *= abs(dpextents[i]);
-        }
-    }
+    StridesLayout L=Strides_Layout(dpextents,dpstrides,dprank);
+    if (L==StridesLayout::Strided)
+        return false;
     else
     {
-
+        #pragma omp unroll
         for (ptrdiff_t i = 0; i < dprank; ++i)
         {
-            if (abs(dpstrides[i]) != expected_stride)return false;
             expected_stride *= abs(dpextents[i]);
         }
+        return expected_stride == dpdatalength;
     }
 
-    return expected_stride == dpdatalength;
+
+
 }
 #pragma omp end declare target
+
 
 
 #pragma omp begin declare target
@@ -913,7 +881,7 @@ inline DataBlock<T> DataBlockArray<T>::  get_datablock_from_arrays(const ptrdiff
                       len,  ptensor_rank,
                       pextentsbuffer + blocknumber*ptensor_rank,
                       pstridesbuffer + blocknumber*ptensor_rank,
-                      ::DataBlockConfig{.dprowmajor=prowm,.data_is_devptr=pdata_is_devptr,.devicenum=pdata_is_devptr? pdevnum:-INT_MAX}
+                      ::DataBlockConfig{.data_is_devptr=pdata_is_devptr,.devicenum=pdata_is_devptr? pdevnum:-INT_MAX}
                      );
     tempt.dpconjugate=pconjugate;
     return tempt;

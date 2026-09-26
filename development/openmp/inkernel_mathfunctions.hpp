@@ -1104,7 +1104,7 @@ void In_Kernel_Mathfunctions::qr_decomposition( const DataBlock<T>&A, DataBlock<
 
     ptrdiff_t Mext[2]= {A.dpextents[0],A.dpextents[1]};
     ptrdiff_t Mstrides[2]= {A.dpstrides[0],A.dpstrides[1]};
-    DataBlockConfig mconf({.dprowmajor=A.dpconfig.dprowmajor,
+    DataBlockConfig mconf({
                            .pmemmap=with_memmaps,
                            .data_is_devptr=false,
                            .devicenum=-INT_MAX

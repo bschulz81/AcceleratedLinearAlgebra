@@ -8,6 +8,14 @@
 #pragma omp requires unified_address
 #endif
 
+#pragma omp begin declare target
+enum class StridesLayout
+{
+    RowMajor,
+    ColMajor,
+    Strided
+};
+#pragma omp end declare target
 
 
 #pragma omp begin declare target
@@ -20,10 +28,11 @@ enum class DataBlockObject
 };
 #pragma omp end declare target
 
+
 #pragma omp begin declare target
 struct ComputeMetadata
 {
-    bool ComputeStrides=true;
+    StridesLayout ComputeStrides=StridesLayout::RowMajor;
     bool ComputeLength=true;
 };
 #pragma omp end declare target
@@ -31,14 +40,26 @@ struct ComputeMetadata
 #pragma omp begin declare target
 struct DataBlockConfig
 {
-    bool dprowmajor=true;
     bool pmemmap=        false;
     bool data_is_devptr= false;
     int devicenum =     -INT_MAX;
-
 };
 #pragma omp end declare target
 
+
+#pragma omp begin declare target
+struct DataBlockInit
+{
+    bool pmemmap=        false;
+    bool data_is_devptr= false;
+    int devicenum =     -INT_MAX;
+    StridesLayout ComputeStrides=StridesLayout::RowMajor;
+    bool ComputeLength=true;
+    inline DataBlockConfig get_datablock_config()const{
+        return DataBlockConfig{.pmemmap=pmemmap,.data_is_devptr=data_is_devptr,.devicenum=devicenum};
+    }
+};
+#pragma omp end declare target
 
 #pragma omp begin declare target
 DataBlockObject object_type(
@@ -75,35 +96,36 @@ DataBlockObject object_type(
 
 
 
-struct ManagedDataBlockConfig
+struct ManagedDataBlockInit
 {
-    bool dprowmajor=true;
+
     bool memmap=false;
     bool data_ondevice=false;
     bool default_device=true;
     int devicenum = -INT_MAX;
-
-
-    inline DataBlockConfig Get_DataBlockConfig() const
+    StridesLayout ComputeStrides=StridesLayout::RowMajor;
+    bool ComputeLength=true;
+    inline DataBlockInit Get_DataBlockInit() const
     {
-        return DataBlockConfig
+        return DataBlockInit
         {
-            .dprowmajor    = this->dprowmajor,
             .pmemmap=this->memmap,
             .data_is_devptr = this->data_ondevice,
-            .devicenum     = this->devicenum
+            .devicenum     = this->devicenum,
+            .ComputeStrides=this->ComputeStrides,
+            .ComputeLength=this->ComputeLength
         };
     }
 
-    inline static ManagedDataBlockConfig SetConfig( bool defaultdevice, const DataBlockConfig& config)
+    inline static ManagedDataBlockInit SetConfig( bool defaultdevice,StridesLayout computemethod, const DataBlockConfig& config)
     {
-        return ManagedDataBlockConfig
+        return ManagedDataBlockInit
         {
-            .dprowmajor     = config.dprowmajor,
             .memmap         =config.pmemmap,
             .data_ondevice  = config.data_is_devptr,
-            .default_device = defaultdevice,
-            .devicenum      = config.devicenum
+             .default_device = defaultdevice,
+            .devicenum      = config.devicenum,
+            .ComputeStrides=computemethod
         };
     }
 };

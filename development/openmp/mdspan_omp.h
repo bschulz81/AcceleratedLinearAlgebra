@@ -247,7 +247,7 @@ protected:
 
     void initialize_extents_and_strides(const Container & extents,const Container & strides);
     void initialize_extents(const Container&extents);
-    void compute_initialize_strides(const Container& extents,const bool rowmajor);
+    void compute_initialize_strides(const Container& extents,StridesLayout calc);
 
     Container pextents;
     Container pstrides;
@@ -271,9 +271,9 @@ public:
     mdspan<T, Container> &operator=(mdspan<T, Container>&& other)noexcept;
 
 
-    mdspan(T* data, const ptrdiff_t datalength, const Container& extents, const Container& strides, const DataBlockConfig  config);
-    mdspan(T* data, const Container& extents, const Container& strides,const DataBlockConfig  config);
-    mdspan(T* data, const Container& extents,const DataBlockConfig  config);
+    mdspan(T* data, const ptrdiff_t datalength, const Container& extents, const Container& strides, const DataBlockInit  config);
+    mdspan(T* data, const Container& extents, const Container& strides,const DataBlockInit config);
+    mdspan(T* data, const Container& extents,const DataBlockInit);
 
     virtual ~mdspan();
 

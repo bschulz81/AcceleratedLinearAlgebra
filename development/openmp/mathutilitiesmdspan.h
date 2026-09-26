@@ -48,23 +48,23 @@ public:
     inline static mdspan<T,std::vector<ptrdiff_t>> collapsed_view(mdspan<T,Container>&d);
 
     template<typename T, typename Container>
-    inline static mdspan_data<T,Container>  copy(const mdspan<T,Container>& base,ManagedDataBlockConfig cfg);
+    inline static mdspan_data<T,Container>  copy(const mdspan<T,Container>& base,ManagedDataBlockInit cfg);
 
 
 
 
     template<typename T,typename Tag>
-    inline static auto create_matrix(T* data,  const ptrdiff_t rows, const ptrdiff_t cols, DataBlockConfig  config);
+    inline static auto create_matrix(T* data,  const ptrdiff_t rows, const ptrdiff_t cols, DataBlockInit  config);
 
     template<typename T, typename Tag>
-    inline static auto create_vector(T* data,  const ptrdiff_t rows, DataBlockConfig  config);
+    inline static auto create_vector(T* data,  const ptrdiff_t rows, DataBlockInit  config);
 
 
     template <typename T, typename Tag>
-    inline static auto create_matrix(const ptrdiff_t rows, const ptrdiff_t cols, ManagedDataBlockConfig config);
+    inline static auto create_matrix(const ptrdiff_t rows, const ptrdiff_t cols, ManagedDataBlockInit config);
 
     template <typename T, typename Tag>
-    inline static auto create_vector(const ptrdiff_t rows, ManagedDataBlockConfig config);
+    inline static auto create_vector(const ptrdiff_t rows, ManagedDataBlockInit config);
 
 
 };

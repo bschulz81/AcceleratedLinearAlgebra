@@ -40,6 +40,7 @@ template <typename T>
 class DataBlockArray;
 
 
+
 #pragma omp begin declare target
 template <typename T>
 class DataBlock
@@ -71,7 +72,7 @@ public:
 
     DataBlock(T*  data,    ptrdiff_t datalength,   ptrdiff_t   rank,
               ptrdiff_t*   extents,      ptrdiff_t*    strides,
-              DataBlockConfig config, ComputeMetadata method);
+              DataBlockInit config);
 
     DataBlock(T*  data,    ptrdiff_t datalength,   ptrdiff_t   rank,
               ptrdiff_t*   extents,      ptrdiff_t*    strides,
@@ -80,8 +81,6 @@ public:
     inline ptrdiff_t datalength() const;
 
     inline ptrdiff_t rank() const;
-
-    inline bool rowmajor() const;
 
 
     inline int devptr_num()const;
@@ -147,7 +146,6 @@ protected:
     ptrdiff_t      dpdatalength = 0;
     ptrdiff_t*     dpextents = nullptr;
     ptrdiff_t*     dpstrides = nullptr;
-
     ptrdiff_t      dprank = 0;
 
     DataBlockConfig dpconfig;
@@ -181,7 +179,6 @@ public:
 
     T* pdata=nullptr;
     ptrdiff_t pdatalength=0;
-    bool prowm=true;
     ptrdiff_t ptensor_rank=0;
     ptrdiff_t *pblock_offsets=nullptr;
     ptrdiff_t* pextentsbuffer=nullptr;
