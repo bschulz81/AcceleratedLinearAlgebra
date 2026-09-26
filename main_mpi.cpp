@@ -39,7 +39,7 @@ int main(int argc, char** argv)
                 cout<<"this tests recursive algorithms of the library that use hybrid gpu and cpu mode with Message passing interface and OpenMP on device"<<endl;
 
                 vector<double>A2_data(16,4);
-                auto A2 = mdspan_utilities::create_matrix<double,dynamic_tag>(A2_data.data(), rows, cols, DataBlockConfig{});
+                auto A2 = mdspan_utilities::create_matrix<double,dynamic_tag>(A2_data.data(), rows, cols, DataBlockInit{});
                 DataBlock_MPI_Functions::MPI_Send_DataBlock(A2,1,1,MPI_COMM_WORLD);
                 cout<<"Message Sent:\n";
                 A2.print();
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 
                 cout<<"As a recieve buffer, mdspan_data is very useful, which allocates its own memory in the suitable size." <<endl;
                 cout<<" It can do so on a memory map, on host working memory, or on device memory, which is then accesible only with a device kernel"<<endl;
-                auto B = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
+                auto B = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{});
                 DataBlock_MPI_Functions::MPI_Recv_DataBlock(B,0,1,MPI_COMM_WORLD);
                 cout<<"Message recieved"<<endl;
                 B.print();
@@ -72,8 +72,8 @@ int main(int argc, char** argv)
                     A3_data[i] = i + 1;
                     B3_data[i] = i ;
                 }
-                auto A3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockConfig{});
-                auto B3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockConfig{});
+                auto A3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockInit{});
+                auto B3 = mdspan_utilities::create_matrix<double, dynamic_tag>(A3_data.data(), rows, cols, DataBlockInit{});
 
                 cout<<"We define two matrices A and B:" <<endl;
                 A3.print();
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
                     Math_Functions_Policy p1(Math_Functions_Policy::AUTO);
                     cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-                     auto C = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
+                     auto C = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{});
                     Math_Functions::matrix_multiply_dot(A3, B3, C,&p1);
                     C.print();
 
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
 
                 {
 
-                    auto C3= mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{});
+                    auto C3= mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{});
                     cout<<"matrix multiplication with the Strassen algorithm over message passing interface"<<std::endl;
                     cout<<"in auto mode, the following default treshholds are set in mathfunctions.h and can be changed for convenience"<<std::endl;
                     cout << "max_problem_size_for_gpu;" << "This is the size of the gpu memory, data larger than this is not offloaded"<< std::endl;
@@ -129,7 +129,8 @@ int main(int argc, char** argv)
         ptrdiff_t extentsA[2],extentsB[2],extentsC[2];
         ptrdiff_t stridesA[2],stridesB[2],stridesC[2];
 
-        DataBlock<double> A1,B1,C1;
+
+        DataBlock<double> A1,A1a,B1,C1;
 
         if (rank == rootrank)
         {
@@ -142,8 +143,7 @@ int main(int argc, char** argv)
             extentsA[0] = M;
             extentsA[1] = K;
 
-            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
-
+            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockInit{.ComputeStrides=StridesLayout::ColMajor});
             cout<<"Matrix A\n";
             A1.print();
 
@@ -153,7 +153,7 @@ int main(int argc, char** argv)
             extentsB[0] = K;
             extentsB[1] = N;
 
-            B1=DataBlock<double>(B_data.data(),0,2, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
+            B1=DataBlock<double>(B_data.data(),0,2, extentsB,stridesB,DataBlockInit{});
 
             cout<<"Matrix B\n";
             B1.print();
@@ -163,7 +163,7 @@ int main(int argc, char** argv)
             extentsC[0] = M;
             extentsC[1] = N;
 
-            C1=DataBlock<double>(C_data.data(),0,2, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
+            C1=DataBlock<double>(C_data.data(),0,2, extentsC,stridesC,DataBlockInit{});
 
 
         }
@@ -256,7 +256,7 @@ endofblock:
             extentsA[1] = K;
 
 
-            A1=DataBlock<std::complex<double>> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
+            A1=DataBlock<std::complex<double>> (A_data.data(),0,2, extentsA,stridesA,DataBlockInit{});
 
             cout<<"Matrix A\n";
             A1.print();
@@ -267,7 +267,7 @@ endofblock:
             extentsB[0] = M;
             extentsB[1] = K;
 
-            B1=DataBlock<std::complex<double>>(B_data.data(),0,2, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
+            B1=DataBlock<std::complex<double>>(B_data.data(),0,2, extentsB,stridesB,DataBlockInit{});
             cout<<"Matrix B\n";
             B1.print();
 
@@ -276,7 +276,7 @@ endofblock:
             extentsC[0] = M;
             extentsC[1] = K;
 
-            C1=DataBlock<std::complex<double>>(C_data.data(),0,2, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
+            C1=DataBlock<std::complex<double>>(C_data.data(),0,2, extentsC,stridesC,DataBlockInit{});
 
 
         }
@@ -391,7 +391,7 @@ endofblock:
 
             extentsA[0]=12*12;
 
-            A1=DataBlock<double> (A_data.data(),0,1, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
+            A1=DataBlock<double> (A_data.data(),0,1, extentsA,stridesA,DataBlockInit{});
             cout<<"Vector A\n";
             A1.print();
 
@@ -401,14 +401,14 @@ endofblock:
             extentsB[0]=12*12;
 
 
-            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
+            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockInit{});
             cout<<"Vector B\n";
             B1.print();
 
             C_data.resize(12*12,0);
 
             extentsC[0]= 12*12;
-            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
+            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockInit{});
 
 
         }
@@ -507,7 +507,7 @@ endofblock:
             extentsA[1]=11;
 
 
-            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockConfig{},ComputeMetadata{});
+            A1=DataBlock<double> (A_data.data(),0,2, extentsA,stridesA,DataBlockInit{.ComputeStrides=StridesLayout::RowMajor});
 
             A1.print();
             B_data.resize(11);
@@ -515,15 +515,14 @@ endofblock:
 
             extentsB[0]= 11;
 
-            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockConfig{},ComputeMetadata{});
+            B1=DataBlock<double>(B_data.data(),0,1, extentsB,stridesB,DataBlockInit{});
 
             B1.print();
             C_data.resize(8,0);
 
             extentsC[0]= 6;
 
-            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockConfig{},ComputeMetadata{});
-
+            C1=DataBlock<double>(C_data.data(),0,1, extentsC,stridesC,DataBlockInit{});
 
         }
 
@@ -531,6 +530,9 @@ endofblock:
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
         BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
+
+
+
         DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &A1:nullptr);
         DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &B1:nullptr);
         DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &C1:nullptr);
@@ -601,7 +603,6 @@ endofblock:
         ptrdiff_t strides[4];
         std::vector<double> A_data;
 
-
         if (rank == rootrank)
         {
             extents[0] = 5;
@@ -617,7 +618,7 @@ endofblock:
 
             std::iota(A_data.begin(), A_data.end(), 0.0);
 
-            A1 = DataBlock<double>( A_data.data(),0,4, extents, strides,DataBlockConfig{.dprowmajor=false},ComputeMetadata{});
+            A1 = DataBlock<double>( A_data.data(),0,4, extents, strides,DataBlockInit{.ComputeStrides=StridesLayout::ColMajor});
 
             A1.print();
         }

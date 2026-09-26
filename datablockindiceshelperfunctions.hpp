@@ -9,14 +9,13 @@
 #include<iostream>
 
 #pragma omp begin declare target
-inline void fill_strides(const ptrdiff_t*    extents,ptrdiff_t*    strides, const ptrdiff_t rank, const bool rowmajor)
+inline void fill_strides(const ptrdiff_t*    extents,ptrdiff_t*    strides, const ptrdiff_t rank, StridesLayout calc)
 {
     if (rank==0)
         return;
 
-    if (rowmajor)
+    if (calc==StridesLayout::RowMajor)
     {
-
         strides[rank - 1] = 1;
         #pragma omp unroll partial
         for (int i = rank - 2; i >= 0; --i)
@@ -24,7 +23,7 @@ inline void fill_strides(const ptrdiff_t*    extents,ptrdiff_t*    strides, cons
             strides[i] = strides[i + 1] * extents[i + 1];
         }
     }
-    else
+    else if (calc==StridesLayout::ColMajor)
     {
         strides[0] = 1;
         #pragma omp unroll partial
@@ -219,8 +218,7 @@ inline ptrdiff_t compute_offset(
     const ptrdiff_t* extents,
     const ptrdiff_t* strides,
     const ptrdiff_t rank,
-    const ptrdiff_t flatIndex
-) {
+    const ptrdiff_t flatIndex) {
 
     ptrdiff_t remainingIndex = flatIndex;
     ptrdiff_t offset = 0;
@@ -288,8 +286,7 @@ ptrdiff_t compute_offset_datablockarray(
     const ptrdiff_t* strides_buffer,
     const ptrdiff_t rank,
     const ptrdiff_t blocknumber,
-    const ptrdiff_t flatIndex
-) {
+    const ptrdiff_t flatIndex) {
     ptrdiff_t remainingIndex = flatIndex;
     ptrdiff_t offset = 0;
 
@@ -299,7 +296,6 @@ ptrdiff_t compute_offset_datablockarray(
     #pragma omp unroll partial
     for (ptrdiff_t axis = rank - 1; axis >= 0; --axis) {
         ptrdiff_t currentExtent = extents_ptr[axis];
-
         ptrdiff_t coordinate = remainingIndex % currentExtent;
 
         offset += coordinate * strides_ptr[axis];
@@ -315,15 +311,15 @@ ptrdiff_t compute_offset_datablockarray(
 
 #pragma omp begin declare target
 template <OpenMPVariant variant = OpenMPVariant::Sequential>
-inline ptrdiff_t compute_data_length(const ptrdiff_t*  extents, const ptrdiff_t*  strides,const ptrdiff_t rank)
+inline ptrdiff_t compute_storage_span(const ptrdiff_t*  extents, const ptrdiff_t*  strides,const ptrdiff_t rank)
 {
-    ptrdiff_t offset=0;
+    ptrdiff_t  offset = 0;
     if constexpr (variant == OpenMPVariant::ParallelSimd)
     {
         #pragma omp parallel for simd reduction(+:offset)
         for (ptrdiff_t i = 0; i < rank; ++i)
         {
-            offset += (extents[i]-1) * strides[i];
+            offset+=(extents[i]-1) * (strides[i]<0?-strides[i]:strides[i] );
         }
     }
     else if constexpr (variant == OpenMPVariant::Simd)
@@ -331,7 +327,7 @@ inline ptrdiff_t compute_data_length(const ptrdiff_t*  extents, const ptrdiff_t*
         #pragma omp simd reduction(+:offset)
         for (ptrdiff_t i = 0; i < rank; ++i)
         {
-            offset += (extents[i]-1) * strides[i];
+            offset+=(extents[i]-1) *(strides[i]<0?-strides[i]:strides[i] );
         }
     }
     else
@@ -339,28 +335,37 @@ inline ptrdiff_t compute_data_length(const ptrdiff_t*  extents, const ptrdiff_t*
         #pragma omp unroll partial
         for (ptrdiff_t i = 0; i < rank; ++i)
         {
-            offset += (extents[i]-1) * strides[i];
+            offset+=(extents[i]-1) * (strides[i]<0?-strides[i]:strides[i] );
+
         }
     }
-    return offset+1;
+    return offset + 1;
+
 }
 #pragma omp end declare target
 
 
 
 #pragma omp begin declare target
-inline bool is_row_major(const ptrdiff_t*extents, const ptrdiff_t* strides, const ptrdiff_t rank)
+inline StridesLayout Strides_Layout(const ptrdiff_t*extents, const ptrdiff_t* strides, const ptrdiff_t rank)
 {
     ptrdiff_t expected = 1;
+    bool rmajor=true;
+
     for (ptrdiff_t i = 0; i < rank; ++i)
     {
         if (extents[i] <= 1)
             continue;
         if (abs(strides[i]) != expected)
-            return false;
+          rmajor=false;
         expected *= extents[i];
     }
-    return true;
+
+    if(rmajor)
+        return StridesLayout::RowMajor;
+    else
+        return abs(strides[0])==1? StridesLayout::ColMajor:StridesLayout::Strided;
+
 }
 #pragma omp end declare target
 
@@ -370,9 +375,6 @@ template<typename A, typename B>
 bool has_same_layout(const A& a, const B& b)
 {
     if (a.rank() != b.rank())
-        return false;
-
-    if (a.rowmajor() != b.rowmajor())
         return false;
 
 const ptrdiff_t* extA = a.extents_ptr();
@@ -402,16 +404,13 @@ inline ptrdiff_t local_to_global_tensor_index(
     const ptrdiff_t pblock_rank,
     const ptrdiff_t ptensor_rank,
     const ptrdiff_t blocknumber,
-    const ptrdiff_t local_index,
-    const bool prowm)
+    const ptrdiff_t local_index)
 {
     const ptrdiff_t* block_extents =pextentsbuffer + blocknumber *ptensor_rank ;
 
     ptrdiff_t tmp = local_index;
     ptrdiff_t global_index = 0;
 
-    if (prowm)
-    {
         #pragma omp unroll partial
         for (ptrdiff_t d = ptensor_rank - 1; d >= 0; --d)
         {
@@ -424,22 +423,6 @@ inline ptrdiff_t local_to_global_tensor_index(
 
             global_index += global_coord * global_strides[d];
         }
-    }
-    else
-    {
-        #pragma omp unroll partial
-        for (ptrdiff_t d = 0; d < ptensor_rank; ++d)
-        {
-            const ptrdiff_t local_coord = tmp % block_extents[d];
-            tmp /= block_extents[d];
-
-            const ptrdiff_t global_coord =
-                local_coord +
-                (d < pblock_rank ? block_starts[d] : 0);
-
-            global_index += global_coord * global_strides[d];
-        }
-    }
 
     return global_index;
 }

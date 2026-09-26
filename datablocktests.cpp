@@ -33,7 +33,7 @@ int main(int argc, char** argv)
 
         DataBlock<double> A = DataBlockUtilities::create_matrix(
                                   A_data.data(), 3, 7, extaa, straa,
-                                  DataBlockConfig{},StridesCalculation::Compute );
+                                  DataBlockInit{});
 
         cout << "A" << A.datalength() << endl;
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
         cout<<"construction with the constructor of DataBlock, which is less fast if it should generate strides and length since it works for general tensors"<<endl;
         ptrdiff_t extaab[2] = {3, 7};
         ptrdiff_t straab[2];
-        auto A2=DataBlock<double> (A_data.data(),0,2, extaab,straab,DataBlockConfig{},ComputeMetadata{});
+        auto A2=DataBlock<double> (A_data.data(),0,2, extaab,straab,DataBlockInit{});
 
         cout << "A" << A2.datalength() << endl;
         A2.print();
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
             3, // rank
             extents,
             strides,
-            DataBlockConfig{},ComputeMetadata{});
+            DataBlockInit{});
 
         ptrdiff_t offsets[3] = {1, 0, 0}; // start at block 1
         ptrdiff_t sub_extents[3] = {1, 3, 4}; // take 1 block of full 3x4
@@ -128,7 +128,7 @@ int main(int argc, char** argv)
 
         DataBlock<double> B = DataBlockUtilities::create_matrix(
                                   B_data_colmajor.data(), 3, 7, extbb, strbb,
-                                  DataBlockConfig{.dprowmajor = false}, StridesCalculation::Compute );
+                                  DataBlockInit{});
         cout << "B" << B.datalength() << endl << endl;
         B.print();
         cout << "B" << B.datalength() << endl << endl;
@@ -139,8 +139,7 @@ int main(int argc, char** argv)
         // Call factory with compute_strides = false
         DataBlock<double> Bbbb = DataBlockUtilities::create_matrix(
                                      B_data_colmajor.data(), 3, 7, extbbb, strbbb,
-                                     DataBlockConfig
-        {.dprowmajor = false  },  StridesCalculation::Compute  );
+                                    DataBlockInit{.ComputeStrides=StridesLayout::ColMajor});
 
         Bbbb.print();
 
@@ -190,8 +189,7 @@ int main(int argc, char** argv)
             3,
             extentsC,
             stridesC,
-            DataBlockConfig
-        {.dprowmajor = false},ComputeMetadata{});
+            DataBlockInit{.ComputeStrides=StridesLayout::ColMajor});
 
 
         std::cout << "A tensor in colmajor \n";

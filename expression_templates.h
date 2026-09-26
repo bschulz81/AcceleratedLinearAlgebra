@@ -17,7 +17,7 @@ template<typename T, typename Container>
 class mdspan_data;
 
 
-struct ManagedDataBlockConfig;
+struct ManagedDataBlockInit;
 
 namespace expr
 {
@@ -260,7 +260,7 @@ class ExpressionExecutionPolicy
 {
 public:
     Math_Functions_Policy kernel_policy;
-    ManagedDataBlockConfig temporary_placement= {};
+    ManagedDataBlockInit temporary_placement= {};
     bool check_locations = true;
     bool check_sizes = true;
     bool follow_expression_location = true;
@@ -468,11 +468,7 @@ class ExpressionInterface
 {
 public:
     template<typename Expr>
-    requires
-    requires(
-        const Expr& e,
-        Derived& d,
-        const ExpressionExecutionPolicy* p)
+    requires requires(const Expr& e,Derived& d,const ExpressionExecutionPolicy* p)
     {
         e.assign_to(d,p);
     }
@@ -482,13 +478,11 @@ public:
     }
 
     template<typename Expr>
-    Derived& assign(
-        const Expr& expr,
-        const expr::ExpressionExecutionPolicy* policy=nullptr)
+    Derived& assign(const Expr& expr, const expr::ExpressionExecutionPolicy* policy=nullptr)
     {
         const auto& pol = policy ? *policy : expr::get_default_policy();
 
-        ManagedDataBlockConfig placement =pol.temporary_placement;
+        ManagedDataBlockInit placement =pol.temporary_placement;
 
         LocationCheckContext ctx;
         if (pol.check_locations)
@@ -557,11 +551,6 @@ struct AddExpr
         return lhs.strides_ptr();
     }
 
-    inline bool rowmajor() const
-    {
-        return lhs.rowmajor();
-    }
-
 
     inline ptrdiff_t datalength() const
     {
@@ -574,8 +563,7 @@ struct AddExpr
     }
 
 
-    bool location_check(
-        LocationCheckContext& state) const
+    bool location_check(LocationCheckContext& state) const
     {
         return lhs.location_check(state) &&
                rhs.location_check(state);
@@ -609,12 +597,6 @@ struct SubtrExpr
         return lhs.strides_ptr();
     }
 
-    inline bool rowmajor() const
-    {
-        return lhs.rowmajor();
-    }
-
-
     inline ptrdiff_t datalength() const
     {
         return lhs.datalength();
@@ -626,8 +608,7 @@ struct SubtrExpr
     }
 
 
-    bool location_check(
-        LocationCheckContext& state) const
+    bool location_check(LocationCheckContext& state) const
     {
         return lhs.location_check(state) &&
                rhs.location_check(state);
@@ -661,11 +642,6 @@ struct ScaleExpr
         return lhs.strides_ptr();
     }
 
-    inline bool rowmajor() const
-    {
-        return lhs.rowmajor();
-    }
-
 
     inline ptrdiff_t datalength() const
     {
@@ -697,7 +673,6 @@ protected:
     ptrdiff_t pedatalength = 1;
     std::vector<ptrdiff_t> peextents;
     std::vector<ptrdiff_t> pestrides;
-    bool perowmajor=true;
 
 public:
     const LHS& lhs;
@@ -733,18 +708,12 @@ public:
             peextents[0] = lhs.extents_ptr()[0];
             peextents[1] = rhs.extents_ptr()[1];
 
-            if (lhs.rowmajor())
-            {
-                pestrides[1] = 1;
-                pestrides[0] = peextents[1];
-                perowmajor=true;
-            }
-            else
-            {
-                pestrides[0] = 1;
-                pestrides[1] = peextents[0];
-                perowmajor=false;
-            }
+
+
+            pestrides[1] = 1;
+            pestrides[0] = peextents[1];
+
+
             ptrdiff_t n = 1;
             #pragma omp unroll partial
             for (ptrdiff_t i =0; i<peextents.size(); i++)
@@ -761,12 +730,10 @@ public:
 
             peextents[0] = lhs.extents_ptr()[0];
             pestrides[0] = 1;
-            perowmajor=true;
             pedatalength=peextents[0];
             return;
         }
 
-        // vector * matrix
         if (l == DataBlockObject::Vector &&r == DataBlockObject::Matrix)
         {
             peextents.resize(1);
@@ -774,7 +741,6 @@ public:
 
             peextents[0] = rhs.extents_ptr()[1];
             pestrides[0] = 1;
-            perowmajor=true;
 
             pedatalength=peextents[0];
             return;
@@ -787,7 +753,6 @@ public:
             peextents[0] = 1;
             pestrides[0] = 1;
             pedatalength=1;
-            perowmajor=true;
             return;
         }
 
@@ -811,7 +776,6 @@ public:
             peextents[i] = ext[i];
             pestrides[i] = str[i];
         }
-        perowmajor = x.rowmajor();
         pedatalength = x.datalength();
 
     }
@@ -825,10 +789,6 @@ public:
         return pedatalength;
     }
 
-    inline bool rowmajor() const
-    {
-        return perowmajor;
-    }
 
     const ptrdiff_t* extents_ptr() const
     {
@@ -863,7 +823,6 @@ public:
 
         if (l == DataBlockObject::Vector &&r == DataBlockObject::Vector)
             return DataBlockObject::Scalar;
-
 
         return DataBlockObject::Tensor;
     }

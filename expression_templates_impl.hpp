@@ -8,27 +8,21 @@
 namespace expr
 {
 
-template<typename T,
-         typename Container,
-         typename Expression>
-auto evaluate_to_mdspan_data(
-    const Expression& expr,
-    const expr::ExpressionExecutionPolicy* pl = nullptr)
+template<typename T,typename Container,typename Expression>
+
+auto evaluate_to_mdspan_data(const Expression& expr,const expr::ExpressionExecutionPolicy* pl = nullptr)
 {
-    const expr::ExpressionExecutionPolicy& policy =
-        (pl != nullptr) ? *pl : get_default_policy();
+    const expr::ExpressionExecutionPolicy& policy =(pl != nullptr) ? *pl : get_default_policy();
 
 
-    ManagedDataBlockConfig placement =
-        policy.temporary_placement;
+    ManagedDataBlockInit placement =policy.temporary_placement;
 
     if (policy.follow_expression_location)
     {
         LocationCheckContext ctx;
 
         if (!expr.location_check(ctx))
-            throw std::runtime_error(
-                "Expression location mismatch");
+            throw std::runtime_error("Expression location mismatch");
 
         placement.data_ondevice = ctx.data_is_device;
 
@@ -49,10 +43,7 @@ auto evaluate_to_mdspan_data(
 
 
 template<typename T, typename Expr>
-void evaluate_into(
-    const Expr& expr,
-    DataBlock<T>& C,
-    const expr::ExpressionExecutionPolicy& policy)
+void evaluate_into(const Expr& expr,DataBlock<T>& C,const expr::ExpressionExecutionPolicy& policy)
 {
     using E = std::remove_cvref_t<Expr>;
 
@@ -92,9 +83,7 @@ inline bool same_extents(const auto& a, const auto& b)
 
 template<typename T, typename Expr>
 decltype(auto)
-evaluate_materialized(
-    const Expr& expr,
-    const expr::ExpressionExecutionPolicy& policy)
+evaluate_materialized(const Expr& expr,const expr::ExpressionExecutionPolicy& policy)
 {
     using E = std::remove_cvref_t<Expr>;
 
@@ -116,8 +105,7 @@ evaluate_materialized(
 
         mdspan_data_t<T, dynamic_tag> result;
 
-        ManagedDataBlockConfig placement =
-            policy.temporary_placement;
+        ManagedDataBlockInit placement =policy.temporary_placement;
 
         if (policy.follow_expression_location)
         {
@@ -172,8 +160,7 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
 {
     mdspan_data_t<T, dynamic_tag> result;
 
-    ManagedDataBlockConfig placement =
-        policy.temporary_placement;
+    ManagedDataBlockInit placement =policy.temporary_placement;
 
     if (policy.follow_expression_location)
     {
@@ -182,16 +169,14 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
         if (!source.location_check(ctx))
             throw std::runtime_error("Expression location mismatch");
 
-        placement.data_ondevice =
-            ctx.data_is_device;
+        placement.data_ondevice =ctx.data_is_device;
 
         if (ctx.data_is_device)
             placement.devicenum =ctx.device_number;
 
         if (policy.debugoutput)
         {
-            std::cout
-                    << "[make_accumulator] location: "<< (ctx.data_is_device? "device": "host");
+            std::cout<< "[make_accumulator] location: "<< (ctx.data_is_device? "device": "host");
 
             if (ctx.data_is_device)
             {
@@ -231,23 +216,15 @@ mdspan_data_t<T, dynamic_tag>make_accumulator(const Expr& source,const expr::Exp
 
 template<typename LHS, typename RHS>
 template<typename T>
-void AddExpr<LHS, RHS>::assign_to(
-    DataBlock<T>& C,
-    const expr::ExpressionExecutionPolicy* pl) const
+void AddExpr<LHS, RHS>::assign_to(DataBlock<T>& C,const expr::ExpressionExecutionPolicy* pl) const
 {
     const auto& policy =(pl != nullptr)? *pl: get_default_policy();
 
-    Math_Functions_Policy mathpol =
-        policy.kernel_policy;
+    Math_Functions_Policy mathpol =policy.kernel_policy;
 
     const auto info = analyze(*this);
 
-    /*
-     * The result can live in the LHS.
-     *
-     * Therefore we create one owning accumulator from
-     * the LHS and accumulate the RHS into it.
-     */
+
     if (info.result_source == ResultSource::LHS)
     {
         auto L = make_accumulator<T>(lhs, policy);
@@ -275,12 +252,7 @@ void AddExpr<LHS, RHS>::assign_to(
         }
         else
         {
-            /*
-             * RHS is an expression.
-             *
-             * For now the kernel requires a materialized
-             * RHS, so this may allocate another temporary.
-             */
+
             auto R = evaluate_materialized<T>(rhs, policy);
 
             if (policy.check_sizes &&!same_extents(L, R))
@@ -305,19 +277,9 @@ void AddExpr<LHS, RHS>::assign_to(
 
         }
 
-        DataBlockUtilities::copy(
-            C,
-            static_cast<const DataBlock<T>&>(L));
+        DataBlockUtilities::copy(C,static_cast<const DataBlock<T>&>(L));
         return;
     }
-
-    /*
-     * The result belongs to this node.
-     *
-     * C has already been allocated/configured by the
-     * assignment machinery, so evaluate both operands
-     * and write the result directly into C.
-     */
 
     auto L = evaluate_materialized<T>(lhs,policy);
 
@@ -357,9 +319,7 @@ SubtrExpr<LHS, RHS>::operator mdspan_data<T, Container>() const
 
 template<typename LHS, typename RHS>
 template<typename T>
-void SubtrExpr<LHS, RHS>::assign_to(
-    DataBlock<T>& C,
-    const expr::ExpressionExecutionPolicy* pl) const
+void SubtrExpr<LHS, RHS>::assign_to(DataBlock<T>& C,const expr::ExpressionExecutionPolicy* pl) const
 {
     const auto& policy =(pl != nullptr)? *pl: get_default_policy();
 
@@ -367,12 +327,6 @@ void SubtrExpr<LHS, RHS>::assign_to(
 
     const auto info = analyze(*this);
 
-    /*
-     * The result can live in the LHS.
-     *
-     * Create one owning accumulator from the LHS
-     * and subtract the RHS from it.
-     */
     if (info.result_source == ResultSource::LHS)
     {
         auto L = make_accumulator<T>(lhs, policy);
@@ -382,8 +336,7 @@ void SubtrExpr<LHS, RHS>::assign_to(
             if (policy.check_sizes &&
                     !same_extents(L, rhs))
             {
-                throw std::runtime_error(
-                    "Wrong extents");
+                throw std::runtime_error("Wrong extents");
             }
 
             switch (this->ObjectType())
@@ -397,19 +350,16 @@ void SubtrExpr<LHS, RHS>::assign_to(
                 break;
 
             default:
-                throw std::runtime_error(
-                    "Unsupported type for subtraction");
+                throw std::runtime_error("Unsupported type for subtraction");
             }
         }
         else
         {
             auto R = evaluate_materialized<T>(rhs,policy);
 
-            if (policy.check_sizes &&
-                    !same_extents(L, R))
+            if (policy.check_sizes &&!same_extents(L, R))
             {
-                throw std::runtime_error(
-                    "Wrong extents");
+                throw std::runtime_error("Wrong extents");
             }
 
             switch (this->ObjectType())
@@ -432,13 +382,7 @@ void SubtrExpr<LHS, RHS>::assign_to(
         return;
     }
 
-    /*
-     * The result belongs to this node.
-     *
-     * C has already been allocated/configured.
-     * Evaluate both operands and write L-R directly
-     * into C.
-     */
+
     auto L = evaluate_materialized<T>(lhs,policy);
 
     auto R = evaluate_materialized<T>(rhs,policy);
@@ -475,9 +419,7 @@ ScaleExpr<LHS, Scalar>::operator mdspan_data<T, Container>() const
 
 template<typename LHS, typename Scalar>
 template<typename T>
-void ScaleExpr<LHS, Scalar>::assign_to(
-    DataBlock<T>& C,
-    const expr::ExpressionExecutionPolicy* pl) const
+void ScaleExpr<LHS, Scalar>::assign_to(DataBlock<T>& C,const expr::ExpressionExecutionPolicy* pl) const
 {
     const auto& policy =(pl != nullptr)? *pl: get_default_policy();
 
@@ -486,12 +428,6 @@ void ScaleExpr<LHS, Scalar>::assign_to(
 
     const auto info = analyze(*this);
 
-    /*
-     * The result can live in the LHS.
-     *
-     * Create one owning accumulator and scale it
-     * in place.
-     */
     if (info.result_source == ResultSource::LHS)
     {
         auto L = make_accumulator<T>(lhs,policy);
@@ -507,25 +443,14 @@ void ScaleExpr<LHS, Scalar>::assign_to(
             break;
 
         default:
-            throw std::runtime_error(
-                "Unsupported type for scalar multiplication");
+            throw std::runtime_error("Unsupported type for scalar multiplication");
         }
 
-        /*
-         * C has already been allocated/configured by
-         * the assignment machinery.
-         */
-        DataBlockUtilities::copy(C,static_cast<const DataBlock<T>&>(L));
+         DataBlockUtilities::copy(C,static_cast<const DataBlock<T>&>(L));
 
         return;
     }
 
-    /*
-     * The result belongs to this node.
-     *
-     * em the LHS and write the scaled
-     * result directly into C.
-     */
     auto L = evaluate_materialized<T>(lhs,policy);
 
     switch (this->ObjectType())
@@ -553,25 +478,13 @@ MulExpr<LHS, RHS>::operator mdspan_data<T, Container>() const
 
 template<typename LHS, typename RHS>
 template<typename T>
-void MulExpr<LHS, RHS>::assign_to(
-    DataBlock<T>& C,
-    const expr::ExpressionExecutionPolicy* pl) const
+void MulExpr<LHS, RHS>::assign_to(DataBlock<T>& C,const expr::ExpressionExecutionPolicy* pl) const
 {
-    const auto& policy =
-        (pl != nullptr)
-            ? *pl
-            : get_default_policy();
+    const auto& policy =(pl != nullptr)? *pl: get_default_policy();
 
     Math_Functions_Policy mathpol =
         policy.kernel_policy;
 
-    /*
-     * Neither operand can be used as the result
-     * storage for matrix multiplication.
-     *
-     * Therefore materialize both operands and
-     * write the result directly into C.
-     */
     auto L = evaluate_materialized<T>(lhs,policy);
 
     auto R = evaluate_materialized<T>(rhs,policy);
@@ -618,16 +531,11 @@ void MulExpr<LHS, RHS>::assign_to(
 
 template<typename LHS, typename RHS>
 template<typename T>
-T DotExpr<LHS, RHS>::eval_scalar(
-    const expr::ExpressionExecutionPolicy* pl) const
+T DotExpr<LHS, RHS>::eval_scalar(const expr::ExpressionExecutionPolicy* pl) const
 {
-    const auto& policy =
-        (pl != nullptr)
-            ? *pl
-            : get_default_policy();
+    const auto& policy =(pl != nullptr)? *pl: get_default_policy();
 
-    Math_Functions_Policy mathpol =
-        policy.kernel_policy;
+    Math_Functions_Policy mathpol =policy.kernel_policy;
 
 
     auto L = evaluate_materialized<T>(lhs,policy);

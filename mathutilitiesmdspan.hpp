@@ -6,20 +6,20 @@
 
 
 template <typename T, typename Tag>
-auto mdspan_utilities::create_matrix(const ptrdiff_t rows, const ptrdiff_t cols, ManagedDataBlockConfig config)
+auto mdspan_utilities::create_matrix(const ptrdiff_t rows, const ptrdiff_t cols, ManagedDataBlockInit config)
 {
     using Container =typename container_selector<Tag>::template container<ptrdiff_t>;
-    mdspan_t<T,Tag> matrix_metadata= mdspan_utilities::create_matrix<T,Tag>((T*)nullptr, rows,cols,config.Get_DataBlockConfig());
+    mdspan_t<T,Tag> matrix_metadata= mdspan_utilities::create_matrix<T,Tag>((T*)nullptr, rows,cols,config.Get_DataBlockInit());
     return mdspan_data<T,Container>(matrix_metadata.pextents, matrix_metadata.pstrides, config);
 }
 
 
 
 template <typename T, typename Tag>
-auto mdspan_utilities::create_vector(const ptrdiff_t rows,ManagedDataBlockConfig config)
+auto mdspan_utilities::create_vector(const ptrdiff_t rows,ManagedDataBlockInit config)
 {
     using Container =typename container_selector<Tag>::template container<ptrdiff_t>;
-    mdspan_t<T,Tag> vector_metadata= mdspan_utilities::create_vector<T,Tag>((T*)nullptr, rows, config.Get_DataBlockConfig());
+    mdspan_t<T,Tag> vector_metadata= mdspan_utilities::create_vector<T,Tag>((T*)nullptr, rows, config.Get_DataBlockInit());
     return mdspan_data<T,Container>(vector_metadata.pextents, vector_metadata.pstrides, config);
 }
 
@@ -27,7 +27,7 @@ auto mdspan_utilities::create_vector(const ptrdiff_t rows,ManagedDataBlockConfig
 
 
 template<typename T,typename Tag>
-auto mdspan_utilities::create_matrix(T* data,  const ptrdiff_t rows, const ptrdiff_t cols,DataBlockConfig  config)
+auto mdspan_utilities::create_matrix(T* data,  const ptrdiff_t rows, const ptrdiff_t cols,DataBlockInit config)
 {
 
     const ptrdiff_t r=2;
@@ -52,8 +52,18 @@ auto mdspan_utilities::create_matrix(T* data,  const ptrdiff_t rows, const ptrdi
 
     pextents[0]=abs(rows);
     pextents[1]=abs(cols);
-    pstrides[0] = config.dprowmajor ? abs(cols) : 1;
-    pstrides[1] = config.dprowmajor ? 1 : abs(rows);
+
+    if (config.ComputeStrides==StridesLayout::RowMajor)
+    {
+        pstrides[0] =  abs(cols) ;
+        pstrides[1] = 1 ;
+    }
+    else if (config.ComputeStrides==StridesLayout::ColMajor)
+    {
+        pstrides[0] =  1;
+        pstrides[1] = abs(rows);
+    }
+
     ptrdiff_t  dpdatalength = (abs(rows) - 1) * pstrides[0] + (abs(cols) - 1) * pstrides[1] + 1;
 
     return mdspan(data, dpdatalength,pextents, pstrides, config);
@@ -62,10 +72,9 @@ auto mdspan_utilities::create_matrix(T* data,  const ptrdiff_t rows, const ptrdi
 
 
 template<typename T,typename Tag>
-auto  mdspan_utilities::create_vector(T* data,  const ptrdiff_t rows,DataBlockConfig  config)
+auto  mdspan_utilities::create_vector(T* data,  const ptrdiff_t rows,DataBlockInit  config)
 {
 
-    config.dprowmajor=true;
     using Container =typename container_selector<Tag>::template container<ptrdiff_t>;
     Container pextents;
     Container pstrides;
@@ -180,7 +189,7 @@ mdspan<T,std::vector<ptrdiff_t>> mdspan_utilities::collapsed_view(mdspan<T,Conta
 }
 
 template<typename T, typename Container>
-mdspan_data<T,Container> mdspan_utilities::copy(const mdspan<T,Container>& base,ManagedDataBlockConfig cfg)
+mdspan_data<T,Container> mdspan_utilities::copy(const mdspan<T,Container>& base,ManagedDataBlockInit cfg)
 {
 
     mdspan_data<T,Container> result(base.pextents, base.pstrides, cfg);

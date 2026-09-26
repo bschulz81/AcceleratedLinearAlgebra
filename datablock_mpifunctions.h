@@ -109,7 +109,49 @@ MPI_Datatype mpi_get_type() noexcept
     return mpi_type_map<T>::value;
 }
 
-MPI_Datatype create_mpi_DataBlockConfig_type();
+
+template<typename T>
+inline MPI_Datatype make_strided_2d_rowmajor_type(
+    ptrdiff_t rows,
+    ptrdiff_t cols,
+    ptrdiff_t stride0,
+    ptrdiff_t stride1)
+{
+    MPI_Datatype inner, outer;
+
+    MPI_Type_create_hvector((int)cols, 1, static_cast<MPI_Aint>(stride1) * sizeof(T),mpi_get_type<T>(),&inner);
+    MPI_Type_commit(&inner);
+    MPI_Type_create_hvector((int)rows,1,static_cast<MPI_Aint>(stride0) * sizeof(T),inner,&outer);
+    MPI_Type_free(&inner);
+
+    return outer;
+}
+
+template<typename T>
+inline MPI_Datatype make_strided_nd_rowmajor_type(ptrdiff_t rank,const ptrdiff_t* extents,const ptrdiff_t* strides)
+{
+    MPI_Datatype current = mpi_get_type<T>();
+
+    #pragma omp unroll partial
+    for(ptrdiff_t d = rank - 1; d >= 0; --d)
+    {
+        MPI_Datatype next;
+
+        MPI_Type_create_hvector(
+            (int)extents[d],
+            1,
+            static_cast<MPI_Aint>(strides[d]) * sizeof(T),
+            current,
+            &next);
+
+        if(d != rank - 1)
+            MPI_Type_free(&current);
+
+        current = next;
+    }
+
+    return current;
+}
 
 
 class MPI_CartesianContext
@@ -139,7 +181,6 @@ public:
 
     int* index_map;
     ptrdiff_t* cyclic_block;
-
 public:
 
     BlockMappingPolicy(
@@ -180,8 +221,6 @@ public:
 
     ptrdiff_t block_rank()const;
 
-    bool global_rowmajor()const;
-
     ptrdiff_t* global_extents()const;
 
     ptrdiff_t* global_strides()const;
@@ -189,7 +228,6 @@ public:
     ptrdiff_t local_blocknumber()const;
 
     DataBlockArray<T> & Blockarray();
-
 
     void print(int rootrank=0)const;
 

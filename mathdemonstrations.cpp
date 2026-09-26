@@ -44,7 +44,7 @@ int main()
         cout << "define A" << endl;
 
         auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     A_data.data(), rows, cols, DataBlockConfig{  }
+                     A_data.data(), rows, cols,  DataBlockInit{  }
                  );
         A.print();
     cout<<"We load A up"<<endl;
@@ -53,7 +53,7 @@ int main()
         cout << "define B" << endl;
 
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     B_data.data(), rows, cols, DataBlockConfig{ });
+                     B_data.data(), rows, cols,  DataBlockInit{ });
         B.print();
        cout<<"We load B up"<<endl;
         B.device_data_upload(true);
@@ -83,7 +83,7 @@ int main()
 
         std::vector<double> V_data = { 6, 5, 4, 3 };
         auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
-                 rows, rows, DataBlockConfig{  }  );
+                 rows, rows,  DataBlockInit{  }  );
         V.device_data_upload(true);
         V.print();
         cout << "multiplication of A and transpose of B" << endl;
@@ -97,7 +97,7 @@ int main()
 
 
 
-        auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ::ManagedDataBlockConfig{});
+        auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ::ManagedDataBlockInit{});
 
 
   //      cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
@@ -114,8 +114,8 @@ cout<<"expr=A-B"<<endl;
         std::vector<double> vectorB_data = { 6, 5, 4 };
 
 
-        auto vecA = mdspan_utilities::create_vector<double,static_tag<1>>(vectorA_data.data(), 3, DataBlockConfig{ });
-        auto vecB = mdspan_utilities::create_vector<double,static_tag<1>>(vectorB_data.data(), 3, DataBlockConfig{});
+        auto vecA = mdspan_utilities::create_vector<double,static_tag<1>>(vectorA_data.data(), 3,  DataBlockInit{ });
+        auto vecB = mdspan_utilities::create_vector<double,static_tag<1>>(vectorB_data.data(), 3,  DataBlockInit{});
 
         vecA.print();
         vecB.print();
@@ -167,19 +167,19 @@ cout<<"expr=A-B"<<endl;
 
 
         auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     A_data.data(), rows, cols, DataBlockConfig{}
+                     A_data.data(), rows, cols,  DataBlockInit{}
                  );
 
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     B_data.data(), rows, cols, DataBlockConfig{}
+                     B_data.data(), rows, cols,  DataBlockInit{}
                  );
 
         auto C = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     C_data.data(), rows, cols, DataBlockConfig{}
+                     C_data.data(), rows, cols,  DataBlockInit{}
                  );
 
         auto D = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     D_data.data(), rows, cols, DataBlockConfig{}
+                     D_data.data(), rows, cols,  DataBlockInit{}
                  );
 
 
@@ -254,7 +254,7 @@ cout<<"expr=A-B"<<endl;
 
 
         auto M = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     M_data.data(), cols, rows, DataBlockConfig{}
+                     M_data.data(), cols, rows,  DataBlockInit{}
                  );
 
 
@@ -284,7 +284,7 @@ cout<<"expr=A-B"<<endl;
 
 
         auto I = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                     I_data.data(), rows, rows, DataBlockConfig{}
+                     I_data.data(), rows, rows,  DataBlockInit{}
                  );
 
 
@@ -304,12 +304,12 @@ cout<<"expr=A-B"<<endl;
 
         auto v1 =
             mdspan_utilities::create_vector<double,static_tag<1>>(
-                v1_data.data(),3,DataBlockConfig{}
+                v1_data.data(),3, DataBlockInit{}
             );
 
         auto v2 =
             mdspan_utilities::create_vector<double,static_tag<1>>(
-                v2_data.data(),3,DataBlockConfig{}
+                v2_data.data(),3, DataBlockInit{}
             );
         cout<<"v1 and v2";
         v1.print();
@@ -464,7 +464,7 @@ std::vector<double> I2_data = {
 };
 
 auto I2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
-    I2_data.data(), cols, rows, DataBlockConfig{}
+    I2_data.data(), cols, rows,  DataBlockInit{}
 );
 
 
@@ -480,8 +480,8 @@ MM.print();
         std::vector<std::complex<double>> vectorB_data = { {5.0, 2.0}, {3.0, 4.0}, {1.0, 6.0} };
 
 
-        auto vecA = mdspan_utilities::create_vector<std::complex<double>, static_tag<1>>(vectorA_data.data(), 3, DataBlockConfig{ });
-        auto vecB = mdspan_utilities::create_vector<std::complex<double>, static_tag<1>>(vectorB_data.data(), 3, DataBlockConfig{  });
+        auto vecA = mdspan_utilities::create_vector<std::complex<double>, static_tag<1>>(vectorA_data.data(), 3,  DataBlockInit{ });
+        auto vecB = mdspan_utilities::create_vector<std::complex<double>, static_tag<1>>(vectorB_data.data(), 3,  DataBlockInit{  });
 
         vecA.print();
         vecB.print();
@@ -493,14 +493,14 @@ MM.print();
 
 
         mdspan_data_t<std::complex<double>, dynamic_tag> C =
-            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockConfig{  });
+            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockInit{  });
 
         cout << "addition of A and B" << endl;
         C = vecA + vecB;
         C.print();
 
         mdspan_data_t<std::complex<double>, dynamic_tag> U =
-            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockConfig{  });
+            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ::ManagedDataBlockInit{  });
         std::complex<double>x= {2,2};
         cout<<"scaling of A by "<< x<<endl;
         U=vecA*x;
@@ -508,7 +508,7 @@ MM.print();
 
 
 //        mdspan_data_t<std::complex<double>, dynamic_tag> D =
-//            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ManagedDataBlockConfig{  });
+//            mdspan_utilities::create_vector<std::complex<double>, dynamic_tag>(3, ManagedDataBlockInit{  });
 //        Math_Functions_Policy mypol(Math_Functions_Policy::CPU_ONLY);
 //
 //        cout << "subtraction" << endl;
@@ -548,10 +548,10 @@ MM.print();
         cout << "The library works as well with col major data but in this example, we define row-major data" << endl;
 
         auto A = mdspan_utilities::create_matrix<double, static_tag<2>>(
-                     A_data.data(), rowsA, colsA, DataBlockConfig{  }
+                     A_data.data(), rowsA, colsA,  DataBlockInit{  }
                  );
         auto B = mdspan_utilities::create_matrix<double,  static_tag<2>>(
-                     B_data.data(), rowsA, colsA, DataBlockConfig{ }
+                     B_data.data(), rowsA, colsA,  DataBlockInit{ }
                  );
 
         cout << "Ordinary matrix multiplication, forced on gpu with a policy object" << std::endl;
@@ -561,7 +561,7 @@ MM.print();
         cout << "the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations v just with simd, s without parallel loops" << endl;
 
         auto C0 = mdspan_utilities::create_matrix<double, dynamic_tag>(
-                      rowsA, colsA, ManagedDataBlockConfig{}
+                      rowsA, colsA, ManagedDataBlockInit{}
                   );
         In_Kernel_Mathfunctions::matrix_multiply_dot(A, B, C0);
 
@@ -570,14 +570,14 @@ MM.print();
 
         cout << "the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations w mean with parallel for" << endl;
 
-        auto C1 = mdspan_utilities::create_matrix<double, dynamic_tag>(rowsA, colsA, ManagedDataBlockConfig{});
+        auto C1 = mdspan_utilities::create_matrix<double, dynamic_tag>(rowsA, colsA, ManagedDataBlockInit{});
         In_Kernel_Mathfunctions::matrix_multiply_dot<OpenMPVariant::Sequential>(A, B, C1);
 
         cout << "per default update_host is set to true. If one has several calculations on gpu, this may not be desired and can be switched to false" << endl;
         C1.print();
 
         auto C2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
-                      rowsA, colsA, ManagedDataBlockConfig{}
+                      rowsA, colsA, ManagedDataBlockInit{}
                   );
 
         cout << "CPU_ONLY lets it multiply on CPU. GPU_ONLY executes on gpu. AUTO lets the library decide based on whether the data is already on gpu, the algorithm, and the data size." << endl;
@@ -627,10 +627,10 @@ MM.print();
         cout << "The library works as well with col major data but in this example, we define row-major data" << endl;
 
         auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(
-                     A_data.data(), rowsA, colsA, DataBlockConfig{  }
+                     A_data.data(), rowsA, colsA,  DataBlockInit{  }
                  );
         auto B = mdspan_utilities::create_matrix<double, static_tag<2>>(
-                     B_data.data(), rowsA, colsA, DataBlockConfig{ }
+                     B_data.data(), rowsA, colsA,  DataBlockInit{ }
                  );
         A.device_data_upload(true);
         B.device_data_upload(true);
@@ -641,7 +641,7 @@ MM.print();
 
         cout << "the header In_Kernel_mathfunctions executes math functions either on the host or can run them in parallel. Abbreviations v just with simd, s without parallel loops" << endl;
 
-        auto C0 = mdspan_utilities::create_matrix<double,dynamic_tag>(rowsA, colsA, ManagedDataBlockConfig{.data_ondevice=true,.default_device=true});
+        auto C0 = mdspan_utilities::create_matrix<double,dynamic_tag>(rowsA, colsA, ManagedDataBlockInit{.data_ondevice=true,.default_device=true});
 
         Math_Functions_Policy p1(Math_Functions_Policy::GPU_ONLY);
 
@@ -684,10 +684,10 @@ MM.print();
         cout << "The library works as well with col major data but in this example, we define row-major data" << endl;
 
         auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(
-                     A_data.data(), rowsA, colsA, DataBlockConfig{  }
+                     A_data.data(), rowsA, colsA,  DataBlockInit{  }
                  );
         auto B = mdspan_utilities::create_matrix<double, dynamic_tag>(
-                     B_data.data(), rowsA, colsA, DataBlockConfig{ }
+                     B_data.data(), rowsA, colsA,  DataBlockInit{ }
                  );
 
         cout << "We can also use the Strassen algorithm or its Winograd variant for the multiplication." << std::endl;
@@ -700,7 +700,7 @@ MM.print();
         cout << " default_linear_threshold = 1000000;" << "The default number of elements at which vectors are auto offloaded for addition" << std::endl;
         cout << std::endl;
 
-        mdspan_data_t<double,dynamic_tag> C3 = mdspan_utilities::create_matrix<double, dynamic_tag>(rowsA, colsA, ManagedDataBlockConfig{});
+        mdspan_data_t<double,dynamic_tag> C3 = mdspan_utilities::create_matrix<double, dynamic_tag>(rowsA, colsA, ManagedDataBlockInit{});
 
         cout << "we now set it on gpu and set the size when to stop recursion to 2, per default, this is at 64" << endl;
         Math_MPI_RecursiveMultiplication_Policy p(false,Math_Functions_Policy::GPU_ONLY);
@@ -714,7 +714,7 @@ MM.print();
         cout << "We create a 4x4 matrix that owns its own data buffer in a memapped file and then fill the buffer and print it" << endl;
         cout << "usually, the own data buffer is more interesting for storing the results of the computation and for intermediary evaluations" << endl;
 
-        auto O = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockConfig{ .memmap = true });
+        auto O = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{ .memmap = true });
 
 
         for (ptrdiff_t i = 0; i < 16; i++)
@@ -725,7 +725,7 @@ MM.print();
 
         cout << "now we create a 4x4 matrix with data in a separate vector" << endl;
         vector<double> O2_data(16, 2);
-        auto O2 = mdspan_utilities::create_matrix<double, dynamic_tag>(O2_data.data(), rows, cols, DataBlockConfig{ });
+        auto O2 = mdspan_utilities::create_matrix<double, dynamic_tag>(O2_data.data(), rows, cols,  DataBlockInit{ });
         O2.print();
 
         cout << "now we make a shallow copy of the first matrix on the second" << endl;
@@ -750,9 +750,9 @@ MM.print();
             cout<<endl<<endl<<endl<<endl;
             cout<<"Now a cholesky decomposition on CPU"<<std::endl;
 
-            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows2, cols2, DataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows2, cols2,  DataBlockInit{});
 
-            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
 
 
             cout<<"with the dataset"<<endl;
@@ -765,7 +765,7 @@ MM.print();
             L.print();
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
 
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             cout<<"We can create a transpose with the base class DataBlock, but also with mdspan"<<endl;
@@ -780,9 +780,9 @@ MM.print();
 
             cout<<"Now the cholesky decomposition is entirely done on GPU"<<std::endl;
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows2, cols2, DataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows2, cols2,  DataBlockInit{});
 
-            auto L = mdspan_utilities::create_matrix<double,dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto L = mdspan_utilities::create_matrix<double,dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
 
             Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
 
@@ -791,7 +791,7 @@ MM.print();
             L.print();
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
 
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
 
@@ -807,8 +807,8 @@ MM.print();
 
             cout<<"With the advanced algorithms on GPU"<<std::endl;
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows2, cols2, DataBlockConfig{});
-            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows2, cols2,  DataBlockInit{});
+            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
 
             A.print();
 
@@ -820,7 +820,7 @@ MM.print();
 
 
             cout<<"we can verify the cholesky decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows2, cols2, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows2, cols2, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             ptrdiff_t newext[2];
             ptrdiff_t newstr[2];
@@ -841,9 +841,9 @@ MM.print();
         {
 
 
-            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows3, cols3, DataBlockConfig{});
-            auto L = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
-            auto U = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows3, cols3,  DataBlockInit{});
+            auto L = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
+            auto U = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
 
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
             A.print();
@@ -855,7 +855,7 @@ MM.print();
             U.print();
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
             verify.print();
@@ -865,9 +865,9 @@ MM.print();
         {
 
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows3, cols3, DataBlockConfig{});
-            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
-            auto U = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows3, cols3,  DataBlockInit{});
+            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
+            auto U = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
 
             cout<<"Entirely on gpu"<<std::endl;
             Math_Functions_Policy p(Math_Functions_Policy::GPU_ONLY);
@@ -876,7 +876,7 @@ MM.print();
             U.print();
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
             verify.print();
@@ -886,9 +886,9 @@ MM.print();
 
 
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows3, cols3, DataBlockConfig{});
-            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
-            auto U = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows3, cols3,  DataBlockInit{});
+            auto L = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
+            auto U = mdspan_utilities::create_matrix<double, dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
 
             cout<<"With the advanced algorithms on GPU"<<std::endl;
 
@@ -902,7 +902,7 @@ MM.print();
 
 
             cout<<"we can verify the lu decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows3, cols3, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(L,U, verify,&p2);
             verify.print();
@@ -919,9 +919,9 @@ MM.print();
 
 
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows4, cols4, DataBlockConfig{});
-            auto Q = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
-            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows4, cols4,  DataBlockInit{});
+            auto Q = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
+            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
 
             Math_Functions_Policy p(Math_Functions_Policy::CPU_ONLY);
             A.print();
@@ -932,7 +932,7 @@ MM.print();
             R.print();
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
             verify.print();
@@ -942,9 +942,9 @@ MM.print();
         {
 
 
-            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows4, cols4, DataBlockConfig{});
-            auto Q = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
-            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double,dynamic_tag>(A_data.data(), rows4, cols4,  DataBlockInit{});
+            auto Q = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
+            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
 
 
             cout<<"On gpu"<<std::endl;
@@ -956,7 +956,7 @@ MM.print();
 
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
             verify.print();
@@ -967,9 +967,9 @@ MM.print();
             cout<<"with the advanced algorithms on gpu "<<std::endl;
 
 
-            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows4, cols4, DataBlockConfig{});
-            auto Q = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
-            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto A = mdspan_utilities::create_matrix<double, dynamic_tag>(A_data.data(), rows4, cols4,  DataBlockInit{});
+            auto Q = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
+            auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
 
             Math_MPI_Decomposition_Policy p(false,
                 Math_Functions_Policy::GPU_ONLY,
@@ -984,7 +984,7 @@ MM.print();
             vector<double>verifydata(64,0);
 
             cout<<"we can verify the qr decomposition by multiplication"<<endl;
-            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockConfig{});
+            auto verify = mdspan_utilities::create_matrix<double,dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
             Math_Functions_Policy p2(Math_Functions_Policy::CPU_ONLY);
             Math_Functions::matrix_multiply_dot(Q,R, verify,&p2);
             verify.print();

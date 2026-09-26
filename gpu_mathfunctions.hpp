@@ -1042,7 +1042,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
     }
     ptrdiff_t aext[2]= {A.dpextents[0],A.dpextents[1]};
     ptrdiff_t astr[2]= {A.dpstrides[0],A.dpstrides[1]};
-    DataBlockConfig aconf({.dprowmajor=A.dpconfig.dprowmajor,
+    DataBlockConfig aconf({
                            .pmemmap=memmap_tempfiles,
                            .data_is_devptr=separate_device_memory,
                            .devicenum=opt.device,
@@ -1121,7 +1121,7 @@ void GPU_Math_Functions::qr_decomposition_g(const DataBlock<T>& A, DataBlock<T>&
     }
 
     ptrdiff_t z = 0;
-    DataBlockConfig cconf({.dprowmajor=true,
+    DataBlockConfig cconf({
                            .pmemmap=memmap_tempfiles,
                            .data_is_devptr=separate_device_memory,
                            .devicenum=opt.device
