@@ -98,6 +98,38 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Version history
 ### 26.08.2026
 
+The library can now work with general strided and not only with contiguous tensors
+
+A designation whether the data is rowmajor/colmajor or strided flag is now only used during construction. 
+Functions are provided to find out the layout (row/col major or strided) from strides,extents and rank. 
+
+The removal of the rowmajor flag fixes a bug with computations after transpose (which exchanged strides and thus would have changed row and colmajor orders). 
+Once one does more general operations like reversals with negative strides, and generally strided tensors, the rowmajor boolean became a problem and had to be removed.
+
+The lenght calculation for tensors can now also work if the strides are negative (e.g. for reverse views).
+
+The data scatterers and gatherers were adapted to generally strided tensors.
+
+Memory bugs were fixed in the vector*matrix multiplication.
+
+After the library handles generally strided tensors, 
+I can now go on to improve the tensor engine.
+
+I want to add a mechanism where an mpi rank can request indices from a tensor and gets these from the ranks that have them.
+Before this is not done distributed tensor contractions are just too slow and require too much communication.
+
+
+Clang 22 and earlier seem to have a severe bug with complex number calculations:
+https://releases.llvm.org/23.1.0/tools/clang/docs/ReleaseNotes.html#openmp-support
+
+For clang 23, Nvidia debuggers don't seem to record any openmp or gpu kernels from the test applications in this repository, 
+
+whereas gcc shows that there are many gpu calculations done and clang 22 does so too.
+I guess I will ask the clang developers what the reason for this is. Either a compiler problem with clang or one with Nvidia...
+
+
+### 26.08.2026
+
 Fixes of typos for the (still untested) tensor kernels (including a typo where a <= instead of a < was written in some loops).
 
 I Added the tensor product and Hadamard product  (all higher rank tensor functions are still untested).
