@@ -100,7 +100,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 The library can now work with general strided and not only with contiguous tensors
 
-A designation whether the data is rowmajor/colmajor or strided flag is now only used during construction. 
+A designation whether the data is rowmajor/colmajor or strided is now only used during construction. 
 Functions are provided to find out the layout (row/col major or strided) from strides,extents and rank. 
 The constructors of the DataBlock class have init and config structs which are better to read.
 
