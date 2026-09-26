@@ -6,6 +6,14 @@ Todo:
 2) add an autodiff mechanism, tensor contraction, unary function nodes
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
+26.09.2026
+The library can now work with general strided and not only with contiguous tensors
+A designation whether the data is rowmajor/colmajor or strided flag is now only used during construction. Functions are provided to find out the layout from strides,extents and rank. 
+The removal of the rowmajor flag fixes a bug with computations after transpose (which exchanged strides).
+The lenght calculation for tensors can now also work if the strides are negative (reverse views),
+The data scatterers and gatherers were adapted to strided tensors.
+Memory bugs were fixed in the vector*matrix multiplication.
+
 26.08.2026
 Fixes of typos for the (still untested) tensor kernels (including a typo where a <= instead of a < was written in some loops),
 
