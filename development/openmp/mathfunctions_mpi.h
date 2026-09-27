@@ -224,10 +224,10 @@ public:
                 A.pglobal_extents[1] == B.pglobal_extents[1] &&
                 A.pglobal_extents[0] == C.pglobal_extents[0] &&
                 A.pglobal_extents[1] == C.pglobal_extents[1] &&
-                A.pblock_extents[0] == B.pblock_extents[0] &&
-                A.pblock_extents[1] == B.pblock_extents[1] &&
-                A.pblock_extents[0] == C.pblock_extents[0] &&
-                A.pblock_extents[1] == C.pblock_extents[1]);
+                A.pdefault_shape[0] == B.pdefault_shape[0] &&
+                A.pdefault_shape[1] == B.pdefault_shape[1] &&
+                A.pdefault_shape[0] == C.pdefault_shape[0] &&
+                A.pdefault_shape[1] == C.pdefault_shape[1]);
     }
 
 
@@ -236,8 +236,8 @@ public:
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0]&&
                 A.pglobal_extents[1] == B.pglobal_extents[1]&&
-                A.pblock_extents[0]  == B.pblock_extents[0]&&
-                A.pblock_extents[1]  == B.pblock_extents[1]);
+                A.pdefault_shape[0]  == B.pdefault_shape[0]&&
+                A.pdefault_shape[1]  == B.pdefault_shape[1]);
     }
 
     template <typename T>
@@ -245,15 +245,15 @@ public:
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
                 A.pglobal_extents[0] == C.pglobal_extents[0] &&
-                A.pblock_extents[0] == B.pblock_extents[0] &&
-                A.pblock_extents[0] == C.pblock_extents[0]);
+                A.pdefault_shape[0] == B.pdefault_shape[0] &&
+                A.pdefault_shape[0] == C.pdefault_shape[0]);
     }
 
     template <typename T>
     inline static bool vector_extents_equal(const DistributedDataBlock<T>& A,  const DistributedDataBlock<T>& B )
     {
         return (A.pglobal_extents[0] == B.pglobal_extents[0] &&
-                A.pblock_extents[0] == B.pblock_extents[0]);
+                A.pdefault_shape[0] == B.pdefault_shape[0]);
     }
 
 

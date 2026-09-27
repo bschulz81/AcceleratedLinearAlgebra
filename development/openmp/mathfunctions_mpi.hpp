@@ -379,11 +379,11 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         return false;
     if(B.pglobal_extents[1] != C.pglobal_extents[1])
         return false;
-    if(A.pblock_extents[1] != B.pblock_extents[0])
+    if(A.pdefault_shape[1] != B.pdefault_shape[0])
         return false;
-    if(A.pblock_extents[0] != C.pblock_extents[0])
+    if(A.pdefault_shape[0] != C.pdefault_shape[0])
         return false;
-    if(B.pblock_extents[1] != C.pblock_extents[1])
+    if(B.pdefault_shape[1] != C.pdefault_shape[1])
         return false;
 
     if(CoefficientB == T(0)&& (CoefficientC != T(1)))
@@ -409,9 +409,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         MPI_Cart_coords(comma, rank, 2, coords);
         int my_row = coords[0];
         int my_col = coords[1];
-        const ptrdiff_t br = A.pblock_extents[0];
-        const ptrdiff_t bk = A.pblock_extents[1];
-        const ptrdiff_t bc = B.pblock_extents[1];
+        const ptrdiff_t br = A.pdefault_shape[0];
+        const ptrdiff_t bk = A.pdefault_shape[1];
+        const ptrdiff_t bc = B.pdefault_shape[1];
         const ptrdiff_t M = A.pglobal_extents[0];
         const ptrdiff_t N = B.pglobal_extents[1];
         const ptrdiff_t Ktot = A.pglobal_extents[1];
@@ -667,9 +667,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         int my_col = coords[1];
 
 
-        const ptrdiff_t br = A.pblock_extents[0];
-        const ptrdiff_t bk = A.pblock_extents[1];
-        const ptrdiff_t bc = B.pblock_extents[1];
+        const ptrdiff_t br = A.pdefault_shape[0];
+        const ptrdiff_t bk = A.pdefault_shape[1];
+        const ptrdiff_t bc = B.pdefault_shape[1];
         const ptrdiff_t M = A.pglobal_extents[0];
         const ptrdiff_t N = B.pglobal_extents[1];
         const ptrdiff_t Ktot = A.pglobal_extents[1];
@@ -1145,9 +1145,9 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     const ptrdiff_t M = A.pglobal_extents[0];
     const ptrdiff_t K = A.pglobal_extents[1];
 
-    const ptrdiff_t br = A.pblock_extents[0];
-    const ptrdiff_t bc = A.pblock_extents[1];
-    const ptrdiff_t bs = y.pblock_extents[0];
+    const ptrdiff_t br = A.pdefault_shape[0];
+    const ptrdiff_t bc = A.pdefault_shape[1];
+    const ptrdiff_t bs = y.pdefault_shape[0];
 
     const ptrdiff_t grid_c = (K + bc - 1) / bc;
     const ptrdiff_t grid_r = (M + bs - 1) / bs;
@@ -5084,7 +5084,7 @@ inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const Di
     const ptrdiff_t* pextentsbuffer=C.Dblockarray.pextentsbuffer;
     const ptrdiff_t* globalstrides=C.pglobal_strides;
     const ptrdiff_t* blockstarts=C.pblock_starts;
-    const ptrdiff_t blockrank=C.pblock_rank;
+    const ptrdiff_t blockrank=C.pblock_grid_rank;
     const ptrdiff_t tensorrank=C.Dblockarray.ptensor_rank;
 
     ptrdiff_t max_index_B=1;
@@ -5116,7 +5116,7 @@ inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const Di
             #pragma omp parallel for simd
             for (ptrdiff_t i = 0; i < max_index; ++i)
             {
-                local_to_global_tensor_index(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
+                local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
                 const ptrdiff_t idxA = i / max_index_B;
                 const ptrdiff_t idxB = i % max_index_B;
                 Cblockarray(i,b) =CoefficientC==T(0)?CoefficientB* dA(idxA)*dB(idxB): CoefficientC*Cblockarray(i,b)+CoefficientB* dA(idxA)*dB(idxB);
@@ -5137,7 +5137,7 @@ inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const Di
             #pragma omp simd
             for (ptrdiff_t i = 0; i < max_index; ++i)
             {
-                local_to_global_tensor_index(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
+                local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
                 const ptrdiff_t idxA = i / max_index_B;
                 const ptrdiff_t idxB = i % max_index_B;
                 Cblockarray(i,b) =CoefficientC==T(0)?CoefficientB* dA(idxA)*dB(idxB): CoefficientC*Cblockarray(i,b)+CoefficientB* dA(idxA)*dB(idxB);

@@ -175,12 +175,12 @@ public:
 
     inline T operator()(const ptrdiff_t i,const ptrdiff_t blocknumber) const;
 
-    inline DataBlock<T> get_datablock_from_arrays(const ptrdiff_t blocknumber)const;
+    inline DataBlock<T> local_block(const ptrdiff_t blocknumber)const;
 
     T* pdata=nullptr;
     ptrdiff_t pdatalength=0;
     ptrdiff_t ptensor_rank=0;
-    ptrdiff_t *pblock_offsets=nullptr;
+    ptrdiff_t*pblock_offsets=nullptr;
     ptrdiff_t* pextentsbuffer=nullptr;
     ptrdiff_t* pstridesbuffer=nullptr;
     ptrdiff_t pnumblocks=0;

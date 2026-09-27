@@ -397,11 +397,11 @@ const ptrdiff_t* strB = b.strides_ptr();
 
 
 #pragma omp begin declare target
-inline ptrdiff_t local_to_global_tensor_index(
+inline ptrdiff_t local_to_global_storage_offset(
     const ptrdiff_t* pextentsbuffer,
     const ptrdiff_t* global_strides,
     const ptrdiff_t* block_starts,
-    const ptrdiff_t pblock_rank,
+    const ptrdiff_t pblock_grid_rank,
     const ptrdiff_t ptensor_rank,
     const ptrdiff_t blocknumber,
     const ptrdiff_t local_index)
@@ -419,7 +419,7 @@ inline ptrdiff_t local_to_global_tensor_index(
 
             const ptrdiff_t global_coord =
                 local_coord +
-                (d < pblock_rank ? block_starts[d] : 0);
+                (d < pblock_grid_rank ? block_starts[d] : 0);
 
             global_index += global_coord * global_strides[d];
         }

@@ -267,11 +267,8 @@ inline T DataBlock<T>:: operator()(const ptrdiff_t row, const ptrdiff_t col) con
 
 
 
-
-
 #pragma omp begin declare target
 template<typename T>
-
 inline T& DataBlock<T>:: operator()(const ptrdiff_t i)
 {
     const ptrdiff_t offset=(dprank==1)? i*dpstrides[0] : compute_offset(dpextents,dpstrides,dprank,i);
@@ -293,8 +290,6 @@ inline T DataBlock<T>:: operator()(const ptrdiff_t i) const
     return retval;
 }
 #pragma omp end declare target
-
-
 
 
 #pragma omp begin declare target
@@ -874,7 +869,7 @@ inline T DataBlockArray<T>::  operator()(const ptrdiff_t i,const ptrdiff_t block
 
 #pragma omp begin declare target
 template <typename T>
-inline DataBlock<T> DataBlockArray<T>::  get_datablock_from_arrays(const ptrdiff_t blocknumber)const
+inline DataBlock<T> DataBlockArray<T>::  local_block(const ptrdiff_t blocknumber)const
 {
     ptrdiff_t len =(blocknumber + 1 <pnumblocks)? pblock_offsets[blocknumber+1] - pblock_offsets[blocknumber]: pdatalength - pblock_offsets[blocknumber];
     DataBlock<T>tempt(pdata + pblock_offsets[blocknumber],
