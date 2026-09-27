@@ -194,9 +194,9 @@ public:
         delete[] cyclic_block;
     }
 
-  inline void owner_coords(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* coords) const;
+    inline void owner_coords(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* coords) const;
 
-  inline int owner(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* temp_coords) const;
+    inline int owner(const ptrdiff_t* block_coords,ptrdiff_t block_rank,const MPI_CartesianContext& ctx,int* temp_coords) const;
 };
 
 
@@ -218,7 +218,7 @@ class DistributedDataBlock
 
 public:
 
-  // ------------------------------------------------------------
+    // ------------------------------------------------------------
     // Global tensor
     // ------------------------------------------------------------
 
@@ -253,6 +253,9 @@ public:
     DataBlock<T> local_block(ptrdiff_t local_block) const;
 
     const ptrdiff_t* block_grid_coords(ptrdiff_t local_block) const;
+    const ptrdiff_t* block_grid_extents() const;
+
+    ptrdiff_t block_grid_extent(ptrdiff_t dim) const;
 
     const ptrdiff_t* block_start(ptrdiff_t local_block) const;
 
@@ -262,7 +265,7 @@ public:
 
     const ptrdiff_t* block_strides(ptrdiff_t local_block) const;
 
-
+    ptrdiff_t total_block_num()const;
 
 
     // ------------------------------------------------------------
@@ -308,6 +311,8 @@ protected:
     // Nominal/default block shape.
     ptrdiff_t* pdefault_block_shape = nullptr;
 
+ptrdiff_t* pblock_grid_extents = nullptr;
+
     // ------------------------------------------------------------
     // Misc
     // ------------------------------------------------------------
@@ -319,8 +324,7 @@ protected:
     BlockMappingPolicy* ppolicy = nullptr;
 
     // global block linear index -> local block_index
-    std::unordered_map<ptrdiff_t, ptrdiff_t>
-        pglobal_to_local_index;
+    std::unordered_map<ptrdiff_t, ptrdiff_t>pglobal_to_local_index;
 };
 
 
@@ -352,7 +356,7 @@ public:
 
     template<typename T>
     inline static void MPI_Scatter_vector_to_subvectors_alloc(  ptrdiff_t blocksize,    DistributedDataBlock<T>& recv_db,
-           MPI_Sendlocation loc,    MPI_CartesianContext *ctx,    BlockMappingPolicy* policy,   int rootrank,    const DataBlock<T>* send_db);
+            MPI_Sendlocation loc,    MPI_CartesianContext *ctx,    BlockMappingPolicy* policy,   int rootrank,    const DataBlock<T>* send_db);
 
     template<typename T>
     inline static void MPI_Gather_vector_from_subvectors_alloc(    const DistributedDataBlock<T>& send_db,    int rootrank, MPI_Sendlocation loc,
@@ -374,7 +378,7 @@ public:
 
     template<typename T>
     inline static void MPI_Gather_matrix_from_columns_alloc(   const DistributedDataBlock<T>& send_db,      int rootrank, MPI_Sendlocation loc,DataBlock<T>* recv_db = nullptr
-           );
+                                                           );
 
     template<typename T>
     inline static void MPI_Scatter_matrix_to_submatrices_alloc(    ptrdiff_t br,    ptrdiff_t bc,    DistributedDataBlock<T>& recv_db,   MPI_Sendlocation loc,     MPI_CartesianContext *ctx,    BlockMappingPolicy* policy, int rootrank,     const DataBlock<T>* send_db=nullptr  );
@@ -398,15 +402,15 @@ public:
 
     template<typename T>
     inline static void MPI_All_Gather_tensor_from_subtensors_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+        const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
 
     template<typename T>
     inline static void MPI_All_Gather_matrix_from_submatrices_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+        const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
 
-      template<typename T>
+    template<typename T>
     inline static void MPI_All_Gather_vector_from_subvectors_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
+        const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db);
 
     template<typename T>
     inline static DataBlock<T> MPI_Recv_alloc_DataBlock( MPI_Sendlocation loc, const int source,const  int tag, MPI_Comm pcomm);
