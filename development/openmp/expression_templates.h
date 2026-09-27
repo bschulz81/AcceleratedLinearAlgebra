@@ -716,7 +716,7 @@ public:
 
             ptrdiff_t n = 1;
             #pragma omp unroll partial
-            for (ptrdiff_t i =0; i<peextents.size(); i++)
+            for (size_t i =0; i<peextents.size(); i++)
                 n *= peextents[i];
             pedatalength=n;
             return;

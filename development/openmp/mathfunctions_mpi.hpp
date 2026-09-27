@@ -379,11 +379,11 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         return false;
     if(B.pglobal_extents[1] != C.pglobal_extents[1])
         return false;
-    if(A.pdefault_shape[1] != B.pdefault_shape[0])
+    if(A.pdefault_block_shape[1] != B.pdefault_block_shape[0])
         return false;
-    if(A.pdefault_shape[0] != C.pdefault_shape[0])
+    if(A.pdefault_block_shape[0] != C.pdefault_block_shape[0])
         return false;
-    if(B.pdefault_shape[1] != C.pdefault_shape[1])
+    if(B.pdefault_block_shape[1] != C.pdefault_block_shape[1])
         return false;
 
     if(CoefficientB == T(0)&& (CoefficientC != T(1)))
@@ -409,9 +409,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         MPI_Cart_coords(comma, rank, 2, coords);
         int my_row = coords[0];
         int my_col = coords[1];
-        const ptrdiff_t br = A.pdefault_shape[0];
-        const ptrdiff_t bk = A.pdefault_shape[1];
-        const ptrdiff_t bc = B.pdefault_shape[1];
+        const ptrdiff_t br = A.pdefault_block_shape[0];
+        const ptrdiff_t bk = A.pdefault_block_shape[1];
+        const ptrdiff_t bc = B.pdefault_block_shape[1];
         const ptrdiff_t M = A.pglobal_extents[0];
         const ptrdiff_t N = B.pglobal_extents[1];
         const ptrdiff_t Ktot = A.pglobal_extents[1];
@@ -667,9 +667,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         int my_col = coords[1];
 
 
-        const ptrdiff_t br = A.pdefault_shape[0];
-        const ptrdiff_t bk = A.pdefault_shape[1];
-        const ptrdiff_t bc = B.pdefault_shape[1];
+        const ptrdiff_t br = A.pdefault_block_shape[0];
+        const ptrdiff_t bk = A.pdefault_block_shape[1];
+        const ptrdiff_t bc = B.pdefault_block_shape[1];
         const ptrdiff_t M = A.pglobal_extents[0];
         const ptrdiff_t N = B.pglobal_extents[1];
         const ptrdiff_t Ktot = A.pglobal_extents[1];
@@ -1145,9 +1145,9 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     const ptrdiff_t M = A.pglobal_extents[0];
     const ptrdiff_t K = A.pglobal_extents[1];
 
-    const ptrdiff_t br = A.pdefault_shape[0];
-    const ptrdiff_t bc = A.pdefault_shape[1];
-    const ptrdiff_t bs = y.pdefault_shape[0];
+    const ptrdiff_t br = A.pdefault_block_shape[0];
+    const ptrdiff_t bc = A.pdefault_block_shape[1];
+    const ptrdiff_t bs = y.pdefault_block_shape[0];
 
     const ptrdiff_t grid_c = (K + bc - 1) / bc;
     const ptrdiff_t grid_r = (M + bs - 1) / bs;

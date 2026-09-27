@@ -234,7 +234,7 @@ public:
 
     ptrdiff_t block_grid_rank() const;
 
-    ptrdiff_t* default_shape() const;
+    ptrdiff_t* default_block_shape() const;
 
 
     // ------------------------------------------------------------
@@ -242,6 +242,15 @@ public:
     // ------------------------------------------------------------
 
     ptrdiff_t num_local_blocks() const;
+    // ------------------------------------------------------------
+    // Local block data
+    // ------------------------------------------------------------
+
+    DataBlockArray<T>& block_array();
+
+    const DataBlockArray<T>& block_array() const;
+
+    DataBlock<T> local_block(ptrdiff_t local_block) const;
 
     const ptrdiff_t* block_grid_coords(ptrdiff_t local_block) const;
 
@@ -254,15 +263,7 @@ public:
     const ptrdiff_t* block_strides(ptrdiff_t local_block) const;
 
 
-    // ------------------------------------------------------------
-    // Local block data
-    // ------------------------------------------------------------
 
-    DataBlockArray<T>& block_array();
-
-    const DataBlockArray<T>& block_array() const;
-
-    DataBlock<T> local_block(ptrdiff_t local_block) const;
 
     // ------------------------------------------------------------
     // Utility
@@ -305,7 +306,7 @@ protected:
     ptrdiff_t pblock_grid_rank = 0;
 
     // Nominal/default block shape.
-    ptrdiff_t* pdefault_shape = nullptr;
+    ptrdiff_t* pdefault_block_shape = nullptr;
 
     // ------------------------------------------------------------
     // Misc

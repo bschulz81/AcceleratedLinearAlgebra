@@ -478,31 +478,17 @@ bool should_use_gpu_matrix_multiply(
         return should_use_gpu_matrix_multiply(A,B,C);
 #else
 
-        size_t input_output_memory =
-            sizeof(T) *
-            (
-                A.datalength() +
-                B.datalength() +
-                C.datalength()
-            );
+        size_t input_output_memory =sizeof(T) *(A.datalength() +B.datalength() +C.datalength());
 
 
-        size_t workspace_memory =
-            winograd_workspace_bytes<T>(n,m,p);
+        size_t workspace_memory =winograd_workspace_bytes<T>(n,m,p);
 
+        size_t total_memory =input_output_memory +workspace_memory;
 
-        size_t total_memory =
-            input_output_memory +
-            workspace_memory;
-
-
-        ptrdiff_t work =
-            n*m*p;
-
+        ptrdiff_t work =n*m*p;
 
         if(mode == GPU_ONLY)
             return rank_can_use_gpu();
-
 
         if(mode == CPU_ONLY)
             return false;
@@ -513,7 +499,7 @@ bool should_use_gpu_matrix_multiply(
 
 
         return rank_can_use_gpu() &&
-               total_memory <= max_gpu_memory_bytes &&
+                total_memory<= max_gpu_memory_bytes &&
                work >= gpu_matmul_threshold;
 
 #endif
