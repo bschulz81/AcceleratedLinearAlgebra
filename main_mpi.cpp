@@ -204,16 +204,16 @@ int main(int argc, char** argv)
             DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
-        if(block1.local_blocknumber()>0)
+        if(block1.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block1);
         }
 
-        if(block2.local_blocknumber()>0)
+        if(block2.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block2);
         }
-        if(block3.local_blocknumber()>0)
+        if(block3.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block3);
         }
@@ -328,16 +328,16 @@ endofblock:
             DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
-        if(block1.local_blocknumber()>0)
+        if(block1.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block1);
         }
 
-        if(block2.local_blocknumber()>0)
+        if(block2.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block2);
         }
-        if(block3.local_blocknumber()>0)
+        if(block3.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block3);
         }
@@ -444,16 +444,16 @@ endofblock:
             DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
-        if(block1.local_blocknumber()>0)
+        if(block1.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block1);
         }
 
-        if(block2.local_blocknumber()>0)
+        if(block2.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block2);
         }
-        if(block3.local_blocknumber()>0)
+        if(block3.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block3);
         }
@@ -552,16 +552,16 @@ endofblock:
             DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
-        if(block1.local_blocknumber()>0)
+        if(block1.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block1);
         }
 
-        if(block2.local_blocknumber()>0)
+        if(block2.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block2);
         }
-        if(block3.local_blocknumber()>0)
+        if(block3.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block3);
         }
@@ -641,7 +641,7 @@ endofblock:
             DataBlock_MPI_Functions::MPI_Free_DataBlock(A1copy);
         }
 
-        if(block.local_blocknumber()>0)
+        if(block.num_local_blocks()>0)
         {
             DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(block);
         }

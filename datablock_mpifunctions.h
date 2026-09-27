@@ -209,46 +209,121 @@ class DataBlock_MPI_Functions;
 class Math_Functions_MPI;
 
 class Math_MPI_Functions_Policy;
-
-
 template<typename T>
 class DistributedDataBlock
 {
     friend class DataBlock_MPI_Functions;
     friend class Math_Functions_MPI;
     friend class Math_MPI_Functions_Policy;
+
 public:
 
-    ptrdiff_t block_rank()const;
+  // ------------------------------------------------------------
+    // Global tensor
+    // ------------------------------------------------------------
 
-    ptrdiff_t* global_extents()const;
+    ptrdiff_t tensor_rank() const;
 
-    ptrdiff_t* global_strides()const;
+    ptrdiff_t* global_extents() const;
 
-    ptrdiff_t local_blocknumber()const;
+    ptrdiff_t* global_strides() const;
 
-    DataBlockArray<T> & Blockarray();
+    // ------------------------------------------------------------
+    // Block grid
+    // ------------------------------------------------------------
 
-    void print(int rootrank=0)const;
+    ptrdiff_t block_grid_rank() const;
 
+    ptrdiff_t* default_shape() const;
+
+
+    // ------------------------------------------------------------
+    // Local blocks
+    // ------------------------------------------------------------
+
+    ptrdiff_t num_local_blocks() const;
+
+    const ptrdiff_t* block_grid_coords(ptrdiff_t local_block) const;
+
+    const ptrdiff_t* block_start(ptrdiff_t local_block) const;
+
+    ptrdiff_t block_linear_index(ptrdiff_t local_block) const;
+
+    const ptrdiff_t* block_extents(ptrdiff_t local_block) const;
+
+    const ptrdiff_t* block_strides(ptrdiff_t local_block) const;
+
+
+    // ------------------------------------------------------------
+    // Local block data
+    // ------------------------------------------------------------
+
+    DataBlockArray<T>& block_array();
+
+    const DataBlockArray<T>& block_array() const;
+
+    DataBlock<T> local_block(ptrdiff_t local_block) const;
+
+    // ------------------------------------------------------------
+    // Utility
+    // ------------------------------------------------------------
+
+    void print(int rootrank = 0) const;
 protected:
 
+    // Local blocks
     DataBlockArray<T> Dblockarray;
+    // ------------------------------------------------------------
+    // Per-local-block metadata
+    // ------------------------------------------------------------
 
-    ptrdiff_t* pblock_grid_coords=nullptr;
-    ptrdiff_t* pblock_starts=nullptr;
+    // [local_block * pblock_grid_rank + d]
+    ptrdiff_t* pblock_grid_coords = nullptr;
+
+    // [local_block * ptensor_rank + d]
+    ptrdiff_t* pblock_starts = nullptr;
+
+    // [local_block]
     ptrdiff_t* pblock_linear_idx = nullptr;
-    ptrdiff_t  pblock_rank=0;
-    ptrdiff_t* pglobal_extents=nullptr;
-    ptrdiff_t* pglobal_strides=nullptr;
-    ptrdiff_t* pblock_extents=nullptr;
-    bool pmemmap=false;
 
-    MPI_CartesianContext* pctx;
-    BlockMappingPolicy* ppolicy;
 
-    std::unordered_map<ptrdiff_t, ptrdiff_t> pglobal_to_local_index;
+    // ------------------------------------------------------------
+    // Global tensor metadata
+    // ------------------------------------------------------------
+
+    ptrdiff_t ptensor_rank = 0;
+
+    ptrdiff_t* pglobal_extents = nullptr;
+
+    ptrdiff_t* pglobal_strides = nullptr;
+
+    // ------------------------------------------------------------
+    // Block-grid metadata
+    // ------------------------------------------------------------
+
+    // Number of dimensions actually being blocked.
+    ptrdiff_t pblock_grid_rank = 0;
+
+    // Nominal/default block shape.
+    ptrdiff_t* pdefault_shape = nullptr;
+
+    // ------------------------------------------------------------
+    // Misc
+    // ------------------------------------------------------------
+
+    bool pmemmap = false;
+
+    MPI_CartesianContext* pctx = nullptr;
+
+    BlockMappingPolicy* ppolicy = nullptr;
+
+    // global block linear index -> local block_index
+    std::unordered_map<ptrdiff_t, ptrdiff_t>
+        pglobal_to_local_index;
 };
+
+
+
 
 struct MPI_Sendlocation
 {
