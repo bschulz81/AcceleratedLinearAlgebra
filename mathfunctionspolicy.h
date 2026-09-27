@@ -86,7 +86,7 @@ public:
 
     bool should_use_gpu_work(
         ptrdiff_t work,
-        size_t memory_bytes,
+        ptrdiff_t memory_bytes,
         bool data_on_device,
         ptrdiff_t threshold) const
     {
@@ -102,8 +102,8 @@ public:
             if(data_on_device)
                 return true;
 
-            return (memory_bytes <= max_gpu_memory_bytes) &&
-                   (work >= threshold);
+            return (abs(memory_bytes) <= abs(max_gpu_memory_bytes)) &&
+                   (abs(work) >= abs(threshold));
         }
 
         return false;
