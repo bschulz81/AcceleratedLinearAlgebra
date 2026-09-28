@@ -96,6 +96,12 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 28.09.2026
+fix of a typo that in the distributed scalar product that prevented execution,
+added first structs for tensor data requests to other nodes, 
+more coherent naming of the fields of DistributedDataBlock
+better text format of the policy classes for the mpi calculations
+
 ### 27.09.2026
 Improved the naming and documentation of the various fields in the distributed datablock class. The variable names were too similar to show a unique meaning. One has to do with blocks with extents and strides, a block distribution grid with extents, and local and global indices. Making the names clear to prevent accidential misuse was required. I also added proper accessors. This will now ease the implementation of requesting and recieving parts of tensors, which is required for fast distributed tensor contraction.
 
