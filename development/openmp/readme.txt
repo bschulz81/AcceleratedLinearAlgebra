@@ -6,7 +6,13 @@ Todo:
 2) add an autodiff mechanism, tensor contraction, unary function nodes
 3) add functions for statistics, function minimization, auto differentiation, optimization, differential equations
 
-26.09.2026
+28.09.2026
+fix of a typo that in the distributed scalar product that prevented execution,
+added first structs for tensor data requests to other nodes, 
+more coherent naming of the fields of DistributedDataBlock
+better text format of the policy classes for the mpi calculations
+
+27.09.2026
 The library can now work with general strided and not only with contiguous tensors
 A designation whether the data is rowmajor/colmajor or strided flag is now only used during construction. Functions are provided to find out the layout from strides,extents and rank. 
 The removal of the rowmajor flag fixes a bug with computations after transpose (which exchanged strides).
