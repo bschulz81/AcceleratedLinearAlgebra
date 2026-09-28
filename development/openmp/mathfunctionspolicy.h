@@ -84,11 +84,8 @@ public:
     }
 
 
-    bool should_use_gpu_work(
-        ptrdiff_t work,
-        ptrdiff_t memory_bytes,
-        bool data_on_device,
-        ptrdiff_t threshold) const
+    bool should_use_gpu_work(ptrdiff_t work,ptrdiff_t memory_bytes,
+                             bool data_on_device,ptrdiff_t threshold) const
     {
         switch(mode)
         {
@@ -110,56 +107,35 @@ public:
     }
 
     template<typename T>
-    bool should_use_gpu_elementwise(
-        const DataBlock<T>& A,
-        const DataBlock<T>& B,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_elementwise(const DataBlock<T>& A,const DataBlock<T>& B,const DataBlock<T>& C) const
     {
         ptrdiff_t work = A.datalength();
 
         size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             B.datalength() +
-             C.datalength());
+            sizeof(T) *(A.datalength() +B.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A, devicenum) ||
             GPU_Memory_Functions::is_on_gpu(B, devicenum) ||
             GPU_Memory_Functions::is_on_gpu(C, devicenum);
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_linear_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_linear_threshold);
     }
  template<typename T>
-    bool should_use_gpu_elementwise(
-        const DataBlock<T>& A,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_elementwise(const DataBlock<T>& A,const DataBlock<T>& C) const
     {
         ptrdiff_t work = A.datalength();
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +C.datalength());
 
-        bool on_device =
-            GPU_Memory_Functions::is_on_gpu(A, devicenum) ||
-            GPU_Memory_Functions::is_on_gpu(C, devicenum);
+        bool on_device =GPU_Memory_Functions::is_on_gpu(A, devicenum)
+                        ||GPU_Memory_Functions::is_on_gpu(C, devicenum);
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_linear_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_linear_threshold);
     }
 
     template<typename T>
-    bool should_use_gpu_elementwise(
-        const DataBlock<T>& C) const
+    bool should_use_gpu_elementwise(const DataBlock<T>& C) const
     {
         ptrdiff_t work = C.datalength();
 
@@ -167,57 +143,18 @@ public:
 
         bool on_device =GPU_Memory_Functions::is_on_gpu(C, devicenum);
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_linear_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_linear_threshold);
     }
 
 
-    template<typename T>
-    bool should_use_gpu_vector(
-        const DistributedDataBlock<T>& x,
-        const DistributedDataBlock<T>& y) const
-    {
-        ptrdiff_t work =
-            x.pglobal_extents[0];
-
-        size_t memory_bytes =
-            sizeof(T) *
-            (
-                x.Dblockarray.pdatalength +
-                y.Dblockarray.pdatalength
-            );
-
-        bool on_device =
-            GPU_Memory_Functions::is_on_gpu(x.Dblockarray,devicenum) ||
-            GPU_Memory_Functions::is_on_gpu(y.Dblockarray,devicenum);
-
-
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_linear_threshold);
-    }
 
 
     template<typename T>
-    bool should_use_gpu_matrix_vector(
-        const DataBlock<T>& A,
-        const DataBlock<T>& x,
-        const DataBlock<T>& y) const
+    bool should_use_gpu_matrix_vector(const DataBlock<T>& A,const DataBlock<T>& x,const DataBlock<T>& y) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1);
+        ptrdiff_t work =A.extent(0) *A.extent(1);
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             x.datalength() +
-             y.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +x.datalength() +y.datalength());
 
 
         bool on_device =
@@ -226,29 +163,15 @@ public:
             GPU_Memory_Functions::is_on_gpu(y,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_linear_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_linear_threshold);
     }
 
     template<typename T>
-    bool should_use_gpu_matrix_multiply(
-        const DataBlock<T>& A,
-        const DataBlock<T>& B,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_matrix_multiply(const DataBlock<T>& A,const DataBlock<T>& B,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1) *
-            B.extent(1);
+        ptrdiff_t work =A.extent(0) *A.extent(1) *B.extent(1);
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             B.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +B.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A,devicenum) ||
@@ -256,29 +179,16 @@ public:
             GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
 
      template<typename T>
-    bool should_use_gpu_matrix(
-        const DataBlock<T>& A,
-        const DataBlock<T>& B,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_matrix(const DataBlock<T>& A,const DataBlock<T>& B,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1) ;
+        ptrdiff_t work =A.extent(0) *A.extent(1) ;
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             B.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +B.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A,devicenum) ||
@@ -286,27 +196,15 @@ public:
             GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
        template<typename T>
-    bool should_use_gpu_vector(
-        const DataBlock<T>& A,
-        const DataBlock<T>& B,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_vector(const DataBlock<T>& A,const DataBlock<T>& B,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.extent(0);
+        ptrdiff_t work =A.extent(0);
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             B.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +B.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A,devicenum) ||
@@ -314,106 +212,61 @@ public:
             GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
         template<typename T>
 
-    bool should_use_gpu_vector(
-        const DataBlock<T>& A,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_vector(const DataBlock<T>& A,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.extent(0);
+        ptrdiff_t work =A.extent(0);
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A,devicenum) ||
             GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
-       template<typename T>
-        bool should_use_gpu_vector(
-        const DataBlock<T>& A) const
+       template<typename T>bool should_use_gpu_vector(const DataBlock<T>& A) const
     {
-        ptrdiff_t work =
-            A.extent(0);
+        ptrdiff_t work =A.extent(0);
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength());
 
-        bool on_device =
-            GPU_Memory_Functions::is_on_gpu(A,devicenum);
+        bool on_device =GPU_Memory_Functions::is_on_gpu(A,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
      template<typename T>
-    bool should_use_gpu_matrix(
-        const DataBlock<T>& A,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_matrix(const DataBlock<T>& A,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1) ;
+        ptrdiff_t work =A.extent(0) *A.extent(1) ;
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() +
-             C.datalength());
+        size_t memory_bytes =sizeof(T) *(A.datalength() +C.datalength());
 
         bool on_device =
             GPU_Memory_Functions::is_on_gpu(A,devicenum) ||
             GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
      template<typename T>
-    bool should_use_gpu_matrix(
-        const DataBlock<T>& A) const
+    bool should_use_gpu_matrix(const DataBlock<T>& A) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1) ;
+        ptrdiff_t work =A.extent(0) *A.extent(1) ;
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (A.datalength() );
+        size_t memory_bytes =sizeof(T) *(A.datalength() );
 
-        bool on_device =
-            GPU_Memory_Functions::is_on_gpu(A,devicenum);
+        bool on_device =GPU_Memory_Functions::is_on_gpu(A,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
 
@@ -421,102 +274,47 @@ public:
     bool should_use_gpu_decomposition(
         const DataBlock<T>& A) const
     {
-        ptrdiff_t work =
-            A.extent(0) *
-            A.extent(1) *
-            A.extent(0);
+        ptrdiff_t work =A.extent(0) *A.extent(1) *A.extent(0);
+
+        size_t memory_bytes =sizeof(T) *A.datalength();
+
+        bool on_device =GPU_Memory_Functions::is_on_gpu(A,devicenum);
 
 
-        size_t memory_bytes =
-            sizeof(T) *
-            A.datalength();
-
-
-        bool on_device =
-            GPU_Memory_Functions::is_on_gpu(A,devicenum);
-
-
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_decomposition_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_decomposition_threshold);
     }
-template<typename T>
-bool should_use_gpu_sparse_matrix_vector(
-    const BlockedDataView<T>& A,
-    const DataBlock<T>& x,
-    const DataBlock<T>& y) const
-{
-    ptrdiff_t work =
-        A.number_of_blocks() *
-        A.block_volume();
 
-    size_t memory_bytes =
-        sizeof(T) *
-        (
-            A.get_datablock().datalength() +
-            x.datalength() +
-            y.datalength()
-        );
+template<typename T>
+bool should_use_gpu_sparse_matrix_vector(const BlockedDataView<T>& A,const DataBlock<T>& x,const DataBlock<T>& y) const
+{
+    ptrdiff_t work =A.number_of_blocks() *A.block_volume();
+
+    size_t memory_bytes =sizeof(T) *(A.get_datablock().datalength()
+                                     +x.datalength() +y.datalength());
 
     bool on_device =
-        GPU_Memory_Functions::is_on_gpu(
-            A.get_datablock(),
-            devicenum)
-        ||
-        GPU_Memory_Functions::is_on_gpu(
-            x,
-            devicenum)
-        ||
-        GPU_Memory_Functions::is_on_gpu(
-            y,
-            devicenum);
+        GPU_Memory_Functions::is_on_gpu(A.get_datablock(),devicenum)
+        ||GPU_Memory_Functions::is_on_gpu(x,devicenum)
+        ||GPU_Memory_Functions::is_on_gpu(y,devicenum);
 
-    return should_use_gpu_work(
-        work,
-        memory_bytes,
-        on_device,
-        gpu_linear_threshold);
+    return should_use_gpu_work(work,memory_bytes,on_device,gpu_linear_threshold);
 }
     template<typename T>
-    bool should_use_gpu_sparse_matrix_multiply(
-        const BlockedDataView<T>& A,
-        const BlockedDataView<T>& B,
-        const DataBlock<T>& C) const
+    bool should_use_gpu_sparse_matrix_multiply(const BlockedDataView<T>& A,const BlockedDataView<T>& B,const DataBlock<T>& C) const
     {
-        ptrdiff_t work =
-            A.number_of_blocks() *
-            B.number_of_blocks() *
-            std::max(A.block_volume(),
-                     B.block_volume());
+        ptrdiff_t work =A.number_of_blocks() *B.number_of_blocks() *std::max(A.block_volume(),B.block_volume());
 
 
-        size_t memory_bytes =
-            sizeof(T) *
-            (
-                A.get_datablock().datalength() +
-                B.get_datablock().datalength() +
-                C.datalength()
-            );
+        size_t memory_bytes =sizeof(T) *(A.get_datablock().datalength() +B.get_datablock().datalength() +C.datalength());
 
 
         bool on_device =
-            GPU_Memory_Functions::is_on_gpu(
-                A.get_datablock(),devicenum)
-            ||
-            GPU_Memory_Functions::is_on_gpu(
-                B.get_datablock(),devicenum)
-            ||
-            GPU_Memory_Functions::is_on_gpu(
-                C,devicenum);
+            GPU_Memory_Functions::is_on_gpu(A.get_datablock(),devicenum)
+            ||GPU_Memory_Functions::is_on_gpu(B.get_datablock(),devicenum)
+            ||GPU_Memory_Functions::is_on_gpu(C,devicenum);
 
 
-        return should_use_gpu_work(
-                   work,
-                   memory_bytes,
-                   on_device,
-                   gpu_matmul_threshold);
+        return should_use_gpu_work(work,memory_bytes,on_device,gpu_matmul_threshold);
     }
 
 
@@ -529,13 +327,10 @@ private:
         return (n > 0) ? n : 0;
     }
 
-
     inline bool gpu_available() const
     {
         return num_gpus > 0;
     }
-
-
 
 };
 
