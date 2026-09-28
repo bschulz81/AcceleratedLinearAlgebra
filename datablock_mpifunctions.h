@@ -209,6 +209,8 @@ class DataBlock_MPI_Functions;
 class Math_Functions_MPI;
 
 class Math_MPI_Functions_Policy;
+
+
 template<typename T>
 class DistributedDataBlock
 {
@@ -253,16 +255,21 @@ public:
     DataBlock<T> local_block(ptrdiff_t local_block) const;
 
     const ptrdiff_t* block_grid_coords(ptrdiff_t local_block) const;
+    void block_grid_coords(ptrdiff_t block_grid_index,ptrdiff_t* block_coords) const;
+
     const ptrdiff_t* block_grid_extents() const;
 
     ptrdiff_t block_grid_extent(ptrdiff_t dim) const;
 
-    const ptrdiff_t* block_start(ptrdiff_t local_block) const;
+    const ptrdiff_t* block_grid_starts(ptrdiff_t local_block) const;
+    void block_grid_starts(const ptrdiff_t* block_coords,ptrdiff_t* starts) const;
 
-    ptrdiff_t block_linear_index(ptrdiff_t local_block) const;
+    ptrdiff_t block_grid_index(ptrdiff_t local_block) const;
+    ptrdiff_t block_grid_index(const ptrdiff_t* block_coords) const;
 
+
+    void block_extents(const ptrdiff_t* block_coords,ptrdiff_t* extents) const;
     const ptrdiff_t* block_extents(ptrdiff_t local_block) const;
-
     const ptrdiff_t* block_strides(ptrdiff_t local_block) const;
 
     ptrdiff_t total_block_num()const;
@@ -271,8 +278,10 @@ public:
     // ------------------------------------------------------------
     // Utility
     // ------------------------------------------------------------
+    int owner_rank(const ptrdiff_t* block_coords) const;
 
     void print(int rootrank = 0) const;
+
 protected:
 
     // Local blocks
@@ -285,10 +294,10 @@ protected:
     ptrdiff_t* pblock_grid_coords = nullptr;
 
     // [local_block * ptensor_rank + d]
-    ptrdiff_t* pblock_starts = nullptr;
+    ptrdiff_t* pblock_grid_starts = nullptr;
 
     // [local_block]
-    ptrdiff_t* pblock_linear_idx = nullptr;
+    ptrdiff_t* pblock_grid_index = nullptr;
 
 
     // ------------------------------------------------------------
@@ -311,7 +320,7 @@ protected:
     // Nominal/default block shape.
     ptrdiff_t* pdefault_block_shape = nullptr;
 
-ptrdiff_t* pblock_grid_extents = nullptr;
+    ptrdiff_t* pblock_grid_extents = nullptr;
 
     // ------------------------------------------------------------
     // Misc
@@ -323,8 +332,32 @@ ptrdiff_t* pblock_grid_extents = nullptr;
 
     BlockMappingPolicy* ppolicy = nullptr;
 
-    // global block linear index -> local block_index
-    std::unordered_map<ptrdiff_t, ptrdiff_t>pglobal_to_local_index;
+    // block grid index -> local block_index
+    std::unordered_map<ptrdiff_t, ptrdiff_t>pblock_grid_to_local;
+};
+
+struct TensorRegion
+{
+    ptrdiff_t rank = 0;
+
+    ptrdiff_t* start = nullptr;
+
+    ptrdiff_t* extent = nullptr;
+};
+
+struct TensorBlockIntersection
+{
+    ptrdiff_t block_grid_index = -1;
+    int owner_rank = -1;
+    ptrdiff_t* source_offset = nullptr;
+    ptrdiff_t* destination_offset = nullptr;
+};
+
+template <typename T>
+class TensorBlockTransfer : public DataBlockArray<T>
+{
+public:
+    TensorBlockIntersection* pintersections = nullptr;
 };
 
 
@@ -336,6 +369,7 @@ struct MPI_Sendlocation
     bool ondevice=false;
     int devicenum=-INT_MAX;
 };
+
 
 class DataBlock_MPI_Functions
 {
