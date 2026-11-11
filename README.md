@@ -89,16 +89,18 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 # Todo:
 
 1) Add more functions for tensors including tensor contraction and Einsums
-2) add unary function nodes in expressions,
-3) add an autodiff mechanism to the expressions to allow some support for differential equations,
-4) add the expression mechanism for the distributed tensorclasses and views of subsets of distributed tensors
-6) add functions for statistics, function minimization, optimization, differential equations
+2) Add an accessor class that provides easy notations for subtensors, contractions.
+3) Add functions for views of subtensors that are distributed with mpi.
+4) add unary function nodes in expressions,
+5) add an autodiff mechanism to the expressions to allow some support for differential equations,
+6) add the expression mechanism for the distributed tensorclasses and views of subsets of distributed tensors
+7) add functions for statistics, function minimization, optimization, differential equations
 
 
 # Version history
 ### 11.11.2026
 
-added a tensor request engine for products and contractions,
+added a tensor request engine for tensor products and later contractions,
 fixed a bug in the tensor scatterer that occured for certain gridranks,
 fixed the tensor algebra math functions and began testing of them. The mpi test application now tests a tensor product.
 
