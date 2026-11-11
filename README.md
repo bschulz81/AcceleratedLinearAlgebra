@@ -96,6 +96,33 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 
 # Version history
+### 11.11.2026
+
+added a tensor request engine for products and contractions,
+fixed a bug in the tensor scatterer that occured for certain gridranks,
+fixed the tensor algebra math functions and began testing of them. The mpi test application now tests a tensor product.
+
+In this folder, the distributed tensor product still uses allgather for the tensors A and B. 
+A version which uses the new request engine for the distributed tensor product is in the development folder.
+
+Before I want to use the request engine generally, I want to optimize it more to store and transmit less metadata.
+
+The engine has classes that allow each rank to request only the data that it needs during tensor products (and later contraction)
+However, currently, the engine introduces a bookkeeping class that stores the offsets of the indices of the retrieved data.
+
+Assume you distribute a matrix on nodes and the nodes need to access only the columns of the matrix for a tensor product,
+then, the metadata would be such that it points to every item in the requested column. This is of course very inefficient.
+A better solution would use intervals for the metadata of the requested indices (i.e. request a_1 to a_5), which I still have to write.
+
+Additionally, I noted that there was a bug in the tensor scatterer that occured
+when tensors were distributed with certain dimensions of the block grid and the mpi cartesian grid. This has now been fixed.
+
+Some tensor algebra functions were also fixed. But i still need to test all of them.
+
+Clang 23 still does not report Cuda kernels in the Nvidia debugger on my system with any openmp code,
+whereas GCC and older Clang versions create cuda kernels visible in Nvidia's debugger. I guess i will report this at clang.
+
+
 ### 28.09.2026
 fix of a typo that in the distributed scalar product that prevented execution,
 added first structs for tensor data requests to other nodes, 
