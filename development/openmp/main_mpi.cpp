@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
 
-{
+    {
 
 
 
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
                     Math_Functions_Policy p1(Math_Functions_Policy::AUTO);
                     cout<<"supplying nullptr instead of a pointer to Math_Functions_Policy lets the library use a global default that can be configured."<<endl;
-                     auto C = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{});
+                    auto C = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ManagedDataBlockInit{});
                     Math_Functions::matrix_multiply_dot(A3, B3, C,&p1);
                     C.print();
 
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
         }
 
     }
-
+//
     {
 
         int rank;
@@ -169,9 +169,9 @@ int main(int argc, char** argv)
         }
 
         MPI_Comm cart_comm =  Math_Functions_MPI::create_summa_communicator(5,5, rank == rootrank ? &A1 : nullptr,
-                                                        rank == rootrank ? &B1 : nullptr,
-                                                          rank == rootrank ? &C1 : nullptr,
-                                                          rootrank);
+                              rank == rootrank ? &B1 : nullptr,
+                              rank == rootrank ? &C1 : nullptr,
+                              rootrank);
         if(cart_comm == MPI_COMM_NULL)
         {
             goto endofblock;
@@ -179,13 +179,13 @@ int main(int argc, char** argv)
         DistributedDataBlock<double> block1,block2,block3;
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
-        BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
+        BlockMappingPolicy policy=BlockMappingPolicy(ctx.pgridrank);
 
 
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}  ,&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block1,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block2,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(5,5,block3,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
         block3.print();
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,DataBlockConfig{.pmemmap=false,.data_is_devptr=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
@@ -227,7 +227,7 @@ int main(int argc, char** argv)
 endofblock:
 
 
-     {
+    {
 
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -248,7 +248,8 @@ endofblock:
             constexpr ptrdiff_t K = 17;
 
             A_data.resize(M*K);
-            std::generate(A_data.begin(), A_data.end(), [val = 1.0]() mutable {
+            std::generate(A_data.begin(), A_data.end(), [val = 1.0]() mutable
+            {
                 return std::complex<double>(val++, 0.0);});
 
 
@@ -303,13 +304,13 @@ endofblock:
 
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
-        BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
+        BlockMappingPolicy policy=BlockMappingPolicy(ctx.pgridrank);
 
         DistributedDataBlock<std::complex<double>> block1,block2,block3;
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block1,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block2,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(6,6,block3,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
         block3.print();
@@ -319,7 +320,7 @@ endofblock:
         Math_Functions_MPI::conjugate(block3);
         DataBlock<std::complex<double>> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
+        DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(block3,rootrank,DataBlockConfig{.pmemmap=false,.data_is_devptr=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
@@ -416,10 +417,10 @@ endofblock:
         DistributedDataBlock<double> block1,block2,block3;
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
-        BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
+        BlockMappingPolicy policy=BlockMappingPolicy(ctx.pgridrank);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block1,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block2,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(6,block3,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()},&ctx,&policy, rootrank,rank==rootrank? &C1:nullptr);
         block1.print();
         block2.print();
 
@@ -434,7 +435,7 @@ endofblock:
 
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,DataBlockConfig{.pmemmap=false,.data_is_devptr=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
@@ -460,7 +461,7 @@ endofblock:
 
         MPI_Comm_free(&cart_comm);
 
-   }
+    }
 
 
     {
@@ -529,13 +530,13 @@ endofblock:
         DistributedDataBlock<double> block1,block2,block3;
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
-        BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
+        BlockMappingPolicy policy=BlockMappingPolicy(ctx.pgridrank);
 
 
 
-        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block1,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &A1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block2,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &B1:nullptr);
-        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block3,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &C1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_matrix_to_submatrices_alloc(3,3,block1,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &A1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block2,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &B1:nullptr);
+        DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(3,block3,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank? &C1:nullptr);
 
         block1.print();
         block2.print();
@@ -544,7 +545,7 @@ endofblock:
         block3.print();
         DataBlock<double> A1copy;
 
-        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
+        DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(block3,rootrank,DataBlockConfig{.pmemmap=false,.data_is_devptr=false,.devicenum=-INT_MAX},rank==rootrank? &A1copy:nullptr);
 
         if(rank==rootrank)
         {
@@ -618,7 +619,7 @@ endofblock:
 
             std::iota(A_data.begin(), A_data.end(), 0.0);
 
-            A1 = DataBlock<double>( A_data.data(),0,4, extents, strides,DataBlockInit{.ComputeStrides=StridesLayout::ColMajor});
+            A1 = DataBlock<double>( A_data.data(),0,4, extents, strides,DataBlockInit{.ComputeStrides=StridesLayout::RowMajor});
 
             A1.print();
         }
@@ -629,12 +630,12 @@ endofblock:
         ptrdiff_t blockextents[2] = {2,3};
 
         MPI_CartesianContext ctx=MPI_CartesianContext(cart_comm);
-        BlockMappingPolicy policy=BlockMappingPolicy(ctx.gridrank);
-        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,MPI_Sendlocation{.with_memmap=false,.ondevice=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank?&A1:nullptr);
+        BlockMappingPolicy policy=BlockMappingPolicy(ctx.pgridrank);
+        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(blockrank,blockextents,block,DataBlockConfig{.pmemmap=false,.data_is_devptr=true,.devicenum=omp_get_default_device()}, &ctx,&policy,rootrank,rank==rootrank?&A1:nullptr);
         block.print();
 
         DataBlock<double> A1copy;
-        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,MPI_Sendlocation{.with_memmap=false,.ondevice=false,.devicenum=-INT_MAX},rank==rootrank?&A1copy:nullptr);
+        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(block,rootrank,DataBlockConfig{.pmemmap=false,.data_is_devptr=false,.devicenum=-INT_MAX},rank==rootrank?&A1copy:nullptr);
         if(rank==rootrank)
         {
             A1copy.print();
@@ -647,6 +648,125 @@ endofblock:
         }
 
     }
+
+    {
+
+
+
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        constexpr int rootrank = 0;
+
+        int size;
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+        if(rank==rootrank)
+            cout<<"\n\n\n this example computes a tensor product";
+
+
+
+        int dims[2] = {0, 0};
+        MPI_Dims_create(size, 2, dims);
+
+        int periods[2] = {0, 0};
+        MPI_Comm cart_comm;
+
+        MPI_Cart_create(MPI_COMM_WORLD,2,dims,periods,0,&cart_comm);
+
+        constexpr ptrdiff_t M = 3;
+        constexpr ptrdiff_t K = 4;
+        constexpr ptrdiff_t P = 2;
+        constexpr ptrdiff_t N = 3;
+
+        std::vector<double> A_data;
+        std::vector<double> B_data;
+        std::vector<double> C_data;
+
+        ptrdiff_t extentsA[2] = {M, K};
+        ptrdiff_t extentsB[2] = {P, N};
+        ptrdiff_t extentsC[4] = {M, K, P, N};
+
+        ptrdiff_t stridesA[2];
+        ptrdiff_t stridesB[2];
+        ptrdiff_t stridesC[4];
+
+        DataBlock<double> A1, B1, C1;
+
+        if (rank == rootrank)
+        {
+            A_data.resize(M * K);
+            B_data.resize(P * N);
+            C_data.resize(M * K * P * N, 0.0);
+
+
+            std::iota(A_data.begin(), A_data.end(), 1.0);
+
+            std::iota(B_data.begin(), B_data.end(), 1.0);
+
+            A1 = DataBlock<double>(A_data.data(), 0, 2,extentsA, stridesA,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+            B1 = DataBlock<double>(B_data.data(), 0, 2,extentsB, stridesB,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+            C1 = DataBlock<double>(C_data.data(), 0, 4,extentsC, stridesC,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+            std::cout << "\nA:\n";
+            A1.print();
+
+            std::cout << "\nB:\n";
+            B1.print();
+        }
+
+
+        DistributedDataBlock<double> blockA, blockB, blockC;
+//
+        MPI_CartesianContext ctx(cart_comm);
+        BlockMappingPolicy policy(ctx.pgridrank);
+
+        const DataBlockConfig device_location{.pmemmap = false,.data_is_devptr = true,.devicenum =omp_get_default_device()};
+
+        const ptrdiff_t block_shape_A[2] = {2, 2};
+
+        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(2,block_shape_A,blockA,device_location,&ctx,&policy,rootrank,rank == rootrank ? &A1 : nullptr);
+
+        const ptrdiff_t block_shape_B[2] = {1, 2};
+
+        DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(2,block_shape_B,blockB,device_location,&ctx,&policy,rootrank,rank == rootrank ? &B1 : nullptr);
+
+
+       const ptrdiff_t block_shape_C[2] = {2, 2};
+
+       DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(2,block_shape_C,blockC,device_location,&ctx,&policy,rootrank,rank == rootrank ? &C1 : nullptr);
+
+        blockA.print();
+        blockB.print();
+
+       Math_Functions_MPI::tensor_product_Distributed(blockA,blockB,blockC,nullptr);
+
+
+        DataBlock<double> C_result;
+
+        DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(blockC,rootrank,DataBlockConfig{.pmemmap = false,.data_is_devptr = false,.devicenum = -INT_MAX},rank == rootrank ? &C_result : nullptr);
+
+        if (rank == rootrank)
+        {
+          C_result.print();
+
+           DataBlock_MPI_Functions::MPI_Free_DataBlock(C_result);
+       }
+
+
+        if (blockA.num_local_blocks() > 0)
+            DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(blockA);
+
+        if (blockB.num_local_blocks() > 0)
+            DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(blockB);
+
+        if (blockC.num_local_blocks() > 0)
+            DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(blockC);
+
+        MPI_Comm_free(&cart_comm);
+    }
+
 
     MPI_Finalize();
     return 0;

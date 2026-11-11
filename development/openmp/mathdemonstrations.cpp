@@ -1,4 +1,3 @@
-
 #include <vector>
 #include <iostream>
 
@@ -47,7 +46,7 @@ int main()
                      A_data.data(), rows, cols,  DataBlockInit{  }
                  );
         A.print();
-    cout<<"We load A up"<<endl;
+        cout<<"We load A up"<<endl;
         A.device_data_upload(true);
 
         cout << "define B" << endl;
@@ -55,7 +54,7 @@ int main()
         auto B = mdspan_utilities::create_matrix<double,dynamic_tag>(
                      B_data.data(), rows, cols,  DataBlockInit{ });
         B.print();
-       cout<<"We load B up"<<endl;
+        cout<<"We load B up"<<endl;
         B.device_data_upload(true);
 
         cout << "define C as empty" << endl;
@@ -83,13 +82,13 @@ int main()
 
         std::vector<double> V_data = { 6, 5, 4, 3 };
         auto V = mdspan_utilities::create_matrix<double,dynamic_tag>(V_data.data(),
-                 rows, rows,  DataBlockInit{  }  );
+            rows, rows,  DataBlockInit{  }  );
         V.device_data_upload(true);
         V.print();
         cout << "multiplication of A and transpose of B" << endl;
 
         mdspan_t<double,dynamic_tag> H = mdspan_utilities::matrix_transpose(B);
-    cout << "multiplication of A and transpose(B)+V" << endl;
+        cout << "multiplication of A and transpose(B)+V" << endl;
         D = A * H+V;
         D.print();
 
@@ -100,9 +99,9 @@ int main()
         auto E = mdspan_utilities::create_matrix<double, dynamic_tag>(rows, cols, ::ManagedDataBlockInit{});
 
 
-  //      cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
-    //    cout << "But here we set a policy to do this on gpu" << endl;
-cout<<"expr=A-B"<<endl;
+        //      cout << "Subtraction of A. one can also assign the type later, as in this example, but E=A-B would also work here" << endl;
+        //    cout << "But here we set a policy to do this on gpu" << endl;
+        cout<<"expr=A-B"<<endl;
         expr::ExpressionExecutionPolicy mypol;
 
         auto expr = A - B;
@@ -258,7 +257,7 @@ cout<<"expr=A-B"<<endl;
                  );
 
 
-      mdspan_data_t<double,dynamic_tag> MM;
+        mdspan_data_t<double,dynamic_tag> MM;
 
 
         cout << "Testing MM=A*M" << endl;
@@ -457,19 +456,20 @@ cout<<"expr=A-B"<<endl;
         cout << "\nTesting U=(A+B)*(M+I2)" << endl;
 
 // I2 is a 3x2 matrix, same shape as M
-std::vector<double> I2_data = {
-    1,0,
-    0,1,
-    0,0
-};
+        std::vector<double> I2_data =
+        {
+            1,0,
+            0,1,
+            0,0
+        };
 
-auto I2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
-    I2_data.data(), cols, rows,  DataBlockInit{}
-);
+        auto I2 = mdspan_utilities::create_matrix<double,dynamic_tag>(
+                      I2_data.data(), cols, rows,  DataBlockInit{}
+                  );
 
 
-MM = (A+B) * (M+I2);
-MM.print();
+        MM = (A+B) * (M+I2);
+        MM.print();
 
     }
 
@@ -515,6 +515,57 @@ MM.print();
 //        auto expr = vecA - vecB;
 //        expr.assign_to(D, &mypol);
 //        D.print();
+    }
+    {
+
+        cout<<"\n\n\n this example computes a tensor product";
+
+        constexpr ptrdiff_t M = 3;
+        constexpr ptrdiff_t K = 4;
+        constexpr ptrdiff_t P = 2;
+        constexpr ptrdiff_t N = 3;
+
+        std::vector<double> A_data;
+        std::vector<double> B_data;
+        std::vector<double> C_data;
+
+        ptrdiff_t extentsA[2] = {M, K};
+        ptrdiff_t extentsB[2] = {P, N};
+        ptrdiff_t extentsC[4] = {M, K, P, N};
+
+        ptrdiff_t stridesA[2];
+        ptrdiff_t stridesB[2];
+        ptrdiff_t stridesC[4];
+
+        DataBlock<double> A1, B1, C1;
+
+        A_data.resize(M * K);
+        B_data.resize(P * N);
+        C_data.resize(M * K * P * N, 0.0);
+
+
+        std::iota(A_data.begin(), A_data.end(), 1.0);
+
+        std::iota(B_data.begin(), B_data.end(), 1.0);
+
+        A1 = DataBlock<double>(A_data.data(), 0, 2,extentsA, stridesA,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+        B1 = DataBlock<double>(B_data.data(), 0, 2,extentsB, stridesB,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+        C1 = DataBlock<double>(C_data.data(), 0, 4,extentsC, stridesC,DataBlockInit{.ComputeStrides = StridesLayout::RowMajor});
+
+        std::cout << "\nA:\n";
+        A1.print();
+
+        std::cout << "\nB:\n";
+        B1.print();
+
+        Math_Functions::tensor_product(A1,B1,C1,nullptr);
+
+        cout<<"\nC:\n";
+        C1.print();
+        cout<<"\n\n";
+
     }
     //
 
@@ -813,7 +864,7 @@ MM.print();
             A.print();
 
             Math_MPI_Decomposition_Policy p(false,
-                Math_Functions_Policy::GPU_ONLY,Math_MPI_RecursiveMultiplication_Policy::Naive);
+                                            Math_Functions_Policy::GPU_ONLY,Math_MPI_RecursiveMultiplication_Policy::Naive);
             p.size_to_stop_recursion=2;
             Math_Functions_MPI::cholesky_decomposition(A,L,MPI_COMM_WORLD,&p);
             L.print();
@@ -893,8 +944,8 @@ MM.print();
             cout<<"With the advanced algorithms on GPU"<<std::endl;
 
             Math_MPI_Decomposition_Policy p(false,
-                Math_Functions_Policy::CPU_ONLY,
-                Math_MPI_RecursiveMultiplication_Policy::Strassen);
+                                            Math_Functions_Policy::CPU_ONLY,
+                                            Math_MPI_RecursiveMultiplication_Policy::Strassen);
 
             p.size_to_stop_recursion=2;
             Math_Functions_MPI::lu_decomposition(A,L,U,MPI_COMM_WORLD,&p);
@@ -910,7 +961,7 @@ MM.print();
         }
     }
 //
-   {
+    {
 
         cout<< "Now we do the same with the qr decomposition"<<std::endl;
         vector<double>A_data= {-4, 9, 4, 0, -3, -4, 8, 0, 0, -7, -3, -8, -9, 1, -5, -9, -10, 1, 1, 6, -1, 5, 4, 4, 8, 1, 9, -8, -6, 8, -4, -2, -4, 7, -7, 3, 7, -2, -9, 9, 4, -4, 1, -3, 4, -8, 3, 6, -7, 7, -3, -7, -9, -5, -1, -7, 7, 1, -9, -1, -7, 3, 5, 4};
@@ -972,8 +1023,8 @@ MM.print();
             auto R = mdspan_utilities::create_matrix<double, dynamic_tag>(rows4, cols4, ManagedDataBlockInit{});
 
             Math_MPI_Decomposition_Policy p(false,
-                Math_Functions_Policy::GPU_ONLY,
-                Math_MPI_Decomposition_Policy::WinogradVariant);
+                                            Math_Functions_Policy::GPU_ONLY,
+                                            Math_MPI_Decomposition_Policy::WinogradVariant);
 
             p.size_to_stop_recursion=2;
 

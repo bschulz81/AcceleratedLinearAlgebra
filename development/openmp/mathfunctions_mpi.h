@@ -305,9 +305,27 @@ public:
 
 
     template<typename T>
-    inline static bool tensor_multiply_scalar_Distributed(
-        DistributedDataBlock<T>& A,const T scalar,
-        const Math_MPI_Functions_Policy* policy=nullptr);
+    inline static bool tensor_multiply_scalar_Distributed(DistributedDataBlock<T>& A,const T scalar,const Math_MPI_Functions_Policy* policy=nullptr);
+
+    template<typename T>
+    inline static bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,const T CoefficientB=T(1), const T CoefficientC=T(0),const Math_MPI_Functions_Policy* pol=nullptr);
+
+    template<typename T>
+    inline static bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,const Math_MPI_Functions_Policy* pol)
+    {
+      return  tensor_product_Distributed(A,B,C,T(1),T(0),pol);
+    }
+
+
+    template<typename T>
+    inline static bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,const T CoefficientB, const T CoefficientC,const Math_MPI_Functions_Policy* pol);
+
+    template<typename T>
+    inline static bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,const Math_MPI_Functions_Policy* pol)
+    {
+
+       return tensor_product_hadamard_Distributed(A,B,C,T(1),T(0));
+    }
 
 
 

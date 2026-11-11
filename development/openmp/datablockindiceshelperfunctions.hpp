@@ -230,7 +230,6 @@ inline ptrdiff_t compute_offset(
         ptrdiff_t coordinate = remainingIndex % currentExtent;
 
         offset += coordinate * strides[axis];
-
         remainingIndex /= currentExtent;
     }
 
@@ -299,7 +298,6 @@ ptrdiff_t compute_offset_datablockarray(
         ptrdiff_t coordinate = remainingIndex % currentExtent;
 
         offset += coordinate * strides_ptr[axis];
-
         remainingIndex /= currentExtent;
     }
 
@@ -417,9 +415,7 @@ inline ptrdiff_t local_to_global_storage_offset(
             const ptrdiff_t local_coord = tmp % block_extents[d];
             tmp /= block_extents[d];
 
-            const ptrdiff_t global_coord =
-                local_coord +
-                (d < pblock_grid_rank ? block_starts[d] : 0);
+            const ptrdiff_t global_coord =local_coord +(d < pblock_grid_rank ? block_starts[d] : 0);
 
             global_index += global_coord * global_strides[d];
         }

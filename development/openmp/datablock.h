@@ -184,8 +184,7 @@ public:
     ptrdiff_t* pextentsbuffer=nullptr;
     ptrdiff_t* pstridesbuffer=nullptr;
     ptrdiff_t pnumblocks=0;
-    bool pdata_is_devptr=false;
-    int pdevnum=-INT_MAX;
+    DataBlockConfig conf;
     bool pconjugate=false;
 
 };

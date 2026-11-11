@@ -1,13 +1,15 @@
 
-
 #ifndef OPENMP_GPU_MEMORY_FUNCTIONS_HPP
 #define OPENMP_GPU_MEMORY_FUNCTIONS_HPP
 
 #include <string.h>
+#include "datablock_mpifunctions.h"
+#include "tensor_requestengine.h"
 
 template<typename T>
 GPU_Memory_Functions::OffloadHelper<T>::OffloadHelper(DataBlock<T> &dL, int devicenum, bool just_alloc,
-    bool update_host_on_exit):pupdate_host(update_host_on_exit), pdL(dL),pdevicenum(devicenum) {
+        bool update_host_on_exit):pupdate_host(update_host_on_exit), pdL(dL),pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     if (just_alloc)
         GPU_Memory_Functions::create_out(dL, devicenum);
@@ -17,7 +19,8 @@ GPU_Memory_Functions::OffloadHelper<T>::OffloadHelper(DataBlock<T> &dL, int devi
 }
 
 template<typename T>
-GPU_Memory_Functions::OffloadHelper<T>::OffloadHelper(const DataBlock<T> &dL, int devicenum, bool just_alloc):pupdate_host(false), pdL(dL),pdevicenum(devicenum) {
+GPU_Memory_Functions::OffloadHelper<T>::OffloadHelper(const DataBlock<T> &dL, int devicenum, bool just_alloc):pupdate_host(false), pdL(dL),pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     if (just_alloc)
         GPU_Memory_Functions::create_out(dL, devicenum);
@@ -27,7 +30,8 @@ GPU_Memory_Functions::OffloadHelper<T>::OffloadHelper(const DataBlock<T> &dL, in
 }
 
 template<typename T>
-GPU_Memory_Functions::OffloadHelper<T>::~OffloadHelper() {
+GPU_Memory_Functions::OffloadHelper<T>::~OffloadHelper()
+{
 #if !defined(Unified_Shared_Memory)
     if (pupdate_host && !pdL.dpconfig.data_is_devptr)
     {
@@ -39,28 +43,32 @@ GPU_Memory_Functions::OffloadHelper<T>::~OffloadHelper() {
 
 template<typename T>
 GPU_Memory_Functions::OffloadHelperConst<T>::
-OffloadHelperConst(const DataBlock<T> &dL, int devicenum):pdL(dL),pdevicenum(devicenum) {
+OffloadHelperConst(const DataBlock<T> &dL, int devicenum):pdL(dL),pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::create_in(dL, devicenum);
 #endif
 }
 
 template<typename T>
-GPU_Memory_Functions::OffloadHelperConst<T>::~OffloadHelperConst() {
+GPU_Memory_Functions::OffloadHelperConst<T>::~OffloadHelperConst()
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::release(pdL, pdevicenum);
 #endif
 }
 
 template<typename T>
-GPU_Memory_Functions::BlockedDataViewOffloadHelper<T>::~BlockedDataViewOffloadHelper() {
+GPU_Memory_Functions::BlockedDataViewOffloadHelper<T>::~BlockedDataViewOffloadHelper()
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::release_blocked(pdL, pdevicenum);
 #endif
 }
 
 template<typename T>
-GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T>::~DataBlockArrayOffloadHelperConst() {
+GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T>::~DataBlockArrayOffloadHelperConst()
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::release(pArr, pdevicenum);
 #endif
@@ -68,8 +76,9 @@ GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T>::~DataBlockArrayOffloa
 
 template<typename T>
 GPU_Memory_Functions::DataBlockdpdataoffloader<T>::DataBlockdpdataoffloader(const DataBlock<T> &block, int devicenum,
-    bool is_output):
-    m_block(block), m_copied(false), m_is_output(is_output) {
+        bool is_output):
+    m_block(block), m_copied(false), m_is_output(is_output)
+{
     if (!m_block.dpconfig.data_is_devptr)
     {
         if (m_is_output)
@@ -85,7 +94,8 @@ GPU_Memory_Functions::DataBlockdpdataoffloader<T>::DataBlockdpdataoffloader(cons
 
 template<typename T>
 GPU_Memory_Functions::DataBlockdpdataoffloader<T>::DataBlockdpdataoffloader(DataBlock<T> &block, int devicenum,
-    bool is_output): m_block(block), m_copied(false), m_is_output(is_output) {
+        bool is_output): m_block(block), m_copied(false), m_is_output(is_output)
+{
     if (!m_block.dpconfig.data_is_devptr)
     {
         if (m_is_output)
@@ -100,13 +110,20 @@ GPU_Memory_Functions::DataBlockdpdataoffloader<T>::DataBlockdpdataoffloader(Data
 }
 
 template<typename T>
-const DataBlock<T> & GPU_Memory_Functions::DataBlockdpdataoffloader<T>::get() const { return m_block; }
+const DataBlock<T> & GPU_Memory_Functions::DataBlockdpdataoffloader<T>::get() const
+{
+    return m_block;
+}
 
 template<typename T>
-DataBlock<T> & GPU_Memory_Functions::DataBlockdpdataoffloader<T>::get_mutable() { return m_block; }
+DataBlock<T> & GPU_Memory_Functions::DataBlockdpdataoffloader<T>::get_mutable()
+{
+    return m_block;
+}
 
 template<typename T>
-GPU_Memory_Functions::DataBlockdpdataoffloader<T>::~DataBlockdpdataoffloader() {
+GPU_Memory_Functions::DataBlockdpdataoffloader<T>::~DataBlockdpdataoffloader()
+{
     if (m_copied)
     {
         if (m_is_output)
@@ -122,7 +139,8 @@ GPU_Memory_Functions::DataBlockdpdataoffloader<T>::~DataBlockdpdataoffloader() {
 
 template<typename T>
 GPU_Memory_Functions::BlockedDataViewOffloadHelper<T>::BlockedDataViewOffloadHelper(const BlockedDataView<T> &dL,
-    int devicenum):pdL(dL),pdevicenum(devicenum) {
+        int devicenum):pdL(dL),pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::create_in_blocked(dL, devicenum);
 #endif
@@ -130,7 +148,8 @@ GPU_Memory_Functions::BlockedDataViewOffloadHelper<T>::BlockedDataViewOffloadHel
 
 template<typename T>
 GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>::DataBlockArrayOffloadHelper(DataBlockArray<T> &arr, int devicenum,
-    bool just_alloc, bool update_host_on_exit): pupdate_host(update_host_on_exit), pArr(arr), pdevicenum(devicenum) {
+        bool just_alloc, bool update_host_on_exit): pupdate_host(update_host_on_exit), pArr(arr), pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     if (just_alloc)
         GPU_Memory_Functions::create_out(arr, devicenum);
@@ -140,9 +159,10 @@ GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>::DataBlockArrayOffloadHelpe
 }
 
 template<typename T>
-GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>::~DataBlockArrayOffloadHelper() {
+GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>::~DataBlockArrayOffloadHelper()
+{
 #if !defined(Unified_Shared_Memory)
-    if (pupdate_host && !pArr.pdata_is_devptr)
+    if (pupdate_host && !pArr.conf.data_is_devptr)
     {
         GPU_Memory_Functions::update_host(pArr, pdevicenum);
     }
@@ -152,7 +172,8 @@ GPU_Memory_Functions::DataBlockArrayOffloadHelper<T>::~DataBlockArrayOffloadHelp
 
 template<typename T>
 GPU_Memory_Functions::DataBlockArrayOffloadHelperConst<T>::DataBlockArrayOffloadHelperConst(
-    const DataBlockArray<T> &arr, int devicenum): pArr(arr), pdevicenum(devicenum) {
+    const DataBlockArray<T> &arr, int devicenum): pArr(arr), pdevicenum(devicenum)
+{
 #if !defined(Unified_Shared_Memory)
     GPU_Memory_Functions::create_in(arr, devicenum);
 #endif
@@ -162,17 +183,18 @@ template<typename T>
 void GPU_Memory_Functions::create_out(DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
-    if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
+    if (arr.conf.data_is_devptr) devicenum = arr.conf.devicenum;
 
     const ptrdiff_t l = arr.pdatalength;
     const ptrdiff_t nb = arr.pnumblocks;
     const ptrdiff_t rank = arr.ptensor_rank;
+#if !defined(Unified_Shared_Memory)
 
 
     #pragma omp target enter data map(to: arr) device(devicenum)
 
 
-    if(!arr.pdata_is_devptr && arr.pdata != nullptr)
+    if(!arr.conf.data_is_devptr && arr.pdata != nullptr)
     {
         #pragma omp target enter data map(alloc: arr.pdata[0:l]) device(devicenum)
     }
@@ -189,20 +211,21 @@ void GPU_Memory_Functions::create_out(DataBlockArray<T>& arr, int devicenum)
     {
         #pragma omp target enter data map(to: arr.pstridesbuffer[0:nb*rank]) device(devicenum)
     }
+#endif
 }
 
 template<typename T>
 void GPU_Memory_Functions::create_in(DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
-    if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
+    if (arr.conf.data_is_devptr) devicenum = arr.conf.devicenum;
 
     const ptrdiff_t l = arr.pdatalength;
     const ptrdiff_t nb = arr.pnumblocks;
     const ptrdiff_t rank = arr.ptensor_rank;
-
+#if !defined(Unified_Shared_Memory)
     #pragma omp target enter data map(to: arr) device(devicenum)
-    if(!arr.pdata_is_devptr && arr.pdata != nullptr)
+    if(!arr.conf.data_is_devptr && arr.pdata != nullptr)
     {
         #pragma omp target enter data map(to: arr.pdata[0:l]) device(devicenum)
     }
@@ -218,20 +241,21 @@ void GPU_Memory_Functions::create_in(DataBlockArray<T>& arr, int devicenum)
     {
         #pragma omp target enter data map(to: arr.pstridesbuffer[0:nb*rank]) device(devicenum)
     }
+#endif
 }
 
 template<typename T>
 void GPU_Memory_Functions::create_in(const DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
-    if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
+    if (arr.conf.data_is_devptr) devicenum = arr.conf.devicenum;
 
     const  ptrdiff_t l = arr.pdatalength;
     const  ptrdiff_t nb = arr.pnumblocks;
     const ptrdiff_t rank = arr.ptensor_rank;
-
+#if !defined(Unified_Shared_Memory)
     #pragma omp target enter data map(to: arr) device(devicenum)
-    if(!arr.pdata_is_devptr && arr.pdata != nullptr)
+    if(!arr.conf.data_is_devptr && arr.pdata != nullptr)
     {
         #pragma omp target enter data map(to: arr.pdata[0:l]) device(devicenum)
     }
@@ -247,26 +271,30 @@ void GPU_Memory_Functions::create_in(const DataBlockArray<T>& arr, int devicenum
     {
         #pragma omp target enter data map(to: arr.pstridesbuffer[0:nb*rank]) device(devicenum)
     }
+#endif
 }
 
 template<typename T>
 void GPU_Memory_Functions::update_host(DataBlockArray<T>& arr, int devicenum)
 {
-    if (arr.pnumblocks == 0 || arr.pdata_is_devptr || arr.pdata == nullptr) return;
+
+    if (arr.pnumblocks == 0 || arr.conf.data_is_devptr || arr.pdata == nullptr) return;
+#if !defined(Unified_Shared_Memory)
     ptrdiff_t l = arr.pdatalength;
     #pragma omp target update from(arr.pdata[0:l]) device(devicenum)
+#endif
 }
 
 template<typename T>
 void GPU_Memory_Functions::release(const DataBlockArray<T>& arr, int devicenum)
 {
     if (arr.pnumblocks == 0) return;
-    if (arr.pdata_is_devptr) devicenum = arr.pdevnum;
+    if (arr.conf.data_is_devptr) devicenum = arr.conf.devicenum;
 
     const ptrdiff_t l = arr.pdatalength;
     const ptrdiff_t nb = arr.pnumblocks;
     const ptrdiff_t rank = arr.ptensor_rank;
-
+#if !defined(Unified_Shared_Memory)
     if (arr.pstridesbuffer)
     {
         #pragma omp target exit data map(release: arr.pstridesbuffer[0:nb*rank]) device(devicenum)
@@ -279,12 +307,76 @@ void GPU_Memory_Functions::release(const DataBlockArray<T>& arr, int devicenum)
     {
         #pragma omp target exit data map(release: arr.pblock_offsets[0:nb]) device(devicenum)
     }
-    if(!arr.pdata_is_devptr && arr.pdata != nullptr)
+    if(!arr.conf.data_is_devptr && arr.pdata != nullptr)
     {
         #pragma omp target exit data map(release: arr.pdata[0:l]) device(devicenum)
     }
     #pragma omp target exit data map(release: arr) device(devicenum)
+
+#endif
 }
+
+
+
+
+GPU_Memory_Functions::TensorFlatIndexLookupOffloadHelper::TensorFlatIndexLookupOffloadHelper(TensorFlatIndexLookup& lookup,int devicenum)
+    : lookup(lookup), devicenum(devicenum)
+{
+#if !defined(Unified_Shared_Memory)
+    #pragma omp target enter data map(to: lookup) device(devicenum)
+    if (lookup.length  > 0)
+    {
+        #pragma omp target enter data map(to: lookup.positions[0:lookup.length]) device(devicenum)
+    }
+#endif
+}
+
+GPU_Memory_Functions::TensorFlatIndexLookupOffloadHelper::~TensorFlatIndexLookupOffloadHelper()
+{
+#if !defined(Unified_Shared_Memory)
+    if (lookup.length > 0)
+    {
+        #pragma omp target exit data map(delete: lookup.positions[0:lookup.length]) device(devicenum)
+    }
+    #pragma omp target exit data map(delete: lookup) device(devicenum)
+#endif
+}
+
+
+template<typename T>
+GPU_Memory_Functions::TensorFlatIndexDataOffloadHelper<T>::
+TensorFlatIndexDataOffloadHelper(TensorFlatIndexData<T>& data,int devicenum)
+    : data(data), devicenum(devicenum)
+{
+    // First map the object.
+#if !defined(Unified_Shared_Memory)
+    #pragma omp target enter data map(to: data) device(devicenum)
+
+    // Then map the actual data array.
+    if (data.pdatalength > 0 && !data.config.data_is_devptr)
+    {
+        #pragma omp target enter data map(to: data.pdata[0:data.pdatalength]) device(devicenum)
+    }
+#endif
+}
+
+template<typename T>
+GPU_Memory_Functions::TensorFlatIndexDataOffloadHelper<T>::
+~TensorFlatIndexDataOffloadHelper()
+{
+    // Remove the array mapping first.
+#if !defined(Unified_Shared_Memory)
+    if (data.pdatalength > 0 && !data.config.data_is_devptr)
+    {
+        #pragma omp target exit data map(delete: data.pdata[0:data.pdatalength]) device(devicenum)
+    }
+
+    // Then remove the object mapping.
+    #pragma omp target exit data map(delete: data) device(devicenum)
+
+#endif
+}
+
 
 
 
@@ -295,17 +387,41 @@ bool GPU_Memory_Functions::is_on_gpu(const DataBlock<T> &m,const int devicenum)
         return true;
     if (omp_target_is_present(m.dpdata,devicenum))
         return true;
+
     return false;
 }
 
 template<typename T>
+int GPU_Memory_Functions::is_on_which_gpu(const DataBlock<T> &m)
+{
+    if(m.dpconfig.data_is_devptr)
+        return m.dpconfig.devicenum;
+    if (omp_target_is_present(m.dpdata,m.dpconfig.devicenum))
+        return m.dpconfig.devicenum;
+
+    return -INT_MAX;
+}
+
+
+template<typename T>
 bool GPU_Memory_Functions::is_on_gpu(const DataBlockArray<T> &m,const int devicenum)
 {
-    if(m.pdata_is_devptr)
+    if(m.conf.data_is_devptr)
         return true;
-    if (omp_target_is_present(m.pdata,devicenum))
+    if (omp_target_is_present(m.pdata,m.conf.devicenum))
         return true;
     return false;
+}
+
+
+template<typename T>
+int GPU_Memory_Functions::is_on_which_gpu(const DataBlockArray<T> &m)
+{
+    if(m.conf.data_is_devptr)
+        return m.conf.devicenum;
+    if (omp_target_is_present(m.pdata,m.conf.devicenum))
+        return m.conf.devicenum;
+    return -INT_MAX;
 }
 
 template<typename T>
