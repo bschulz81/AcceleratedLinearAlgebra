@@ -88,7 +88,7 @@ A short tutorial how to configure clang and gcc for gpu-offload is here for the 
 
 # Todo:
 
-1) Add more functions for tensors including tensor contraction and Einsums
+1) Add more functions for tensors including tensor contraction and Einsums and bring the higher rank tensors into the expression evaluation engine.
 2) Add an accessor class that provides easy notations for subtensors, contractions.
 3) Add functions for views of subtensors that are distributed with mpi.
 4) add unary function nodes in expressions,
