@@ -39,6 +39,24 @@ the (i) operator for vectors now checks the rank and assumes that for higher ran
 
 I will add more tensor kernels soon and then test them. Tensor product is next, and then an einsum and after that an autodiff.. 
 
+11.11.2026
+added a tensor request engine for products and contractions,
+fixed a bug in the tensor scatterer that occured for certain gridranks,
+fixed the tensor algebra math functions and began testing of them
+
+In this folder, the tensor product already uses the new request engine for tensors.
+The engine has classes that allow each rank to request only the data that it needs during tensor products (and later contraction)
+However, currently, the engine introduces a bookkeeping class that stores the offsets of the indices of the retrieved data.
+Assume you distribute a matrix on nodes and the nodes need to access only the columns of the matrix for a tensor product,
+then, the metadata would be such that it points to every item in the requested column. This is of course very inefficient.
+A better solution would use intervals for the metadata of the requested indices (i.e. request a_1 to a_5), which I still have to write.
+
+Additionally, I noted that there was a bug in the tensor scatterer when tensors were distributed on sertain dimensions of the block grid. This has now been fixed.
+The tensor algebra functions were also fixed after I began testing them.
+
+Clang 23 still does not report Cuda kernels in the nvidia debugger on my system with any openmp code, whereas GCC creates cuda kernels. 
+I guess i will report this to clang.
+
 
 10.08.2026
 added accumulate  kernels for faster calculation of composite expressions
