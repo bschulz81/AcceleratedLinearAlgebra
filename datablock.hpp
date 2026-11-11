@@ -873,11 +873,10 @@ inline DataBlock<T> DataBlockArray<T>::  local_block(const ptrdiff_t blocknumber
 {
     ptrdiff_t len =(blocknumber + 1 <pnumblocks)? pblock_offsets[blocknumber+1] - pblock_offsets[blocknumber]: pdatalength - pblock_offsets[blocknumber];
     DataBlock<T>tempt(pdata + pblock_offsets[blocknumber],
-                      len,  ptensor_rank,
+                      len,ptensor_rank,
                       pextentsbuffer + blocknumber*ptensor_rank,
                       pstridesbuffer + blocknumber*ptensor_rank,
-                      ::DataBlockConfig{.data_is_devptr=pdata_is_devptr,.devicenum=pdata_is_devptr? pdevnum:-INT_MAX}
-                     );
+                      conf);
     tempt.dpconjugate=pconjugate;
     return tempt;
 

@@ -2407,7 +2407,7 @@ void In_Kernel_Mathfunctions::tensor_multiply_scalar(  DataBlock<T>& C, const T 
 template <OpenMPVariant Policy, typename T>
 void In_Kernel_Mathfunctions::tensor_product(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC)
 {
-    const ptrdiff_t rankA = A.dprank;
+
     const ptrdiff_t rankB = B.dprank;
     const ptrdiff_t rankC = C.dprank;
 
@@ -2492,7 +2492,6 @@ void In_Kernel_Mathfunctions::tensor_product_hadamard(const DataBlock<T>& A, con
     const ptrdiff_t rankB = B.dprank;
     const ptrdiff_t rankC = C.dprank;
 
-    ptrdiff_t max_index_B = 1;
     ptrdiff_t max_index_C = 1;
 
     if constexpr (Policy == OpenMPVariant::ParallelSimd)

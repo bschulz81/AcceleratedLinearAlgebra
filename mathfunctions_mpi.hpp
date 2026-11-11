@@ -4,6 +4,8 @@
 #include "datablock.h"
 #include "gpu_memory_functions.h"
 #include "datablock_mpifunctions.h"
+#include "mathfunctions_mpipolicy.h"
+#include "tensor_requestengine.h"
 
 bool Math_Functions_MPI::matrix_distribution_is_summa_compatible(
     ptrdiff_t grid_r,
@@ -77,10 +79,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
     };
 
     auto analyse_distribution =
-        [&](ptrdiff_t grid_r,
-            ptrdiff_t grid_c,
-            int Pr,
-            int Pc) -> GridStats
+        [&](ptrdiff_t grid_r,ptrdiff_t grid_c,int Pr,int Pc) -> GridStats
     {
         std::vector<ptrdiff_t> counts(Pr * Pc, 0);
 
@@ -102,10 +101,10 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
         s.max_blocks = counts[0];
 
         for(ptrdiff_t c : counts)
-    {
+            {
         s.min_blocks = std::min(s.min_blocks, c);
             s.max_blocks = std::max(s.max_blocks, c);
-        }
+            }
 
         return s;
     };
@@ -119,9 +118,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
     auto matrix_is_compatible =
         [](const GridStats& s)
     {
-        return
-            (s.max_blocks <= 1) ||
-            (s.min_blocks > 0);
+        return (s.max_blocks <= 1) ||(s.min_blocks > 0);
     };
 
     int best_Pr = 1;
@@ -130,8 +127,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
 
     bool found = false;
 
-    ptrdiff_t best_score =
-        std::numeric_limits<ptrdiff_t>::max();
+    ptrdiff_t best_score =std::numeric_limits<ptrdiff_t>::max();
 
     for(int active_ranks = world_size;
             active_ranks >= 1;
@@ -150,18 +146,11 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
 
             for(int m = 0; m < 3; ++m)
             {
-                ptrdiff_t grid_r =
-                    (mats[m].rows + br - 1) / br;
+                ptrdiff_t grid_r =(mats[m].rows + br - 1) / br;
 
-                ptrdiff_t grid_c =
-                    (mats[m].cols + bc - 1) / bc;
+                ptrdiff_t grid_c =(mats[m].cols + bc - 1) / bc;
 
-                GridStats s =
-                    analyse_distribution(
-                        grid_r,
-                        grid_c,
-                        Pr,
-                        Pc);
+                GridStats s =analyse_distribution(grid_r,grid_c,Pr,Pc);
 
                 if(policy == SummaGridPolicy::DenseOnly)
                 {
@@ -180,10 +169,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
                     }
                 }
 
-                imbalance =
-                    std::max(
-                        imbalance,
-                        s.max_blocks - s.min_blocks);
+                imbalance =std::max(imbalance,s.max_blocks - s.min_blocks);
             }
 
             if(!valid)
@@ -213,10 +199,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
             }
             else // LoadBalanced
             {
-                if(!found ||
-                        imbalance < best_score ||
-                        (imbalance == best_score &&
-                         active_ranks > best_ranks))
+                if(!found ||imbalance < best_score ||(imbalance == best_score &&active_ranks > best_ranks))
                 {
                     found = true;
 
@@ -233,9 +216,7 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
     {
         if(world_rank == 0)
         {
-            std::cerr
-                    << "No SUMMA-compatible process grid found."
-                    << std::endl;
+            std::cerr<< "No SUMMA-compatible process grid found."<< std::endl;
         }
 
         MPI_Abort(MPI_COMM_WORLD, -1);
@@ -245,50 +226,30 @@ MPI_Comm Math_Functions_MPI::create_summa_communicator(ptrdiff_t br,ptrdiff_t bc
     if(world_rank == 0)
     {
         if(printgrid)
-            std::cout
-                    << "SUMMA grid selection:\n"
+            std::cout<< "SUMMA grid selection:\n"
                     << "Using process grid "
-                    << best_Pr
-                    << " x "
-                    << best_Pc
-                    << " = "
+                    << best_Pr<< " x "
+                    << best_Pc<< " = "
                     << best_ranks
                     << " ranks\n";
     }
 
-    int color =
-        (world_rank < best_ranks)
-        ? 0
-        : MPI_UNDEFINED;
+    int color =(world_rank < best_ranks)? 0: MPI_UNDEFINED;
 
     MPI_Comm active_comm;
 
-    MPI_Comm_split(
-        MPI_COMM_WORLD,
-        color,
-        world_rank,
-        &active_comm);
+    MPI_Comm_split(MPI_COMM_WORLD,color,world_rank,&active_comm);
 
     if(color == MPI_UNDEFINED)
         return MPI_COMM_NULL;
 
-    int dims[2] =
-    {
-        best_Pr,
-        best_Pc
-    };
+    int dims[2] ={best_Pr,best_Pc};
 
     int periods[2] = {0,0};
 
     MPI_Comm cart_comm;
 
-    MPI_Cart_create(
-        active_comm,
-        2,
-        dims,
-        periods,
-        0,
-        &cart_comm);
+    MPI_Cart_create(active_comm,2,dims,periods,0,&cart_comm);
 
     MPI_Comm_free(&active_comm);
 
@@ -329,7 +290,6 @@ inline void Math_Functions_MPI::scale_local_blocks(
                 for(ptrdiff_t j = 0; j < cols; ++j)
                 {
                     const ptrdiff_t index = i*str0 + j*str1;
-
                     Cptr[index] = (alpha == T(0)) ? T(0) : Cptr[index] * alpha;
                 }
             }
@@ -370,9 +330,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : get_default_policy();
 
-    if (A.pctx->comm == MPI_COMM_NULL) return false;
-    if (B.pctx->comm == MPI_COMM_NULL) return false;
-    if (C.pctx->comm == MPI_COMM_NULL) return false;
+    if (A.pctx->pcomm == MPI_COMM_NULL) return false;
+    if (B.pctx->pcomm == MPI_COMM_NULL) return false;
+    if (C.pctx->pcomm == MPI_COMM_NULL) return false;
     if(A.pglobal_extents[1] != B.pglobal_extents[0])
         return false;
     if(A.pglobal_extents[0] != C.pglobal_extents[0])
@@ -392,7 +352,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
     }
 
 
-    MPI_Comm comma = C.pctx->comm;
+    MPI_Comm comma = C.pctx->pcomm;
     int rank;
     MPI_Comm_rank(comma, &rank);
 
@@ -428,24 +388,24 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
         bool memmap=policy.memmapped_files;
         int devnum=policy.devicenum;
-        if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-        if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-        if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+        if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+        if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+        if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
 
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_B,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
         {
             if(A.Dblockarray.pnumblocks > 0)
             {
-                if(!A.Dblockarray.pdata_is_devptr)
+                if(!A.Dblockarray.conf.data_is_devptr)
                 {
                     adata=(T*) omp_target_alloc(sizeof(T)*A.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(adata,A.Dblockarray.pdata,sizeof(T)*A.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -457,7 +417,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         {
             if (B.Dblockarray.pnumblocks > 0)
             {
-                if(!B.Dblockarray.pdata_is_devptr)
+                if(!B.Dblockarray.conf.data_is_devptr)
                 {
                     bdata=(T*) omp_target_alloc(sizeof(T)*B.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(bdata,B.Dblockarray.pdata,sizeof(T)*B.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -471,7 +431,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         {
             if (C.Dblockarray.pnumblocks > 0)
             {
-                if(!C.Dblockarray.pdata_is_devptr)
+                if(!C.Dblockarray.conf.data_is_devptr)
                 {
                     cdata=(T*) omp_target_alloc(sizeof(T)*C.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(cdata,C.Dblockarray.pdata,sizeof(T)*C.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -501,7 +461,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
             ptrdiff_t A_block_coords[2] = {my_row,k};
             int A_owner[2];
-            A.ppolicy->owner_coords(A_block_coords,2,*A.pctx,A_owner);
+            A.ppolicy->owner_mpi_cartesian_coords(A_block_coords,2,*A.pctx,A_owner);
 
             const int root_col = A_owner[1];
 
@@ -510,12 +470,12 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             if (my_col == root_col)
             {
                 ptrdiff_t A_lin = my_row * grid_k + k;
-                auto it = A.pblock_grid_to_local.find(A_lin);
-                if (it != A.pblock_grid_to_local.end())
+                auto it = A.pglobal_grid_index_to_local_block.find(A_lin);
+                if (it != A.pglobal_grid_index_to_local_block.end())
                 {
                     ptrdiff_t idx = it->second;
-                    A_meta.block_row = A.pblock_grid_coords[2 * idx];
-                    A_meta.block_col = A.pblock_grid_coords[2 * idx + 1];
+                    A_meta.block_row = A.plocal_block_grid_coords[2 * idx];
+                    A_meta.block_col = A.plocal_block_grid_coords[2 * idx + 1];
                     A_meta.rows = A.Dblockarray.pextentsbuffer[2*idx];
                     A_meta.cols = A.Dblockarray.pextentsbuffer[2*idx+1];
                     A_meta.str0 = A.Dblockarray.pstridesbuffer[2*idx];
@@ -532,7 +492,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             ptrdiff_t B_block_coords[2] = {k,my_col};
             int B_owner[2];
 
-            B.ppolicy->owner_coords(B_block_coords,2,*B.pctx,B_owner);
+            B.ppolicy->owner_mpi_cartesian_coords(B_block_coords,2,*B.pctx,B_owner);
 
             const int root_row = B_owner[0];
 
@@ -543,12 +503,12 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             {
                 ptrdiff_t B_lin = k * grid_c + my_col;
 
-                auto it = B.pblock_grid_to_local.find(B_lin);
-                if (it != B.pblock_grid_to_local.end())
+                auto it = B.pglobal_grid_index_to_local_block.find(B_lin);
+                if (it != B.pglobal_grid_index_to_local_block.end())
                 {
                     ptrdiff_t idx = it->second;
-                    B_meta.block_row = B.pblock_grid_coords[2 * idx];
-                    B_meta.block_col = B.pblock_grid_coords[2 * idx + 1];
+                    B_meta.block_row = B.plocal_block_grid_coords[2 * idx];
+                    B_meta.block_col = B.plocal_block_grid_coords[2 * idx + 1];
                     B_meta.rows = B.Dblockarray.pextentsbuffer[2*idx];
                     B_meta.cols = B.Dblockarray.pextentsbuffer[2*idx+1];
                     B_meta.str0 = B.Dblockarray.pstridesbuffer[2*idx];
@@ -621,18 +581,18 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         {
             if (A.Dblockarray.pnumblocks > 0)
             {
-                if(!A.Dblockarray.pdata_is_devptr)
+                if(!A.Dblockarray.conf.data_is_devptr)
                     omp_target_free(adata,devnum);
             }
             if (B.Dblockarray.pnumblocks > 0)
             {
-                if(!B.Dblockarray.pdata_is_devptr)
+                if(!B.Dblockarray.conf.data_is_devptr)
                     omp_target_free(bdata,devnum);
             }
 
             if (C.Dblockarray.pnumblocks>0)
             {
-                if(!C.Dblockarray.pdata_is_devptr)
+                if(!C.Dblockarray.conf.data_is_devptr)
                 {
                     omp_target_memcpy(C.Dblockarray.pdata,cdata,sizeof(T)*C.Dblockarray.pdatalength,0,0,omp_get_initial_device(),devnum);
                     omp_target_free(cdata,devnum);
@@ -641,9 +601,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         }
 
         if(max_A>0)
-            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_A,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_B,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -689,9 +649,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         bool ongpu=policy.should_use_gpu_matrix_multiply(A,B,C);
         bool memmap=policy.memmapped_files;
         int devnum=policy.devicenum;
-        if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-        if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-        if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+        if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+        if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+        if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
 
         struct PanelPair
@@ -718,7 +678,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
         for (ptrdiff_t i = 0; i < C.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t Ci = C.pblock_grid_coords[2*i];
+            ptrdiff_t Ci = C.plocal_block_grid_coords[2*i];
 
             if (!mark[Ci])
             {
@@ -736,7 +696,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
         for (ptrdiff_t i = 0; i < C.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t Cj = C.pblock_grid_coords[2*i+1];
+            ptrdiff_t Cj = C.plocal_block_grid_coords[2*i+1];
 
             if (!mark[Cj])
             {
@@ -752,16 +712,16 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         T* A_buf;
         T* B_buf;
         if(max_A>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
 
         T* adata=A.Dblockarray.pdata;
         if(ongpu)
         {
             if(A.Dblockarray.pnumblocks > 0)
             {
-                if(!A.Dblockarray.pdata_is_devptr)
+                if(!A.Dblockarray.conf.data_is_devptr)
                 {
                     adata=(T*) omp_target_alloc(sizeof(T)*A.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(adata,A.Dblockarray.pdata,sizeof(T)*A.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -773,7 +733,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         {
             if (B.Dblockarray.pnumblocks > 0)
             {
-                if(!B.Dblockarray.pdata_is_devptr)
+                if(!B.Dblockarray.conf.data_is_devptr)
                 {
                     bdata=(T*) omp_target_alloc(sizeof(T)*B.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(bdata,B.Dblockarray.pdata,sizeof(T)*B.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -783,7 +743,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
         ptrdiff_t *coffsets=C.Dblockarray.pblock_offsets;
         ptrdiff_t *cstrides=C.Dblockarray.pstridesbuffer;
-        ptrdiff_t *cblockcoords=C.pblock_grid_coords;
+        ptrdiff_t *cblockcoords=C.plocal_block_grid_coords;
         T* cdata=C.Dblockarray.pdata;
         if(ongpu)
         {
@@ -799,8 +759,8 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
                 omp_target_memcpy( cstrides, C.Dblockarray.pstridesbuffer, pair_bytes, 0,0, devnum,  omp_get_initial_device());
 
                 cblockcoords = (ptrdiff_t*) omp_target_alloc(pair_bytes, devnum);
-                omp_target_memcpy( cblockcoords,  C.pblock_grid_coords,  pair_bytes,   0,0,  devnum,  omp_get_initial_device());
-                if(!C.Dblockarray.pdata_is_devptr)
+                omp_target_memcpy( cblockcoords,  C.plocal_block_grid_coords,  pair_bytes,   0,0,  devnum,  omp_get_initial_device());
+                if(!C.Dblockarray.conf.data_is_devptr)
                 {
                     cdata=(T*) omp_target_alloc(sizeof(T)*C.Dblockarray.pdatalength,devnum);
                     omp_target_memcpy(cdata,C.Dblockarray.pdata,sizeof(T)*C.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -869,7 +829,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
                 ptrdiff_t A_block_coords[2] = {bi,k};
 
                 int A_owner[2];
-                A.ppolicy->owner_coords(A_block_coords,2,*A.pctx,A_owner);
+                A.ppolicy->owner_mpi_cartesian_coords(A_block_coords,2,*A.pctx,A_owner);
                 const int root_col = A_owner[1];
 
 
@@ -881,14 +841,14 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
                 {
                     const ptrdiff_t A_lin = bi * grid_k + k;
 
-                    auto it = A.pblock_grid_to_local.find(A_lin);
+                    auto it = A.pglobal_grid_index_to_local_block.find(A_lin);
 
-                    if (it != A.pblock_grid_to_local.end())
+                    if (it != A.pglobal_grid_index_to_local_block.end())
                     {
                         ptrdiff_t idx = it->second;
 
-                        A_meta.block_row = A.pblock_grid_coords[2 * idx];
-                        A_meta.block_col = A.pblock_grid_coords[2 * idx + 1];
+                        A_meta.block_row = A.plocal_block_grid_coords[2 * idx];
+                        A_meta.block_col = A.plocal_block_grid_coords[2 * idx + 1];
                         A_meta.rows = A.Dblockarray.pextentsbuffer[2*idx];
                         A_meta.cols = A.Dblockarray.pextentsbuffer[2*idx+1];
                         A_meta.str0 = A.Dblockarray.pstridesbuffer[2*idx];
@@ -923,7 +883,7 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
 
                 int B_owner[2];
 
-                B.ppolicy->owner_coords(B_block_coords,2,*B.pctx,B_owner);
+                B.ppolicy->owner_mpi_cartesian_coords(B_block_coords,2,*B.pctx,B_owner);
 
                 const int root_row = B_owner[0];
                 T* root_ptr = nullptr;
@@ -933,14 +893,14 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
                 {
                     const ptrdiff_t B_lin = k * grid_c + bj;
 
-                    auto it = B.pblock_grid_to_local.find(B_lin);
+                    auto it = B.pglobal_grid_index_to_local_block.find(B_lin);
 
-                    if (it != B.pblock_grid_to_local.end())
+                    if (it != B.pglobal_grid_index_to_local_block.end())
                     {
                         ptrdiff_t idx = it->second;
 
-                        B_meta.block_row = B.pblock_grid_coords[2 * idx];
-                        B_meta.block_col = B.pblock_grid_coords[2 * idx + 1];
+                        B_meta.block_row = B.plocal_block_grid_coords[2 * idx];
+                        B_meta.block_col = B.plocal_block_grid_coords[2 * idx + 1];
                         B_meta.rows = B.Dblockarray.pextentsbuffer[2*idx];
                         B_meta.cols = B.Dblockarray.pextentsbuffer[2*idx+1];
                         B_meta.str0 = B.Dblockarray.pstridesbuffer[2*idx];
@@ -1092,18 +1052,18 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
         {
             if (A.Dblockarray.pnumblocks > 0)
             {
-                if(!A.Dblockarray.pdata_is_devptr)
+                if(!A.Dblockarray.conf.data_is_devptr)
                     omp_target_free(adata,devnum);
             }
             if (B.Dblockarray.pnumblocks > 0)
             {
-                if(!B.Dblockarray.pdata_is_devptr)
+                if(!B.Dblockarray.conf.data_is_devptr)
                     omp_target_free(bdata,devnum);
             }
 
             if (C.Dblockarray.pnumblocks>0)
             {
-                if(!C.Dblockarray.pdata_is_devptr)
+                if(!C.Dblockarray.conf.data_is_devptr)
                 {
                     omp_target_memcpy(C.Dblockarray.pdata,cdata,sizeof(T)*C.Dblockarray.pdatalength,0,0,omp_get_initial_device(),devnum);
                     omp_target_free(cdata,devnum);
@@ -1114,9 +1074,9 @@ bool Math_Functions_MPI::matrix_multiply_dot_Distributed(
             }
         }
         if(max_A>0)
-            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_A*num_A_panels,A_buf);
         if(max_B>0)
-            DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
+            DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},max_B*num_B_panels,B_buf);
 
         MPI_Comm_free(&row_comm);
         MPI_Comm_free(&col_comm);
@@ -1135,12 +1095,12 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     const T Coefficientx,const T Coefficienty,const Math_MPI_Functions_Policy*pol)
 {
     const Math_MPI_Functions_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
-    if (A.pctx->comm == MPI_COMM_NULL)
+    if (A.pctx->pcomm == MPI_COMM_NULL)
         return false;
 
     int rank, size;
-    MPI_Comm_rank(A.pctx->comm, &rank);
-    MPI_Comm_size(A.pctx->comm, &size);
+    MPI_Comm_rank(A.pctx->pcomm, &rank);
+    MPI_Comm_size(A.pctx->pcomm, &size);
 
     const ptrdiff_t M = A.pglobal_extents[0];
     const ptrdiff_t K = A.pglobal_extents[1];
@@ -1156,17 +1116,17 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
 
     int devnum=policy.devicenum;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum)
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum)
         return false;
-    if(x.Dblockarray.pdata_is_devptr&& x.Dblockarray.pdevnum!=devnum)
+    if(x.Dblockarray.conf.data_is_devptr&& x.Dblockarray.conf.devicenum!=devnum)
         return false;
-    if(y.Dblockarray.pdata_is_devptr&& y.Dblockarray.pdevnum!=devnum)
+    if(y.Dblockarray.conf.data_is_devptr&& y.Dblockarray.conf.devicenum!=devnum)
         return false;
 
 
     T* x_global=nullptr;
     if(K>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},K,x_global);
+        DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},K,x_global);
 
     if (ongpu)
     {
@@ -1187,7 +1147,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     {
         for (ptrdiff_t i = 0; i < x.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t b = x.pblock_grid_index[i];
+            ptrdiff_t b = x.plocal_block_global_grid_indices[i];
             ptrdiff_t start = b * bc;
 
             ptrdiff_t diff = K - start;
@@ -1195,9 +1155,9 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
 
             ptrdiff_t off = x.Dblockarray.pblock_offsets[i];
 
-            if(x.Dblockarray.pdata_is_devptr)
+            if(x.Dblockarray.conf.data_is_devptr)
             {
-                omp_target_memcpy(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,x.Dblockarray.pdevnum);
+                omp_target_memcpy(x_global,x.Dblockarray.pdata,len*sizeof(T),sizeof(T)*start,sizeof(T)*off,devnum,x.Dblockarray.conf.devicenum);
             }
             else
             {
@@ -1211,7 +1171,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
         #pragma omp parallel for if(parallel:x.Dblockarray.pnumblocks>30)
         for (ptrdiff_t i = 0; i < x.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t b = x.pblock_grid_index[i];
+            ptrdiff_t b = x.plocal_block_global_grid_indices[i];
             ptrdiff_t start = b * bc;
 
             ptrdiff_t diff = K - start;
@@ -1231,13 +1191,13 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
         K,
         mpi_get_type<T>(),
         MPI_SUM,
-        A.pctx->comm);
+        A.pctx->pcomm);
 
     T* y_full=nullptr, *A_ptr=nullptr;
     ptrdiff_t* Aext=nullptr,*Astr=nullptr,*Ablockoff=nullptr,*Ablocklinindex=nullptr;
 
     if(M>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},M,y_full);
+        DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},M,y_full);
 
 
     const bool aconj=A.Dblockarray.pconjugate;
@@ -1246,7 +1206,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     {
         if(ongpu)
         {
-            if(!A.Dblockarray.pdata_is_devptr)
+            if(!A.Dblockarray.conf.data_is_devptr)
             {
                 A_ptr=(T*) omp_target_alloc(sizeof(T)*A.Dblockarray.pdatalength,devnum);
                 omp_target_memcpy(A_ptr,A.Dblockarray.pdata,sizeof(T)*A.Dblockarray.pdatalength,0,0,devnum,omp_get_initial_device());
@@ -1264,7 +1224,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
             omp_target_memcpy(Astr, A.Dblockarray.pstridesbuffer, sizeof(ptrdiff_t)*A.Dblockarray.pnumblocks*2,0,0,devnum,omp_get_initial_device());
 
             Ablocklinindex=(ptrdiff_t*) omp_target_alloc(sizeof(ptrdiff_t)*A.Dblockarray.pnumblocks,devnum);
-            omp_target_memcpy(Ablocklinindex,A.pblock_grid_index,sizeof(ptrdiff_t)*A.Dblockarray.pnumblocks,0,0,devnum, omp_get_initial_device());
+            omp_target_memcpy(Ablocklinindex,A.plocal_block_global_grid_indices,sizeof(ptrdiff_t)*A.Dblockarray.pnumblocks,0,0,devnum, omp_get_initial_device());
 
 
             const ptrdiff_t num=A.Dblockarray.pnumblocks;
@@ -1307,7 +1267,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
                         }
 
                         total += sum;
-                        }
+                    }
                 }
                 y_full[global_row] =Coefficienty==T(0)?Coefficientx * total:Coefficienty * y_full[global_row]+Coefficientx * total;
             }
@@ -1317,7 +1277,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
             Aext= A.Dblockarray.pextentsbuffer;
             Astr= A.Dblockarray.pstridesbuffer;
             Ablockoff=A.Dblockarray.pblock_offsets;
-            Ablocklinindex=A.pblock_grid_index;
+            Ablocklinindex=A.plocal_block_global_grid_indices;
             A_ptr=A.Dblockarray.pdata;
             const ptrdiff_t num=A.Dblockarray.pnumblocks;
             #pragma omp parallel for
@@ -1366,7 +1326,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     }
 
     if(K>0)
-        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},  K,x_global);
+        DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},  K,x_global);
 
     int* recvcounts = new int[size];
 
@@ -1375,10 +1335,9 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
         recvcounts[i]=0;
 
     int ndims;
-    MPI_Cartdim_get(y.pctx->comm, &ndims);
+    MPI_Cartdim_get(y.pctx->pcomm, &ndims);
     ptrdiff_t gridrank=(ptrdiff_t) ndims;
     ptrdiff_t *gridcoords=new ptrdiff_t [gridrank];
-    int* tempcoords=new int[gridrank];
 
     for (ptrdiff_t b = 0; b < grid_r; b++)
     {
@@ -1387,17 +1346,16 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
 
         ptrdiff_t bcoords[1] = { b };
 
-        int owner = y.ppolicy->owner(bcoords,y.Dblockarray.ptensor_rank, *y.pctx, tempcoords);
+        int owner = y.ppolicy->owner_mpi_rank(bcoords,y.Dblockarray.ptensor_rank, *y.pctx);
 
         recvcounts[owner] += (int)len;
     }
     delete[] gridcoords;
-    delete[] tempcoords;
 
     T* y_local=nullptr;
 
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions::alloc_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::alloc_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},recvcounts[rank],y_local);
 
     MPI_Reduce_scatter(
         y_full,
@@ -1405,14 +1363,14 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
         recvcounts,
         mpi_get_type<T>(),
         MPI_SUM,
-        y.pctx->comm);
+        y.pctx->pcomm);
 
     if(M>0)
-        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},  M,y_full);
+        DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},  M,y_full);
 
     if(ongpu)
     {
-        if(!A.Dblockarray.pdata_is_devptr)
+        if(!A.Dblockarray.conf.data_is_devptr)
             omp_target_free(A_ptr,devnum);
         omp_target_free(Ablockoff,devnum);
         omp_target_free(Aext,devnum);
@@ -1430,7 +1388,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     {
         for (ptrdiff_t i = 0; i < y.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t b = y.pblock_grid_index[i];
+            ptrdiff_t b = y.plocal_block_global_grid_indices[i];
 
             ptrdiff_t start = b * bs;
             ptrdiff_t diff  = M - start;
@@ -1441,10 +1399,10 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
             ptrdiff_t local_offset = global_offset - offset;
 
             ptrdiff_t dst = y.Dblockarray.pblock_offsets[i];
-            if(!y.Dblockarray.pdata_is_devptr)
+            if(!y.Dblockarray.conf.data_is_devptr)
                 omp_target_memcpy( y.Dblockarray.pdata,y_local,len * sizeof(T),dst*sizeof(T),local_offset*sizeof(T), omp_get_initial_device(),devnum);
             else
-                omp_target_memcpy(    y.Dblockarray.pdata,    y_local,len * sizeof(T   ),dst*sizeof(T),local_offset*sizeof(T),y.Dblockarray.pdevnum,devnum);
+                omp_target_memcpy(    y.Dblockarray.pdata,    y_local,len * sizeof(T   ),dst*sizeof(T),local_offset*sizeof(T),y.Dblockarray.conf.devicenum,devnum);
 
         }
     }
@@ -1453,7 +1411,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
     {
         for (ptrdiff_t i = 0; i < y.Dblockarray.pnumblocks; i++)
         {
-            ptrdiff_t b = y.pblock_grid_index[i];
+            ptrdiff_t b = y.plocal_block_global_grid_indices[i];
 
             ptrdiff_t start = b * bs;
             ptrdiff_t diff  = M - start;
@@ -1469,7 +1427,7 @@ inline bool Math_Functions_MPI::matrix_multiply_vector_Distributed(
         }
     }
     if(recvcounts[rank]>0)
-        DataBlock_MPI_Functions::free_helper2<T>(MPI_Sendlocation{.with_memmap=memmap,.ondevice=ongpu,.devicenum=devnum},recvcounts[rank],y_local);
+        DataBlock_MPI_Functions::free_helper2<T>(DataBlockConfig{.pmemmap=memmap,.data_is_devptr= ongpu,.devicenum=devnum},recvcounts[rank],y_local);
 
     delete[] recvcounts;
 
@@ -1495,18 +1453,18 @@ inline bool Math_Functions_MPI::matrix_linear_combination_Distributed(
 
     if (!matrix_extents_equal(A,B,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    const DataBlockArray Bblockarray=B.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    const DataBlockArray<T>&  Bblockarray=B.Dblockarray;
+    DataBlockArray<T>&  Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -1571,18 +1529,18 @@ inline bool Math_Functions_MPI::matrix_multiply_hadamard_Distributed(
 
     if (!matrix_extents_equal(A,B,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    const DataBlockArray Bblockarray=B.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const DataBlockArray<T>&Ablockarray=A.Dblockarray;
+    const DataBlockArray<T>& Bblockarray=B.Dblockarray;
+    DataBlockArray<T>& Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -1647,17 +1605,17 @@ inline bool matrix_linear_combination_Distributed(const DistributedDataBlock<T>&
 
     if (!matrix_extents_equal(A,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
-    if(A.Dblockarray.pdevnum!=C.Dblockarray.pdevnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
+    if(A.Dblockarray.conf.devicenum!=C.Dblockarray.conf.devicenum) return false;
 
     if(A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    DataBlockArray<T>&  Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -1714,17 +1672,17 @@ inline bool Math_Functions_MPI::matrix_multiply_scalar_Distributed(const Distrib
 
     if (!matrix_extents_equal(A,B,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const  DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    DataBlockArray<T>&  Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -1779,10 +1737,10 @@ inline bool Math_Functions_MPI::matrix_multiply_scalar_Distributed(DistributedDa
     bool memmap=policy.memmapped_files;
     int devnum=policy.devicenum;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
 
 
-    DataBlockArray Ablockarray=A.Dblockarray;
+    DataBlockArray<T>&  Ablockarray=A.Dblockarray;
     const ptrdiff_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
@@ -1838,17 +1796,17 @@ inline bool Math_Functions_MPI::vector_multiply_scalar_Distributed(const Distrib
 
     if (!vector_extents_equal(A,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const  DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    DataBlockArray<T>&  Cblockarray=C.Dblockarray;
 
     if (ongpu)
     {
@@ -1896,12 +1854,12 @@ inline bool Math_Functions_MPI::vector_multiply_scalar_Distributed(DistributedDa
     bool memmap=policy.memmapped_files;
     int devnum=policy.devicenum;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks ) return false;
 
-    DataBlockArray Ablockarray=A.Dblockarray;
+    DataBlockArray <T>& Ablockarray=A.Dblockarray;
     const ptrdiff_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
@@ -1952,18 +1910,18 @@ inline bool Math_Functions_MPI::Math_Functions_MPI::vector_linear_combination_Di
 
     if (!vector_extents_equal(A,B,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
-    const  DataBlockArray Bblockarray=B.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const  DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    const  DataBlockArray <T>& Bblockarray=B.Dblockarray;
+    DataBlockArray <T>& Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -2015,16 +1973,16 @@ inline bool Math_Functions_MPI::vector_linear_combination_Distributed(const Dist
 
     if (!vector_extents_equal(A,C)) return false;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if( A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const  DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    DataBlockArray<T>&  Cblockarray=C.Dblockarray;
     if (ongpu)
     {
 
@@ -2069,20 +2027,20 @@ inline bool Math_Functions_MPI::vector_dot_product_localblock(const DistributedD
 {
     const Math_MPI_Functions_Policy policy = (pol != nullptr) ? *pol : get_default_policy();
 
-    if (A.pctx->comm == MPI_COMM_NULL) return false;
+    if (A.pctx->pcomm == MPI_COMM_NULL) return false;
     if (!vector_extents_equal(A, B)) return false;
 
     bool ongpu = policy.Math_MPI_Functions_Policy::should_use_gpu_vector(A, B);
     int devnum = policy.devicenum;
 
-    if (A.Dblockarray.pdata_is_devptr && A.Dblockarray.pdevnum != devnum) return false;
-    if (B.Dblockarray.pdata_is_devptr && B.Dblockarray.pdevnum != devnum) return false;
+    if (A.Dblockarray.conf.data_is_devptr && A.Dblockarray.conf.devicenum != devnum) return false;
+    if (B.Dblockarray.conf.data_is_devptr && B.Dblockarray.conf.devicenum != devnum) return false;
 
     if (A.Dblockarray.pnumblocks != B.Dblockarray.pnumblocks) return false;
 
     T sum = T(0);
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    const DataBlockArray Bblockarray=B.Dblockarray;
+    const DataBlockArray<T>&  Ablockarray=A.Dblockarray;
+    const DataBlockArray<T>&  Bblockarray=B.Dblockarray;
     const ptrdiff_t ablocknum=A.Dblockarray.pnumblocks;
     if (ongpu)
     {
@@ -2134,7 +2092,7 @@ inline bool Math_Functions_MPI::vector_dot_product_Distributed(
     if(!vector_dot_product_localblock(A,B,&sum,pol))
         return false;
 
-    MPI_Reduce(&sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->comm);
+    MPI_Reduce(&sum, result, 1, mpi_get_type<T>(), MPI_SUM, root, A.pctx->pcomm);
 
     return true;
 }
@@ -2147,7 +2105,7 @@ inline T Math_Functions_MPI::vector_dot_product_Allreduce_Distributed(const Dist
     if(!Math_Functions_MPI::vector_dot_product_localblock(A,B,&sum,pol)) return false;
 
     T global_result = T(0);
-    MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->comm);
+    MPI_Allreduce(&sum, &global_result, 1, mpi_get_type<T>(), MPI_SUM, A.pctx->pcomm);
     return global_result;
 }
 
@@ -4677,8 +4635,8 @@ void Math_Functions_MPI::MPI_recursive_multiplication_helper(MPI_Comm pcom,const
 #endif
             }
             DataBlock<T> A,B;
-            A=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(MPI_Sendlocation{.with_memmap=policy.memmapped_files,.ondevice=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 2, pcom);
-            B=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(MPI_Sendlocation{.with_memmap=policy.memmapped_files,.ondevice=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 3, pcom);
+            A=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(DataBlockConfig{.pmemmap=policy.memmapped_files,.data_is_devptr=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 2, pcom);
+            B=DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock<T>(DataBlockConfig{.pmemmap=policy.memmapped_files,.data_is_devptr=separate_device_memory,.devicenum=policy.devicenum},status.MPI_SOURCE, 3, pcom);
 
 
             ptrdiff_t rowsC=A.dpextents[0],
@@ -4752,6 +4710,8 @@ endloop:
     return;
 
 }
+
+
 template <typename T>
 void Math_Functions_MPI::MPI_recursion_helper_end(MPI_Comm pcomm)
 {
@@ -4779,9 +4739,9 @@ inline bool Math_Functions_MPI::tensor_multiply_scalar_Distributed(const Distrib
     bool memmap=policy.memmapped_files;
     int devnum=policy.devicenum;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
@@ -4789,8 +4749,8 @@ inline bool Math_Functions_MPI::tensor_multiply_scalar_Distributed(const Distrib
 
     if (cblocknum == 0) return true;
 
-    const  DataBlockArray Ablockarray=A.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const  DataBlockArray<T>& Ablockarray=A.Dblockarray;
+    DataBlockArray<T>& Cblockarray=C.Dblockarray;
 
     const ptrdiff_t rank=Cblockarray.ptensor_rank;
     if (ongpu)
@@ -4847,10 +4807,10 @@ inline bool Math_Functions_MPI::tensor_multiply_scalar_Distributed(DistributedDa
     bool memmap=policy.memmapped_files;
     int devnum=policy.devicenum;
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
 
 
-    DataBlockArray Ablockarray=A.Dblockarray;
+    DataBlockArray<T>& Ablockarray=A.Dblockarray;
     const ptrdiff_t ablocknum=A.Dblockarray.pnumblocks;
 
     const ptrdiff_t rank=Ablockarray.ptensor_rank;
@@ -4914,18 +4874,18 @@ inline bool Math_Functions_MPI::tensor_linear_combination_Distributed(
 
 
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(B.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(B.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks || A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    const DataBlockArray Bblockarray=B.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const DataBlockArray<T>& Ablockarray=A.Dblockarray;
+    const DataBlockArray<T>& Bblockarray=B.Dblockarray;
+    DataBlockArray<T>& Cblockarray=C.Dblockarray;
 
     const ptrdiff_t rank=Cblockarray.ptensor_rank;
     if (ongpu)
@@ -4976,7 +4936,7 @@ inline bool Math_Functions_MPI::tensor_linear_combination_Distributed(
 
 
 template<typename T>
-inline bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+inline bool  Math_Functions_MPI::tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
         const T CoefficientB, const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 {
 
@@ -4989,9 +4949,9 @@ inline bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A
     int devnum=policy.devicenum;
 
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
 
     if(A.Dblockarray.pnumblocks!=C.Dblockarray.pnumblocks) return false;
     if(A.Dblockarray.pnumblocks!=B.Dblockarray.pnumblocks) return false;
@@ -5000,9 +4960,9 @@ inline bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
     if (cblocknum == 0) return true;
 
-    const DataBlockArray Ablockarray=A.Dblockarray;
-    const DataBlockArray Bblockarray=B.Dblockarray;
-    DataBlockArray Cblockarray=C.Dblockarray;
+    const DataBlockArray<T>& Ablockarray=A.Dblockarray;
+    const DataBlockArray<T>& Bblockarray=B.Dblockarray;
+    DataBlockArray<T>& Cblockarray=C.Dblockarray;
 
     const ptrdiff_t rank=Cblockarray.ptensor_rank;
     if (ongpu)
@@ -5049,42 +5009,38 @@ inline bool tensor_product_hadamard_Distributed(const DistributedDataBlock<T>& A
 }
 
 
-
-
 template<typename T>
-inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
-                                       const T CoefficientB, const T CoefficientC,const Math_MPI_Functions_Policy* pol)
+inline bool  Math_Functions_MPI::tensor_product_Distributed(const DistributedDataBlock<T>& A,const DistributedDataBlock<T>& B,DistributedDataBlock<T>& C,
+        const T CoefficientB, const T CoefficientC,const Math_MPI_Functions_Policy* pol)
 {
 
     const Math_MPI_Functions_Policy policy =
         (pol != nullptr) ? *pol : Math_Functions_MPI::get_default_policy();
 
 
-    bool ongpu=policy.Math_Functions_Policy::should_use_gpu_elementwise(A,B,C);
+    bool ongpu=policy.should_use_gpu_elementwise(A,B,C);
     bool memmap=policy.memmapped_files;
     int devnum=policy.devicenum;
 
-    MPI_Sendlocation location= {.with_memmap=memmap,.ondevice=ongpu,.devicenum=policy.devicenum};
+    DataBlockConfig location= {.pmemmap=memmap,.data_is_devptr=ongpu,.devicenum=policy.devicenum};
 
-    if(A.Dblockarray.pdata_is_devptr&& A.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& C.Dblockarray.pdevnum!=devnum) return false;
-    if(C.Dblockarray.pdata_is_devptr&& B.Dblockarray.pdevnum!=devnum) return false;
+    if(A.Dblockarray.conf.data_is_devptr&& A.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& C.Dblockarray.conf.devicenum!=devnum) return false;
+    if(C.Dblockarray.conf.data_is_devptr&& B.Dblockarray.conf.devicenum!=devnum) return false;
 
 
     const ptrdiff_t cblocknum=C.Dblockarray.pnumblocks;
-    if (cblocknum == 0) return true;
 
-    const DataBlock<T> dA,dB;
+    DataBlock<T> dA,dB;
 
-    MPI_All_Gather_tensor_from_subtensors_alloc(A,location,dA);
-    MPI_All_Gather_tensor_from_subtensors_alloc(B,location,dB);
-
-    DataBlockArray Cblockarray=C.Dblockarray;
+    DataBlock_MPI_Functions::MPI_All_Gather_tensor_from_subtensors_alloc<T>(A,location,dA);
+    DataBlock_MPI_Functions::MPI_All_Gather_tensor_from_subtensors_alloc<T>(B,location,dB);
+    DataBlockArray<T>& Cblockarray=C.Dblockarray;
 
     const ptrdiff_t rank=Cblockarray.ptensor_rank;
     const ptrdiff_t* pextentsbuffer=C.Dblockarray.pextentsbuffer;
     const ptrdiff_t* globalstrides=C.pglobal_strides;
-    const ptrdiff_t* blockstarts=C.pblock_grid_starts;
+    const ptrdiff_t* blockstarts=C.plocal_block_global_starts;
     const ptrdiff_t blockrank=C.pblock_grid_rank;
     const ptrdiff_t tensorrank=C.Dblockarray.ptensor_rank;
 
@@ -5094,33 +5050,41 @@ inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const Di
     #pragma omp simd reduction(*: max_index_B)
     for (ptrdiff_t i = 0; i < rankB; ++i)
     {
-        max_index_B *= B.dpextents[i];
+        max_index_B *= dB.dpextents[i];
     }
+
+    int rank_id = 0;
+    MPI_Comm_rank(C.pctx->pcomm, &rank_id);
+
+
 
     if (ongpu)
     {
+
         typename GPU_Memory_Functions::OffloadHelperConst<T> offloadA(dA, devnum);
         typename GPU_Memory_Functions::OffloadHelperConst<T> offloadB(dB, devnum);
         typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T> offloadC(Cblockarray, devnum, CoefficientC==T(0), true);
 
 
         #pragma omp target data map(to: pextentsbuffer[0:tensorrank*cblocknum],globalstrides[0:tensorrank], \
-        blockstarts[0:tensorrank])device(devnum)
+        blockstarts[0:cblocknum*blockrank])device(devnum)
         #pragma omp target teams distribute device(devnum)
         for (ptrdiff_t b=0; b<cblocknum; b++)
     {
-        ptrdiff_t max_index=1;
-        #pragma omp simd reduction(*:max_index)
-        for(ptrdiff_t i=0; i<rank; i++)
-                max_index*=Cblockarray.pextentsbuffer[i];
+        const ptrdiff_t* block_extents =pextentsbuffer + b * rank;
+
+        ptrdiff_t max_index = 1;
+        for (ptrdiff_t d = 0; d < rank; ++d)
+                max_index *= block_extents[d];
 
             #pragma omp parallel for simd
             for (ptrdiff_t i = 0; i < max_index; ++i)
             {
-                local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
-                const ptrdiff_t idxA = i / max_index_B;
-                const ptrdiff_t idxB = i % max_index_B;
-                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientB* dA(idxA)*dB(idxB): CoefficientC*Cblockarray(i,b)+CoefficientB* dA(idxA)*dB(idxB);
+                ptrdiff_t k=local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
+                const ptrdiff_t idxA = k / max_index_B;
+                const ptrdiff_t idxB = k % max_index_B;
+                const T prod= CoefficientB*dA(idxA)*dB(idxB);
+                Cblockarray(i,b) =CoefficientC==T(0)?prod: CoefficientC*Cblockarray(i,b)+prod;
             }
         }
     }
@@ -5130,27 +5094,224 @@ inline bool tensor_product_Distributed(const DistributedDataBlock<T>& A,const Di
         #pragma omp parallel for
         for (ptrdiff_t b=0; b<cblocknum; b++)
         {
-            ptrdiff_t max_index=1;
-            #pragma omp simd reduction(*:max_index)
-            for(ptrdiff_t i=0; i<rank; i++)
-                max_index*=Cblockarray.pextentsbuffer[i];
+            const ptrdiff_t* block_extents =pextentsbuffer + b * rank;
+
+            ptrdiff_t max_index = 1;
+            for (ptrdiff_t d = 0; d < rank; ++d)
+                max_index *= block_extents[d];
 
             #pragma omp simd
             for (ptrdiff_t i = 0; i < max_index; ++i)
             {
-                local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
-                const ptrdiff_t idxA = i / max_index_B;
-                const ptrdiff_t idxB = i % max_index_B;
-                Cblockarray(i,b) =CoefficientC==T(0)?CoefficientB* dA(idxA)*dB(idxB): CoefficientC*Cblockarray(i,b)+CoefficientB* dA(idxA)*dB(idxB);
+
+
+                ptrdiff_t k=local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
+                const ptrdiff_t idxA = k / max_index_B;
+                const ptrdiff_t idxB = k % max_index_B;
+                const T prod=CoefficientB*dA(idxA)*dB(idxB);
+                Cblockarray(i,b) =CoefficientC==T(0)? prod: CoefficientC*Cblockarray(i,b)+prod;
             }
         }
     }
 
-    MPI_Free_DataBlock(dA);
-    MPI_Free_DataBlock(dB);
+    DataBlock_MPI_Functions::MPI_Free_DataBlock<T>(dA);
+    DataBlock_MPI_Functions::MPI_Free_DataBlock<T>(dB);
 
     return true;
+
+//    const Math_MPI_Functions_Policy policy =(pol != nullptr)? *pol: Math_Functions_MPI::get_default_policy();
+//
+//    const bool ongpu =policy.should_use_gpu_elementwise(A, B, C);
+//
+//    const int devnum = policy.devicenum;
+//
+//    DataBlockConfig location = {.pmemmap = policy.memmapped_files,.data_is_devptr = ongpu,.devicenum = devnum};
+//
+//    if (A.Dblockarray.conf.data_is_devptr && A.Dblockarray.conf.devicenum != devnum)
+//        return false;
+//
+//    if (B.Dblockarray.conf.data_is_devptr && B.Dblockarray.conf.devicenum != devnum)
+//        return false;
+//
+//    if (C.Dblockarray.conf.data_is_devptr && C.Dblockarray.conf.devicenum != devnum)
+//        return false;
+//
+//    MPI_Comm comm = C.pctx->pcomm;
+//
+//    int comm_size = 0;
+//    MPI_Comm_size(comm, &comm_size);
+//
+//    DataBlockArray<T>& Cblockarray = C.Dblockarray;
+//
+//    const ptrdiff_t cblocknum = Cblockarray.pnumblocks;
+//    const ptrdiff_t rank = Cblockarray.ptensor_rank;
+//
+//    const ptrdiff_t* pextentsbuffer =Cblockarray.pextentsbuffer;
+//
+//    const ptrdiff_t* globalstrides =C.pglobal_strides;
+//
+//    const ptrdiff_t* blockstarts =C.plocal_block_global_starts;
+//
+//    const ptrdiff_t blockrank =C.pblock_grid_rank;
+//
+//    const ptrdiff_t tensorrank = rank;
+//
+//
+//    ptrdiff_t max_index_B = 1;
+//    #pragma omp parallel for simd reduction(*:max_index_B) if(parallel:B.Dblockarray.ptensor_rank>50)
+//    for (ptrdiff_t d = 0; d < B.Dblockarray.ptensor_rank; ++d)
+//        max_index_B *= B.pglobal_extents[d];
+//
+//
+//
+//
+//
+//
+//    ptrdiff_t* block_output_offsets = new ptrdiff_t[cblocknum + 1];
+//    block_output_offsets[0] = 0;
+//
+//    for (ptrdiff_t b = 0; b < cblocknum; ++b)
+//    {
+//        ptrdiff_t block_size = 1;
+//
+//        #pragma omp simd reduction(*:block_size)
+//        for (ptrdiff_t d = 0; d < rank; ++d)
+//        {
+//            block_size *= pextentsbuffer[b * rank + d];
+//        }
+//        block_output_offsets[b + 1] =block_output_offsets[b] + block_size;
+//    }
+//
+//    const ptrdiff_t total_output = block_output_offsets[cblocknum];
+//
+//
+//    int myrank;
+//    MPI_Comm_rank(comm, &myrank);
+//
+//    TensorFlatIndexLookupBuilder builderA(comm_size, total_output);
+//    TensorFlatIndexLookupBuilder builderB(comm_size, total_output);
+//
+//
+//
+//    for (ptrdiff_t b = 0; b < cblocknum; ++b)
+//    {
+//           const ptrdiff_t block_size =block_output_offsets[b + 1] -block_output_offsets[b];
+//
+//        for (ptrdiff_t i = 0; i < block_size; ++i)
+//        {
+//            const ptrdiff_t k =local_to_global_storage_offset(pextentsbuffer,globalstrides,blockstarts,blockrank,tensorrank,b,i);
+//
+//            const ptrdiff_t idxA = k / max_index_B;
+//            const ptrdiff_t idxB = k % max_index_B;
+//
+//            const TensorBlockLocation locA =DataBlock_MPI_Functions::get_tensor_block_location(A, idxA);
+//
+//            const TensorBlockLocation locB =DataBlock_MPI_Functions::get_tensor_block_location(B, idxB);
+//
+//            const ptrdiff_t posA = builderA.add(locA.owner_rank,idxA,locA.global_block_index,locA.local_flat_index);
+//
+//            const ptrdiff_t posB = builderB.add(locB.owner_rank,idxB,locB.global_block_index,locB.local_flat_index);
+//
+//            const ptrdiff_t output_index =block_output_offsets[b] + i;
+//
+//            builderA.set_position(output_index, locA.owner_rank, posA);
+//            builderB.set_position(output_index, locB.owner_rank, posB);
+//        }
+//    }
+//
+//    builderA.finalize_positions();
+//    builderB.finalize_positions();
+//
+//    TensorFlatIndexReceivedRequests incomingA(comm_size);
+//    TensorFlatIndexReceivedRequests incomingB(comm_size);
+//
+//    TensorRequestEngine::MPI_Exchange_tensor_flat_index_requests(builderA.requests,incomingA,comm);
+//
+//    TensorRequestEngine::MPI_Exchange_tensor_flat_index_requests(builderB.requests,incomingB,comm);
+//
+//
+//    TensorFlatIndexData<T> dataA;
+//    TensorFlatIndexData<T> dataB;
+//
+//    dataA.config = location;
+//    dataB.config = location;
+//
+//    TensorRequestEngine::MPI_Exchange_tensor_flat_index_data(incomingA,A,location,dataA,comm);
+//
+//    TensorRequestEngine::MPI_Exchange_tensor_flat_index_data(incomingB,B,location,dataB,comm);
+//
+//    TensorFlatIndexLookup& lookupA = builderA.positions;
+//    TensorFlatIndexLookup& lookupB = builderB.positions;
+//
+//
+//    if (ongpu)
+//    {
+//        typename GPU_Memory_Functions::DataBlockArrayOffloadHelper<T> offloadC(Cblockarray,devnum,CoefficientC == T(0),true);
+//        typename GPU_Memory_Functions::TensorFlatIndexLookupOffloadHelper offloadlookupA(lookupA,devnum);
+//        typename GPU_Memory_Functions::TensorFlatIndexLookupOffloadHelper offloadlookupB(lookupB,devnum);
+//        typename GPU_Memory_Functions::TensorFlatIndexDataOffloadHelper<T> offloadA(dataA, devnum);
+//        typename GPU_Memory_Functions::TensorFlatIndexDataOffloadHelper<T> offloadB(dataB, devnum);
+//
+//
+//        #pragma omp target data map(to: block_output_offsets[0:cblocknum + 1]) device(devnum)
+//        #pragma omp target teams distribute device(devnum)
+//        for (ptrdiff_t b = 0; b < cblocknum; ++b)
+//    {
+//        const ptrdiff_t block_size =block_output_offsets[b + 1] -block_output_offsets[b];
+//
+//            const ptrdiff_t block_output_start =block_output_offsets[b];
+//
+//            #pragma omp parallel for simd
+//            for (ptrdiff_t i = 0; i < block_size; ++i)
+//            {
+//                const ptrdiff_t output_index =block_output_start + i;
+//
+//                const ptrdiff_t posA = lookupA.positions[output_index];
+//                const ptrdiff_t posB = lookupB.positions[output_index];
+//
+//                const T prod =CoefficientB * dataA(posA) * dataB(posB);
+//
+//                Cblockarray(i, b) =CoefficientC == T(0)? prod: CoefficientC * Cblockarray(i, b) + prod;
+//            }
+//        }
+//
+//    }
+//    else
+//    {
+//
+//
+//        #pragma omp parallel for
+//        for (ptrdiff_t b = 0; b < cblocknum; ++b)
+//        {
+//            const ptrdiff_t block_size =block_output_offsets[b + 1] -block_output_offsets[b];
+//
+//            const ptrdiff_t block_output_start =block_output_offsets[b];
+//
+//            #pragma omp simd
+//            for (ptrdiff_t i = 0; i < block_size; ++i)
+//            {
+//                const ptrdiff_t output_index =block_output_start + i;
+//
+//                const ptrdiff_t posA = lookupA.positions[output_index];
+//                const ptrdiff_t posB = lookupB.positions[output_index];
+//
+//                const T prod =CoefficientB * dataA(posA) * dataB(posB);
+//
+//                Cblockarray(i, b) =CoefficientC == T(0)? prod: CoefficientC * Cblockarray(i, b) + prod;
+//            }
+//        }
+//    }
+//
+//    delete[] block_output_offsets;
+//
+//    DataBlock_MPI_Functions::free_helper2<T>(dataA.config,dataA.pdatalength,dataA.pdata);
+//
+//    DataBlock_MPI_Functions::free_helper2<T>(dataB.config,dataB.pdatalength,dataB.pdata);
+//
+//    return true;
 }
+
+
 
 
 

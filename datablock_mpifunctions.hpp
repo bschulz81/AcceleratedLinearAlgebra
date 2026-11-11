@@ -23,16 +23,16 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
             free(m.Dblockarray.pstridesbuffer);
             m.Dblockarray.pstridesbuffer=nullptr;
         }
-        if(m.pblock_grid_index!=nullptr)
+        if(m.plocal_block_global_grid_indices!=nullptr)
         {
-            free(m.pblock_grid_index);
-            m.pblock_grid_index=nullptr;
+            free(m.plocal_block_global_grid_indices);
+            m.plocal_block_global_grid_indices=nullptr;
         }
 
         if(m.Dblockarray.pdata != nullptr)
         {
 #if defined(Unified_Shared_Memory)
-            if (m.pmemmap)
+            if (m.conf.pmemmap)
             {
                 Host_Memory_Functions::delete_temp_mmap<T>(m.Dblockarray.pdata, m.Dblockarray.pdatalength);
             }
@@ -43,13 +43,13 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
             m.Dblockarray.pdata=nullptr;
 
 #else
-            if(m.Dblockarray.pdata_is_devptr)
+            if(m.Dblockarray.conf.data_is_devptr)
             {
-                omp_target_free(m.Dblockarray.pdata,m.Dblockarray.pdevnum);
+                omp_target_free(m.Dblockarray.pdata,m.Dblockarray.conf.devicenum);
             }
             else
             {
-                if (m.pmemmap)
+                if (m.Dblockarray.conf.pmemmap)
                 {
                     Host_Memory_Functions::delete_temp_mmap<T>(m.Dblockarray.pdata,m.Dblockarray.pdatalength);
                 }
@@ -66,10 +66,10 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
     }
 
 
-    if(m.pblock_grid_coords)
+    if(m.plocal_block_grid_coords)
     {
-        free(m.pblock_grid_coords);
-        m.pblock_grid_coords=nullptr;
+        free(m.plocal_block_grid_coords);
+        m.plocal_block_grid_coords=nullptr;
     }
     if(m.pglobal_extents)
     {
@@ -94,10 +94,10 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
         m.Dblockarray.pblock_offsets=nullptr;
     }
 
-    if(m.pblock_grid_starts)
+    if(m.plocal_block_global_starts)
     {
-        free(m.pblock_grid_starts);
-        m.pblock_grid_starts=nullptr;
+        free(m.plocal_block_global_starts);
+        m.plocal_block_global_starts=nullptr;
     }
 
     if(m.pblock_grid_extents)
@@ -106,8 +106,13 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
         m.pblock_grid_extents=nullptr;
     }
 
+    if(m.pblock_grid_strides)
+    {
+        free(m.pblock_grid_strides);
+        m.pblock_grid_strides=nullptr;
+    }
 
-    m.pblock_grid_to_local.clear();
+    m.pglobal_grid_index_to_local_block.clear();
 
 
 }
@@ -115,7 +120,7 @@ void DataBlock_MPI_Functions::MPI_Free_DistributedDataBlock(
 
 
 template <typename T>
-void DataBlock_MPI_Functions::alloc_helper( MPI_Sendlocation loc, ptrdiff_t rank,ptrdiff_t datalength,ptrdiff_t*& pextents,ptrdiff_t *&pstrides,T *&pdata)
+void DataBlock_MPI_Functions::alloc_helper( DataBlockConfig loc, ptrdiff_t rank,ptrdiff_t datalength,ptrdiff_t*& pextents,ptrdiff_t *&pstrides,T *&pdata)
 {
     pextents= (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*rank);
     pstrides= (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*rank);
@@ -125,13 +130,13 @@ void DataBlock_MPI_Functions::alloc_helper( MPI_Sendlocation loc, ptrdiff_t rank
 
 
 template <typename T>
-void DataBlock_MPI_Functions::alloc_helper2( MPI_Sendlocation loc,ptrdiff_t datalength,T *&pdata)
+void DataBlock_MPI_Functions::alloc_helper2( DataBlockConfig loc,ptrdiff_t datalength,T *&pdata)
 {
 
 #if defined(Unified_Shared_Memory)
     ondevice=false;
     devicenum=-INT_MAX;
-    if(loc.with_memmap)
+    if(loc.pmemmap)
     {
         pdata=Host_Memory_Functions::create_temp_mmap<T>(pdatalength);
     }
@@ -141,13 +146,13 @@ void DataBlock_MPI_Functions::alloc_helper2( MPI_Sendlocation loc,ptrdiff_t data
     }
 #else
 
-    if(loc.ondevice)
+    if(loc.data_is_devptr)
     {
         pdata=(T*)omp_target_alloc(sizeof(T)*datalength,loc.devicenum);
     }
     else
     {
-        if(loc.with_memmap)
+        if(loc.pmemmap)
         {
             pdata=Host_Memory_Functions::create_temp_mmap<T>(datalength);
         }
@@ -158,10 +163,11 @@ void DataBlock_MPI_Functions::alloc_helper2( MPI_Sendlocation loc,ptrdiff_t data
     }
 #endif
 }
+
 template <typename T>
 ptrdiff_t DistributedDataBlock<T>::tensor_rank() const
 {
-    return ptensor_rank;
+    return Dblockarray.ptensor_rank;
 }
 
 template <typename T>
@@ -231,15 +237,13 @@ DataBlock<T> DistributedDataBlock<T>::local_block(
 
 template <typename T>
 const ptrdiff_t*
-DistributedDataBlock<T>::block_grid_coords(ptrdiff_t local_block) const
+DistributedDataBlock<T>::global_block_grid_coords(ptrdiff_t local_block) const
 {
-    return pblock_grid_coords +local_block * pblock_grid_rank;
+    return plocal_block_grid_coords +local_block * pblock_grid_rank;
 }
 
 template <typename T>
-void DistributedDataBlock<T>::block_grid_coords(
-    ptrdiff_t block_grid_index,
-    ptrdiff_t* block_coords) const
+void DistributedDataBlock<T>::global_block_grid_coords(ptrdiff_t block_grid_index,ptrdiff_t* global_block_grid_coords) const
 {
     // Convert a linear index in the GLOBAL BLOCK GRID
     // into multidimensional block-grid coordinates.
@@ -248,7 +252,7 @@ void DistributedDataBlock<T>::block_grid_coords(
     #pragma omp unroll partial
     for (ptrdiff_t d = pblock_grid_rank - 1; d >= 0; --d)
     {
-        block_coords[d] =remainder % pblock_grid_extents[d];
+        global_block_grid_coords[d] =remainder % pblock_grid_extents[d];
 
         remainder /=pblock_grid_extents[d];
     }
@@ -256,19 +260,19 @@ void DistributedDataBlock<T>::block_grid_coords(
 
 
 template <typename T>
-ptrdiff_t DistributedDataBlock<T>::block_grid_index(ptrdiff_t local_block) const
+ptrdiff_t DistributedDataBlock<T>::global_block_grid_index(ptrdiff_t local_block) const
 {
-    return pblock_grid_index[local_block];
+    return plocal_block_global_grid_indices[local_block];
 }
 
 template <typename T>
-ptrdiff_t DistributedDataBlock<T>::block_grid_index(const ptrdiff_t* block_coords) const
+ptrdiff_t DistributedDataBlock<T>::global_block_grid_index(const ptrdiff_t* global_block_grid_coords) const
 {
     ptrdiff_t index = 0;
     #pragma omp unroll partial
     for (ptrdiff_t d = 0; d < pblock_grid_rank; ++d)
     {
-        index = index * pblock_grid_extents[d]+ block_coords[d];
+        index = index * pblock_grid_extents[d]+ global_block_grid_coords[d];
     }
 
     return index;
@@ -277,34 +281,41 @@ ptrdiff_t DistributedDataBlock<T>::block_grid_index(const ptrdiff_t* block_coord
 template <typename T>
 const ptrdiff_t* DistributedDataBlock<T>::block_grid_starts(ptrdiff_t local_block) const
 {
-    return pblock_grid_starts +local_block * ptensor_rank;
+    return plocal_block_global_starts +local_block * Dblockarray.ptensor_rank;
 }
 
 template <typename T>
-const ptrdiff_t*DistributedDataBlock<T>::block_extents(ptrdiff_t local_block) const
+const ptrdiff_t*DistributedDataBlock<T>::local_block_extents(ptrdiff_t local_block) const
 {
-    return Dblockarray.pextentsbuffer +local_block * ptensor_rank;
+    return Dblockarray.pextentsbuffer +local_block * Dblockarray.ptensor_rank;
 }
 
-
 template <typename T>
-void DistributedDataBlock<T>::block_extents(
-    const ptrdiff_t* block_coords,
+void DistributedDataBlock<T>::global_block_extents(
+    const ptrdiff_t* global_block_grid_coords,
     ptrdiff_t* extents) const
 {
-    #pragma omp parallel for simd if(parallel:ptensor_rank>30)
-    for (ptrdiff_t d = 0; d < ptensor_rank; ++d)
+    #pragma omp parallel for simd if(parallel:pblock_grid_rank > 30)
+    for (ptrdiff_t d = 0; d < pblock_grid_rank; ++d)
     {
-        ptrdiff_t start =block_coords[d] * pdefault_block_shape[d];
+        const ptrdiff_t start =global_block_grid_coords[d]* pdefault_block_shape[d];
 
-        extents[d] =std::min(pdefault_block_shape[d],pglobal_extents[d] - start);
+        const ptrdiff_t remaining =pglobal_extents[d] - start;
+
+        extents[d] =std::min(pdefault_block_shape[d],remaining);
+    }
+
+    #pragma omp parallel for simd if(parallel:Dblockarray.ptensor_rank - pblock_grid_rank > 30)
+    for (ptrdiff_t d = pblock_grid_rank; d < Dblockarray.ptensor_rank; ++d)
+    {
+        extents[d] = pglobal_extents[d];
     }
 }
 
-template <typename T>const ptrdiff_t*DistributedDataBlock<T>::block_strides(
+template <typename T>const ptrdiff_t*DistributedDataBlock<T>::local_block_strides(
     ptrdiff_t local_block) const
 {
-    return Dblockarray.pstridesbuffer +local_block * ptensor_rank;
+    return Dblockarray.pstridesbuffer +local_block * Dblockarray.ptensor_rank;
 }
 
 template <typename T>
@@ -325,26 +336,31 @@ template <typename T>
 int DistributedDataBlock<T>::owner_rank(
     const ptrdiff_t* block_coords) const
 {
-    int *tempcoords=new int[pblock_grid_rank];
-    return ppolicy->owner(block_coords,pblock_grid_rank,*pctx,tempcoords);
-    delete[] tempcoords;
+    int rank=ppolicy->owner_mpi_rank(block_coords,pblock_grid_rank,*pctx);
+
+    return rank;
+
 }
 
 
 
 
 
-
-
-
-
 template <typename T>
-inline void DistributedDataBlock<T>::block_grid_starts(const ptrdiff_t* block_coords,ptrdiff_t* starts) const
+void DistributedDataBlock<T>::block_grid_starts(
+    const ptrdiff_t* global_block_grid_coords,
+    ptrdiff_t* starts) const
 {
-    #pragma omp parallel for simd if(parallel:ptensor_rank > 30)
-    for (ptrdiff_t d = 0; d < ptensor_rank; ++d)
+    #pragma omp parallel for simd if(parallel:pblock_grid_rank > 30)
+    for (ptrdiff_t d = 0; d < pblock_grid_rank; ++d)
     {
-        starts[d] =block_coords[d] * pdefault_block_shape[d];
+        starts[d] =global_block_grid_coords[d]* pdefault_block_shape[d];
+    }
+
+    #pragma omp parallel for simd if(parallel:Dblockarray.ptensor_rank - pblock_grid_rank > 30)
+    for (ptrdiff_t d = pblock_grid_rank; d < Dblockarray.ptensor_rank; ++d)
+    {
+        starts[d] = 0;
     }
 }
 
@@ -353,9 +369,8 @@ inline void DistributedDataBlock<T>::block_grid_starts(const ptrdiff_t* block_co
 
 
 
-
 template <typename T>
-void DataBlock_MPI_Functions::free_helper( MPI_Sendlocation loc, ptrdiff_t datalength,ptrdiff_t*& pextents,ptrdiff_t *&pstrides,T *&pdata)
+void DataBlock_MPI_Functions::free_helper( DataBlockConfig loc, ptrdiff_t datalength,ptrdiff_t*& pextents,ptrdiff_t *&pstrides,T *&pdata)
 {
     free_helper2(loc,datalength,pdata);
 
@@ -368,11 +383,11 @@ void DataBlock_MPI_Functions::free_helper( MPI_Sendlocation loc, ptrdiff_t datal
 
 
 template <typename T>
-void DataBlock_MPI_Functions::free_helper2( MPI_Sendlocation loc, ptrdiff_t datalength,T *&pdata)
+void DataBlock_MPI_Functions::free_helper2( DataBlockConfig loc, ptrdiff_t datalength,T *&pdata)
 {
 
 #if defined(Unified_Shared_Memory)
-    if(loc.with_memmap)
+    if(loc.pmemmap)
     {
         Host_Memory_Functions::delete_temp_mmap<T>(pdata,pdatalength)
     }
@@ -381,13 +396,13 @@ void DataBlock_MPI_Functions::free_helper2( MPI_Sendlocation loc, ptrdiff_t data
         free(pdata);
     }
 #else
-    if(loc.ondevice)
+    if(loc.data_is_devptr)
     {
         omp_target_free(pdata,loc.devicenum);
     }
     else
     {
-        if(loc.with_memmap)
+        if(loc.pmemmap)
         {
             Host_Memory_Functions::delete_temp_mmap<T>(pdata,datalength);
         }
@@ -407,8 +422,8 @@ template<typename T>
 void DistributedDataBlock<T>::print(int rootrank) const
 {
     int rank, size;
-    MPI_Comm_rank(pctx->comm,&rank);
-    MPI_Comm_size(pctx->comm,&size);
+    MPI_Comm_rank(pctx->pcomm,&rank);
+    MPI_Comm_size(pctx->pcomm,&size);
 
 
 
@@ -428,7 +443,7 @@ void DistributedDataBlock<T>::print(int rootrank) const
             len += snprintf(nullptr, 0,"\n=== MPI Rank %d ===\n",rank);
             len += snprintf(nullptr, 0,"Block %zu coords=(",i);
 
-            ptrdiff_t* coords = pblock_grid_coords + i * Dblockarray.ptensor_rank;
+            ptrdiff_t* coords = plocal_block_grid_coords + i * Dblockarray.ptensor_rank;
 
             for(ptrdiff_t d=0; d<Dblockarray.ptensor_rank; ++d)
             {
@@ -479,7 +494,7 @@ void DistributedDataBlock<T>::print(int rootrank) const
             cur += n;
             remaining -= n;
 
-            ptrdiff_t* coords =pblock_grid_coords +i * Dblockarray.ptensor_rank;
+            ptrdiff_t* coords =plocal_block_grid_coords +i * Dblockarray.ptensor_rank;
 
             for(ptrdiff_t d=0; d<Dblockarray.ptensor_rank; ++d)
             {
@@ -529,7 +544,7 @@ void DistributedDataBlock<T>::print(int rootrank) const
 
 
 
-    MPI_Gather(&len, 1, mpi_get_type<int>(), rank==rootrank ? sizes : nullptr,1, mpi_get_type<int>(), 0, pctx->comm);
+    MPI_Gather(&len, 1, mpi_get_type<int>(), rank==rootrank ? sizes : nullptr,1, mpi_get_type<int>(), 0, pctx->pcomm);
 
     if( rank==0)
     {
@@ -540,7 +555,7 @@ void DistributedDataBlock<T>::print(int rootrank) const
         }
         msg=(char*) malloc(entiresize+1);
     }
-    MPI_Gatherv(buffer,len, mpi_get_type<char>(),rank==rootrank? msg:nullptr, rank==rootrank? sizes:nullptr,rank==rootrank? displs: nullptr,mpi_get_type<char>(),0,pctx->comm);
+    MPI_Gatherv(buffer,len, mpi_get_type<char>(),rank==rootrank? msg:nullptr, rank==rootrank? sizes:nullptr,rank==rootrank? displs: nullptr,mpi_get_type<char>(),0,pctx->pcomm);
 
     if( rank==rootrank)
     {
@@ -554,6 +569,268 @@ void DistributedDataBlock<T>::print(int rootrank) const
     free(buffer);
 }
 
+
+
+template <typename T>
+int DistributedDataBlock<T>::owner_rank_from_global_flat_index(const ptrdiff_t global_flat_index) const
+{
+    const ptrdiff_t rank = Dblockarray.ptensor_rank;
+
+    if (rank <= 0 || global_flat_index < 0 ||
+            pglobal_extents == nullptr ||
+            pdefault_block_shape == nullptr ||
+            ppolicy == nullptr || pctx == nullptr)
+    {
+        throw std::invalid_argument("Invalid distributed tensor metadata or flat index");
+    }
+
+    std::vector<ptrdiff_t> global_coords(rank);
+
+    ptrdiff_t tmp = global_flat_index;
+
+    #pragma omp unroll partial
+    for (ptrdiff_t d = rank-1; d>=0; d--)
+    {
+        const ptrdiff_t extent = pglobal_extents[d];
+
+        global_coords[d] = tmp % extent;
+        tmp /= extent;
+    }
+
+    if (tmp != 0)
+        throw std::out_of_range("Global flat index is outside the tensor");
+
+    std::vector<ptrdiff_t> block_coords(rank, 0);
+
+    #pragma omp parallel for simd if(parallel:pblock_grid_rank>30)
+    for (ptrdiff_t d = 0; d < pblock_grid_rank; ++d)
+    {
+        block_coords[d] = global_coords[d] / pdefault_block_shape[d];
+    }
+
+    return ppolicy->owner_mpi_rank(block_coords.data(),rank,*pctx);
+}
+
+
+
+template<typename T>
+inline TensorBlockLocation
+DataBlock_MPI_Functions::get_tensor_block_location(
+    const DistributedDataBlock<T>& source,
+    ptrdiff_t global_flat_index)
+{
+    const ptrdiff_t rank = source.Dblockarray.ptensor_rank;
+    const ptrdiff_t blockrank = source.pblock_grid_rank;
+
+    ptrdiff_t global_coords[rank];
+    ptrdiff_t block_coords[rank];
+
+    ptrdiff_t remaining = global_flat_index;
+
+
+    #pragma omp unroll partial
+    for (ptrdiff_t d = rank - 1; d >= 0; --d)
+    {
+        global_coords[d] = remaining % source.pglobal_extents[d];
+        remaining /= source.pglobal_extents[d];
+    }
+
+
+    #pragma omp unroll partial
+    for (ptrdiff_t d = 0; d < rank; ++d)
+    {
+        block_coords[d] =(d < blockrank)? global_coords[d] / source.pdefault_block_shape[d]: 0;
+    }
+
+
+    ptrdiff_t global_block_index = 0;
+    ptrdiff_t local_flat_index = 0;
+
+    for (ptrdiff_t d = 0; d < rank; ++d)
+    {
+        ptrdiff_t local_coord = global_coords[d];
+        ptrdiff_t actual_extent = source.pglobal_extents[d];
+
+        if (d < blockrank)
+        {
+            const ptrdiff_t block_start =block_coords[d] * source.pdefault_block_shape[d];
+
+            local_coord -= block_start;
+
+            const ptrdiff_t diff =source.pglobal_extents[d] - block_start;
+
+            const ptrdiff_t block_extent =source.pdefault_block_shape[d];
+
+            actual_extent = block_extent < diff? block_extent: diff;
+
+            global_block_index +=block_coords[d] * source.pblock_grid_strides[d];
+        }
+
+        local_flat_index =local_flat_index * actual_extent + local_coord;
+    }
+
+    return{source.owner_rank_from_global_flat_index(global_flat_index),global_block_index,local_flat_index};
+}
+
+template <typename T>
+inline void DataBlock_MPI_Functions::MPI_Send_DataBlockArray(const DataBlockArray<T>& array,int dest,int tag,MPI_Comm pcomm)
+{
+    if (pcomm == MPI_COMM_NULL)
+    {
+        return;
+    }
+
+    MPI_Send(&array.pnumblocks,1,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+
+    MPI_Send(&array.ptensor_rank,1,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+
+    MPI_Send(&array.pdatalength,1,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+
+    MPI_Send(&array.pconjugate,1,mpi_get_type<bool>(),dest, tag, pcomm);
+
+    if (array.pnumblocks > 0)
+    {
+        MPI_Send(array.pblock_offsets,array.pnumblocks,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+
+        MPI_Send(array.pextentsbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+
+        MPI_Send(array.pstridesbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),dest, tag, pcomm);
+    }
+
+    if (array.pdatalength > 0)
+    {
+        MPI_Send(array.pdata,sizeof(T) * array.pdatalength,MPI_BYTE,dest, tag, pcomm);
+    }
+}
+
+template <typename T>
+inline DataBlockArray<T>
+DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlockArray(
+    DataBlockConfig loc,
+    int source,
+    int tag,
+    MPI_Comm pcomm)
+{
+    DataBlockArray<T> array{};
+
+    if (pcomm == MPI_COMM_NULL)
+        return array;
+
+    MPI_Status status;
+
+    MPI_Recv(&array.pnumblocks, 1,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+
+    MPI_Recv(&array.ptensor_rank, 1,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+
+    MPI_Recv(&array.pdatalength, 1,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+
+    MPI_Recv(&array.pconjugate, 1,mpi_get_type<bool>(),source, tag, pcomm, &status);
+
+    array.conf = loc;
+
+    if (array.pnumblocks > 0)
+    {
+        array.pblock_offsets =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * array.pnumblocks);
+
+        array.pextentsbuffer =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) *array.pnumblocks * array.ptensor_rank);
+
+        array.pstridesbuffer =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) *array.pnumblocks * array.ptensor_rank);
+
+        MPI_Recv(array.pblock_offsets, array.pnumblocks,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+
+        MPI_Recv(array.pextentsbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+
+        MPI_Recv(array.pstridesbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),source, tag, pcomm, &status);
+    }
+
+    if (array.pdatalength > 0)
+    {
+        alloc_helper2(loc, array.pdatalength, array.pdata);
+
+        MPI_Recv(array.pdata,sizeof(T) * array.pdatalength,MPI_BYTE, source, tag, pcomm, &status);
+    }
+
+    return array;
+}
+
+
+template <typename T>
+inline void
+DataBlock_MPI_Functions::MPI_Free_DataBlockArray(DataBlockArray<T>&array)
+{
+
+    if (array.pnumblocks > 0)
+    {
+        free(array.pblock_offsets,sizeof(ptrdiff_t));
+        free(array.pextentsbuffer,sizeof(ptrdiff_t));
+        free(array.pstridesbuffer,sizeof(ptrdiff_t));
+    }
+    array.pblock_offsets = nullptr;
+    array.pextentsbuffer = nullptr;
+    array.pstridesbuffer = nullptr;
+
+    if (array.pdatalength > 0)
+    {
+        free_helper2(array.conf,array.pdatalength,array.pdata);
+    }
+    array.pdata = nullptr;
+    array.pdatalength = 0;
+    array.ptensor_rank = 0;
+    array.pnumblocks = 0;
+    array.pconjugate = false;
+}
+
+template <typename T>
+inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlockArray(DataBlockArray<T>&array,DataBlockConfig loc,int rootrank,MPI_Comm pcomm)
+{
+    if (pcomm == MPI_COMM_NULL)
+    {
+        return;
+    }
+
+
+    MPI_Bcast(&array.pnumblocks,1,mpi_get_type<ptrdiff_t>(),rootrank, pcomm );
+
+    MPI_Bcast(&array.ptensor_rank,1,mpi_get_type<ptrdiff_t>(),rootrank, pcomm);
+
+    MPI_Bcast(&array.pdatalength,1,mpi_get_type<ptrdiff_t>(),rootrank, pcomm);
+
+    MPI_Bcast(&array.pconjugate,1,mpi_get_type<bool>(),rootrank, pcomm);
+
+    int rank;
+    MPI_Comm_rank(pcomm, &rank);
+
+    if(rank!=rootrank && array.pnumblocks > 0)
+    {
+        array.pblock_offsets =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) *array.pnumblocks);
+
+        array.pextentsbuffer =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) *array.pnumblocks *array.ptensor_rank);
+
+        array.pstridesbuffer =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) *array.pnumblocks *array.ptensor_rank);
+
+    }
+
+    MPI_Bcast(array.pblock_offsets,array.pnumblocks,mpi_get_type<ptrdiff_t>(),rootrank, pcomm );
+
+    MPI_Bcast(array.pextentsbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),rootrank, pcomm);
+
+    MPI_Bcast(array.pstridesbuffer,array.pnumblocks * array.ptensor_rank,mpi_get_type<ptrdiff_t>(),rootrank, pcomm);
+
+
+    if(rank!=rootrank)
+        array.conf=loc;
+
+
+    if (array.pnumblocks > 0)
+    {
+        alloc_helper2(loc,array.pdatalength,array.pdata);
+    }
+
+    MPI_Bcast(array.pdata,sizeof(T) * array.pdatalength,MPI_BYTE,rootrank, pcomm );
+
+    return;
+
+}
 
 
 
@@ -619,7 +896,7 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_DataBlock_extents_strides (DataBl
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,MPI_Sendlocation loc,MPI_Comm com, int rootrank)
+inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db,DataBlockConfig loc,MPI_Comm com, int rootrank)
 {
     if (com == MPI_COMM_NULL)
     {
@@ -632,17 +909,11 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db
     MPI_Bcast (&db.dprank,    1,    mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (&db.dpconjugate, 1,  mpi_get_type<bool>(), rootrank, com);
 
-    DataBlockConfig conf
-    {
-        .rowmajor=db.dpconfig.dprowmajor,
-        .data_is_devptr=loc.ondevice,
-        .devicenum=loc.ondevice?loc.devicenum:-INT_MAX,
-        .memmap=loc.ondevice? false: loc.with_memmap};
-
     if (rank != rootrank)
     {
         alloc_helper(loc,db.dprank,db.dpdatalength,db.dpextents,db.dpstrides,db.dpdata);
         db.devptr_former_hostptr=nullptr;
+        db.dpconfig=loc;
     }
     MPI_Bcast (db.dpextents, db.dprank,  mpi_get_type<ptrdiff_t>(), rootrank, com);
     MPI_Bcast (db.dpstrides, db.dprank,  mpi_get_type<ptrdiff_t>(), rootrank, com);
@@ -654,7 +925,7 @@ inline void DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (DataBlock<T> &db
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_rows_alloc(
     DistributedDataBlock<T>& recv_db,
-    MPI_Sendlocation loc,
+    DataBlockConfig loc,
     MPI_CartesianContext* ctx,
     BlockMappingPolicy* policy,
     int rootrank,
@@ -662,10 +933,10 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_rows_alloc(
 {
     int rank;
     ptrdiff_t cols=0;
-    MPI_Comm_rank(ctx->comm, &rank);
+    MPI_Comm_rank(ctx->pcomm, &rank);
     if (rank==rootrank)cols=send_db->dpextents[1];
 
-    MPI_Bcast(&cols,1,mpi_get_type<ptrdiff_t>(),rootrank,ctx->comm);
+    MPI_Bcast(&cols,1,mpi_get_type<ptrdiff_t>(),rootrank,ctx->pcomm);
     MPI_Scatter_matrix_to_submatrices_alloc(1,cols,recv_db,loc,ctx,policy, rootrank,send_db);
 }
 
@@ -674,7 +945,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_rows_alloc(
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_columns_alloc(
-    DistributedDataBlock<T>& recv_db,MPI_Sendlocation loc,
+    DistributedDataBlock<T>& recv_db,DataBlockConfig loc,
     MPI_CartesianContext* ctx,
     BlockMappingPolicy* policy,
     int rootrank,
@@ -682,10 +953,10 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_columns_alloc(
 {
     int rank;
     ptrdiff_t rows=0;
-    MPI_Comm_rank(ctx->comm, &rank);
+    MPI_Comm_rank(ctx->pcomm, &rank);
     if (rank==rootrank)rows=send_db->dpextents[0];
 
-    MPI_Bcast(&rows,1,mpi_get_type<ptrdiff_t>(),rootrank,ctx->comm);
+    MPI_Bcast(&rows,1,mpi_get_type<ptrdiff_t>(),rootrank,ctx->pcomm);
 
     MPI_Scatter_matrix_to_submatrices_alloc(rows,1,recv_db,loc,ctx,policy, rootrank,send_db);
 }
@@ -694,7 +965,7 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_matrix_to_columns_alloc(
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_rows_alloc(
     const DistributedDataBlock<T>& send_db,
-    int rootrank, MPI_Sendlocation loc,
+    int rootrank, DataBlockConfig loc,
     DataBlock<T>* recv_db
 )
 {
@@ -705,299 +976,272 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_rows_alloc(
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_columns_alloc(
     const DistributedDataBlock<T>& send_db,
-    int rootrank,MPI_Sendlocation loc,
+    int rootrank,DataBlockConfig loc,
     DataBlock<T>* recv_db
 )
 {
     MPI_Gather_matrix_from_submatrices_alloc(send_db,rootrank, recv_db,loc);
 }
 
-
 template<typename T>
 inline void DataBlock_MPI_Functions::
-MPI_Scatter_matrix_to_submatrices_alloc(
-    ptrdiff_t br,
-    ptrdiff_t bc,
-    DistributedDataBlock<T>& recv_db,
-    MPI_Sendlocation loc,
-    MPI_CartesianContext* ctx,
-    BlockMappingPolicy* policy,
-    int rootrank,
-    const DataBlock<T>* send_db
+MPI_Scatter_matrix_to_submatrices_alloc(ptrdiff_t br,ptrdiff_t bc,DistributedDataBlock<T>& recv_db,DataBlockConfig loc,
+                                        MPI_CartesianContext* ctx,BlockMappingPolicy* policy,
+                                        int rootrank,const DataBlock<T>* send_db
 )
 {
-    recv_db.pctx =ctx;
+    recv_db.pctx = ctx;
     recv_db.ppolicy = policy;
 
-    if (ctx->comm == MPI_COMM_NULL)
-    {
+    if (ctx->pcomm == MPI_COMM_NULL)
         return;
-    }
 
-    recv_db.Dblockarray.ptensor_rank = 2;
+    constexpr ptrdiff_t tensor_rank = 2;
 
-    recv_db.pglobal_extents=(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2);
-    recv_db.pglobal_strides=(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2);
-    recv_db.pdefault_block_shape=(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2);
-    recv_db.pblock_grid_extents =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * 2);
+    const ptrdiff_t block_rows = std::abs(br);
+    const ptrdiff_t block_cols = std::abs(bc);
 
-    recv_db.pblock_grid_rank=2;
+    recv_db.Dblockarray.ptensor_rank = tensor_rank;
+    recv_db.pblock_grid_rank = tensor_rank;
 
-    ptrdiff_t gridrank = ctx->gridrank;
+    recv_db.pglobal_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * tensor_rank);
+    recv_db.pglobal_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * tensor_rank);
+    recv_db.pdefault_block_shape = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * tensor_rank);
+    recv_db.pblock_grid_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * tensor_rank);
+    recv_db.pblock_grid_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * tensor_rank);
 
     int rank;
-    MPI_Comm_rank(ctx->comm, &rank);
+    MPI_Comm_rank(ctx->pcomm, &rank);
 
-    if(rank==rootrank)
+    // Root supplies the global matrix metadata.
+    if (rank == rootrank)
     {
-        recv_db.pglobal_extents[0]=send_db->dpextents[0];
-        recv_db.pglobal_extents[1]=send_db->dpextents[1];
-        recv_db.pglobal_strides[0]=send_db->dpstrides[0];
-        recv_db.pglobal_strides[1]=send_db->dpstrides[1];
+        recv_db.pglobal_extents[0] = send_db->dpextents[0];
+        recv_db.pglobal_extents[1] = send_db->dpextents[1];
+
+        recv_db.pglobal_strides[0] = send_db->dpstrides[0];
+        recv_db.pglobal_strides[1] = send_db->dpstrides[1];
+
         recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
-        recv_db.pdefault_block_shape[0]=abs(br);
-        recv_db.pdefault_block_shape[1]=abs(bc);
 
-
+        recv_db.pdefault_block_shape[0] = block_rows;
+        recv_db.pdefault_block_shape[1] = block_cols;
     }
 
-    MPI_Bcast(recv_db.pglobal_extents,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->comm);
-    MPI_Bcast(recv_db.pglobal_strides,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->comm);
-    MPI_Bcast(&recv_db.Dblockarray.pconjugate,1,mpi_get_type<bool>(),rootrank,ctx->comm);
-    MPI_Bcast(recv_db.pdefault_block_shape,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->comm);
+    MPI_Bcast(recv_db.pglobal_extents,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->pcomm);
+
+    MPI_Bcast(recv_db.pglobal_strides,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->pcomm);
+
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate,1,mpi_get_type<bool>(),rootrank,ctx->pcomm);
+
+    MPI_Bcast(recv_db.pdefault_block_shape,2,mpi_get_type<ptrdiff_t>(),rootrank,ctx->pcomm);
+
+    const ptrdiff_t M = std::abs(recv_db.pglobal_extents[0]);
+    const ptrdiff_t N = std::abs(recv_db.pglobal_extents[1]);
+
+    recv_db.pblock_grid_extents[0] =(M + block_rows - 1) / block_rows;
+
+    recv_db.pblock_grid_extents[1] =(N + block_cols - 1) / block_cols;
+
+    const ptrdiff_t grid_r = recv_db.pblock_grid_extents[0];
+    const ptrdiff_t grid_c = recv_db.pblock_grid_extents[1];
+
+    recv_db.pblock_grid_strides[1] = 1;
+    recv_db.pblock_grid_strides[0] = grid_c;
+
+    const ptrdiff_t total_blocks =recv_db.pblock_grid_extents[0] *recv_db.pblock_grid_extents[1];
 
 
+    ptrdiff_t local_blocks = 0;
 
+    ptrdiff_t* local_block_indices =total_blocks > 0 ? new ptrdiff_t[total_blocks] : nullptr;
 
-    recv_db.pblock_grid_extents[0] =(recv_db.pglobal_extents[0] + recv_db.pdefault_block_shape[0] - 1)/ recv_db.pdefault_block_shape[0];
-    recv_db.pblock_grid_extents[1] =(recv_db.pglobal_extents[1] + recv_db.pdefault_block_shape[1] - 1)/ recv_db.pdefault_block_shape[1];
-
-
-
-
-
-    ptrdiff_t M = abs(recv_db.pglobal_extents[0]);
-    ptrdiff_t N = abs(recv_db.pglobal_extents[1]);
-
-    ptrdiff_t grid_r = (M + br - 1) / br;
-    ptrdiff_t grid_c = (N + bc - 1) / bc;
-
-    ptrdiff_t total_blocks = grid_r * grid_c;
-
-    ptrdiff_t local_blocks=0;
-
-    ptrdiff_t* local_block_indices = new ptrdiff_t[total_blocks];
-
-    ptrdiff_t bi, bj;
     ptrdiff_t bcoords[2];
-    ptrdiff_t *grid_coords=new ptrdiff_t[gridrank];
-    int *temp_coords=new int[gridrank];
-    for(ptrdiff_t b = 0; b < total_blocks; b++)
+
+    for (ptrdiff_t b = 0; b < total_blocks; ++b)
     {
-        bi = b / grid_c;
-        bj = b % grid_c;
+        bcoords[0] = b / recv_db.pblock_grid_strides[0];
+        bcoords[1] = (b / recv_db.pblock_grid_strides[1])% recv_db.pblock_grid_extents[1];
 
-        bcoords[0]=bi;
+        const int owner = policy->owner_mpi_rank(bcoords,recv_db.pblock_grid_rank,*ctx);
 
-        bcoords[1]=bj;
-
-        int owner =policy->owner(bcoords,2,*ctx,temp_coords);
-
-        if(owner == rank)
-        {
-            local_block_indices[local_blocks] = b;
-            local_blocks++;
-        }
+        if (owner == rank)
+            local_block_indices[local_blocks++] = b;
     }
-
-    delete[] grid_coords;
-    delete[] temp_coords;
 
     recv_db.Dblockarray.pnumblocks = local_blocks;
 
-    recv_db.Dblockarray.pnumblocks=local_blocks;
+    recv_db.plocal_block_global_starts =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * 2 * local_blocks): nullptr;
 
-    recv_db.pblock_grid_starts =(local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2*local_blocks):nullptr;
+    recv_db.plocal_block_global_grid_indices =local_blocks > 0?(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
 
-    recv_db.pblock_grid_index =(local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks):nullptr;
+    recv_db.plocal_block_grid_coords =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * 2 * local_blocks): nullptr;
 
-    recv_db.pblock_grid_coords =(local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2*local_blocks): nullptr;
+    recv_db.Dblockarray.pblock_offsets =local_blocks > 0?(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
 
-    recv_db.Dblockarray.pblock_offsets =(local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks):nullptr;
+    recv_db.Dblockarray.pextentsbuffer =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * 2 * local_blocks): nullptr;
 
-    recv_db.Dblockarray.pextentsbuffer = (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2*local_blocks):nullptr;
+    recv_db.Dblockarray.pstridesbuffer =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * 2 * local_blocks): nullptr;
 
-    recv_db.Dblockarray.pstridesbuffer= (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*2*local_blocks):nullptr;
-
-    recv_db.pblock_grid_to_local.reserve(local_blocks);
+    recv_db.pglobal_grid_index_to_local_block.reserve(local_blocks);
 
     struct BlockInfo
     {
-        ptrdiff_t my_idx;
-        ptrdiff_t bi, bj;
-        ptrdiff_t rows, cols;
+        ptrdiff_t global_index;
+        ptrdiff_t bi;
+        ptrdiff_t bj;
+        ptrdiff_t rows;
+        ptrdiff_t cols;
         ptrdiff_t blocksize;
     };
 
-    BlockInfo* blocks= new BlockInfo[local_blocks];
-    ptrdiff_t total_recv_elems=0;
+    BlockInfo* blocks =local_blocks > 0 ? new BlockInfo[local_blocks] : nullptr;
 
-    #pragma omp parallel for reduction(+:total_recv_elems)
-    for(ptrdiff_t i = 0; i < local_blocks; i++)
+    ptrdiff_t total_recv_elems = 0;
+
+    #pragma omp parallel for simd reduction(+:total_recv_elems)
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t b = local_block_indices[i];
-        ptrdiff_t bi = b / grid_c;
-        ptrdiff_t bj = b % grid_c;
+        const ptrdiff_t b = local_block_indices[i];
 
-        ptrdiff_t r0 = bi * br;
-        ptrdiff_t c0 = bj * bc;
+        const ptrdiff_t bi =b / recv_db.pblock_grid_strides[0];
 
-        ptrdiff_t rows = (br < (M-r0)) ? br : (M-r0);
-        ptrdiff_t cols = (bc < (N-c0)) ? bc : (N-c0);
-        ptrdiff_t blocksize=rows*cols;
-        blocks[i] = {b, bi, bj, rows, cols,blocksize};
+        const ptrdiff_t bj =(b / recv_db.pblock_grid_strides[1])% recv_db.pblock_grid_extents[1];
 
-        recv_db.pblock_grid_starts[2*i]   = r0;
-        recv_db.pblock_grid_starts[2*i+1] = c0;
-        recv_db.pblock_grid_coords[2*i]   = bi;
-        recv_db.pblock_grid_coords[2*i+1] = bj;
-        recv_db.pblock_grid_index[i] = b;
+        const ptrdiff_t r0 = bi * block_rows;
+        const ptrdiff_t c0 = bj * block_cols;
+
+        const ptrdiff_t rows = (block_rows < M - r0) ? block_rows : M - r0;
+        const ptrdiff_t cols = (block_cols < N - c0) ? block_cols : N - c0;
+
+        const ptrdiff_t blocksize = rows * cols;
+
+        blocks[i] = {b, bi, bj, rows, cols, blocksize};
+
+        recv_db.plocal_block_global_starts[2 * i] = r0;
+        recv_db.plocal_block_global_starts[2 * i + 1] = c0;
+
+        recv_db.plocal_block_grid_coords[2 * i] = bi;
+        recv_db.plocal_block_grid_coords[2 * i + 1] = bj;
+
+        recv_db.plocal_block_global_grid_indices[i] = b;
 
         total_recv_elems += blocksize;
     }
 
-    delete []local_block_indices;
+    delete[] local_block_indices;
 
-    recv_db.Dblockarray.pdatalength=total_recv_elems;
-    recv_db.Dblockarray.pdata=nullptr;
+    recv_db.Dblockarray.pdatalength = total_recv_elems;
+    recv_db.Dblockarray.pdata = nullptr;
+    recv_db.Dblockarray.conf = loc;
 
-    if(total_recv_elems>0)
-        alloc_helper2(loc,total_recv_elems,recv_db.Dblockarray.pdata);
+    if (total_recv_elems > 0)
+        alloc_helper2(loc, total_recv_elems, recv_db.Dblockarray.pdata);
 
-    recv_db.Dblockarray.pdata_is_devptr=loc.ondevice;
-    recv_db.Dblockarray.pdevnum=loc.devicenum;
-    recv_db.pmemmap=loc.with_memmap;
+    MPI_Request* reqs =local_blocks > 0 ? new MPI_Request[local_blocks] : nullptr;
 
-    MPI_Request* reqs=new MPI_Request[local_blocks];
+    ptrdiff_t offset = 0;
 
-    ptrdiff_t offset=0;
-    for(ptrdiff_t i = 0; i < local_blocks; i++)
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
         T* ptr = recv_db.Dblockarray.pdata + offset;
-        ptrdiff_t b = blocks[i].bi * grid_c + blocks[i].bj;
-        MPI_Irecv(
-            ptr,
-            blocks[i].rows * blocks[i].cols,
-            mpi_get_type<T>(),
-            rootrank,
-            b,
-            ctx->comm,
-            &reqs[i]);
-        recv_db.pblock_grid_to_local[blocks[i].my_idx] = i;
-        recv_db.Dblockarray.pblock_offsets[i]=offset;
-        offset+=blocks[i].blocksize;
+
+        const ptrdiff_t b = blocks[i].global_index;
+
+        MPI_Irecv(ptr,(int)blocks[i].blocksize,mpi_get_type<T>(),rootrank,(int)b,ctx->pcomm,&reqs[i]);
+
+        recv_db.pglobal_grid_index_to_local_block[b] = i;
+
+        recv_db.Dblockarray.pblock_offsets[i] = offset;
+
+        offset += blocks[i].blocksize;
     }
 
-    if(rank==rootrank)
+
+    if (rank == rootrank)
     {
-        MPI_Datatype blocktype0 =make_strided_2d_rowmajor_type<T>(br,bc,send_db->dpstrides[0],send_db->dpstrides[1]);
+        MPI_Datatype blocktype0 =make_strided_2d_rowmajor_type<T>(block_rows,block_cols,send_db->dpstrides[0],send_db->dpstrides[1]);
+
         MPI_Type_commit(&blocktype0);
 
-        MPI_Request* sendreqs=new MPI_Request[total_blocks];
+        MPI_Request* sendreqs =total_blocks > 0 ? new MPI_Request[total_blocks] : nullptr;
 
-        ptrdiff_t *grid_coords=new ptrdiff_t [gridrank];
-        int *temp_coords=new int [gridrank];
-        ptrdiff_t bcoords[2];
-
-        for(ptrdiff_t bi=0; bi<grid_r; bi++)
+        for (ptrdiff_t bi = 0; bi < grid_r; ++bi)
         {
-            for(ptrdiff_t bj=0; bj<grid_c; bj++)
+            for (ptrdiff_t bj = 0; bj < grid_c; ++bj)
             {
-                ptrdiff_t b = bi * grid_c + bj;
+                const ptrdiff_t b =bi * recv_db.pblock_grid_strides[0] +bj * recv_db.pblock_grid_strides[1];
 
                 bcoords[0] = bi;
                 bcoords[1] = bj;
-                int owner = policy->owner(bcoords,2, *ctx, temp_coords);
 
-                ptrdiff_t r0 = bi * br;
-                ptrdiff_t c0 = bj * bc;
+                const int owner = policy->owner_mpi_rank(bcoords,recv_db.pblock_grid_rank,*ctx);
 
-                ptrdiff_t diff1=M-r0,
-                          diff2=N-c0;
+                const ptrdiff_t r0 = bi * block_rows;
+                const ptrdiff_t c0 = bj * block_cols;
 
-                bool edgecase=false;
+ const ptrdiff_t rows = (block_rows < M - r0) ? block_rows : M - r0;
+const ptrdiff_t cols = (block_cols < N - c0) ? block_cols : N - c0;
 
-                MPI_Datatype blocktype1;
-                if(diff1 < br || diff2 < bc)
+                const bool edgecase =rows < block_rows || cols < block_cols;
+
+                MPI_Datatype sendtype = blocktype0;
+
+                if (edgecase)
                 {
-                    edgecase=true;
-
-                    ptrdiff_t rows=br<diff1? br:diff1;
-                    ptrdiff_t cols=bc<diff2? bc:diff2;
-
-                    blocktype1 =make_strided_2d_rowmajor_type<T>(rows,cols,
-                                send_db->dpstrides[0],
-                                send_db->dpstrides[1]);
-                    MPI_Type_commit(&blocktype1);
-
+                    sendtype = make_strided_2d_rowmajor_type<T>(rows,cols,send_db->dpstrides[0],send_db->dpstrides[1]);
+                    MPI_Type_commit(&sendtype);
                 }
 
-                T* start =send_db->dpdata + r0*send_db->dpstrides[0] + c0*send_db->dpstrides[1];
+                T* start =send_db->dpdata+ r0 * send_db->dpstrides[0]+ c0 * send_db->dpstrides[1];
 
-                MPI_Isend(
-                    start,
-                    1,
-                    edgecase? blocktype1: blocktype0,
-                    owner,
-                    b,
-                    ctx->comm,
-                    &sendreqs[b]);
+                MPI_Isend(start,1,sendtype,owner,(int)b,ctx->pcomm,&sendreqs[b]);
 
-                if(edgecase)
-                    MPI_Type_free(&blocktype1);
+                if (edgecase)
+                    MPI_Type_free(&sendtype);
             }
         }
 
-        MPI_Waitall(total_blocks,sendreqs,MPI_STATUSES_IGNORE);
+        MPI_Waitall((int)total_blocks,sendreqs,MPI_STATUSES_IGNORE);
+
         MPI_Type_free(&blocktype0);
-        delete[] grid_coords;
-        delete[] temp_coords;
+
         delete[] sendreqs;
     }
 
-    MPI_Waitall(local_blocks,reqs,MPI_STATUSES_IGNORE);
+    MPI_Waitall((int)local_blocks,reqs,MPI_STATUSES_IGNORE
+    );
 
     delete[] reqs;
 
-    #pragma omp parallel for
-    for (ptrdiff_t i=0; i<local_blocks; i++)
+
+    #pragma omp parallel for simd
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t* bext_i = recv_db.Dblockarray.pextentsbuffer + i*2;
-        ptrdiff_t* bstr_i = recv_db.Dblockarray.pstridesbuffer + i*2;
+        ptrdiff_t* bext_i =recv_db.Dblockarray.pextentsbuffer + 2 * i;
+
+        ptrdiff_t* bstr_i =recv_db.Dblockarray.pstridesbuffer + 2 * i;
 
         bext_i[0] = blocks[i].rows;
         bext_i[1] = blocks[i].cols;
 
-        bstr_i[0] =  blocks[i].cols ;
-        bstr_i[1] = 1 ;
+        bstr_i[0] = blocks[i].cols;
+        bstr_i[1] = 1;
     }
+
     delete[] blocks;
 }
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
-    const DistributedDataBlock<T>& send_db,
-    int rootrank,MPI_Sendlocation loc,
-    DataBlock<T>* recv_db
-)
+inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(const DistributedDataBlock<T>& send_db,int rootrank,DataBlockConfig loc,DataBlock<T>* recv_db)
 {
 
-    if (send_db.pctx->comm == MPI_COMM_NULL)
+    if (send_db.pctx->pcomm == MPI_COMM_NULL)
         return;
     int rank;
 
-    MPI_Comm_rank(send_db.pctx->comm,&rank);
+    MPI_Comm_rank(send_db.pctx->pcomm,&rank);
 
     ptrdiff_t M = send_db.pglobal_extents[0];
     ptrdiff_t N = send_db.pglobal_extents[1];
@@ -1030,8 +1274,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
         str[0]=send_db.pglobal_strides[0];
 
 
-        *recv_db = DataBlock<T>(pdata,datalen,2,ext,str, DataBlockConfig{ .data_is_devptr=loc.ondevice,
-                                .devicenum=loc.devicenum});
+        *recv_db = DataBlock<T>(pdata,datalen,2,ext,str,loc);
         recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
     }
 
@@ -1045,8 +1288,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
 
         type=make_strided_2d_rowmajor_type<T>(br,bc,recv_db->dpstrides[0],recv_db->dpstrides[1]);
         MPI_Type_commit(&type);
-        ptrdiff_t *grid_coords=new ptrdiff_t [send_db.pctx->gridrank];
-        int *tempcoords=new int[send_db.pctx->gridrank];
+        ptrdiff_t *grid_coords=new ptrdiff_t [send_db.pctx->pgridrank];
 
         for(ptrdiff_t bi=0; bi<grid_r; bi++)
         {
@@ -1057,7 +1299,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
 
                 ptrdiff_t bcoords[2] = {bi, bj};
 
-                int owner = send_db.ppolicy->owner(bcoords,2,*send_db.pctx, tempcoords);
+                int owner = send_db.ppolicy->owner_mpi_rank(bcoords,2,*send_db.pctx);
 
                 ptrdiff_t r0 = bi*br;
                 ptrdiff_t c0 = bj*bc;
@@ -1075,19 +1317,9 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
                     edgecase=true;
                 }
 
-                T* start =
-                    recv_db->dpdata +
-                    r0*recv_db->dpstrides[0] +
-                    c0*recv_db->dpstrides[1];
+                T* start =recv_db->dpdata +r0*recv_db->dpstrides[0] +c0*recv_db->dpstrides[1];
 
-                MPI_Irecv(
-                    start,
-                    1,
-                    edgecase? type1:type,
-                    owner,
-                    b,
-                    send_db.pctx->comm,
-                    &reqs[recv_idx]);
+                MPI_Irecv(start,1,edgecase? type1:type,owner,b,send_db.pctx->pcomm,&reqs[recv_idx]);
 
                 recv_idx++;
 
@@ -1095,7 +1327,6 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
                     MPI_Type_free(&type1);
             }
         }
-        delete []tempcoords;
         delete[] grid_coords;
         MPI_Type_free(&type);
     }
@@ -1108,21 +1339,14 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
 
     for(ptrdiff_t i=0; i<send_db.Dblockarray.pnumblocks; i++)
     {
-        ptrdiff_t b = send_db.pblock_grid_index[i];
+        ptrdiff_t b = send_db.plocal_block_global_grid_indices[i];
 
         const ptrdiff_t* ext =send_db.Dblockarray.pextentsbuffer + 2*i;
 
         ptrdiff_t rows = ext[0];
         ptrdiff_t cols = ext[1];
         T* buffer= send_db.Dblockarray.pdata + send_db.Dblockarray.pblock_offsets[i];
-        MPI_Isend(
-            buffer,
-            rows * cols,
-            mpi_get_type<T>(),
-            rootrank,
-            b,
-            send_db.pctx->comm,
-            &sendreqs[send_idx++]);
+        MPI_Isend(buffer,rows * cols,mpi_get_type<T>(),rootrank,b,send_db.pctx->pcomm,&sendreqs[send_idx++]);
     }
 
     if(send_idx>0)
@@ -1140,206 +1364,227 @@ inline void DataBlock_MPI_Functions::MPI_Gather_matrix_from_submatrices_alloc(
 
 
 
-
 template<typename T>
-inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
-    ptrdiff_t blockrank,
-    const ptrdiff_t* block_extents,
-    DistributedDataBlock<T>& recv_db,
-    MPI_Sendlocation loc,
-    MPI_CartesianContext *ctx,
-    BlockMappingPolicy* policy, int rootrank,
-    const DataBlock<T>* send_db)
-
+inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(ptrdiff_t blockrank,const ptrdiff_t* block_extents,DistributedDataBlock<T>& recv_db,
+                                                                            DataBlockConfig loc,MPI_CartesianContext* ctx,BlockMappingPolicy* policy,
+                                                                            int rootrank,const DataBlock<T>* send_db)
 {
-
-    recv_db.pctx =ctx;
+    recv_db.pctx = ctx;
     recv_db.ppolicy = policy;
 
-    if (ctx->comm == MPI_COMM_NULL)
-    {
+    if (ctx->pcomm == MPI_COMM_NULL)
         return;
-    }
 
-    int rank;
-    MPI_Comm_rank(ctx->comm,&rank);
+    int mpi_rank;
+    MPI_Comm_rank(ctx->pcomm, &mpi_rank);
 
-    if(rank == rootrank)
+    if (mpi_rank == rootrank)
     {
-
-        recv_db.pblock_grid_rank = blockrank< send_db->dprank?blockrank:send_db->dprank;
-
         recv_db.Dblockarray.ptensor_rank = send_db->dprank;
+
+        recv_db.pblock_grid_rank =std::min(blockrank, send_db->dprank);
+
         recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
-        recv_db.pglobal_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank);
-        recv_db.pglobal_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank);
-        recv_db.pdefault_block_shape = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.pblock_grid_rank);
-        #pragma omp parallel for simd if(parallel:recv_db.Dblockarray.ptensor_rank>30)
-        for(ptrdiff_t d=0; d<recv_db.Dblockarray.ptensor_rank; d++)
+
+        const ptrdiff_t rank = recv_db.Dblockarray.ptensor_rank;
+        const ptrdiff_t brank = recv_db.pblock_grid_rank;
+
+        recv_db.pglobal_extents =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank);
+
+        recv_db.pglobal_strides =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank);
+
+        recv_db.pdefault_block_shape =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * brank);
+        #pragma omp parallel for simd if(parallel:rank>50)
+        for (ptrdiff_t d = 0; d < rank; ++d)
         {
             recv_db.pglobal_extents[d] = send_db->dpextents[d];
             recv_db.pglobal_strides[d] = send_db->dpstrides[d];
         }
-        #pragma omp parallel for simd if(parallel:recv_db.pblock_grid_rank>30)
-        for(ptrdiff_t d=0; d<recv_db.pblock_grid_rank; d++)
+        #pragma omp parallel for simd if(parallel:brank>50)
+        for (ptrdiff_t d = 0; d < brank; ++d)
             recv_db.pdefault_block_shape[d] = block_extents[d];
     }
-    MPI_Bcast(&recv_db.Dblockarray.ptensor_rank, 1, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm );
-    MPI_Bcast(&recv_db.pblock_grid_rank, 1, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm );
 
-    MPI_Bcast(&recv_db.Dblockarray.pconjugate, 1, mpi_get_type<bool>(), rootrank, ctx->comm );
+    MPI_Bcast(&recv_db.Dblockarray.ptensor_rank,1, mpi_get_type<ptrdiff_t>(),rootrank, ctx->pcomm);
 
-    if(rank != rootrank)
+    MPI_Bcast(&recv_db.pblock_grid_rank,1, mpi_get_type<ptrdiff_t>(),rootrank, ctx->pcomm);
+
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate,1, mpi_get_type<bool>(),rootrank, ctx->pcomm);
+
+    const ptrdiff_t rank = recv_db.Dblockarray.ptensor_rank;
+    const ptrdiff_t brank = recv_db.pblock_grid_rank;
+
+    if (mpi_rank != rootrank)
     {
-        recv_db.pglobal_extents = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * recv_db.Dblockarray.ptensor_rank);
-        recv_db.pglobal_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * recv_db.Dblockarray.ptensor_rank);
-        recv_db.pdefault_block_shape = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * recv_db.pblock_grid_rank);
+        recv_db.pglobal_extents =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank);
+
+        recv_db.pglobal_strides =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank);
+
+        recv_db.pdefault_block_shape =(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * brank);
     }
 
-    MPI_Bcast(recv_db.pglobal_extents, recv_db.Dblockarray.ptensor_rank, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm );
-    MPI_Bcast(recv_db.pglobal_strides, recv_db.Dblockarray.ptensor_rank, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm );
-    MPI_Bcast(recv_db.pdefault_block_shape, recv_db.pblock_grid_rank, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm );
+    MPI_Bcast(recv_db.pglobal_extents,static_cast<int>(rank),mpi_get_type<ptrdiff_t>(),rootrank, ctx->pcomm);
 
-    ptrdiff_t* grid = new ptrdiff_t[recv_db.Dblockarray.ptensor_rank];
+    MPI_Bcast(recv_db.pglobal_strides,static_cast<int>(rank),mpi_get_type<ptrdiff_t>(),rootrank, ctx->pcomm);
 
+    MPI_Bcast(recv_db.pdefault_block_shape,static_cast<int>(brank),mpi_get_type<ptrdiff_t>(),rootrank, ctx->pcomm);
 
-    #pragma omp parallel for simd if(parallel: recv_db.pblock_grid_rank > 30)
-    for(ptrdiff_t d = 0; d < recv_db.pblock_grid_rank; d++)
+    recv_db.pblock_grid_extents =rank > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank): nullptr;
+
+    #pragma omp parallel for simd if(parallel:brank>50)
+    for (ptrdiff_t d = 0; d < brank; ++d)
     {
-        grid[d] = (recv_db.pglobal_extents[d] + recv_db.pdefault_block_shape[d] - 1) / recv_db.pdefault_block_shape[d];
+
+        recv_db.pblock_grid_extents[d] =(recv_db.pglobal_extents[d] +recv_db.pdefault_block_shape[d] - 1) /recv_db.pdefault_block_shape[d];
+    }
+    #pragma omp parallel for simd if(parallel:rank-brank>50)
+    for (ptrdiff_t d = brank; d < rank; ++d)
+    {
+        recv_db.pblock_grid_extents[d] = 1;
     }
 
-    #pragma omp parallel for if(parallel: recv_db.Dblockarray.ptensor_rank-recv_db.pblock_grid_rank > 30)
-    for(ptrdiff_t d = recv_db.pblock_grid_rank; d < recv_db.Dblockarray.ptensor_rank; d++)
-        grid[d] = 1;
+
+    recv_db.pblock_grid_strides = nullptr;
+
+    if (brank > 0)
+    {
+        recv_db.pblock_grid_strides = (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * brank);
+        ptrdiff_t stride = 1;
+        #pragma omp unroll partial
+        for (ptrdiff_t d = brank - 1; d >= 0; --d)
+        {
+            recv_db.pblock_grid_strides[d] = stride;
+
+            stride *= recv_db.pblock_grid_extents[d];
+        }
+    }
+
 
     ptrdiff_t total_blocks = 1;
-    #pragma omp parallel for simd reduction(*:total_blocks) if(parallel: recv_db.Dblockarray.ptensor_rank > 30)
-    for(ptrdiff_t d = 0; d < recv_db.Dblockarray.ptensor_rank; d++)
-        total_blocks *= grid[d];
-
-
-    ptrdiff_t local_blocks = 0;
+    #pragma omp parallel for simd reduction(*:total_blocks) if(parallel:rank>50)
+    for (ptrdiff_t d = 0; d < rank; ++d)
+    {
+        total_blocks *= recv_db.pblock_grid_extents[d];
+    }
 
     struct BlockInfo
     {
         ptrdiff_t linear_idx;
         ptrdiff_t blocksize;
+
         ptrdiff_t* coords;
         ptrdiff_t* starts;
         ptrdiff_t* extents;
     };
 
     std::vector<BlockInfo> blocks;
+
     if (total_blocks > 0)
         blocks.reserve(total_blocks);
 
-    ptrdiff_t* bcoords = new ptrdiff_t[recv_db.Dblockarray.ptensor_rank];
-    ptrdiff_t *grid_coords= new ptrdiff_t[ctx->gridrank];
-    int *tmpcoords=new int [ctx->gridrank];
-    for (ptrdiff_t b = 0; b < total_blocks; b++)
+    ptrdiff_t* bcoords = new ptrdiff_t[rank];
+
+    for (ptrdiff_t b = 0; b < total_blocks; ++b)
     {
         ptrdiff_t tmp = b;
-
         #pragma omp unroll partial
-        for (int d = recv_db.Dblockarray.ptensor_rank - 1; d >= 0; d--)
+        for (ptrdiff_t d = rank - 1; d >= 0; --d)
         {
-            bcoords[d] = tmp % grid[d];
-            tmp /= grid[d];
+            bcoords[d] =tmp % recv_db.pblock_grid_extents[d];
+
+            tmp /= recv_db.pblock_grid_extents[d];
         }
 
-        int owner = policy->owner(bcoords,recv_db.Dblockarray.ptensor_rank,*ctx, tmpcoords);
+        const int owner = policy->owner_mpi_rank(bcoords, brank, *ctx);
 
-
-        if (owner != rank)
-        {
+        if (owner != mpi_rank)
             continue;
-        }
-        BlockInfo block;
-        block.linear_idx = b;
-        block.coords  = new ptrdiff_t[recv_db.Dblockarray.ptensor_rank];
-        block.starts  = new ptrdiff_t[recv_db.pblock_grid_rank];
-        block.extents = new ptrdiff_t[recv_db.pblock_grid_rank];
 
-        #pragma omp parallel for simd  if(parallel:recv_db.Dblockarray.ptensor_rank>30)
-        for (ptrdiff_t d = 0; d < recv_db.Dblockarray.ptensor_rank; d++)
+        BlockInfo block;
+
+        block.linear_idx = b;
+
+        block.coords = new ptrdiff_t[rank];
+
+        block.starts =brank > 0 ? new ptrdiff_t[brank] : nullptr;
+
+        block.extents =brank > 0 ? new ptrdiff_t[brank] : nullptr;
+
+        #pragma omp simd
+        for (ptrdiff_t d = 0; d < rank; ++d)
             block.coords[d] = bcoords[d];
 
         ptrdiff_t blocksize = 1;
-        #pragma omp parallel for simd reduction(*:blocksize) if(parallel:recv_db.pblock_grid_rank>30)
-        for (ptrdiff_t d = 0; d < recv_db.pblock_grid_rank; d++)
+        #pragma omp simd reduction(*:blocksize)
+        for (ptrdiff_t d = 0; d < brank; ++d)
         {
-            ptrdiff_t start = bcoords[d] * recv_db.pdefault_block_shape[d];
-            ptrdiff_t diff  = recv_db.pglobal_extents[d] - start;
-            ptrdiff_t len   = (recv_db.pdefault_block_shape[d] <= diff) ? recv_db.pdefault_block_shape[d] : diff;
+            const ptrdiff_t start =bcoords[d] * recv_db.pdefault_block_shape[d];
 
-            block.starts[d]  = start;
+            const ptrdiff_t diff =recv_db.pglobal_extents[d] - start;
+
+           const ptrdiff_t len = (recv_db.pdefault_block_shape[d] < diff) ? recv_db.pdefault_block_shape[d] : diff;
+
+            block.starts[d] = start;
             block.extents[d] = len;
+
             blocksize *= len;
         }
 
-        #pragma omp parallel for simd reduction(*:blocksize) if(parallel:recv_db.Dblockarray.ptensor_rank>30)
-        for (ptrdiff_t d = recv_db.pblock_grid_rank; d < recv_db.Dblockarray.ptensor_rank; d++)
+        // Unpartitioned dimensions belong entirely to each block.
+        #pragma omp simd reduction(*:blocksize)
+        for (ptrdiff_t d = brank; d < rank; ++d)
+        {
             blocksize *= recv_db.pglobal_extents[d];
+        }
 
         block.blocksize = blocksize;
+
         blocks.push_back(block);
-
     }
+
     delete[] bcoords;
-    delete[] grid_coords;
-    delete[] tmpcoords;
 
 
-    local_blocks=blocks.size();
+
+    const ptrdiff_t local_blocks = blocks.size();
+
     recv_db.Dblockarray.pnumblocks = local_blocks;
 
-    recv_db.Dblockarray.pblock_offsets = (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks);
+    recv_db.Dblockarray.pblock_offsets =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
 
-    recv_db.pblock_grid_index =
-        (local_blocks > 0) ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks) : nullptr;
+    recv_db.plocal_block_global_grid_indices =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
 
-    recv_db.pblock_grid_coords =
-        (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks*recv_db.Dblockarray.ptensor_rank):nullptr;
+    recv_db.plocal_block_grid_coords =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks * rank): nullptr;
 
-    recv_db.pblock_grid_starts =
-        (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*local_blocks*recv_db.pblock_grid_rank):nullptr;
-
-    recv_db.pblock_grid_extents =(recv_db.ptensor_rank > 0)? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * recv_db.ptensor_rank): nullptr;
+    recv_db.plocal_block_global_starts =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks * brank): nullptr;
 
 
     ptrdiff_t total_recv_elems = 0;
 
-
-    #pragma omp parallel for simd if(parallel:recv_db.ptensor_rank>30)
-    for (ptrdiff_t d = 0; d < recv_db.ptensor_rank; ++d)
+    #pragma omp unroll partial
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        recv_db.pblock_grid_extents[d] =(recv_db.pglobal_extents[d] + recv_db.pdefault_block_shape[d] - 1)/ recv_db.pdefault_block_shape[d];
-    }
+        recv_db.Dblockarray.pblock_offsets[i] =total_recv_elems;
 
-
-    for(ptrdiff_t i = 0; i < local_blocks; i++)
-    {
-        recv_db.Dblockarray.pblock_offsets[i] = total_recv_elems;
         total_recv_elems += blocks[i].blocksize;
     }
 
-
-    #pragma omp parallel for
-    for(ptrdiff_t i = 0; i < local_blocks; i++)
+    // Copy block metadata into contiguous arrays.
+    #pragma omp parallel for if(parallel:local_blocks>50)
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
         #pragma omp simd
-        for(ptrdiff_t d = 0; d < recv_db.Dblockarray.ptensor_rank; d++)
+        for (ptrdiff_t d = 0; d < rank; ++d)
         {
-            recv_db.pblock_grid_coords[i*recv_db.Dblockarray.ptensor_rank + d] = blocks[i].coords[d];
+            recv_db.plocal_block_grid_coords[i * rank + d] = blocks[i].coords[d];
         }
         #pragma omp simd
-        for(ptrdiff_t d = 0; d < recv_db.pblock_grid_rank; d++)
+        for (ptrdiff_t d = 0; d < brank; ++d)
         {
-            recv_db.pblock_grid_starts[i*recv_db.pblock_grid_rank + d]= blocks[i].starts[d];
+            recv_db.plocal_block_global_starts[i * brank + d] = blocks[i].starts[d];
         }
 
-        recv_db.pblock_grid_index[i] = blocks[i].linear_idx;
+        recv_db.plocal_block_global_grid_indices[i] =blocks[i].linear_idx;
     }
 
 
@@ -1347,86 +1592,86 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
     recv_db.Dblockarray.pdatalength = total_recv_elems;
     recv_db.Dblockarray.pdata = nullptr;
 
-    if(total_recv_elems > 0)
+    if (total_recv_elems > 0)
+    {
         alloc_helper2(loc,total_recv_elems,recv_db.Dblockarray.pdata);
-    recv_db.Dblockarray.pdata_is_devptr=loc.ondevice;
-    recv_db.Dblockarray.pdevnum=loc.devicenum;
-    recv_db.pmemmap=loc.with_memmap;
-
-    recv_db.pblock_grid_to_local.reserve(local_blocks);
-
-    MPI_Request* reqs = new MPI_Request[local_blocks];
-
-
-
-    for(ptrdiff_t i=0; i<local_blocks; i++)
-    {
-        T* buffer=recv_db.Dblockarray.pdata + recv_db.Dblockarray.pblock_offsets[i];
-        MPI_Irecv(
-            buffer,
-            blocks[i].blocksize,
-            mpi_get_type<T>(),
-            rootrank,
-            blocks[i].linear_idx,
-            ctx->comm,
-            &reqs[i]);
-
-        recv_db.pblock_grid_to_local[blocks[i].linear_idx] = i;
     }
-    if(rank == rootrank)
-    {
-        MPI_Request* sendreqs = new MPI_Request[total_blocks];
 
-        ptrdiff_t *bcoords=new ptrdiff_t [recv_db.Dblockarray.ptensor_rank];
-        int* tmpcoords=new int[ctx->gridrank];
-        for(ptrdiff_t b = 0; b < total_blocks; b++)
+    recv_db.Dblockarray.conf = loc;
+
+    recv_db.pglobal_grid_index_to_local_block.reserve(local_blocks);
+
+    MPI_Request* reqs =new MPI_Request[local_blocks];
+
+
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
+    {
+        T* buffer =recv_db.Dblockarray.pdata +recv_db.Dblockarray.pblock_offsets[i];
+
+        MPI_Irecv(buffer,(int)blocks[i].blocksize,mpi_get_type<T>(),rootrank,(int)blocks[i].linear_idx,ctx->pcomm,&reqs[i]);
+
+        recv_db.pglobal_grid_index_to_local_block[blocks[i].linear_idx] = i;
+    }
+
+
+    if (mpi_rank == rootrank)
+    {
+        MPI_Request* sendreqs =new MPI_Request[total_blocks];
+
+        ptrdiff_t* send_bcoords = new ptrdiff_t[rank];
+
+        for (ptrdiff_t b = 0; b < total_blocks; ++b)
         {
             ptrdiff_t tmp = b;
-            #pragma omp unroll
-            for(int d = recv_db.Dblockarray.ptensor_rank-1; d >= 0; d--)
+            #pragma omp unroll partial
+            for (ptrdiff_t d = rank - 1; d >= 0; --d)
             {
-                bcoords[d] = tmp % grid[d];
-                tmp /= grid[d];
+                send_bcoords[d] =tmp % recv_db.pblock_grid_extents[d];
+
+                tmp /= recv_db.pblock_grid_extents[d];
             }
 
-            int owner = policy->owner(bcoords,recv_db.Dblockarray.ptensor_rank, *ctx, tmpcoords);
+            const int owner = policy->owner_mpi_rank(send_bcoords, brank, *ctx);
+
+            ptrdiff_t* block_ext = new ptrdiff_t[rank];
+            ptrdiff_t* block_start = new ptrdiff_t[rank];
 
 
-            MPI_Datatype blocktype;
-            ptrdiff_t* block_ext =new ptrdiff_t[recv_db.Dblockarray.ptensor_rank];
-
-            ptrdiff_t* block_start =new ptrdiff_t[recv_db.Dblockarray.ptensor_rank];
-
-
-            #pragma omp parallel for simd if(parallel: recv_db.pblock_grid_rank > 30)
-            for(ptrdiff_t d = 0; d < recv_db.pblock_grid_rank; ++d)
+            #pragma omp simd
+            for (ptrdiff_t d = 0; d < brank; ++d)
             {
-                block_start[d] = bcoords[d] * block_extents[d];
+                block_start[d] =send_bcoords[d] * block_extents[d];
 
-                const ptrdiff_t diff =recv_db.pglobal_extents[d] - block_start[d];
+                const ptrdiff_t diff =recv_db.pglobal_extents[d] -block_start[d];
 
-                block_ext[d] =(block_extents[d] < diff)? block_extents[d]: diff;
+                block_ext[d] =block_extents[d]<diff? block_extents[d]:diff;
             }
 
-            #pragma omp parallel for simd if(parallel:recv_db.Dblockarray.ptensor_rank - recv_db.pblock_grid_rank > 30)
-            for(ptrdiff_t d = recv_db.pblock_grid_rank; d < recv_db.Dblockarray.ptensor_rank; ++d)
+
+            #pragma omp simd
+            for (ptrdiff_t d = brank; d < rank; ++d)
             {
                 block_start[d] = 0;
                 block_ext[d] = recv_db.pglobal_extents[d];
             }
 
+
             T* start = send_db->dpdata;
-            #pragma omp unroll partial
-            for(ptrdiff_t d = 0; d < recv_db.Dblockarray.ptensor_rank; ++d)
+            ptrdiff_t total_offset = 0;
+
+            #pragma omp simd reduction(+:total_offset)
+            for (ptrdiff_t d = 0; d < rank; ++d)
             {
-                start +=block_start[d] * send_db->dpstrides[d];
+                total_offset += block_start[d] * send_db->dpstrides[d];
             }
 
-            blocktype =make_strided_nd_rowmajor_type<T>(recv_db.Dblockarray.ptensor_rank,block_ext,send_db->dpstrides);
+            start += total_offset;
+
+            MPI_Datatype blocktype =make_strided_nd_rowmajor_type<T>(rank,block_ext,send_db->dpstrides);
 
             MPI_Type_commit(&blocktype);
 
-            MPI_Isend(start,1,blocktype,owner,b,ctx->comm,&sendreqs[b]);
+            MPI_Isend(start,1,blocktype,owner,(int)b,ctx->pcomm,&sendreqs[b]);
 
             MPI_Type_free(&blocktype);
 
@@ -1434,66 +1679,76 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_tensor_to_subtensors_alloc(
             delete[] block_start;
         }
 
-        MPI_Waitall(total_blocks, sendreqs, MPI_STATUSES_IGNORE);
-        delete[]bcoords;
-        delete[]tmpcoords;
+        MPI_Waitall((int)total_blocks,sendreqs,MPI_STATUSES_IGNORE);
+
+        delete[] send_bcoords;
         delete[] sendreqs;
     }
 
+    MPI_Waitall((int)local_blocks,reqs,MPI_STATUSES_IGNORE);
 
-
-    MPI_Waitall(local_blocks, reqs, MPI_STATUSES_IGNORE);
     delete[] reqs;
-    delete[] grid;
 
-    recv_db.Dblockarray.pextentsbuffer =
-        (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank*local_blocks):nullptr;
 
-    recv_db.Dblockarray.pstridesbuffer =
-        (local_blocks>0)?(ptrdiff_t*)malloc(sizeof(ptrdiff_t)*recv_db.Dblockarray.ptensor_rank*local_blocks):nullptr;
+
+    recv_db.Dblockarray.pextentsbuffer =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank * local_blocks): nullptr;
+
+    recv_db.Dblockarray.pstridesbuffer =local_blocks > 0? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * rank * local_blocks): nullptr;
 
     #pragma omp parallel for
-    for(ptrdiff_t i=0; i<local_blocks; i++)
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t* bext = recv_db.Dblockarray.pextentsbuffer + i*recv_db.Dblockarray.ptensor_rank;
-        ptrdiff_t* bstr = recv_db.Dblockarray.pstridesbuffer + i*recv_db.Dblockarray.ptensor_rank;
+        ptrdiff_t* bext =recv_db.Dblockarray.pextentsbuffer + i * rank;
+
+        ptrdiff_t* bstr =recv_db.Dblockarray.pstridesbuffer + i * rank;
 
         #pragma omp simd
-        for(ptrdiff_t d=0; d<recv_db.pblock_grid_rank; d++)
+        for (ptrdiff_t d = 0; d < brank; ++d)
+        {
             bext[d] = blocks[i].extents[d];
+        }
+
 
         #pragma omp simd
-        for(ptrdiff_t d=recv_db.pblock_grid_rank; d<recv_db.Dblockarray.ptensor_rank; d++)
+        for (ptrdiff_t d = brank; d < rank; ++d)
+        {
             bext[d] = recv_db.pglobal_extents[d];
-
-        bstr[recv_db.Dblockarray.ptensor_rank-1] = 1;
-
-        for(int d=recv_db.Dblockarray.ptensor_rank-2; d>=0; --d)
-            bstr[d] = bstr[d+1] * bext[d+1];
+        }
 
 
+        bstr[rank - 1] = 1;
+
+        #pragma omp unroll partial
+        for (ptrdiff_t d = rank - 2; d >= 0; --d)
+        {
+            bstr[d] = bstr[d + 1] * bext[d + 1];
+        }
 
         delete[] blocks[i].coords;
         delete[] blocks[i].starts;
         delete[] blocks[i].extents;
     }
+
     blocks.clear();
 }
+
+
+
 
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     const DistributedDataBlock<T>& send_db,
-    int rootrank,MPI_Sendlocation loc,
+    int rootrank,DataBlockConfig loc,
     DataBlock<T>* recv_db
 )
 {
-    if (send_db.pctx->comm == MPI_COMM_NULL)
+    if (send_db.pctx->pcomm == MPI_COMM_NULL)
         return;
 
     int rank,size;
-    MPI_Comm_rank(send_db.pctx->comm,&rank);
-    MPI_Comm_size(send_db.pctx->comm,&size);
+    MPI_Comm_rank(send_db.pctx->pcomm,&rank);
+    MPI_Comm_size(send_db.pctx->pcomm,&size);
 
     ptrdiff_t rank_t    = send_db.Dblockarray.ptensor_rank;
     ptrdiff_t blockrank = send_db.pblock_grid_rank;
@@ -1508,15 +1763,15 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     ptrdiff_t* grid = new ptrdiff_t[rank_t];
     ptrdiff_t total_blocks = 1;
 
-    #pragma omp parallel for simd if(parallel: blockrank>30)
+    #pragma omp parallel for simd if(parallel: blockrank>50)
     for(ptrdiff_t d=0; d<blockrank; d++)
         grid[d] = (global_ext[d] + block_ext[d] - 1) / block_ext[d];
 
-    #pragma omp parallel for simd if(parallel: rank_t-blockrank>30)
+    #pragma omp parallel for simd if(parallel: rank_t-blockrank>50)
     for(ptrdiff_t d=blockrank; d<rank_t; d++)
         grid[d] = 1;
 
-    #pragma omp parallel for simd reduction(*:total_blocks)if(parallel:rank_t>30)
+    #pragma omp parallel for simd reduction(*:total_blocks)if(parallel:rank_t>50)
     for(ptrdiff_t d=0; d<rank_t; d++)
         total_blocks *= grid[d];
 
@@ -1530,15 +1785,9 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
 
         ptrdiff_t datalen=compute_storage_span(global_ext,global_str,rank_t);
 
-        alloc_helper(
-            loc,
-            rank_t,
-            datalen,
-            ext,
-            str,
-            pdata);
+        alloc_helper(loc,rank_t,datalen,ext,str,pdata);
 
-        #pragma omp parallel for simd if(parallel:rank_t>30)
+        #pragma omp parallel for simd if(parallel:rank_t>50)
         for(ptrdiff_t d=0; d<rank_t; d++)
             ext[d]=global_ext[d];
 
@@ -1548,10 +1797,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
             str[d]=str[d+1]*ext[d+1];
 
 
-        *recv_db = DataBlock<T>(pdata,datalen,rank_t,ext,str,DataBlockConfig
-        {
-            .data_is_devptr=loc.ondevice,
-            .devicenum=loc.devicenum});
+        *recv_db = DataBlock<T>(pdata,datalen,rank_t,ext,str,loc);
         recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
     }
 
@@ -1567,11 +1813,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
     if(rank==rootrank)
     {
 
-
-
-
         ptrdiff_t* bcoords=new ptrdiff_t[rank_t];
-        int *tempcoords=new int[send_db.pctx->gridrank];
         for(ptrdiff_t b=0; b<total_blocks; b++)
         {
             ptrdiff_t tmp=b;
@@ -1582,13 +1824,13 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
                 tmp /= grid[d];
             }
 
-            int owner = send_db.ppolicy->owner(bcoords,send_db.Dblockarray.ptensor_rank,*send_db.pctx, tempcoords);
+            int owner = send_db.ppolicy->owner_mpi_rank(bcoords,send_db.Dblockarray.ptensor_rank,*send_db.pctx);
 
             ptrdiff_t* block_ext =new ptrdiff_t[rank_t];
 
             ptrdiff_t* block_start =new ptrdiff_t[rank_t];
 
-            #pragma omp parallel for simd if(parallel: blockrank>30)
+            #pragma omp parallel for simd if(parallel: blockrank>50)
             for(ptrdiff_t d = 0; d < blockrank; ++d)
             {
                 block_start[d] =bcoords[d] * send_db.pdefault_block_shape[d];
@@ -1597,31 +1839,29 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
 
                 block_ext[d] =(send_db.pdefault_block_shape[d] < diff)? send_db.pdefault_block_shape[d]: diff;
             }
-            #pragma omp parallel for simd if(parallel:rank_t-blockrank>30)
+            #pragma omp parallel for simd if(parallel:rank_t-blockrank>50)
             for(ptrdiff_t d = blockrank; d < rank_t; ++d)
             {
                 block_start[d] = 0;
                 block_ext[d] = global_ext[d];
             }
 
-            T* start = recv_db->dpdata;
-            #pragma omp unroll partial
+
+            ptrdiff_t offset=0;
+            #pragma omp parallel for simd reduction(+:offset) if(parallel:rank_t>50)
             for(ptrdiff_t d = 0; d < rank_t; ++d)
             {
-                start +=block_start[d] *recv_db->dpstrides[d];
+                offset +=block_start[d] *recv_db->dpstrides[d];
             }
+            T* start = recv_db->dpdata;
+            start+=offset;
+
 
 
             MPI_Datatype  blocktype=make_strided_nd_rowmajor_type<T>(rank_t,block_ext,recv_db->dpstrides);
             MPI_Type_commit(&blocktype);
 
-            MPI_Irecv(start,
-                      1,
-                      blocktype,
-                      owner,
-                      b,
-                      send_db.pctx->comm,
-                      &reqs[recv_idx++]);
+            MPI_Irecv(start,1,blocktype,owner,b,send_db.pctx->pcomm,&reqs[recv_idx++]);
 
             MPI_Type_free(&blocktype);
             delete[] block_ext;
@@ -1630,21 +1870,17 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
         }
 
         delete[]bcoords;
-        delete[] tempcoords;
     }
 
 
 
-    MPI_Request* sendreqs =
-        send_db.Dblockarray.pnumblocks ?
-        new MPI_Request[send_db.Dblockarray.pnumblocks] :
-        nullptr;
+    MPI_Request* sendreqs =send_db.Dblockarray.pnumblocks>0 ?new MPI_Request[send_db.Dblockarray.pnumblocks] :nullptr;
 
     ptrdiff_t send_idx=0;
 
     for(ptrdiff_t i=0; i<send_db.Dblockarray.pnumblocks; i++)
     {
-        ptrdiff_t b = send_db.pblock_grid_index[i];
+        ptrdiff_t b = send_db.plocal_block_global_grid_indices[i];
 
         const ptrdiff_t* ext =send_db.Dblockarray.pextentsbuffer + i*rank_t;
 
@@ -1655,14 +1891,8 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
             elems *= ext[d];
 
         T* buffer=send_db.Dblockarray.pdata + send_db.Dblockarray.pblock_offsets[i];
-        MPI_Isend(
-            buffer,
-            elems,
-            mpi_get_type<T>(),
-            rootrank,
-            b,
-            send_db.pctx->comm,
-            &sendreqs[send_idx++]);
+
+        MPI_Isend(buffer,elems,mpi_get_type<T>(),rootrank,b,send_db.pctx->pcomm,&sendreqs[send_idx++]);
     }
 
     if(send_idx)
@@ -1681,25 +1911,25 @@ inline void DataBlock_MPI_Functions::MPI_Gather_tensor_from_subtensors_alloc(
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_All_Gather_tensor_from_subtensors_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+    const DistributedDataBlock<T>& send_db,DataBlockConfig loc,DataBlock<T>& recv_db)
 {
     int rootrank=0;
     MPI_Gather_tensor_from_subtensors_alloc(send_db,0,loc,&recv_db);
-    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db->pcom,0 );
+    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db.pctx->pcomm,0 );
 }
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_All_Gather_matrix_from_submatrices_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+    const DistributedDataBlock<T>& send_db,DataBlockConfig loc,DataBlock<T>& recv_db)
 {
     int rootrank=0;
     MPI_Gather_matrix_from_submatrices_alloc(send_db,0,loc,&recv_db);
-    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db->pcom,0 );
+    DataBlock_MPI_Functions::MPI_Bcast_alloc_DataBlock (recv_db,loc,send_db.pctx->pcomm,0 );
 }
 
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_All_Gather_vector_from_subvectors_alloc(
-    const DistributedDataBlock<T>& send_db,MPI_Sendlocation loc,DataBlock<T>& recv_db)
+    const DistributedDataBlock<T>& send_db,DataBlockConfig loc,DataBlock<T>& recv_db)
 {
     int rootrank=0;
     MPI_Gather_vector_from_subvectors_alloc(send_db,0,loc,&recv_db);
@@ -1708,250 +1938,205 @@ inline void DataBlock_MPI_Functions::MPI_All_Gather_vector_from_subvectors_alloc
 
 
 template<typename T>
-inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
-    ptrdiff_t blocksize,
-    DistributedDataBlock<T>& recv_db,
-    MPI_Sendlocation loc,
-    MPI_CartesianContext *ctx,
-    BlockMappingPolicy* policy,
-    int rootrank,
-    const DataBlock<T>* send_db)
+inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(ptrdiff_t blocksize,
+    DistributedDataBlock<T>& recv_db,DataBlockConfig loc,MPI_CartesianContext* ctx,
+    BlockMappingPolicy* policy,int rootrank,const DataBlock<T>* send_db)
 {
-    recv_db.pctx =ctx;
+    recv_db.pctx = ctx;
     recv_db.ppolicy = policy;
 
-    if (ctx->comm == MPI_COMM_NULL)
-    {
+    if (ctx->pcomm == MPI_COMM_NULL)
         return;
-    }
+
+    constexpr ptrdiff_t tensor_rank = 1;
+
+    const ptrdiff_t bs = std::abs(blocksize);
 
     int rank;
-    MPI_Comm_rank(ctx->comm, &rank);
+    MPI_Comm_rank(ctx->pcomm, &rank);
 
-    recv_db.Dblockarray.ptensor_rank = 1;
+    recv_db.Dblockarray.ptensor_rank = tensor_rank;
+    recv_db.pblock_grid_rank = tensor_rank;
 
-    recv_db.pglobal_extents  = (ptrdiff_t*)malloc(sizeof(ptrdiff_t));
-    recv_db.pglobal_strides  = (ptrdiff_t*)malloc(sizeof(ptrdiff_t));
-    recv_db.pdefault_block_shape   = (ptrdiff_t*)malloc(sizeof(ptrdiff_t));
+    recv_db.pglobal_extents =(ptrdiff_t*)malloc(sizeof(ptrdiff_t));
 
-    recv_db.pblock_grid_extents   = (ptrdiff_t*)malloc(sizeof(ptrdiff_t));
+    recv_db.pglobal_strides =(ptrdiff_t*)malloc(sizeof(ptrdiff_t));
 
-    recv_db.pblock_grid_rank = 1;
+    recv_db.pdefault_block_shape =(ptrdiff_t*)malloc(sizeof(ptrdiff_t));
 
+    recv_db.pblock_grid_extents =(ptrdiff_t*)malloc(sizeof(ptrdiff_t));
+
+    recv_db.pblock_grid_strides =(ptrdiff_t*)malloc(sizeof(ptrdiff_t));
 
     if (rank == rootrank)
     {
         recv_db.pglobal_extents[0] = send_db->dpextents[0];
         recv_db.pglobal_strides[0] = send_db->dpstrides[0];
-        recv_db.pdefault_block_shape[0] = blocksize;
+        recv_db.pdefault_block_shape[0] = bs;
         recv_db.Dblockarray.pconjugate = send_db->dpconjugate;
     }
 
+    MPI_Bcast(recv_db.pglobal_extents, 1,mpi_get_type<ptrdiff_t>(), rootrank, ctx->pcomm);
 
-    MPI_Bcast(recv_db.pglobal_extents, 1, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm);
-    MPI_Bcast(recv_db.pglobal_strides, 1, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm);
-    MPI_Bcast(recv_db.pdefault_block_shape, 1, mpi_get_type<ptrdiff_t>(), rootrank, ctx->comm);
+    MPI_Bcast(recv_db.pglobal_strides, 1,mpi_get_type<ptrdiff_t>(), rootrank, ctx->pcomm);
 
-    MPI_Bcast(&recv_db.Dblockarray.pconjugate, 1, mpi_get_type<bool>(), rootrank, ctx->comm);
-    ptrdiff_t N  = recv_db.pglobal_extents[0];
-    ptrdiff_t bs = recv_db.pdefault_block_shape[0];
+    MPI_Bcast(recv_db.pdefault_block_shape, 1,mpi_get_type<ptrdiff_t>(), rootrank, ctx->pcomm);
 
-    ptrdiff_t grid = (N + bs - 1) / bs;
-    ptrdiff_t total_blocks = grid;
+    MPI_Bcast(&recv_db.Dblockarray.pconjugate, 1,mpi_get_type<bool>(), rootrank, ctx->pcomm);
 
-    recv_db.pblock_grid_extents[0] =(recv_db.pglobal_extents[0] + recv_db.pdefault_block_shape[0] - 1)/ recv_db.pdefault_block_shape[0];
+    const ptrdiff_t N = recv_db.pglobal_extents[0];
+
+    recv_db.pblock_grid_extents[0] =(N + bs - 1) / bs;
+
+    recv_db.pblock_grid_strides[0] = 1;
+
+    const ptrdiff_t total_blocks =recv_db.pblock_grid_extents[0];
+
 
 
     ptrdiff_t local_blocks = 0;
-    ptrdiff_t* local_block_indices = new ptrdiff_t[total_blocks];
 
-    ptrdiff_t* grid_coords=new ptrdiff_t[ctx->gridrank];
-    int *temp_coords=new int[ctx->gridrank];
+    ptrdiff_t* local_block_indices =total_blocks > 0 ? new ptrdiff_t[total_blocks] : nullptr;
 
-    for (ptrdiff_t b = 0; b < total_blocks; b++)
+    ptrdiff_t bcoords[1];
+
+    for (ptrdiff_t b = 0; b < total_blocks; ++b)
     {
-        ptrdiff_t bcoords[1] = {b};
-        int owner = policy->owner(bcoords,1, *ctx, temp_coords);
+        bcoords[0] = b;
+
+        const int owner = policy->owner_mpi_rank(bcoords,recv_db.pblock_grid_rank,*ctx);
 
         if (owner == rank)
             local_block_indices[local_blocks++] = b;
     }
 
-    delete []grid_coords;
-    delete []temp_coords;
-
     recv_db.Dblockarray.pnumblocks = local_blocks;
 
+    recv_db.plocal_block_grid_coords =local_blocks? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.plocal_block_global_starts =local_blocks?(ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.plocal_block_global_grid_indices =local_blocks? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.Dblockarray.pblock_offsets =local_blocks? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.Dblockarray.pextentsbuffer =local_blocks? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.Dblockarray.pstridesbuffer =local_blocks? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks): nullptr;
+
+    recv_db.pglobal_grid_index_to_local_block.reserve(local_blocks);
 
 
-    recv_db.pblock_grid_coords =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.pblock_grid_starts =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.pblock_grid_index =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.Dblockarray.pblock_offsets =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.Dblockarray.pextentsbuffer =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.Dblockarray.pstridesbuffer =
-        local_blocks ? (ptrdiff_t*)malloc(sizeof(ptrdiff_t) * local_blocks) : nullptr;
-
-    recv_db.pblock_grid_to_local.reserve(local_blocks);
-
-
-    ptrdiff_t total_recv_elems = 0;
-
-    for (ptrdiff_t i = 0; i < local_blocks; i++)
+   ptrdiff_t total_recv_elems = 0;
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t b = local_block_indices[i];
+        const ptrdiff_t b = local_block_indices[i];
 
-        ptrdiff_t start = b * bs;
-        ptrdiff_t diff=N-start;
-        ptrdiff_t len   = bs<diff? bs:diff;
+        const ptrdiff_t global_block_index =b * recv_db.pblock_grid_strides[0];
 
-        recv_db.pblock_grid_coords[i]     = b;
-        recv_db.pblock_grid_starts[i]    = start;
-        recv_db.pblock_grid_index[i] = b;
-        recv_db.Dblockarray.pblock_offsets[i]    = total_recv_elems;
+        const ptrdiff_t start =global_block_index * bs;
+
+        const ptrdiff_t len =std::min(bs, N - start);
+
+        recv_db.plocal_block_grid_coords[i] = b;
+        recv_db.plocal_block_global_starts[i] = start;
+
+        recv_db.plocal_block_global_grid_indices[i] =global_block_index;
+
+        recv_db.Dblockarray.pblock_offsets[i] = total_recv_elems;
 
         total_recv_elems += len;
     }
 
+
+
     delete[] local_block_indices;
-
-
 
     recv_db.Dblockarray.pdatalength = total_recv_elems;
     recv_db.Dblockarray.pdata = nullptr;
+    recv_db.Dblockarray.conf = loc;
 
     if (total_recv_elems > 0)
         alloc_helper2(loc, total_recv_elems, recv_db.Dblockarray.pdata);
 
-    recv_db.Dblockarray.pdata_is_devptr = loc.ondevice;
-    recv_db.Dblockarray.pdevnum = loc.devicenum;
-    recv_db.pmemmap = loc.with_memmap;
 
+    MPI_Request* reqs =local_blocks > 0 ? new MPI_Request[local_blocks] : nullptr;
 
-
-    MPI_Request* reqs = new MPI_Request[local_blocks];
-
-    for (ptrdiff_t i = 0; i < local_blocks; i++)
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t len =
-            (i + 1 < local_blocks)
-            ? recv_db.Dblockarray.pblock_offsets[i+1] - recv_db.Dblockarray.pblock_offsets[i]
-            : (total_recv_elems - recv_db.Dblockarray.pblock_offsets[i]);
+        const ptrdiff_t len =(i + 1 < local_blocks)? recv_db.Dblockarray.pblock_offsets[i + 1]- recv_db.Dblockarray.pblock_offsets[i]
+            : total_recv_elems- recv_db.Dblockarray.pblock_offsets[i];
 
-        MPI_Irecv(
-            recv_db.Dblockarray.pdata + recv_db.Dblockarray.pblock_offsets[i],
-            len,
-            mpi_get_type<T>(),
-            rootrank,
-            recv_db.pblock_grid_index[i],
-            ctx->comm,
-            &reqs[i]);
+        const ptrdiff_t b =recv_db.plocal_block_global_grid_indices[i];
 
-        recv_db.pblock_grid_to_local[recv_db.pblock_grid_index[i]] = i;
+        MPI_Irecv(recv_db.Dblockarray.pdata+ recv_db.Dblockarray.pblock_offsets[i],(int)len,mpi_get_type<T>(),rootrank,(int)b,ctx->pcomm,&reqs[i]);
+
+        recv_db.pglobal_grid_index_to_local_block[b] = i;
     }
-
 
 
     if (rank == rootrank)
     {
         MPI_Datatype block_type;
 
-
-        MPI_Type_create_hvector(
-            (int)bs,
-            1,
-            static_cast<MPI_Aint>(send_db->dpstrides[0]) * sizeof(T),
-            mpi_get_type<T>(),
-            &block_type);
+        MPI_Type_create_hvector((int)bs,1,(MPI_Aint)send_db->dpstrides[0] * sizeof(T),mpi_get_type<T>(),&block_type);
 
         MPI_Type_commit(&block_type);
 
-        MPI_Request* sendreqs = new MPI_Request[total_blocks];
-        int *temp_coords=new int[ctx->gridrank];
+        MPI_Request* sendreqs =total_blocks > 0 ? new MPI_Request[total_blocks] : nullptr;
 
-        for (ptrdiff_t b = 0; b < total_blocks; b++)
+        for (ptrdiff_t b = 0; b < total_blocks; ++b)
         {
-            ptrdiff_t bcoords[1] = { b };
+            bcoords[0] = b;
 
-            int owner = policy->owner(bcoords,1, *ctx, temp_coords);
+            const int owner = policy->owner_mpi_rank(bcoords,recv_db.pblock_grid_rank,*ctx);
 
+            const ptrdiff_t global_block_index =bcoords[0] * recv_db.pblock_grid_strides[0];
 
-            ptrdiff_t start = b * bs;
-            ptrdiff_t diff=N-start;
-            ptrdiff_t len   = bs<diff? bs:diff;
+            const ptrdiff_t start =global_block_index * bs;
 
-            bool edgecase = (len != bs);
+            const ptrdiff_t len =std::min(bs, N - start);
 
-            MPI_Datatype send_type;
+            const bool edgecase = (len < bs);
 
+            MPI_Datatype send_type = block_type;
 
             if (edgecase)
             {
-                MPI_Type_create_hvector(
-                    (int)len,
-                    1,
-                    static_cast<MPI_Aint>(send_db->dpstrides[0]) * sizeof(T),
-                    mpi_get_type<T>(),
-                    &send_type);
+                MPI_Type_create_hvector((int)len,1,(MPI_Aint)send_db->dpstrides[0] * sizeof(T),mpi_get_type<T>(),&send_type);
 
                 MPI_Type_commit(&send_type);
             }
-            else
-            {
-                send_type = block_type;
-            }
 
-            T* ptr =
-                send_db->dpdata
-                + start * send_db->dpstrides[0];
+            T* ptr =send_db->dpdata + start * send_db->dpstrides[0];
 
-            MPI_Isend(
-                ptr,
-                1,
-                send_type,
-                owner,
-                b,
-                ctx->comm,
-                &sendreqs[b]);
+            MPI_Isend(ptr,1,send_type,owner,(int)global_block_index,ctx->pcomm,&sendreqs[b]);
 
             if (edgecase)
                 MPI_Type_free(&send_type);
         }
 
-        MPI_Waitall(total_blocks, sendreqs, MPI_STATUSES_IGNORE);
+        MPI_Waitall((int)total_blocks,sendreqs,MPI_STATUSES_IGNORE);
+
         MPI_Type_free(&block_type);
+
         delete[] sendreqs;
-        delete []temp_coords;
     }
 
-    MPI_Waitall(local_blocks, reqs, MPI_STATUSES_IGNORE);
+    MPI_Waitall((int)local_blocks,reqs,MPI_STATUSES_IGNORE);
+
     delete[] reqs;
 
 
-
-    for (ptrdiff_t i = 0; i < local_blocks; i++)
+    #pragma omp parallel for simd
+    for (ptrdiff_t i = 0; i < local_blocks; ++i)
     {
-        ptrdiff_t len =
-            (i + 1 < local_blocks)
-            ? recv_db.Dblockarray.pblock_offsets[i+1] - recv_db.Dblockarray.pblock_offsets[i]
-            : (total_recv_elems - recv_db.Dblockarray.pblock_offsets[i]);
+        const ptrdiff_t len =(i + 1 < local_blocks)?
+                                        recv_db.Dblockarray.pblock_offsets[i + 1]- recv_db.Dblockarray.pblock_offsets[i]
+                                    : total_recv_elems- recv_db.Dblockarray.pblock_offsets[i];
 
-        ptrdiff_t* ext = recv_db.Dblockarray.pextentsbuffer + i;
-        ptrdiff_t* str = recv_db.Dblockarray.pstridesbuffer + i;
-
-        ext[0] = len;
-        str[0] = 1;
-
+        recv_db.Dblockarray.pextentsbuffer[i] = len;
+        recv_db.Dblockarray.pstridesbuffer[i] = 1;
     }
 }
 
@@ -1960,18 +2145,18 @@ inline void DataBlock_MPI_Functions::MPI_Scatter_vector_to_subvectors_alloc(
 template<typename T>
 inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
     const DistributedDataBlock<T>& send_db,
-    int rootrank,MPI_Sendlocation loc,
+    int rootrank,DataBlockConfig loc,
     DataBlock<T>* recv_db
 )
 {
     if(send_db.pctx==nullptr)
         return;
-    if (send_db.pctx->comm == MPI_COMM_NULL)
+    if (send_db.pctx->pcomm == MPI_COMM_NULL)
         return;
 
     int rank, size;
-    MPI_Comm_rank(send_db.pctx->comm, &rank);
-    MPI_Comm_size(send_db.pctx->comm, &size);
+    MPI_Comm_rank(send_db.pctx->pcomm, &rank);
+    MPI_Comm_size(send_db.pctx->pcomm, &size);
 
     ptrdiff_t N      = send_db.pglobal_extents[0];
     ptrdiff_t bs     = send_db.pdefault_block_shape[0];
@@ -1987,23 +2172,12 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
 
         ptrdiff_t datalen =compute_storage_span(send_db.pglobal_extents,send_db.pglobal_strides,1);
 
-        alloc_helper(loc,
-                     1,
-                     datalen,
-                     ext,
-                     str,
-                     pdata);
+        alloc_helper(loc,1,datalen,ext,str,pdata);
 
         ext[0] = N;
         str[0] =  send_db.pglobal_strides[0];;
 
-        *recv_db = DataBlock<T>(
-                       pdata,
-                       datalen,
-                       1,
-                       ext,
-                       str,
-                       DataBlockConfig{.data_is_devptr=loc.ondevice,.devicenum=loc.devicenum});
+        *recv_db = DataBlock<T>(pdata,datalen,1,ext,str,loc);
         recv_db->dpconjugate=send_db.Dblockarray.pconjugate;
 
     }
@@ -2015,7 +2189,7 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
     if (rank == rootrank)
         reqs = new MPI_Request[total_blocks];
 
-    ptrdiff_t gridrank=send_db.pctx->gridrank;
+    ptrdiff_t gridrank=send_db.pctx->pgridrank;
     if (rank == rootrank)
     {
         int* temp_coords=new int [gridrank];
@@ -2023,21 +2197,14 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
         {
             ptrdiff_t bcoords[1] = { b };
 
-            int owner = send_db.ppolicy->owner(bcoords,1,*send_db.pctx,temp_coords);
+            int owner = send_db.ppolicy->owner_mpi_rank(bcoords,1,*send_db.pctx);
             ptrdiff_t start = b * bs;
             ptrdiff_t diff=N - start;
             ptrdiff_t len   = bs<diff?bs:diff;
 
             T* ptr = recv_db->dpdata + start;
 
-            MPI_Irecv(
-                ptr,
-                len,
-                mpi_get_type<T>(),
-                owner,
-                b,
-                send_db.pctx->comm,
-                &reqs[recv_idx++]);
+            MPI_Irecv(ptr,len,mpi_get_type<T>(),owner,b,send_db.pctx->pcomm,&reqs[recv_idx++]);
         }
         delete[]temp_coords;
 
@@ -2045,26 +2212,17 @@ inline void DataBlock_MPI_Functions::MPI_Gather_vector_from_subvectors_alloc(
 
 
 
-    MPI_Request* sendreqs =
-        (send_db.Dblockarray.pnumblocks > 0)
-        ? new MPI_Request[send_db.Dblockarray.pnumblocks]
-        : nullptr;
+    MPI_Request* sendreqs =(send_db.Dblockarray.pnumblocks > 0)? new MPI_Request[send_db.Dblockarray.pnumblocks]: nullptr;
 
     ptrdiff_t send_idx = 0;
 
     for (ptrdiff_t i = 0; i < send_db.Dblockarray.pnumblocks; i++)
     {
-        ptrdiff_t b = send_db.pblock_grid_index[i];
+        ptrdiff_t b = send_db.plocal_block_global_grid_indices[i];
 
         ptrdiff_t len =send_db.Dblockarray.pextentsbuffer[i];
         T* buffer=send_db.Dblockarray.pdata + send_db.Dblockarray.pblock_offsets[i];
-        MPI_Isend(buffer,
-                  len,
-                  mpi_get_type<T>(),
-                  rootrank,
-                  b,
-                  send_db.pctx->comm,
-                  &sendreqs[send_idx++]);
+        MPI_Isend(buffer,len,mpi_get_type<T>(),rootrank,b,send_db.pctx->pcomm,&sendreqs[send_idx++]);
     }
 
     if (send_idx > 0)
@@ -2123,9 +2281,8 @@ inline  void DataBlock_MPI_Functions::MPI_Send_DataBlock_pdata(DataBlock<T> &m,c
 }
 
 template<typename T>
-inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(MPI_Sendlocation loc, const int source,const  int tag, MPI_Comm pcomm)
+inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(DataBlockConfig loc, const int source,const  int tag, MPI_Comm pcomm)
 {
-    DataBlockConfig conf{.pmemmap=loc.with_memmap,.data_is_devptr=loc.ondevice,.devicenum=loc.devicenum };
 
     MPI_Status status;
     ptrdiff_t pdatalength, prank;
@@ -2147,7 +2304,7 @@ inline  DataBlock<T> DataBlock_MPI_Functions::MPI_Recv_alloc_DataBlock(MPI_Sendl
     MPI_Recv(&conjugate,sizeof(bool), mpi_get_type<bool>(), source, tag, pcomm,&status);
 
 
-    DataBlock<T> tempt(pdata,pdatalength,prank,pextents,pstrides,conf);
+    DataBlock<T> tempt(pdata,pdatalength,prank,pextents,pstrides,loc);
     tempt.dpconjugate=conjugate;
     return tempt;
 
@@ -2230,101 +2387,82 @@ inline  void DataBlock_MPI_Functions::MPI_Recv_DataBlock_pdata(DataBlock<T>& mds
 }
 
 
-inline MPI_CartesianContext::MPI_CartesianContext(MPI_Comm comm_): comm(comm_)
+inline MPI_CartesianContext::MPI_CartesianContext(MPI_Comm comm): pcomm(comm)
 {
-    MPI_Comm_size(comm, &size);
+    MPI_Comm_size(pcomm, &psize);
 
     int ndims;
     MPI_Cartdim_get(comm, &ndims);
-    gridrank= (ptrdiff_t)ndims;
+    pgridrank= (ptrdiff_t)ndims;
 
-    dims    = new int[gridrank];
-    periods = new int[gridrank];
+    pdims    = new int[pgridrank];
+    pperiods = new int[pgridrank];
 
-    int* tmp_coords = new int[gridrank];
+    int* temp_cartesian_coords = new int[pgridrank];
 
-    MPI_Cart_get(comm,
-                 (int)gridrank,
-                 dims,
-                 periods,
-                 tmp_coords);
+    MPI_Cart_get(pcomm,(int)pgridrank,pdims,pperiods,temp_cartesian_coords);
 
-    delete[] tmp_coords;
+    delete[] temp_cartesian_coords;
 }
 
 inline MPI_CartesianContext::~MPI_CartesianContext()
 {
-    delete[] dims;
-    delete[] periods;
+    delete[] pdims;
+    delete[] pperiods;
 }
 
 inline int MPI_CartesianContext::rank_from_coords(int *coords) const
 {
     int rank;
-    MPI_Cart_rank(comm, coords, &rank);
+    MPI_Cart_rank(pcomm, coords, &rank);
     return rank;
 }
 
-inline BlockMappingPolicy::BlockMappingPolicy(ptrdiff_t gridrank_, const int *index_map_,
-        const ptrdiff_t *cyclic_block_): gridrank(gridrank_)
+inline BlockMappingPolicy::BlockMappingPolicy(
+    ptrdiff_t gridrank,
+    const int* index_map,
+    const ptrdiff_t* cyclic_block)
+    : pgridrank(gridrank),
+      pindex_map(new int[gridrank]),
+      pcyclic_block(new ptrdiff_t[gridrank])
 {
-    index_map = new int[gridrank];
-    cyclic_block = new ptrdiff_t[gridrank];
-
     #pragma omp unroll partial
-    for (ptrdiff_t d = 0; d < gridrank; d++)
+    for (ptrdiff_t d = 0; d < pgridrank; ++d)
     {
-        cyclic_block[d] = cyclic_block_ ? cyclic_block_[d] : 1;
-    }
-
-    if (index_map_ != nullptr)
-    {
-        #pragma omp unroll partial
-        for (ptrdiff_t d = 0; d < gridrank; d++)
-            index_map[d] = index_map_[d];
-    }
-    else
-    {
-        #pragma omp unroll partial
-        for (ptrdiff_t d = 0; d < gridrank; d++)
-            index_map[d] = (int)d;
+        pindex_map[d] = index_map ? index_map[d] : static_cast<int>(d);
+        pcyclic_block[d] = cyclic_block ? cyclic_block[d] : 1;
     }
 }
 
 
 
-inline void BlockMappingPolicy::owner_coords(
-    const ptrdiff_t* block_coords,
-    ptrdiff_t block_rank,
-    const MPI_CartesianContext& ctx,
-    int* coords) const
+inline void BlockMappingPolicy::owner_mpi_cartesian_coords(const ptrdiff_t* block_grid_coords,ptrdiff_t block_grid_rank,const MPI_CartesianContext& ctx,int* cartesian_coords) const
 {
     #pragma omp unroll partial
-    for (ptrdiff_t d = 0; d < gridrank; ++d)
+    for (ptrdiff_t d = 0; d < pgridrank; ++d)
     {
-        const int idx = index_map[d];
+        const int idx = pindex_map[d];
 
-        ptrdiff_t x =(idx >= 0 && (ptrdiff_t)idx < block_rank)? block_coords[idx]: 0;
+        ptrdiff_t x =(idx >= 0 && (ptrdiff_t)idx < block_grid_rank)? block_grid_coords[idx]: 0;
 
-        const ptrdiff_t grouped =x / cyclic_block[d];
+        const ptrdiff_t grouped =x / pcyclic_block[d];
 
-        coords[d] =static_cast<int>(grouped % ctx.dims[d]);
+        cartesian_coords[d] =(int)(grouped % ctx.pdims[d]);
     }
 }
 
-inline int BlockMappingPolicy::owner(
-    const ptrdiff_t* block_coords,
-    ptrdiff_t block_rank,
-    const MPI_CartesianContext& ctx,
-    int* temp_coords) const
+inline int BlockMappingPolicy::owner_mpi_rank(const ptrdiff_t* block_grid_coords,ptrdiff_t block_grid_rank,
+        const MPI_CartesianContext& ctx) const
 {
-    owner_coords(
-        block_coords,
-        block_rank,
-        ctx,
-        temp_coords);
+    int* temp_cartesian_coords = new int[ctx.pgridrank];
 
-    return ctx.rank_from_coords(temp_coords);
+    owner_mpi_cartesian_coords(block_grid_coords,block_grid_rank,ctx,temp_cartesian_coords);
+
+    int rank = ctx.rank_from_coords(temp_cartesian_coords);
+
+    delete[] temp_cartesian_coords;
+
+    return rank;
 }
 
 #endif

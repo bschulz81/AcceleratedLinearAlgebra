@@ -1370,7 +1370,7 @@ void GPU_Math_Functions::tensor_multiply_scalar_g( DataBlock<T>& M,const  T scal
 template <typename T>
 void GPU_Math_Functions::tensor_product_g(const DataBlock<T>& A, const DataBlock<T>& B, DataBlock<T>& C, T CoeffB, T CoeffC,GPUOptions opt)
 {
-    const ptrdiff_t rankA = A.dprank;
+
     const ptrdiff_t rankB = B.dprank;
     const ptrdiff_t rankC = C.dprank;
 

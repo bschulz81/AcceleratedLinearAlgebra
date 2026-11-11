@@ -8,7 +8,10 @@ template<typename T>
 class DataBlockArray;
 template<typename T>
 class BlockedDataView;
+class TensorFlatIndexLookup;
 
+template<typename T>
+class TensorFlatIndexData;
 
 class GPU_Memory_Functions
 {
@@ -123,6 +126,45 @@ public:
         DataBlockArrayOffloadHelperConst& operator=(const DataBlockArrayOffloadHelperConst&) = delete;
     };
 
+
+
+    class TensorFlatIndexLookupOffloadHelper
+    {
+
+    public:
+        TensorFlatIndexLookupOffloadHelper(TensorFlatIndexLookup& lookup,int devicenum);
+
+        ~TensorFlatIndexLookupOffloadHelper();
+
+        TensorFlatIndexLookupOffloadHelper(const TensorFlatIndexLookupOffloadHelper&) = delete;
+        TensorFlatIndexLookupOffloadHelper& operator=(const TensorFlatIndexLookupOffloadHelper&) = delete;
+    private:
+        TensorFlatIndexLookup& lookup;
+        int devicenum;
+    };
+
+    template<typename T>
+class TensorFlatIndexDataOffloadHelper
+{
+public:
+    TensorFlatIndexDataOffloadHelper(TensorFlatIndexData<T>& data,int devicenum);
+
+    ~TensorFlatIndexDataOffloadHelper();
+
+    TensorFlatIndexDataOffloadHelper(const TensorFlatIndexDataOffloadHelper&) = delete;
+
+    TensorFlatIndexDataOffloadHelper& operator=(const TensorFlatIndexDataOffloadHelper&) = delete;
+
+    TensorFlatIndexDataOffloadHelper(TensorFlatIndexDataOffloadHelper&&) = delete;
+
+    TensorFlatIndexDataOffloadHelper& operator=(TensorFlatIndexDataOffloadHelper&&) = delete;
+
+private:
+    TensorFlatIndexData<T>& data;
+    int devicenum;
+};
+
+
     template<typename T>
     inline static void create_out(DataBlockArray<T>& arr, int devicenum);
     template<typename T>
@@ -133,6 +175,7 @@ public:
     inline static void update_host(DataBlockArray<T>& arr, int devicenum);
     template<typename T>
     inline static void release(const DataBlockArray<T>& arr, int devicenum);
+
 
 
 
@@ -208,8 +251,14 @@ public:
     template<typename T>
     inline static bool is_on_gpu(const DataBlock<T>&m,const int devicenum);
 
-     template<typename T>
+    template<typename T>
     inline static bool is_on_gpu(const DataBlockArray<T>&m,const int devicenum);
+
+    template<typename T>
+    inline static int is_on_which_gpu(const DataBlock<T>&m);
+
+    template<typename T>
+    inline static int is_on_which_gpu(const DataBlockArray<T>&m);
 
     template<typename T>
     inline static bool is_on_gpu_ptr(const T* pdata,const int devicenum);
