@@ -1,5 +1,5 @@
 # AcceleratedLinearAlgebra
-A library with some linear algebra functions that works with OpenMP and Open-MPI on the host and on gpu accelerators.
+A library with some linear algebra functions for vectors, matrices and tensors that works with OpenMP and Open-MPI on the host and on gpu accelerators.
 
 This is a first submission for a simple linear algebra library. It is somewhat an extension to the mdspan class of c++.
 While mdspan works with compile time set extents, this library uses c++ concepts, so that stl vectors on the heap can be used for extents.
